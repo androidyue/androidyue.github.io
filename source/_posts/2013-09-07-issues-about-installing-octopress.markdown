@@ -3,7 +3,7 @@ layout: post
 title: "Issues About Installing Octopress"
 date: 2013-09-07 15:44
 comments: true
-categories: Github,OctoPress,Ruby,RVM
+categories: Github OctoPress Ruby RVM
 ---
 
 Actually I am fresh to Write Blog with Octopress in Github Pages.According to the <a href="http://octopress.org/docs/deploying/github/" alt="Introduction for Installing Octopress in Github Pages" target="_blank">Introduction</a>   .And now I have make it avaible and the website is present.
@@ -13,7 +13,7 @@ However I have suffered some problems when I did the setup.Here is a summary of 
     source ~/.rvm/scripts/rvm
     rvm use 1.9.3 --default 
 
-##### I have use <code>rake preview </code>,But I got 404 when I open the [http://127.0.0.1:4000](http://127.0.0.1)
+##### I have used <code>rake preview </code>,But I got 404 when I open the [http://127.0.0.1:4000](http://127.0.0.1)
     [androidyue@androidyue octopress]$ rake preview
     Starting to watch source with Jekyll and Compass. Starting Rack on port 4000
     [2013-09-07 15:46:20] INFO  WEBrick 1.3.1
