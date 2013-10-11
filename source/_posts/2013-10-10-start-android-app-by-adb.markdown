@@ -5,7 +5,7 @@ date: 2013-10-10 19:04
 comments: true
 categories: adb android app shell
 ---
-To be more geek,I began to start an Android App by using adb.Thanks to Google,It's possible and powerful.
+To be more geek,I began to start an Android App by using adb.Thanks to Google.It's possible and powerful.  
 The tool we use to make it is ADB(Android Debug Tool),For more detailed use please visit http://developer.android.com/tools/help/adb.html#shellcommands
 Actually What I use here is 
 ```bash
