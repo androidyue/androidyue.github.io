@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | Thinkblog]]></title>
   <link href="http://androidyue.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://androidyue.github.io/"/>
-  <updated>2014-01-04T21:52:45+08:00</updated>
+  <updated>2014-01-12T17:21:55+08:00</updated>
   <id>http://androidyue.github.io/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,124 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Set The Preferred Application in Android]]></title>
+    <link href="http://androidyue.github.io/blog/2014/01/12/set-the-preferred-application-in-android/"/>
+    <updated>2014-01-12T14:29:00+08:00</updated>
+    <id>http://androidyue.github.io/blog/2014/01/12/set-the-preferred-application-in-android</id>
+    <content type="html"><![CDATA[<p>A great application should provide a function to let users set it as the preferred or default application. In this post, I will make a description on PreferredApplication<br/>
+Before an application is about to be set as default, it has two possibilities. One is that there is already a default application and the other is no default application.</p>
+
+<h3>Detect the Default Application Exists or Not</h3>
+
+<p>This is really important. It determines what we should do next.
+```java</p>
+
+<pre><code>public void testGetDefaultActivity() {
+    PackageManager pm = mContext.getPackageManager();
+    Intent intent = new Intent(Intent.ACTION_VIEW);
+    intent.setData(Uri.parse("http://www.google.com"));
+    ResolveInfo info = pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+    Log.i(VIEW_LOG_TAG, "getDefaultActivity info = " + info + ";pkgName = " + info.activityInfo.packageName);
+</code></pre>
+
+<p>}
+<code>
+Result before I set Maxthon Browser as the default one. If no default one is set, the system will call the com.android.internal.app.ResolverActivity
+</code>java
+I/View    ( 1145 ): View getDefaultActivity info = ResolveInfo{410e4868 com.android.internal.app.ResolverActivity p=0 o=0 m=0x0};pkgName = android
+<code>
+Result after I set Maxthon Browser as the default one. If the default one is set just call the default activity
+</code>java
+I/View    ( 1145 ): View getDefaultActivity info = ResolveInfo{410ae1e8 com.mx.browser.MxBrowserActivity p=0 o=0 m=0x208000};pkgName = com.mx.browser
+<code>
+So it is really clear that you could use the following code to judge.
+</code>
+//Use this to determine whether default application is set or not
+boolean defaultSet = !&ldquo;android&rdquo;.equals(info.activityInfo.packageName);
+```</p>
+
+<h3>If the default one is already set</h3>
+
+<p>Just remove the preferred settings of the default application. However you could not do this in the code due to the permission control. It&rsquo;s generally done by users manually. What you could do is lead the user to the clear default page(installedAppDetails)
+```java
+public void testStartAppDetails() {</p>
+
+<pre><code>//Use the destination package name
+Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:com.mx.browser"));
+getActivity().startActivity(intent);
+</code></pre>
+
+<p>}
+```
+Then you navigate the user to the installedAppDetails and you could show some tips to click Button Clear Default.
+<img src="/images/post_images/installed_app_details_clear_default.png">
+When users go back from installedAppDetails to your application check is there any default appliction now. If the default application(in general, it&rsquo;s not the previous one) remains repeat the above actions until there is not default one.</p>
+
+<h3>No default One</h3>
+
+<p>Now there is only one step to set ours as the default one. You could not do this in codes. It&rsquo;s also required manual operation. What you could do is popup the selecting dialog and tip the use select your one.</p>
+
+<p>```java
+public void testStartChooseDialog() {</p>
+
+<pre><code>Intent intent = new Intent();
+intent.setAction("android.intent.action.VIEW");
+intent.addCategory("android.intent.category.BROWSABLE");
+intent.setData(Uri.parse("http://androidyue.github.io/"));
+intent.setComponent(new ComponentName("android","com.android.internal.app.ResolverActivity"));
+getActivity().startActivity(intent);
+</code></pre>
+
+<p>}
+```
+The dialog is like this <br/>
+<img src="/images/post_images/choose_default_activity_dialog.png"><br/>
+What&rsquo;s more, your tips is really essential. Make sure to notify that  &ldquo;Use by default for this action&rdquo; should be  checked.</p>
+
+<h3>How to Clear my own default</h3>
+
+<p>```java
+public void testClearDefault() {</p>
+
+<pre><code>PackageManager pm = mContext.getPackageManager();
+pm.clearPackagePreferredActivities(mContext.getPackageName());
+</code></pre>
+
+<p>}
+```
+Note you could only clear packagePreferredActivities of your own.</p>
+
+<h3>A step into system control</h3>
+
+<p>the following settings is some content of /data/system/packages.xml
+<code>xml
+&lt;preferred-activities&gt;
+&lt;item name="com.mx.browser/.MxBrowserActivity" match="200000" set="2"&gt;
+&lt;set name="com.android.browser/.BrowserActivity" /&gt;
+&lt;set name="com.mx.browser/.MxBrowserActivity" /&gt;
+&lt;filter&gt;
+&lt;action name="android.intent.action.VIEW" /&gt;
+&lt;cat name="android.intent.category.BROWSABLE" /&gt;
+&lt;cat name="android.intent.category.DEFAULT" /&gt;
+&lt;scheme name="http" /&gt;
+&lt;/filter&gt;
+&lt;/item&gt;
+&lt;/preferred-activities&gt;
+</code></p>
+
+<h3>Special</h3>
+
+<ul>
+<li>What will system do if I install or uninstall a related  application?</li>
+<li>Actually the system provide you a special chance to rechoose if a related activity is added or removed. When you click the url it should popup a dialog not use the previous preferred activity.</li>
+<li>When the system popup the choosing dialog?</li>
+<li>After some tests I guess the system will make  a list of  interested activities instantly. And then use the previous list to compare with the list stored in /data/system/packages.xml. If they are not the same, the choose dialog should be poped up.</li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Package Stopped State Since Android 3.1]]></title>
@@ -201,139 +319,6 @@ uses-feature:&lsquo;android.hardware.touchscreen&rsquo;
 uses-implied-feature:&lsquo;android.hardware.touchscreen&rsquo;,&lsquo;assumed you require a touch screen unless explicitly made optional&rsquo;
 ```
 To understand the feature more detailed, please visit <a href="http://developer.android.com/guide/topics/manifest/uses-feature-element.html">http://developer.android.com/guide/topics/manifest/uses-feature-element.html</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Build Android Packages From Command Line]]></title>
-    <link href="http://androidyue.github.io/blog/2013/10/19/build-android-packages-from-command-line/"/>
-    <updated>2013-10-19T09:11:00+08:00</updated>
-    <id>http://androidyue.github.io/blog/2013/10/19/build-android-packages-from-command-line</id>
-    <content type="html"><![CDATA[<p>A few months ago,I dealed with a task:To build a large amount of apk files.  The trick I came up with is to build apk file from the command so that I could use Python to glue all the works.  Eventually I made it.And so this post is to make some description about the trick.</p>
-
-<h2>Requirements</h2>
-
-<ul>
-<li> Setup JDK</li>
-<li> Setup Android SDK
-
-<h2>Steps</h2></li>
-<li>Generate R class file</li>
-<li>Compile Java codes(.java files) into classes(.class) files</li>
-<li>Convert .class files into .dex files</li>
-<li>Package Resouces</li>
-<li>Build Unsigned APK File</li>
-<li>Sign Apk with Jarsigner</li>
-<li>The Extra One:Use zipalign for optimization</li>
-</ul>
-
-
-<h3>Generate R class File</h3>
-
-<p>In Android,We use R class to refer resources instead of hard-coding the resouces.<br/>
-For a better understanding,pleae have a look at <a href="http://www.satyakomatineni.com/akc/display?url=displaynoteimpurl&amp;ownerUserId=satya&amp;reportId=2883  ">http://www.satyakomatineni.com/akc/display?url=displaynoteimpurl&amp;ownerUserId=satya&amp;reportId=2883  </a>
-<code>bash
-aapt package -f -m -J /home/androidyue/temp/ubuntu/workspace/MxDataProvider/gen/ -S /home/androidyue/temp/ubuntu/workspace/MxDataProvider/res/ -I /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -M /home/androidyue/temp/ubuntu/workspace/MxDataProvider/AndroidManifest.xml
-</code></p>
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> -f  force overwrite of existing files</li>
-<li> -m  make package directories under location specified by -J</li>
-<li> -J  specify where to output R.java resource constant definitions</li>
-<li> -S  directory in which to find resources.  Multiple directories will be scanned and the first match found (left to right) will take precedence.</li>
-<li> -I  add an existing package to base include set</li>
-<li> -M  specify full path to AndroidManifest.xml to include in zip</li>
-</ul>
-
-
-<h3>Comiple .java into .class files</h3>
-
-<p><code>bash
-javac -encoding UTF-8 -source 1.6 -target 1.6 -bootclasspath /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -d /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin/ /home/androidyue/temp/ubuntu/workspace/MxDataProvider/src//coop/channel/provider/*.java /home/androidyue/temp/ubuntu/workspace/MxDataProvider/gen//coop/channel/provider/R.java
-</code></p>
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> -encoding encoding  Set the source file encoding name, such as EUC-JP and UTF-8. If -encoding is not specified, the platform default converter is used.</li>
-<li> -source release   Specifies the version of source code accepted, Please Do NOT use Java 7(1.7)</li>
-<li> -target version  Generate  class files that target a specified version of the VM. Class files will run on the specified target and on later versions, but not on earlier versions of the VM. Valid targets are 1.1, 1.2, 1.3, 1.4, 1.5 (also 5), 1.6(also 6), and 1.7 (also 7).</li>
-<li> -bootclasspath bootclasspath Cross-compile against the specified set of boot classes. As with the user class path, boot class path entries are separated by colons (:) and can be directories, JAR archives, or ZIP archives.</li>
-<li> -d directory  Set the destination directory for class files. The directory must already exist; javac will not create it.
-As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
-</ul>
-
-
-<h3>Convert .class into .dex files</h3>
-
-<p><code>bash
-/home/androidyue/dev_tools/android-sdk-linux_86_backup/build-tools/17.0.0/dx --dex --output=/home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//class.dex /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin/
-</code>
-To dive into Dalvik, please visit <a href="http://source.android.com/devices/tech/dalvik/index.html">http://source.android.com/devices/tech/dalvik/index.html</a></p>
-
-<h3>Package Resouces</h3>
-
-<p><code>bash
-aapt package -f -M /home/androidyue/temp/ubuntu/workspace/MxDataProvider/AndroidManifest.xml -S /home/androidyue/temp/ubuntu/workspace/MxDataProvider/res/ -A /home/androidyue/temp/ubuntu/workspace/MxDataProvider//assets/ -I /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -F /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//resources.ap_
-</code></p>
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> -F  specify the apk file to output</li>
-<li> -A  additional directory in which to find raw asset files</li>
-</ul>
-
-
-<h3>Build Unsigned APK File</h3>
-
-<p><code>bash
-/home/androidyue/temp/ubuntu/dev_tools/adt-bundle-linux_backup/sdk/tools/apkbuilder /tmp/unsignedApkFile.apk -v -u -z /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//resources.ap_ -f /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//class.dex -rf /home/androidyue/temp/ubuntu/workspace/MxDataProvider/src/
-</code></p>
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> -u      Creates an unsigned package.</li>
-<li> -z      Followed by the path to a zip archive. Adds the content of the application package.</li>
-<li> -f      Followed by the path to a file. Adds the file to the application package.</li>
-<li> -rf     Followed by the path to a source folder. Adds the java resources found in that folder to the application package, while keeping their path relative to the source folder.</li>
-</ul>
-
-
-<h3>Sign Apk with Jarsigner</h3>
-
-<p><code>bash
-jarsigner -keystore /home/androidyue/temp/ubuntu/myKeystore -storepass storepassValue -keypass keypassValue -signedjar /home/androidyue/Desktop/output/max1111111.apk /tmp/unsignedApkFile.apk maxthon -digestalg SHA1 -sigalg MD5withRSA
-</code></p>
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> [-keystore <url>]           keystore location</li>
-<li> [-storepass <password>]     password for keystore integrity</li>
-<li> [-keypass <password>]       password for private key (if different)</li>
-<li> [-signedjar <file>]         name of signed JAR file</li>
-<li> [-digestalg <algorithm>]    name of digest algorithm</li>
-<li> [-sigalg <algorithm>]       name of signature algorithm</li>
-</ul>
-
-
-<h3>Use Zipalign for optimization</h3>
-
-<p><code>bash
-zipalign -f -v 4 /home/androidyue/Desktop/output/max1111111.apk /home/androidyue/Desktop/output/max222222.apk
-</code></p>
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> The <alignment> is an integer that defines the byte-alignment boundaries. This must always be 4 (which provides 32-bit alignment) or else it effectively does nothing.</li>
-<li> For more details, please visit <a href="http://developer.android.com/tools/help/zipalign.html">http://developer.android.com/tools/help/zipalign.html</a></li>
-</ul>
-
 ]]></content>
   </entry>
   
