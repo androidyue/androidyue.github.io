@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | Thinkblog]]></title>
   <link href="http://androidyue.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://androidyue.github.io/"/>
-  <updated>2014-01-19T21:46:25+08:00</updated>
+  <updated>2014-02-09T19:50:24+08:00</updated>
   <id>http://androidyue.github.io/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,176 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Code Snippet For Media on Android]]></title>
+    <link href="http://androidyue.github.io/blog/2014/02/09/code-snippet-for-media-on-android/"/>
+    <updated>2014-02-09T19:37:00+08:00</updated>
+    <id>http://androidyue.github.io/blog/2014/02/09/code-snippet-for-media-on-android</id>
+    <content type="html"><![CDATA[<p>A few days ago,I have wrote down this post <a href="http://androidyue.github.io/blog/2014/01/19/scan-media-files-in-android/">http://androidyue.github.io/blog/2014/01/19/scan-media-files-in-android/</a>. Now I will paste my code snippet.</p>
+
+<h3>MediaUtils.java</h3>
+
+<p>```java
+package com.mx.browser.utils;</p>
+
+<p>import java.io.File;
+import java.util.Locale;</p>
+
+<p>import com.mx.utils.FileUtils;
+import com.mx.utils.Log;</p>
+
+<p>import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.media.MediaScannerConnection;
+import android.media.MediaScannerConnection.OnScanCompletedListener;
+import android.net.Uri;
+import android.provider.MediaStore.Audio;
+import android.provider.MediaStore.Images;
+import android.provider.MediaStore.Video;
+import android.text.TextUtils;</p>
+
+<p>/<em>*
+ * Utility Methods for Media Library Operations
+ * @author androidyue
+ * Referrer  <a href="http://androidyue.github.io/blog/2014/01/19/scan-media-files-in-android/">http://androidyue.github.io/blog/2014/01/19/scan-media-files-in-android/</a>
+ </em>/
+public class MediaUtils {</p>
+
+<pre><code>private static final String LOGTAG = "MediaUtils";
+
+/**
+ * Scan a media file by sending a broadcast.This is the easiest way.
+ * 对方成功接收广播并处理条件  文件必须存在，文件路径必须以Environment.getExternalStorageDirectory().getPath() 的返回值开头
+ */
+public static void sendScanFileBroadcast(Context context, String filePath) {
+        File file = new File(filePath);
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file));
+        context.sendBroadcast(intent);
+}
+
+
+/**
+ * 
+ * @param context
+ * @param paths File paths to scan 
+ * @param mimeTypes mimeTypes in array;it could be null;then 
+ * @param callback
+ */
+public static void scanFiles(Context context, String[] paths, String[] mimeTypes, OnScanCompletedListener callback) {
+    if (null != paths &amp;&amp; paths.length != 0) {
+        MediaScannerConnection.scanFile(context, paths, mimeTypes, callback);
+    } else {
+        Log.i(LOGTAG, "scanFiles paths = null or paths.length=0 paths=" + paths);
+    }
+}
+
+public static void scanFiles(Context context, String[] paths, String[] mimeTypes) {
+    scanFiles(context, paths, mimeTypes, null);
+}
+
+public static void scanFiles(Context context, String[] paths) {
+    scanFiles(context, paths, null);
+}
+
+public static int removeImageFromLib(Context context, String filePath) {
+    ContentResolver resolver = context.getContentResolver();
+    return resolver.delete(Images.Media.EXTERNAL_CONTENT_URI, Images.Media.DATA + "=?", new String[]{filePath});
+}
+
+public static int removeAudioFromLib(Context context, String filePath) {
+    return context.getContentResolver().delete(Audio.Media.EXTERNAL_CONTENT_URI, 
+            Audio.Media.DATA + "=?", new String[] {filePath});
+}
+
+public static int removeVideoFromLib(Context context, String filePath) {
+    return context.getContentResolver().delete(Video.Media.EXTERNAL_CONTENT_URI, 
+            Video.Media.DATA + "=?", new String[] {filePath});
+
+}
+
+public static int removeMediaFromLib(Context context, String filePath) {
+    String mimeType = FileUtils.getFileMimeType(filePath);
+    int affectedRows = 0;
+    if (null != mimeType) {
+        mimeType = mimeType.toLowerCase(Locale.US);
+        if (isImage(mimeType)) {
+            affectedRows = removeImageFromLib(context, filePath);
+        } else if (isAudio(mimeType)) {
+            affectedRows = removeAudioFromLib(context ,filePath);
+        } else if (isVideo(mimeType)) {
+            affectedRows = removeVideoFromLib(context, filePath);
+        }
+    }
+    return affectedRows;
+}
+
+public static boolean isAudio(String mimeType) {
+    return mimeType.startsWith("audio");
+}
+
+public static boolean isImage(String mimeType) {
+    return mimeType.startsWith("image");
+}
+
+public static boolean isVideo(String mimeType) {
+    return mimeType.startsWith("video");
+}
+
+
+public static boolean isMediaFile(String filePath) {
+    String mimeType = FileUtils.getFileMimeType(filePath);
+    return isMediaType(mimeType);
+}
+
+public static boolean isMediaType(String mimeType) {
+    boolean isMedia = false;
+    if (!TextUtils.isEmpty(mimeType)) {
+        mimeType = mimeType.toLowerCase(Locale.US);
+        isMedia = isImage(mimeType) || isAudio(mimeType) || isVideo(mimeType);
+    }
+    return isMedia;
+}
+
+
+/**
+ * Before using it,please do have a media type check.
+ * @param context
+ * @param srcPath
+ * @param destPath
+ * @return
+ */
+public static int renameMediaFile(Context context, String srcPath, String destPath) {
+    removeMediaFromLib(context, srcPath);
+    sendScanFileBroadcast(context, destPath);
+    return 0;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<h3>FileUtils.java</h3>
+
+<p>```java</p>
+
+<pre><code>public static String getFileMimeType(String filename) {
+    if (TextUtils.isEmpty(filename)) {
+        return null;
+    }
+    int lastDotIndex = filename.lastIndexOf('.');
+    String mimetype = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
+            filename.substring(lastDotIndex + 1).toLowerCase());
+    Log.i(LOGTAG, "getFileMimeType mimeType = " + mimetype);
+    return mimetype;
+}
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Scan Media Files In Android]]></title>
@@ -542,51 +712,6 @@ try {
 
 <p>}
 ```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Get Android System Available Features]]></title>
-    <link href="http://androidyue.github.io/blog/2013/12/03/get-android-system-available-features/"/>
-    <updated>2013-12-03T17:20:00+08:00</updated>
-    <id>http://androidyue.github.io/blog/2013/12/03/get-android-system-available-features</id>
-    <content type="html"><![CDATA[<p>An easy way to get system available features.</p>
-
-<p>```java
-private void dumpSystemFeatures() {</p>
-
-<pre><code>FeatureInfo[] features = this.getPackageManager().getSystemAvailableFeatures();
-    for (FeatureInfo f : features) {
-        Log.i(LOGTAG, "dumpSystemFeatures f" + f);
-    }
-</code></pre>
-
-<p>}
-<code>
-Have a glance at the result  
-</code>
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d74fd0 android.hardware.wifi fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75048 android.hardware.location.network fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d750d8 android.hardware.nfc fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75150 com.google.android.feature.GOOGLE_BUILD fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d751f0 android.hardware.location fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75270 android.hardware.sensor.gyroscope fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75300 android.hardware.screen.landscape fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75390 android.hardware.screen.portrait fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75420 android.hardware.wifi.direct fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d754a8 android.hardware.usb.accessory fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75530 android.hardware.bluetooth fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d755b0 android.hardware.touchscreen.multitouch.distinct fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75660 android.hardware.microphone fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d756e8 android.hardware.sensor.light fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75770 android.hardware.camera.autofocus fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75800 android.software.live_wallpaper fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75890 android.hardware.camera.flash fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75918 android.hardware.telephony fl=0x0}
-I/MainActivity(13514): dumpSystemFeatures fFeatureInfo{40d75998 android.software.sip fl=0x0}
-&hellip;&hellip;
-```
-For a detailed understanding of use-filter,please read this post <a href="http://developer.android.com/guide/topics/manifest/uses-feature-element.html">http://developer.android.com/guide/topics/manifest/uses-feature-element.html</a></p>
 ]]></content>
   </entry>
   
