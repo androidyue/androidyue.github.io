@@ -1,0 +1,411 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Android中系统设置中的清除数据究竟会清除哪些数据 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="What will be removed If you click Clear Data Button in the System Application 今天中的一个story突然提到了系统设置中的清理数据，后来开始思考究竟系统的应用的这个清理功能，究竟会清理那些数据。
+于是开始研究，以com. &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://androidyue.github.io/blog/2014/06/15/what-will-be-removed-if-you-click-clear-data-button-in-system-application-item">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>Better Than Before</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:androidyue.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Android中系统设置中的清除数据究竟会清除哪些数据</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-06-15T17:07:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2014</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>What will be removed If you click Clear Data Button in the System Application</p>
+
+<p>今天中的一个story突然提到了系统设置中的清理数据，后来开始思考究竟系统的应用的这个清理功能，究竟会清理那些数据。
+于是开始研究，以com.mx.browser为例，思路大概为首先为/data/data/com.mx.browser下的每一个文件夹下建立一个标志文件，这里为1.txt，然后执行清理数据操作，最后对比结果。
+首先，进行清楚数据之前的的各个文件夹的情况。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>/data/data/com.mx.browser <span class="c"># ls</span>
+</span><span class='line'>lib
+</span><span class='line'>files
+</span><span class='line'>databases
+</span><span class='line'>shared_prefs
+</span><span class='line'>app_thumbnails
+</span><span class='line'>cache
+</span><span class='line'>app_webIcons
+</span><span class='line'>app_appcache
+</span><span class='line'>app_databases
+</span><span class='line'>app_geolocation
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>为每个文件夹下创建一个标志（同时验证是否删除文件夹的情况）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>/data/data/com.mx.browser <span class="c"># touch lib/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch files/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch databases/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch shared_prefs/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch app_thumbnails/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch cache/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch app_webIcons/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch app_appcache/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch app_databases/1.txt</span>
+</span><span class='line'>/data/data/com.mx.browser <span class="c"># touch app_geolocation/1.txt</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行清理数据操作。
+查看执行清理数据操作后的结果。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>/data/data/com.mx.browser <span class="c"># ls</span>
+</span><span class='line'>lib
+</span><span class='line'>/data/data/com.mx.browser <span class="c">#</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>查看lib情况</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>/data/data/com.mx.browser <span class="c"># cd lib/</span>
+</span><span class='line'>/data/data/com.mx.browser/lib <span class="c"># ls</span>
+</span><span class='line'>1.txt
+</span><span class='line'>/data/data/com.mx.browser/lib <span class="c">#</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>总上所述，发现系统中的设置，应用中的清理数据，会清理掉除去lib文件夹（含内部文件）的文件及文件夹。
+p.s./sdcard/Android/data/这个目录也是和包名相关的，但是系统中的清理数据不会清理掉这个目录中的相关信息。</p>
+
+<blockquote><p>Written with <a href="https://stackedit.io/">StackEdit</a>.</p></blockquote>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-06-15T17:07:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/application/'>Application</a>, <a class='category' href='/blog/categories/clear/'>Clear</a>, <a class='category' href='/blog/categories/data/'>Data</a>, <a class='category' href='/blog/categories/cache/'>cache</a>, <a class='category' href='/blog/categories/database/'>database</a>, <a class='category' href='/blog/categories/files/'>files</a>, <a class='category' href='/blog/categories/lib/'>lib</a>, <a class='category' href='/blog/categories/shared-prefs/'>shared_prefs</a>
+  
+</span>
+
+
+    </p>
+    
+      <!-- JiaThis Button BEGIN -->
+<div class="jiathis_style_32x32">
+    <a class="jiathis_button_qzone"></a>
+    <a class="jiathis_button_tsina"></a>
+    <a class="jiathis_button_tqq"></a>
+    <a class="jiathis_button_weixin"></a>
+    <a class="jiathis_button_renren"></a>
+    <a class="jiathis_button_print"></a>
+    <a class="jiathis_button_copy"></a>
+    <a class="jiathis_button_fav"></a>
+    <a class="jiathis_button_fb"></a>
+    <a class="jiathis_button_googleplus"></a>
+    <a class="jiathis_button_yixin"></a>
+    <a class="jiathis_button_ishare"></a>
+    <a class="jiathis_button_evernote"></a>
+    <a class="jiathis_button_linkedin"></a>
+    <a href="http://www.jiathis.com/share?uid=1728662" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+    <a class="jiathis_counter_style"></a>
+</div>
+<script type="text/javascript">
+    var jiathis_config = {data_track_clickback:'true'};
+</script>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1341450790773388" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/06/14/check-camera-in-android/" title="Previous Post: 检查Android是否具有摄像头">&laquo; 检查Android是否具有摄像头</a>
+      
+      
+    <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+  <h1>Comments</h1>
+   <!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1728662"></script>
+<!-- UY END -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/06/15/what-will-be-removed-if-you-click-clear-data-button-in-system-application-item/">Android中系统设置中的清除数据究竟会清除哪些数据</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/06/14/check-camera-in-android/">检查Android是否具有摄像头</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/06/05/qu-chu-mysqllian-jie-shi-de-bao-jing-yin/">去除mysql连接时的报警音</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/05/27/load-url-with-extra-http-headers-using-webview-in-android/">Load URL With Extra HTTP Headers Using WebView in Android</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/05/21/check-if-a-thread-is-main-thread-in-android/">Check if a Thread Is Main Thread in Android</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/105362551238192049560?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="http://www.pcyoyo.com/" target="__blank">Pcyoyo</a></li>
+</ul>
+</section>
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+    <input type="hidden" name="cmd" value="_donations">
+    <input type="hidden" name="business" value="andrewallanwallace@gmail.com">
+    <input type="hidden" name="lc" value="US">
+    <input type="hidden" name="item_name" value="droiyue blog">
+    <input type="hidden" name="no_note" value="0">
+    <input type="hidden" name="currency_code" value="USD">
+    <input type="hidden" name="bn" value="PP-DonationsBF:btn_donateCC_LG.gif:NonHostedGuest">
+    <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+    <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+</form>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'androidyue';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://androidyue.github.io/blog/2014/06/15/what-will-be-removed-if-you-click-clear-data-button-in-system-application-item/';
+        var disqus_url = 'http://androidyue.github.io/blog/2014/06/15/what-will-be-removed-if-you-click-clear-data-button-in-system-application-item/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
