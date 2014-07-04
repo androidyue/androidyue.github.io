@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-07-03T21:07:57+08:00</updated>
+  <updated>2014-07-04T21:04:52+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,136 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[为Android程序申请权限注意]]></title>
+    <link href="http://droidyue.com/blog/2014/07/04/attentions-when-adding-permission-for-android-application/"/>
+    <updated>2014-07-04T14:54:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/04/attentions-when-adding-permission-for-android-application</id>
+    <content type="html"><![CDATA[<p>Android系统提供为程序提供了权限申请,即在manifest中使用<strong>uses-permission</strong>来申请即可.实现起来非常简单,但是有些问题会随之浮出水面. 常见的现象是,有时候新加一个权限,(在Google Play上)程序显示的支持的设备会减少.</p>
+
+<!--more-->
+
+
+<h2>为什么权限越多,支持设备越少</h2>
+
+<p>因为有些权限隐式地需要feature,即当你显示使用<strong>uses-permission</strong>,会默认地为程序加入<strong>uses-feature</strong>.     <br/>
+而Android以及Google Play判断是否可以安装和现实的依据是,设备包含的system features是否完全包含程序申请的全部features.    <strong>只有在全部满足了程序需要的feature的设备上才可以展示并安装</strong>.</p>
+
+<h2>如何查看程序使用了哪些features</h2>
+
+<p>使用<strong>aapt dump badging your_apk_file_path</strong>,具体可以参考<a href="http://droidyue.com/blog/2013/12/03/get-an-application-required-features/">获取程序需要的features</a></p>
+
+<h2>如何查看设备具有的features</h2>
+
+<p>Android提供了该API,具体参考<a href="http://droidyue.com/blog/2013/12/03/get-android-system-available-features/">获取系统支持的features</a></p>
+
+<h2>举个例子</h2>
+
+<p>我们在程序manifest加入一行申请摄像头的权限.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;uses-permission</span> <span class="na">android:name=</span><span class="s">&quot;android.permission.CAMERA&quot;</span> <span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后查看程序加入的feature</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>14:29 <span class="nv">$ </span>aapt dump badging PermissionDemo.apk | grep uses-feature
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们就会发现,这两个权限是新加的</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>uses-feature:<span class="s1">&#39;android.hardware.camera&#39;</span>
+</span><span class='line'>uses-feature:<span class="s1">&#39;android.hardware.camera.autofocus&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>解决问题:如何加权限,不减少支持设备</h2>
+
+<p>如果你增加的权限并且及引入的feature不是必须使用的,可以显示地将该feature设置为不需要.继续上面的例子.在manifest中加入</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;uses-feature</span> <span class="na">android:name=</span><span class="s">&quot;android.hardware.camera.autofocus&quot;</span> <span class="na">android:required=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;uses-feature</span> <span class="na">android:name=</span><span class="s">&quot;android.hardware.camera&quot;</span> <span class="na">android:required=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>重新生成程序.再次查看需要的权限.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>14:29 <span class="nv">$ </span>aapt dump badging PermissionDemo.apk | grep uses-feature
+</span><span class='line'>uses-feature-not-required:<span class="s1">&#39;android.hardware.camera.autofocus&#39;</span>
+</span><span class='line'>uses-feature-not-required:<span class="s1">&#39;android.hardware.camera&#39;</span>
+</span><span class='line'>uses-feature:<span class="s1">&#39;android.hardware.touchscreen&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>就这样,可以做到增加权限,同时保证支持设备不减少.</p>
+
+<h2>Show Me The Code</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;manifest</span> <span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
+</span><span class='line'>    <span class="na">package=</span><span class="s">&quot;com.droidyue.demo.permission&quot;</span>
+</span><span class='line'>    <span class="na">android:versionCode=</span><span class="s">&quot;1&quot;</span>
+</span><span class='line'>    <span class="na">android:versionName=</span><span class="s">&quot;1.0&quot;</span> <span class="nt">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nt">&lt;uses-permission</span> <span class="na">android:name=</span><span class="s">&quot;android.permission.CAMERA&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;uses-feature</span> <span class="na">android:name=</span><span class="s">&quot;android.hardware.camera.autofocus&quot;</span> <span class="na">android:required=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;uses-feature</span> <span class="na">android:name=</span><span class="s">&quot;android.hardware.camera&quot;</span> <span class="na">android:required=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nt">&lt;uses-sdk</span>
+</span><span class='line'>        <span class="na">android:minSdkVersion=</span><span class="s">&quot;8&quot;</span>
+</span><span class='line'>        <span class="na">android:targetSdkVersion=</span><span class="s">&quot;19&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nt">&lt;application</span>
+</span><span class='line'>        <span class="na">android:allowBackup=</span><span class="s">&quot;true&quot;</span>
+</span><span class='line'>        <span class="na">android:icon=</span><span class="s">&quot;@drawable/ic_launcher&quot;</span>
+</span><span class='line'>        <span class="na">android:label=</span><span class="s">&quot;@string/app_name&quot;</span>
+</span><span class='line'>        <span class="na">android:theme=</span><span class="s">&quot;@style/AppTheme&quot;</span> <span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/application&gt;</span>
+</span><span class='line'><span class="nt">&lt;/manifest&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>延伸阅读</h2>
+
+<ul>
+<li><a href="http://developer.android.com/guide/topics/manifest/uses-feature-element.html#permissions">http://developer.android.com/guide/topics/manifest/uses-feature-element.html#permissions</a></li>
+</ul>
+
+
+<blockquote><p>Written with <a href="https://stackedit.io/">StackEdit</a>.</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Gitlab开启Commit中comments通知]]></title>
@@ -1471,23 +1601,6 @@ Description:List  information about the FILEs (the current directory by default)
 xargs &ndash; build and execute command lines from standard input</p>
 
 <p>Written with <a href="https://stackedit.io/">StackEdit</a>.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android NinePatch Attention]]></title>
-    <link href="http://droidyue.com/blog/2014/04/26/android-ninepatch-attention/"/>
-    <updated>2014-04-26T12:23:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/04/26/android-ninepatch-attention</id>
-    <content type="html"><![CDATA[<p>I have got many crash report data about using NinePath Drwable. I put a .9.png file into the drawable-xhdpi folder and the file did not exist in any other folder. And I got ResourceNotFoundException. I got this following sayings.</p>
-
-<!-- more -->
-
-
-<blockquote><p>A NinePatchDrawable graphic is a stretchable bitmap image, which Android will automatically resize to accommodate the contents of the View in which you have placed it as the background. An example use of a NinePatch is the backgrounds used by standard Android buttons — buttons must stretch to accommodate strings of various lengths. A NinePatch drawable is a standard PNG image that includes an extra 1-pixel-wide border. <strong>It must be saved with the extension .9.png, and saved into the res/drawable/ directory of your project.</strong>
-<a href="http://developer.android.com/guide/topics/graphics/2d-graphics.html#nine-patch">http://developer.android.com/guide/topics/graphics/2d-graphics.html#nine-patch</a></p></blockquote>
-
-<p>The .9.png files must be saved into the res/drawable directory. Why? I guess the legacy Resouce Loading System implemententation may result in this issue. So at least put one .9.png file into the drawable folder.</p>
 ]]></content>
   </entry>
   
