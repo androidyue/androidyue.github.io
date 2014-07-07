@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-07-06T19:59:06+08:00</updated>
+  <updated>2014-07-07T21:31:21+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,302 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android支持RTL(从右向左)语言]]></title>
+    <link href="http://droidyue.com/blog/2014/07/07/support-rtl-in-android/"/>
+    <updated>2014-07-07T13:28:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/07/support-rtl-in-android</id>
+    <content type="html"><![CDATA[<h2>RTL语言</h2>
+
+<ul>
+<li>RTL语言即Right-to-left(从右向左)的语言.其书写习惯为从右向左,朝左继续.</li>
+<li>这里的RTL严格意义上指的是Right-to-left,top-to-bottom 从右向左,从上到下. 而汉语,日语以及朝鲜语中存在Top-to-bottom, left-to-right.从上到下,从右向左的情况. 但是这些语言大多数使用从左向右的情况.</li>
+<li>常见的RTL语言有阿拉伯语,希伯来语等.</li>
+<li>LTR语言和RTL语言刚好相反,即我们常见的Left-to-right,Top-to-bottom,从左向右,从上到下,朝右继续.这种语言很常见, 代表语言为英语等.</li>
+<li>双向文本( Bi-Directional Text),即RTL文本和LTR文本混合的情况.比较复杂.</li>
+</ul>
+
+
+<!--more-->
+
+
+<h2>Android对RTL支持情况</h2>
+
+<ul>
+<li>Android 4.1 Jelly Bean,引入了有限的在TextView和EditText支持RTL和LTR混合的双向文本的支持.</li>
+<li>从Android 4.2 开始,提供了全面的本地布局支持,允许镜像布局,可以同时支持RTL和LTR.</li>
+</ul>
+
+
+<h2>如何支持RTL</h2>
+
+<h3>快速应用RTL镜像布局</h3>
+
+<ul>
+<li>在manifest中的Application元素加入<strong>android:supportsRtl=&ldquo;true&rdquo;</strong>这个属性.</li>
+</ul>
+
+
+<p>未加入android:supportsRtl=&ldquo;true&rdquo; 阿拉伯语(RTL)的示例.<br/>
+<img class="<a" src="href="http://droidyueimg.qiniudn.com/no_rtl_support_ar.png">http://droidyueimg.qiniudn.com/no_rtl_support_ar.png</a>" width="240" height="400" title="layout without rtl support" ></p>
+
+<p>加入该属性的英文(LTR)语言效果.<br/>
+<img class="<a" src="href="http://droidyueimg.qiniudn.com/rtl_support_en.png">http://droidyueimg.qiniudn.com/rtl_support_en.png</a>" width="240" height="400" title="rtl support english" ></p>
+
+<p>加入该属性的阿拉伯语(RTL)语言效果.<br/>
+<img class="<a" src="href="http://droidyueimg.qiniudn.com/rtl_support_ar.png">http://droidyueimg.qiniudn.com/rtl_support_ar.png</a>" width="240" height="400" title="rtl support arabic" ></p>
+
+<ul>
+<li>将所有的左右(left/right)布局属性替换成开始结束(start/end)属性.
+如下述代码,使用paddingLeft
+<code>xml
+&lt;TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:id="@+id/tvOne"
+    android:paddingLeft="100dp"
+    android:background="#ccefc8"
+    android:text="@string/share"
+    /&gt;   
+</code>
+阿拉伯语下的效果图为<br/>
+<img class="<a" src="href="http://droidyueimg.qiniudn.com/padding_left.png">http://droidyueimg.qiniudn.com/padding_left.png</a>" title="paddingLeft Arabic" >
+如上面所说,RTL语言是以右作为开始,所以paddingLeft明显不符合规则.
+那我们使用paddingStart看一下.
+<code>xml
+&lt;TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:id="@+id/tvOne"
+    android:paddingStart="100dp"
+    android:background="#ccefc8"
+    android:text="@string/share"
+    /&gt;   
+</code>
+上述代码在阿拉伯语下的效果图:<br/>
+<img class="<a" src="href="http://droidyueimg.qiniudn.com/padding_start.png">http://droidyueimg.qiniudn.com/padding_start.png</a>" title="paddingStart Arabic" ></li>
+</ul>
+
+
+<h2>高级处理</h2>
+
+<ul>
+<li>android:layoutDirection 设置组件的布局方向</li>
+<li>android:textDirection   设置组件文字的方向</li>
+<li>android:textAlignment   设置组件文字的对齐</li>
+<li>getLayoutDirectionFromLocale() 获取指定Locale的方向</li>
+<li>创建单独的资源文件夹,以'ldrtl'(layout direction right-to-left)为后缀.如layout_ldrtl</li>
+<li>使用Hierarchy Viewer来查看View的start/end属性,layoutDirection,textDirection,textAlignment属性.</li>
+</ul>
+
+
+<h2>贴代码</h2>
+
+<h3>manifest</h3>
+
+<p>```xml
+&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>package="com.example.rtldemo"
+android:versionCode="1"
+android:versionName="1.0" &gt;
+
+&lt;uses-sdk
+    android:minSdkVersion="8"
+    android:targetSdkVersion="19" /&gt;
+
+&lt;application
+    android:allowBackup="true"
+    android:icon="@drawable/ic_launcher"
+    android:label="@string/app_name"
+    android:theme="@style/AppTheme"
+    android:supportsRtl="true"
+     &gt;
+    &lt;activity android:name=".MainActivity"&gt;
+        &lt;intent-filter&gt;
+            &lt;action android:name="android.intent.action.MAIN" /&gt;
+            &lt;category android:name="android.intent.category.LAUNCHER" /&gt;
+            &lt;category android:name="android.intent.category.MULTIWINDOW_LAUNCHER" /&gt;
+        &lt;/intent-filter&gt;
+    &lt;/activity&gt;
+&lt;/application&gt;
+</code></pre>
+
+<p></manifest>
+```</p>
+
+<h3>MainActivity.java</h3>
+
+<p>```java
+package com.example.rtldemo;</p>
+
+<p>import java.util.ArrayList;
+import java.util.Locale;</p>
+
+<p>import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.TextView;</p>
+
+<p>public class MainActivity extends Activity {</p>
+
+<pre><code>private static final String LOGTAG = "MainActivity";
+
+@SuppressLint("NewApi")
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.main_layout);
+    ListView listView = (ListView)findViewById(R.id.lvOne);
+
+    int layoutDirection = TextUtils.getLayoutDirectionFromLocale(Locale.getDefault());
+    Log.i(LOGTAG, "onCreate layoutDirection=" + layoutDirection);
+    TestAdapter adapter = new TestAdapter();
+    adapter.mData.add(getResources().getString(R.string.share));
+    adapter.mData.add(getResources().getString(R.string.share));
+    listView.setAdapter(adapter);
+
+}
+
+class TestAdapter extends BaseAdapter {
+    ArrayList&lt;String&gt; mData = new ArrayList&lt;String&gt;();
+    @Override
+    public int getCount() {
+        return mData.size();
+    }
+
+    @Override
+    public String getItem(int position) {
+        return mData.get(position);
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return position;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+        View view = null;
+        view = LayoutInflater.from(getApplicationContext()).inflate(R.layout.listview_item, null);
+        ImageView imgView = (ImageView)view.findViewById(R.id.itemImageView);
+        imgView.setImageResource(R.drawable.ic_launcher);
+        TextView textView = (TextView)view.findViewById(R.id.itemTextView);
+        textView.setText(mData.get(position));
+        return view;
+    }
+
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>main_layout.xml</h3>
+
+<p>```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;LinearLayout xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:orientation="vertical" &gt;
+
+&lt;Button 
+    android:id="@+id/btnOne"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="@string/share"
+    /&gt;
+
+    &lt;TextView 
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:id="@+id/tvOne"
+    android:paddingStart="100dp"
+    android:background="#ccefc8"
+    android:text="@string/share"
+    /&gt;   
+
+&lt;EditText 
+    android:id="@+id/etOne"
+    android:layout_width="100dp" 
+    android:layout_height="wrap_content"
+    /&gt;
+
+&lt;LinearLayout 
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    &gt;
+    &lt;CheckBox 
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        /&gt;
+    &lt;TextView 
+        android:layout_width="wrap_content"
+        android:layout_height="100dp"
+        android:text="@string/share"
+        /&gt;
+&lt;/LinearLayout&gt;
+
+&lt;ListView 
+    android:id="@+id/lvOne"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    &gt;&lt;/ListView&gt;
+</code></pre>
+
+<p></LinearLayout>
+```</p>
+
+<h3>listview_item.xml</h3>
+
+<p>```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;LinearLayout xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:orientation="horizontal" &gt;
+&lt;ImageView 
+    android:id="@+id/itemImageView"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    /&gt;    
+
+&lt;TextView 
+    android:id="@+id/itemTextView"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    /&gt;
+</code></pre>
+
+<p></LinearLayout></p>
+
+<p>```</p>
+
+<h2>Demo下载</h2>
+
+<ul>
+<li><a href="http://pan.baidu.com/s/1eQvL0MA">http://pan.baidu.com/s/1eQvL0MA</a>
+
+<h2>延伸阅读</h2></li>
+<li><a href="http://android-developers.blogspot.hk/2013/03/native-rtl-support-in-android-42.html">http://android-developers.blogspot.hk/2013/03/native-rtl-support-in-android-42.html</a></li>
+<li>RTL语言:<a href="http://en.wikipedia.org/wiki/Right-to-left">http://en.wikipedia.org/wiki/Right-to-left</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[EditText和AutoCompleteTextView设置文字选中颜色]]></title>
@@ -274,23 +570,6 @@ return checkCameraFacing(CAMERA_FACING_BACK);
 <a href="http://developer.android.com/reference/android/hardware/Camera.CameraInfo.html">http://developer.android.com/reference/android/hardware/Camera.CameraInfo.html</a></p>
 
 <blockquote><p>Written with <a href="https://stackedit.io/">StackEdit</a>.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android NinePatch Attention]]></title>
-    <link href="http://droidyue.com/blog/2014/04/26/android-ninepatch-attention/"/>
-    <updated>2014-04-26T12:23:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/04/26/android-ninepatch-attention</id>
-    <content type="html"><![CDATA[<p>I have got many crash report data about using NinePath Drwable. I put a .9.png file into the drawable-xhdpi folder and the file did not exist in any other folder. And I got ResourceNotFoundException. I got this following sayings.</p>
-
-<!-- more -->
-
-
-<blockquote><p>A NinePatchDrawable graphic is a stretchable bitmap image, which Android will automatically resize to accommodate the contents of the View in which you have placed it as the background. An example use of a NinePatch is the backgrounds used by standard Android buttons — buttons must stretch to accommodate strings of various lengths. A NinePatch drawable is a standard PNG image that includes an extra 1-pixel-wide border. <strong>It must be saved with the extension .9.png, and saved into the res/drawable/ directory of your project.</strong>
-<a href="http://developer.android.com/guide/topics/graphics/2d-graphics.html#nine-patch">http://developer.android.com/guide/topics/graphics/2d-graphics.html#nine-patch</a></p></blockquote>
-
-<p>The .9.png files must be saved into the res/drawable directory. Why? I guess the legacy Resouce Loading System implemententation may result in this issue. So at least put one .9.png file into the drawable folder.</p>
 ]]></content>
   </entry>
   
