@@ -12,7 +12,7 @@
   <meta name="keywords" content="Java,Python,Android,Hack,Github,Google,Linux,Mac,日语,日剧,日本,随想,点滴生活" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="A few months ago,I dealed with a task:To build a large amount of apk files. The trick I came up with is to build apk file from the command so that I &hellip;">
+  <meta name="description" content="When I create a new application on Facebook, I meet the problem. Facebook asks me to provide the Key Hash. But it does not show the guidance about &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -87,7 +87,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2013/10/19/build-android-packages-from-command-line/">Build Android Packages From Command Line</a></h1>
+      <h1 class="entry-title"><a href="/blog/2013/11/26/how-to-create-facebook-key-hash/">How to Create Facebook Key Hash</a></h1>
     
     
       <p class="meta">
@@ -103,147 +103,22 @@
   
 
 
-<time datetime="2013-10-19T09:11:00+08:00" pubdate data-updated="true">Oct 19<span>th</span>, 2013</time>
+<time datetime="2013-11-26T19:15:00+08:00" pubdate data-updated="true">Nov 26<span>th</span>, 2013</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>A few months ago,I dealed with a task:To build a large amount of apk files.  The trick I came up with is to build apk file from the command so that I could use Python to glue all the works.  Eventually I made it.And so this post is to make some description about the trick.</p>
-
-<h2>Requirements</h2>
-
-<ul>
-<li> Setup JDK</li>
-<li> Setup Android SDK
-
-<h2>Steps</h2></li>
-<li>Generate R class file</li>
-<li>Compile Java codes(.java files) into classes(.class) files</li>
-<li>Convert .class files into .dex files</li>
-<li>Package Resouces</li>
-<li>Build Unsigned APK File</li>
-<li>Sign Apk with Jarsigner</li>
-<li>The Extra One:Use zipalign for optimization</li>
-</ul>
-
-
-<h3>Generate R class File</h3>
-
-<p>In Android,We use R class to refer resources instead of hard-coding the resouces.<br/>
-For a better understanding,pleae have a look at <a href="http://www.satyakomatineni.com/akc/display?url=displaynoteimpurl&amp;ownerUserId=satya&amp;reportId=2883">http://www.satyakomatineni.com/akc/display?url=displaynoteimpurl&amp;ownerUserId=satya&amp;reportId=2883</a></p>
+  <div class="entry-content"><p>When I create a new application on Facebook, I meet the problem. Facebook asks me to provide the Key Hash. But it does not show the guidance about how to generate. After Googling, I have found this works for me.<br/>
+Before executing the following command, you need install openssl</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>aapt package -f -m -J /home/androidyue/temp/ubuntu/workspace/MxDataProvider/gen/ -S /home/androidyue/temp/ubuntu/workspace/MxDataProvider/res/ -I /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -M /home/androidyue/temp/ubuntu/workspace/MxDataProvider/AndroidManifest.xml
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>keytool -exportcert -alias your-alias-value -keystore your-keystore-path | openssl  sha1 -binary | openssl  base64
 </span></code></pre></td></tr></table></div></figure>
 
 
-<h4>Some descriptions</h4>
-
-<ul>
-<li> -f  force overwrite of existing files</li>
-<li> -m  make package directories under location specified by -J</li>
-<li> -J  specify where to output R.java resource constant definitions</li>
-<li> -S  directory in which to find resources.  Multiple directories will be scanned and the first match found (left to right) will take precedence.</li>
-<li> -I  add an existing package to base include set</li>
-<li> -M  specify full path to AndroidManifest.xml to include in zip</li>
-</ul>
-
-
-<h3>Comiple .java into .class files</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>javac -encoding UTF-8 -source 1.6 -target 1.6 -bootclasspath /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -d /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin/ /home/androidyue/temp/ubuntu/workspace/MxDataProvider/src//coop/channel/provider/*.java /home/androidyue/temp/ubuntu/workspace/MxDataProvider/gen//coop/channel/provider/R.java
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> -encoding encoding  Set the source file encoding name, such as EUC-JP and UTF-8. If -encoding is not specified, the platform default converter is used.</li>
-<li> -source release   Specifies the version of source code accepted, Please Do NOT use Java 7(1.7)</li>
-<li> -target version  Generate  class files that target a specified version of the VM. Class files will run on the specified target and on later versions, but not on earlier versions of the VM. Valid targets are 1.1, 1.2, 1.3, 1.4, 1.5 (also 5), 1.6(also 6), and 1.7 (also 7).</li>
-<li> -bootclasspath bootclasspath Cross-compile against the specified set of boot classes. As with the user class path, boot class path entries are separated by colons (:) and can be directories, JAR archives, or ZIP archives.</li>
-<li> -d directory  Set the destination directory for class files. The directory must already exist; javac will not create it.
-As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
-</ul>
-
-
-<h3>Convert .class into .dex files</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>/home/androidyue/dev_tools/android-sdk-linux_86_backup/build-tools/17.0.0/dx --dex --output<span class="o">=</span>/home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//class.dex /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin/
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To dive into Dalvik, please visit <a href="http://source.android.com/devices/tech/dalvik/index.html">http://source.android.com/devices/tech/dalvik/index.html</a></p>
-
-<h3>Package Resouces</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>aapt package -f -M /home/androidyue/temp/ubuntu/workspace/MxDataProvider/AndroidManifest.xml -S /home/androidyue/temp/ubuntu/workspace/MxDataProvider/res/ -A /home/androidyue/temp/ubuntu/workspace/MxDataProvider//assets/ -I /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -F /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//resources.ap_
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> -F  specify the apk file to output</li>
-<li> -A  additional directory in which to find raw asset files</li>
-</ul>
-
-
-<h3>Build Unsigned APK File</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>/home/androidyue/temp/ubuntu/dev_tools/adt-bundle-linux_backup/sdk/tools/apkbuilder /tmp/unsignedApkFile.apk -v -u -z /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//resources.ap_ -f /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//class.dex -rf /home/androidyue/temp/ubuntu/workspace/MxDataProvider/src/
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> -u      Creates an unsigned package.</li>
-<li> -z      Followed by the path to a zip archive. Adds the content of the application package.</li>
-<li> -f      Followed by the path to a file. Adds the file to the application package.</li>
-<li> -rf     Followed by the path to a source folder. Adds the java resources found in that folder to the application package, while keeping their path relative to the source folder.</li>
-</ul>
-
-
-<h3>Sign Apk with Jarsigner</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>jarsigner -keystore /home/androidyue/temp/ubuntu/myKeystore -storepass storepassValue -keypass keypassValue -signedjar /home/androidyue/Desktop/output/max1111111.apk /tmp/unsignedApkFile.apk maxthon -digestalg SHA1 -sigalg MD5withRSA
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> [-keystore <url>]           keystore location</li>
-<li> [-storepass <password>]     password for keystore integrity</li>
-<li> [-keypass <password>]       password for private key (if different)</li>
-<li> [-signedjar <file>]         name of signed JAR file</li>
-<li> [-digestalg <algorithm>]    name of digest algorithm</li>
-<li> [-sigalg <algorithm>]       name of signature algorithm</li>
-</ul>
-
-
-<h3>Use Zipalign for optimization</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>zipalign -f -v 4 /home/androidyue/Desktop/output/max1111111.apk /home/androidyue/Desktop/output/max222222.apk
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
-<ul>
-<li> The <alignment> is an integer that defines the byte-alignment boundaries. This must always be 4 (which provides 32-bit alignment) or else it effectively does nothing.</li>
-<li> For more details, please visit <a href="http://developer.android.com/tools/help/zipalign.html">http://developer.android.com/tools/help/zipalign.html</a></li>
-</ul>
-
+<p>Replace <strong>your-alias-value</strong> and <strong>your-keystore-path</strong>  with the real data.</p>
 </div>
   
   
@@ -256,7 +131,7 @@ As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2013/10/10/start-android-app-by-adb/">Start an Android App by ADB</a></h1>
+      <h1 class="entry-title"><a href="/blog/2013/11/17/dump-table-structure-in-sqlite3/">Dump Table Structure in SQLite3</a></h1>
     
     
       <p class="meta">
@@ -272,85 +147,21 @@ As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
   
 
 
-<time datetime="2013-10-10T19:04:00+08:00" pubdate data-updated="true">Oct 10<span>th</span>, 2013</time>
+<time datetime="2013-11-17T17:24:00+08:00" pubdate data-updated="true">Nov 17<span>th</span>, 2013</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>To be more geek,I began to start an Android App by using adb.Thanks to Google.It&rsquo;s possible and powerful.<br/>
-The tool we use to make it is ADB(Android Debug Tool),For more detailed use please visit <a href="http://developer.android.com/tools/help/adb.html#shellcommands">http://developer.android.com/tools/help/adb.html#shellcommands</a>
-Actually What I use here is</p>
+  <div class="entry-content"><p>Best answer to the question<br/>
+Use <em>PRAGMA table_info</em></p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>start <span class="o">[</span>options<span class="o">]</span> &lt;INTENT&gt;
-</span></code></pre></td></tr></table></div></figure>
+<blockquote><p>This pragma returns one row for each column in the named table. Columns in the result set include the column name, data type, whether or not the column can be NULL, and the default value for the column. The &ldquo;pk&rdquo; column in the result set is zero for columns that are not part of the primary key, and is the index of the column in the primary key for columns that are part of the primary key.</p></blockquote>
 
+<p>Reference:<a href="http://www.sqlite.org/pragma.html#pragma_table_info">http://www.sqlite.org/pragma.html#pragma_table_info</a></p>
 
-<p>An example is followed.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#Here I want to start MxBrowser app by using ADB</span>
-</span><span class='line'>17:04:30-androidyue/tmp<span class="nv">$ </span>adb shell am start -n com.mx.browser/com.mx.browser.MxBrowserActivity
-</span><span class='line'>Starting: Intent <span class="o">{</span> <span class="nv">cmp</span><span class="o">=</span>com.mx.browser/.MxBrowserActivity  <span class="o">}</span>
-</span><span class='line'>Warning: Activity not started, its current task has been brought to the front
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>the Package name(com.mx.browser) before the slash is provided to determine which app should the intent delivered to.The com.mx.browser.MxBrowserActivity is the destination Activity.<br/>
-For more explanations about ADB INTENT,please visit <a href="http://developer.android.com/tools/help/adb.html#IntentSpec">http://developer.android.com/tools/help/adb.html#IntentSpec</a></p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/10/09/could-not-reliably-determine-the-servers-fully-qualified-domain-name/">Could Not Reliably Determine the Server&#8217;s Fully Qualified Domain Name</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-10-09T12:50:00+08:00" pubdate data-updated="true">Oct 9<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>An easy trick to solve problem:Could not reliably determine the server&rsquo;s fully qualified domain name<br/>
-Let&rsquo;s take Linux for example.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#Modify your configuration file.</span>
-</span><span class='line'>12:52:21-androidyue/etc/httpd/conf<span class="nv">$ </span>sudo vim httpd.conf
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Find out the following sentence</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -358,35 +169,24 @@ Let&rsquo;s take Linux for example.</p>
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
 <span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#</span>
-</span><span class='line'><span class="c"># ServerName gives the name and port that the server uses to identify itself.</span>
-</span><span class='line'><span class="c"># This can often be determined automatically, but we recommend you specify</span>
-</span><span class='line'><span class="c"># it explicitly to prevent problems during startup.</span>
-</span><span class='line'><span class="c">#</span>
-</span><span class='line'><span class="c"># If this is not set to valid DNS name for your host, server-generated</span>
-</span><span class='line'><span class="c"># redirections will not work.  See also the UseCanonicalName directive.</span>
-</span><span class='line'><span class="c">#</span>
-</span><span class='line'><span class="c"># If your host doesn&#39;t have a registered DNS name, enter its IP address here.</span>
-</span><span class='line'><span class="c"># You will have to access it by its address anyway, and this will make </span>
-</span><span class='line'><span class="c"># redirections work in a sensible way.</span>
-</span><span class='line'><span class="c">#</span>
-</span><span class='line'><span class="c">#ServerName localhost:80</span>
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sqlite&gt; .header on
+</span><span class='line'>sqlite&gt; PRAGMA table_info(password);
+</span><span class='line'>cid|name|type|notnull|dflt_value|pk
+</span><span class='line'>0|_id|INTEGER|0||1
+</span><span class='line'>1|host|TEXT|0||0
+</span><span class='line'>2|username|TEXT|0||0
+</span><span class='line'>3|password|TEXT|0||0
+</span><span class='line'>#password is the name of a table.</span></code></pre></td></tr></table></div></figure>
 
 
-<p>If the ServerName localhost:80 has been commented,it may cause above problem.A simple trick is just uncomment the sentence.Let it be like this</p>
+<p>Another answer may also work<br/>
+<em>.schema [tablename]</em> will show the CREATE statement(s) for a table or tables</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>ServerName localhost:80
-</span></code></pre></td></tr></table></div></figure>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sqlite&gt; .schema password
+</span><span class='line'>CREATE TABLE password (_id INTEGER PRIMARY KEY, host TEXT, username TEXT, password TEXT, UNIQUE (host, username) ON CONFLICT REPLACE);</span></code></pre></td></tr></table></div></figure>
 
-
-<p>Hope you could resolve your problem,Guys.</p>
 </div>
   
   
@@ -399,7 +199,7 @@ Let&rsquo;s take Linux for example.</p>
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2013/10/07/get-md5-hash-of-big-files/">Get MD5 Hash of Big Files</a></h1>
+      <h1 class="entry-title"><a href="/blog/2013/11/16/check-if-a-python-module-is-installed/">Check if a Python Module Is Installed</a></h1>
     
     
       <p class="meta">
@@ -415,15 +215,35 @@ Let&rsquo;s take Linux for example.</p>
   
 
 
-<time datetime="2013-10-07T10:16:00+08:00" pubdate data-updated="true">Oct 7<span>th</span>, 2013</time>
+<time datetime="2013-11-16T20:14:00+08:00" pubdate data-updated="true">Nov 16<span>th</span>, 2013</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>Recently I have been dealing with files and I need to get md5 hash of all kinds of files;Some are small and some are big.<br/>
-For the small files I use this method to get md5 hash value.</p>
+  <div class="entry-content"><p>I was once stucked in How to check Whether a Python module has been installed or not. After Googling, I found this trick.<br/>
+Python allows user to pass command from out of a python file.See here</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>-c cmd : program passed in as string <span class="o">(</span>terminates option list<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The result if we import an installed module</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>20:15:45-androidyue~/osc_git/LnxClient <span class="o">(</span>master<span class="o">)</span><span class="nv">$ </span>python -c <span class="s2">&quot;import os&quot;</span>
+</span><span class='line'>20:31:24-androidyue~/osc_git/LnxClient <span class="o">(</span>master<span class="o">)</span><span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$?</span>
+</span><span class='line'>0
+</span><span class='line'><span class="c">#0 means the module has been installed</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now if we import an module which is not installed.</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -432,17 +252,52 @@ For the small files I use this method to get md5 hash value.</p>
 <span class='line-number'>5</span>
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">getFileMd5</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
-</span><span class='line'>    <span class="nb">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">m</span> <span class="o">=</span> <span class="n">md5</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">m</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">file</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
-</span><span class='line'>    <span class="nb">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">result</span> <span class="o">=</span>  <span class="n">m</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">result</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>20:31:41-androidyue~/osc_git/LnxClient <span class="o">(</span>master<span class="o">)</span><span class="nv">$ </span>python -c <span class="s2">&quot;import aaa&quot;</span>
+</span><span class='line'>Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
+</span><span class='line'>File <span class="s2">&quot;&lt;string&gt;&quot;</span>, line 1, in &lt;module&gt;
+</span><span class='line'>ImportError: No module named aaa
+</span><span class='line'>20:31:46-androidyue~/osc_git/LnxClient <span class="o">(</span>master<span class="o">)</span><span class="nv">$ </span><span class="nb">echo</span> <span class="nv">$?</span>
+</span><span class='line'>1
+</span><span class='line'><span class="c">#1 means that module is not installed.</span>
 </span></code></pre></td></tr></table></div></figure>
 
+</div>
+  
+  
 
-<p>However for calculating md5 hash value of big files,the above method will be very Less Efficient.For Big files I use the following method(It&rsquo;s acquired from stackoverflow)</p>
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/11/09/java-get-full-exception-stacktrace/">Java Get Full Exception StackTrace</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-11-09T10:53:00+08:00" pubdate data-updated="true">Nov 9<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>As a coder, I am always handling exceptions or errors,or in a word throwables. To impove the release build, I need to collect every throwable information.<br/>
+And I need to get the information as string and post it to the Bug Collect Server. Now here is an easy trick to get stacktrace from a Throwable</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -451,23 +306,15 @@ For the small files I use this method to get md5 hash value.</p>
 <span class='line-number'>5</span>
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">getBigFileMd5</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="p">):</span>
-</span><span class='line'>    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">m</span> <span class="o">=</span> <span class="n">md5</span><span class="p">()</span>
-</span><span class='line'>    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
-</span><span class='line'>        <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">block_size</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
-</span><span class='line'>            <span class="k">break</span>
-</span><span class='line'>        <span class="n">m</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">m</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">String</span> <span class="nf">getStackTrace</span><span class="o">(</span><span class="n">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">final</span> <span class="n">Writer</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringWriter</span><span class="o">();</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="n">PrintWriter</span> <span class="n">printWriter</span> <span class="o">=</span> <span class="k">new</span> <span class="n">PrintWriter</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">t</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">(</span><span class="n">printWriter</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="na">toString</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
-
-<p>And I did a test.The cost of Getting md5 hash of a Big file(size:10.7 GiB; 11,455,512,109 bytes) is 213.447s.And I think it&rsquo;s OK.</p>
 </div>
   
   
@@ -480,7 +327,7 @@ For the small files I use this method to get md5 hash value.</p>
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2013/10/07/how-to-create-a-db-file-in-python-with-sqlite3/">How to Create a .db File in Python With Sqlite3</a></h1>
+      <h1 class="entry-title"><a href="/blog/2013/11/05/cheng-shou-fu-ti-de-zheng-que-fang-fa/">乘手扶梯的正确方法</a></h1>
     
     
       <p class="meta">
@@ -496,65 +343,51 @@ For the small files I use this method to get md5 hash value.</p>
   
 
 
-<time datetime="2013-10-07T09:35:00+08:00" pubdate data-updated="true">Oct 7<span>th</span>, 2013</time>
+<time datetime="2013-11-05T12:55:00+08:00" pubdate data-updated="true">Nov 5<span>th</span>, 2013</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>How to create a .db file in Python with sqlite3?Actually It&rsquo;s really easy.<br/>
-Run the following code</p>
+  <div class="entry-content"><h4>起因</h4>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">sqlite3</span>
-</span><span class='line'><span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s">&#39;./test.db&#39;</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
+<p>之前一直和女朋友有一个讨论，就是搭乘扶梯时究竟时靠左站立，还是靠右站立。起因时从地铁北宫门出来的时候，我要求她站在左侧。</p>
 
+<h4>我的观点</h4>
 
-<p>After running the above code,the test.db file will be created if it does not exist.<br/>
-Of course,you have the proper permission to create the file.</p>
-</div>
-  
-  
+<ul>
+<li>右侧留出来行走，更符合国内靠右行驶的习惯</li>
+<li>之前看到过日本的介绍，日本是靠左侧的。</li>
+</ul>
 
 
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/09/30/yum-install-build-essentials/">Yum Install Build-essentials</a></h1>
-    
-    
-      <p class="meta">
-        
+<h4>她的观点</h4>
+
+<ul>
+<li>现在很多人都是靠右站立</li>
+<li>她见过写着靠右站立的提示</li>
+</ul>
 
 
+<h4>事实</h4>
+
+<ul>
+<li>左行右立（香港普遍称为左行右企）是指在歐美、香港、台灣、西日本等地於乘坐電扶梯时电梯左边空出留给有急事的乘客行走，只是站立在电梯上的人靠右侧站立的行为。與之相反的是，東日本、澳洲、新加坡等地卻採用右行左立的方式。</li>
+<li>此方式為一約定俗成之法則。香港地鐵（今港鐵）及台北捷運於從前曾參考歐美等地的習慣，宣傳「左行右立」，疏通繁忙時段的人流，但不奏效。在香港停止宣傳後，「左行右立」卻反而流行起來。</li>
+<li>但在電扶梯上步行會導致容易失去平衡，釀成意外，亦容易導致重力分布不均，增加電扶梯容易損壞的機率。[2]香港政府提醒市民盡量不要在電梯上走動[3]，而台北捷運公司目前也基於上述之理由，不再宣傳此措施，然而大部分乘客均已養成左行右立的搭乘習慣；相較之下，台灣的另一座大眾運輸系統——高雄捷運即未若台北一般廣泛宣傳左行右立的習慣。</li>
+<li>2011年北京地铁动物园站出现电动扶梯事故后，京华时报指出左行右立是不安全的行为，可能是造成电动扶梯事故的诱因之一。</li>
+<li>左行右立是上海市迎接中国2010年上海世界博览会宣传倡导的城市文明行为之一。為宣傳“左行右立”标准，上海轨道交通扶手电梯处常见「左行右立」的標語，並指即使乘客站立不穩向後倒下，後面的乘客也可以支撐，不會出現骨牌效應，有利安全。[5]但自2012年12月开始，因为扶梯台阶过大，行走不安全，上海轨道交通不再强调左行右立，一些原先粘贴在扶梯上倡导左行右立的贴纸已被移除
+以上事实部分参考维基百科   <a href="http://zh.wikipedia.org/wiki/%E5%B7%A6%E8%A1%8C%E5%8F%B3%E7%AB%8B">http://zh.wikipedia.org/wiki/%E5%B7%A6%E8%A1%8C%E5%8F%B3%E7%AB%8B</a>  或者 Google 搜索 左行右立</li>
+</ul>
 
 
+<h4>总结</h4>
 
-
-
-
-  
-
-
-<time datetime="2013-09-30T18:32:00+08:00" pubdate data-updated="true">Sep 30<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>I was once stucked in installing build-essentials which is for Debian/Ubuntu.I could not find any packages like build-essentials in yum.However this helped me out.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo yum install kernel-devel kernel-headers
-</span></code></pre></td></tr></table></div></figure>
+<ul>
+<li>就按我输了作为结果吧，哈哈。</li>
+<li>靠左靠右并无硬性规定，社会活动中多礼让，不妨碍他人</li>
+</ul>
 
 </div>
   
