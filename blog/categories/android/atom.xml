@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-07-12T11:56:18+08:00</updated>
+  <updated>2014-07-12T17:37:41+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,185 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android中检测当前是否为主线程]]></title>
+    <link href="http://droidyue.com/blog/2014/07/12/check-main-thread-in-android-chinese-edition/"/>
+    <updated>2014-07-12T16:50:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/12/check-main-thread-in-android-chinese-edition</id>
+    <content type="html"><![CDATA[<p>如果在Android中判断某个线程是否是主线程？对于这个问题，你可能说根据线程的名字，当然这个可以解决问题，但是这样是最可靠的么？万一某天Google一下子将线程的名字改称其他神马东西呢。</p>
+
+<!-- more -->
+
+
+<h2>方法揭晓</h2>
+
+<p>下面的方法是最可靠的解决方案。
+```java
+public static boolean isInMainThread() {</p>
+
+<pre><code>    return Looper.myLooper() == Looper.getMainLooper();
+</code></pre>
+
+<p>}
+```
+实际上，写到这里就基本解决了文章标题的问题了，但是仅仅研究到这里太肤浅了，刨的不够深，所以需要继续，希望你也可以继续读下去。</p>
+
+<h2>刨根问底</h2>
+
+<h3>实验一</h3>
+
+<p>好，现在，我们对这个稳定的方法做一些测试，首先，下面的方法会增加一些调试打印信息。
+```java
+private boolean isInMainThread() {</p>
+
+<pre><code>Looper myLooper = Looper.myLooper();
+Looper mainLooper = Looper.getMainLooper();
+Log.i(LOGTAG, "isInMainThread myLooper=" + myLooper 
+    + ";mainLooper=" + mainLooper);
+return myLooper == mainLooper;
+</code></pre>
+
+<p>}
+<code>
+好，然后我们在主线程中运行一个测试，调用上述方法。比如我们这样调用。
+</code>java
+Log.i(LOGTAG, &ldquo;testInMainThread inMainThread=&rdquo; + isInMainThread());
+<code>
+OK，我们看一下输出日志。验证OK。
+</code>bash
+I/TestInMainThread(32028): isInMainThread myLooper=Looper{40d35ef8};mainLooper=Looper{40d35ef8}
+I/TestInMainThread(32028): testInMainThread inMainThread=true
+```</p>
+
+<h3>实验二</h3>
+
+<p>现在我们继续在一个没有消息循环的非主线程，进行验证。
+```java
+new Thread() {</p>
+
+<pre><code>@Override
+public void run() {
+    Log.i(LOGTAG, "testIn NOT in MainThread isMainThread="
+        + isInMainThread());
+    super.run();
+}
+</code></pre>
+
+<p>}.start();
+```</p>
+
+<p>正如我们看到的如下日志结果，主线程的Looper（翻译成循环泵，不是很好听）已经被初始化赋值。但是我们新创建的线程的looper还是null。这是因为<strong>Android中的线程默认没有一个和它绑定了的消息循环</strong>（<strong>Threads by default do not have a message loop associated with them. Of course, the method works</strong>）
+<code>bash
+I/TestInMainThread(32028): isInMainThread myLooper=null;mainLooper=Looper{40d35ef8}
+I/TestInMainThread(32028): testIn NOT in MainThread isMainThread=false
+</code></p>
+
+<h3>实验三</h3>
+
+<p>继续，我们创建一个绑定了消息循环的线程，根据Android开发者文档说明，以下是一个典型的创建消息循环线程的示例，使用单独prepare（）方法和loop（）方法来创建一个绑定到Looper的Handler。
+```java
+new Thread() {</p>
+
+<pre><code>private Handler mHandler;
+@Override
+public void run() {
+    Looper.prepare();
+    mHandler = new Handler() {
+        public void handleMessage(Message msg) {
+            // process incoming messages here
+        }
+    };
+    Log.i(LOGTAG, "testInNonMainLooperThread isMainThread=" 
+        + isInMainThread());
+    Looper.loop();
+}
+</code></pre>
+
+<p>}.start();
+<code>
+OK，现在再次检查以下日志，
+</code>bash
+I/TestInMainThread(32028): isInMainThread myLooper=Looper{40d72c58};mainLooper=Looper{40d35ef8}
+I/TestInMainThread(32028): testInNonMainLooperThread isMainThread=false
+```
+两个Looper都被初始化赋值了，但是他们是不同的对象。</p>
+
+<h2>原理发掘</h2>
+
+<p>但是，这是为什么呢，这里面有什么奥秘呢？ 好，让我们看以下Looper.class
+```java</p>
+
+<pre><code>// sThreadLocal.get() will return null unless you've called prepare().
+static final ThreadLocal&lt;Looper&gt; sThreadLocal = new ThreadLocal&lt;Looper&gt;();
+private static Looper sMainLooper;  // guarded by Looper.class
+
+/**
+ * Initialize the current thread as a looper, marking it as an
+ * application's main looper. The main looper for your application
+ * is created by the Android environment, so you should never need
+ * to call this function yourself.  See also: {@link #prepare()}
+ */
+public static void prepareMainLooper() {
+    prepare(false);
+    synchronized (Looper.class) {
+        if (sMainLooper != null) {
+            throw new IllegalStateException("The main Looper has already been prepared.");
+        }
+        sMainLooper = myLooper();
+    }
+}
+
+private static void prepare(boolean quitAllowed) {
+    if (sThreadLocal.get() != null) {
+        throw new RuntimeException("Only one Looper may be created per thread");
+    }
+    sThreadLocal.set(new Looper(quitAllowed));
+}
+
+/**
+ * Return the Looper object associated with the current thread.  
+ * Returns null if the calling thread is not associated with a Looper.
+ */
+public static Looper myLooper() {
+    return sThreadLocal.get();
+}
+
+ /** Returns the application's main looper, which lives in the main thread of the application.
+ */
+public static Looper getMainLooper() {
+    synchronized (Looper.class) {
+        return sMainLooper;
+    }
+}
+</code></pre>
+
+<p>```</p>
+
+<p>对于主线程来说，prepareMainLooper这个方法会被Android运行环境调用，而不是程序显式调用。通过这个方法，主线程的looper被创建，并且将对象引用传递给sMainLooper。所以保证了主线程myLooper()获取到的引用和getMainLooper()获取到的都是同一个引用。</p>
+
+<p>对于没有消息循环的非主线程，默认的当前线程的looper是null，因为你从来没有手动地调用prepare()，所以它和主线程的looper不一样。</p>
+
+<p>对于绑定了消息循环的非主线程，当调用Looper.prepare方法时，主线程的Looper已经由Android运行环境创建，当调用prepare方法后，绑定到这个非主线程的looper被创建，当然，这不可能和主线程的Looper一样。</p>
+
+<p>综上所述，这个方法是可靠的。</p>
+
+<p>引用:</p>
+
+<ul>
+<li> <a href="http://developer.android.com/reference/android/os/Looper.html">http://developer.android.com/reference/android/os/Looper.html</a></li>
+<li> <a href="http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.2_r1/android/os/Looper.java/">http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.2_r1/android/os/Looper.java/</a></li>
+</ul>
+
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android Webview加载网页时发送HTTP头信息]]></title>
@@ -520,94 +699,6 @@ android:orientation="vertical" &gt;
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B00ELMXLOK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ELMXLOK&linkCode=as2&tag=droidyue-23">更优秀的APP:31个APP用户界面设计经典案例</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ELMXLOK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B007B78JUS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B007B78JUS&linkCode=as2&tag=droidyue-23">Android创意实例详解</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B007B78JUS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[程序实现自己管理数据清理工作]]></title>
-    <link href="http://droidyue.com/blog/2014/06/15/manage-space-by-replacing-system-clear-button/"/>
-    <updated>2014-06-15T18:03:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/06/15/manage-space-by-replacing-system-clear-button</id>
-    <content type="html"><![CDATA[<p>How to disable system clear button and replace it with self application Manage Space?</p>
-
-<p>Android在处理清楚数据时，会在系统的设置选项应用中，有一个清除数据的按钮，点下这个按钮之后，该应用的几乎所有数据都会被清除。具体清除了哪些数据，请参考这篇文章。<a href="http://droidyue.com/blog/2014/06/15/what-will-be-removed-if-you-click-clear-data-button-in-system-application-item/">http://droidyue.com/blog/2014/06/15/what-will-be-removed-if-you-click-clear-data-button-in-system-application-item/</a></p>
-
-<!-- more -->
-
-
-<p>但是有些情况下，我们不希望将应用的数据全部清除，或者是我们来接管系统的清理操作，其实是可以。并且实现也很简单.</p>
-
-<blockquote><p>android:manageSpaceActivity
-The fully qualified name of an Activity subclass that the system can launch to let users manage the memory occupied by the application on the device. The activity should also be declared with an <activity> element.</p></blockquote>
-
-<p>开发者文档如是说，自己实现一个Activity的字类，在manifest中声明这个activity,然后将Application的android:manageSpaceActivity的值设置为这个activity即可。如：
-```xml
-&lt;application</p>
-
-<pre><code>    android:allowBackup="true"
-    android:icon="@drawable/ic_launcher"
-    android:label="@string/app_name"
-    android:theme="@style/AppTheme" 
-    android:manageSpaceActivity="ps.androidyue.demo.mangagespace.ManageSpaceActivity"
-    &gt;
-    &lt;activity
-        android:name="ps.androidyue.demo.mangagespace.MainActivity"
-        android:label="@string/app_name" &gt;
-        &lt;intent-filter&gt;
-            &lt;action android:name="android.intent.action.MAIN" /&gt;
-
-            &lt;category android:name="android.intent.category.LAUNCHER" /&gt;
-        &lt;/intent-filter&gt;
-    &lt;/activity&gt;
-    &lt;activity android:name="ps.androidyue.demo.mangagespace.ManageSpaceActivity"&gt;
-
-    &lt;/activity&gt;
-&lt;/application&gt;
-</code></pre>
-
-<p><code>
-然后是ManageSpaceActivity 就是点击空间管理进入的Activity，用来处理清除数据的自定义功能，常见的逻辑是，清除完数据后自动退出。以下为超简单的实现。
-</code>java
-protected void onCreate(Bundle savedInstanceState) {</p>
-
-<pre><code>    super.onCreate(savedInstanceState);
-    Button btnClearData = new Button(this);
-    btnClearData.setText("Clear Data");
-    btnClearData.setOnClickListener(new OnClickListener() {
-
-        @Override
-        public void onClick(View v) {
-            PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
-                .edit().clear().commit();
-            finish();
-        }
-
-    });
-    setContentView(btnClearData);
-}
-</code></pre>
-
-<p><code>
-当然为了更好的实现，我们在LauncherActivity即MainActivity，创造一些测试数据。否则，系统应用中的管理空间不可用！
-</code>java</p>
-
-<pre><code>private void createTestData() {
-    PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
-        .edit().putString("test", "test_data").commit();
-}
-</code></pre>
-
-<p>```
-demo程序下载：<a href="http://pan.baidu.com/s/1ntJnttZ">http://pan.baidu.com/s/1ntJnttZ</a></p>
-
-<p>延伸阅读：<a href="http://developer.android.com/guide/topics/manifest/application-element.html#space">http://developer.android.com/guide/topics/manifest/application-element.html#space</a></p>
-
-<h2>Others</h2>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00J4DXWDG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00J4DXWDG&linkCode=as2&tag=droidyue-23">Android编程权威指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00J4DXWDG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
