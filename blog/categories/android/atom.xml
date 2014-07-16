@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-07-15T21:52:40+08:00</updated>
+  <updated>2014-07-16T21:45:34+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,138 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[自定义控件进阶:declare-styleable重用attr]]></title>
+    <link href="http://droidyue.com/blog/2014/07/16/better-in-android-include-attrs-in-declare-stylable/"/>
+    <updated>2014-07-16T19:37:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/16/better-in-android-include-attrs-in-declare-stylable</id>
+    <content type="html"><![CDATA[<p>最近接触了Android自定义控件,涉及到自定义xml中得属性(attribute),其实也很简单,但是写着写着,发现代码不完美了,就是在attrs.xml这个文件中,发现属性冗余,于是就想有没有类似属性继承或者include之类的方法.本文将就declare-stylable中属性重用记录一下.</p>
+
+<!--more-->
+
+
+<h2>不完美的代码</h2>
+
+<p>```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+<resources></p>
+
+<pre><code>&lt;declare-styleable name="ExTextView"&gt;
+   &lt;attr name="enableOnPad" format="boolean" /&gt;
+   &lt;attr name="supportDeviceType" format="reference"/&gt;
+&lt;/declare-styleable&gt;
+
+&lt;declare-styleable name="ExEditText"&gt;
+   &lt;attr name="enableOnPad" format="boolean" /&gt;
+   &lt;attr name="supportDeviceType" format="reference"/&gt;  
+&lt;/declare-styleable&gt;
+</code></pre>
+
+<p></resources>
+```
+如上面代码,在ExTextView和ExEditText这个stylable中有着重复的属性申明.虽然上面可以工作,但是总感觉写的不专业,于是寻找优化方法.</p>
+
+<h2>这样可以么</h2>
+
+<p>尝试着为declare-stylable指定一个parent,如下代码
+```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+<resources></p>
+
+<pre><code>&lt;declare-styleable name="ExTextView"&gt;
+   &lt;attr name="enableOnPad" format="boolean" /&gt;
+   &lt;attr name="supportDeviceType" format="reference"/&gt;
+&lt;/declare-styleable&gt;
+
+&lt;declare-styleable name="ExEditText" parent="ExTextView"&gt;
+
+&lt;/declare-styleable&gt;
+</code></pre>
+
+<p></resources>
+```
+attrs.xml没有报告语法错误.但是当我使用<strong>R.styleable.ExEditText_supportDeviceType</strong>时候,R文件却没有生成,重新清理了工程还是不生效,不知道是否为adt插件的问题.其他人也遇到了这样的问题. <strong>这个方法目前是不行的</strong>.</p>
+
+<h2>终极答案</h2>
+
+<p>实际上我们可以在declare-stylable之前,申明要多次使用的属性,在declare-stylable节点内部,只需调用即可.具体代码如下.
+```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+<resources></p>
+
+<pre><code>&lt;attr name="enableOnPad" format="boolean" /&gt;
+&lt;attr name="supportDeviceType" format="reference"/&gt;
+
+&lt;declare-styleable name="ExTextView"&gt;
+    &lt;attr name="enableOnPad"/&gt;
+    &lt;attr name="supportDeviceType"/&gt;
+&lt;/declare-styleable&gt;
+
+&lt;declare-styleable name="ExEditText"&gt;
+    &lt;attr name="enableOnPad"/&gt;
+    &lt;attr name="supportDeviceType"/&gt;    
+&lt;/declare-styleable&gt;
+</code></pre>
+
+<p></resources>
+```
+每次引用attr后,建议清理一下工程,确保R文件重新生成.</p>
+
+<h2>延伸阅读</h2>
+
+<ul>
+<li><a href="http://stackoverflow.com/questions/18827875/how-to-declare-several-stylable-attributes-with-the-same-name-for-different-tags">http://stackoverflow.com/questions/18827875/how-to-declare-several-stylable-attributes-with-the-same-name-for-different-tags</a></li>
+</ul>
+
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android支持动态申请权限么]]></title>
+    <link href="http://droidyue.com/blog/2014/07/16/does-android-support-granting-permission-dynamiclly/"/>
+    <updated>2014-07-16T18:52:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/16/does-android-support-granting-permission-dynamiclly</id>
+    <content type="html"><![CDATA[<p>作为Android开发者,为程序增加权限是在正常不过的事情了,做法必然是在mainifest中,写入类似这样<code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code>的信息. 以静态申请的形式来完成. 于是这里我想抛出一个问题,Android平台支持动态申请权限么.</p>
+
+<!--more-->
+
+
+<p>相信很多人回答都是不支持,当然这个答案是对的,但是为什么不支持呢,知其然更要知其所以然.了解其原因还是相当有必要的.</p>
+
+<h2>原因列举</h2>
+
+<ul>
+<li><p>Android没有提供动态申请权限的机制.</p></li>
+<li><p>目前的静态申请可以将权限安全隐患放在程序安装之前一次提示搞定,而如果动态申请,就会时不时弹出申请框.这样的用户体验太差了.</p></li>
+<li><p>一些权限申请需要依赖于设备的feature(特性),使用静态申请可以明确知道设备需要的特性,Google Play根据程序需要的特性和目标设备具有的特性来决定该设备是否被展示和安装.而动态申请无法明确知道需要的feature.可能导致可以展示的应用无法安装.</p></li>
+<li><p>可能会带来安全隐患问题.</p></li>
+</ul>
+
+
+<h2>延伸阅读</h2>
+
+<ul>
+<li><a href="http://stackoverflow.com/questions/4838779/get-android-permission-dynamiclly">http://stackoverflow.com/questions/4838779/get-android-permission-dynamiclly</a></li>
+<li><a href="http://stackoverflow.com/questions/7517171/is-there-any-way-to-ask-permission-programmatically">http://stackoverflow.com/questions/7517171/is-there-any-way-to-ask-permission-programmatically</a></li>
+</ul>
+
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[你造么,Android中程序的停止状态]]></title>
@@ -391,494 +523,6 @@ tools:context=".MainActivity" &gt;
 
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android扫描多媒体文件剖析]]></title>
-    <link href="http://droidyue.com/blog/2014/07/12/scan-media-files-in-android-chinese-edition/"/>
-    <updated>2014-07-12T19:59:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/12/scan-media-files-in-android-chinese-edition</id>
-    <content type="html"><![CDATA[<p>这篇文章从系统源代码分析，讲述如何将程序创建的多媒体文件加入系统的媒体库，如何从媒体库删除，以及大多数程序开发者经常遇到的无法添加到媒体库的问题等。本人将通过对源代码的分析，一一解释这些问题。</p>
-
-<!--more-->
-
-
-<h2>Android中的多媒体文件扫描机制</h2>
-
-<p>Android提供了一个很棒的程序来处理将多媒体文件加入的媒体库中。这个程序就是MediaProvider，现在我们简单看以下这个程序。首先看一下它的Receiver
-```xml</p>
-
-<pre><code>    &lt;receiver android:name="MediaScannerReceiver"&gt;
-        &lt;intent-filter&gt;
-            &lt;action android:name="android.intent.action.BOOT_COMPLETED" /&gt;
-        &lt;/intent-filter&gt;
-        &lt;intent-filter&gt;
-            &lt;action android:name="android.intent.action.MEDIA_MOUNTED" /&gt;
-            &lt;data android:scheme="file" /&gt;
-        &lt;/intent-filter&gt;
-        &lt;intent-filter&gt;
-            &lt;action android:name="android.intent.action.MEDIA_UNMOUNTED" /&gt;
-            &lt;data android:scheme="file" /&gt;
-        &lt;/intent-filter&gt;
-        &lt;intent-filter&gt;
-            &lt;action android:name="android.intent.action.MEDIA_SCANNER_SCAN_FILE" /&gt;
-            &lt;data android:scheme="file" /&gt;
-        &lt;/intent-filter&gt;
-    &lt;/receiver&gt;
-</code></pre>
-
-<p>```</p>
-
-<p>MediaScannerReceiver只接收符合action和数据规则正确的intent。</p>
-
-<h3>MediaScannerReciever如何处理Intent</h3>
-
-<ul>
-<li>当且仅当接收到<strong>action android.intent.action.BOOT_COMPLETED</strong>才扫描内部存储（非内置和外置sdcard）</li>
-<li>除了action为<strong>android.intent.action.BOOT_COMPLETED</strong> 的以外的intent都必须要有数据传递。</li>
-<li>当收到 <strong>Intent.ACTION_MEDIA_MOUNTED</strong> intent，扫描Sdcard</li>
-<li>当收到 <strong>Intent.ACTION_MEDIA_SCANNER_SCAN_FILE</strong> intent，检测没有问题，将扫描单个文件。</li>
-</ul>
-
-
-<h3>MediaScannerService如何工作</h3>
-
-<p>实际上MediaScannerReceiver并不是真正处理扫描工作，它会启动一个叫做MediaScannerService的服务。我们继续看MediaProvider的manifest中关于service的部分。
-```xml</p>
-
-<pre><code>   &lt;service android:name="MediaScannerService" android:exported="true"&gt;
-        &lt;intent-filter&gt;
-            &lt;action android:name="android.media.IMediaScannerService" /&gt;
-        &lt;/intent-filter&gt;
-    &lt;/service&gt;
-</code></pre>
-
-<p>```</p>
-
-<h3>MediaScannerService中的scanFile方法</h3>
-
-<p>```java</p>
-
-<pre><code>private Uri scanFile(String path, String mimeType) {
-    String volumeName = MediaProvider.EXTERNAL_VOLUME;
-    openDatabase(volumeName);
-    MediaScanner scanner = createMediaScanner();
-    return scanner.scanSingleFile(path, volumeName, mimeType);
-}
-</code></pre>
-
-<p>```</p>
-
-<h3>MediaScannerService中的scan方法</h3>
-
-<p>```java</p>
-
-<pre><code>private void scan(String[] directories, String volumeName) {
-    // don't sleep while scanning
-    mWakeLock.acquire();
-
-    ContentValues values = new ContentValues();
-    values.put(MediaStore.MEDIA_SCANNER_VOLUME, volumeName);
-    Uri scanUri = getContentResolver().insert(MediaStore.getMediaScannerUri(), values);
-
-    Uri uri = Uri.parse("file://" + directories[0]);
-    sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_STARTED, uri));
-
-    try {
-        if (volumeName.equals(MediaProvider.EXTERNAL_VOLUME)) {
-            openDatabase(volumeName);
-        }
-
-        MediaScanner scanner = createMediaScanner();
-        scanner.scanDirectories(directories, volumeName);
-    } catch (Exception e) {
-        Log.e(TAG, "exception in MediaScanner.scan()", e);
-    }
-
-    getContentResolver().delete(scanUri, null, null);
-
-    sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_FINISHED, uri));
-    mWakeLock.release();
-}
-</code></pre>
-
-<p>```</p>
-
-<h3>MediaScannerService中的createMediaScanner方法</h3>
-
-<p>```java
-private MediaScanner createMediaScanner() {</p>
-
-<pre><code>    MediaScanner scanner = new MediaScanner(this);
-    Locale locale = getResources().getConfiguration().locale;
-    if (locale != null) {
-        String language = locale.getLanguage();
-        String country = locale.getCountry();
-        String localeString = null;
-        if (language != null) {
-            if (country != null) {
-                scanner.setLocale(language + "_" + country);
-            } else {
-                scanner.setLocale(language);
-            }
-        }    
-    }
-
-    return scanner;
-</code></pre>
-
-<p>}
-```
-从上面可以发现，真正工作的其实是<a href="https://android.googlesource.com/platform/frameworks/base/+/cd92588/media/java/android/media/MediaScanner.java" target="_blank">android.media.MediaScanner.java</a> 具体扫描过程就请点击左侧链接查看。</p>
-
-<h2>如何扫描一个刚创建的文件</h2>
-
-<p>这里介绍两种方式来实现将新创建的文件加入媒体库。</p>
-
-<h3>最简单的方式</h3>
-
-<p>只需要发送一个正确的intent广播到MediaScannerReceiver即可。
-```java</p>
-
-<pre><code>String saveAs = "Your_Created_File_Path"
-Uri contentUri = Uri.fromFile(new File(saveAs));
-Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,contentUri);
-getContext().sendBroadcast(mediaScanIntent);
-</code></pre>
-
-<p>```
-上面的极简方法大多数情况下正常工作，但是有些情况下是不会工作的，稍后的部分会介绍。即使你使用上述方法成功了，还是建议你继续阅读稍后的为什么发广播不成功的部分。</p>
-
-<h3>使用MediaScannerConnection</h3>
-
-<p>```java</p>
-
-<pre><code>public void mediaScan(File file) {
-    MediaScannerConnection.scanFile(getActivity(),
-            new String[] { file.getAbsolutePath() }, null,
-            new OnScanCompletedListener() {
-                @Override
-                public void onScanCompleted(String path, Uri uri) {
-                    Log.v("MediaScanWork", "file " + path
-                            + " was scanned seccessfully: " + uri);
-                }
-            });
-}
-</code></pre>
-
-<p>```
-MediaScannerConnection的scanFile方法从2.2（API 8）开始引入。</p>
-
-<h3>创建一个MediaScannerConnection对象然后调用scanFile方法</h3>
-
-<p>很简单，参考<a href="http://developer.android.com/reference/android/media/MediaScannerConnection.html" target="_blank"><a href="http://developer.android.com/reference/android/media/MediaScannerConnection.html">http://developer.android.com/reference/android/media/MediaScannerConnection.html</a></a></p>
-
-<h3>如何扫描多个文件</h3>
-
-<ul>
-<li>发送多个Intent.ACTION_MEDIA_SCANNER_SCAN_FILE广播</li>
-<li>使用MediaScannerConnection，传入要加入的路径的数组。</li>
-</ul>
-
-
-<h2>为什么发送MEDIA_SCANNER_SCAN_FILE广播不生效</h2>
-
-<p>关于为什么有些设备上不生效，很多人认为是API原因，其实不是的，这其实和你传入的文件路径有关系。看一下接收者Receiver的onReceive代码。
-```java</p>
-
-<pre><code>public void onReceive(Context context, Intent intent) {
-    String action = intent.getAction();
-    Uri uri = intent.getData();
-    if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
-        // scan internal storage
-        scan(context, MediaProvider.INTERNAL_VOLUME);
-    } else {
-        if (uri.getScheme().equals("file")) {
-            // handle intents related to external storage
-            String path = uri.getPath();
-            String externalStoragePath = Environment.getExternalStorageDirectory().getPath();
-
-            Log.d(TAG, "action: " + action + " path: " + path);
-            if (action.equals(Intent.ACTION_MEDIA_MOUNTED)) {
-                // scan whenever any volume is mounted
-                scan(context, MediaProvider.EXTERNAL_VOLUME);
-            } else if (action.equals(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE) &amp;&amp;
-                    path != null &amp;&amp; path.startsWith(externalStoragePath + "/")) {
-                scanFile(context, path);
-            }
-        }
-    }
-}
-</code></pre>
-
-<p>```</p>
-
-<p>所有的部分都正确除了传入的路径。因为你可能硬编码了文件路径。因为有一个这样的判断<code>path.startsWith(externalStoragePath + "/")</code>,这里我举一个简单的小例子。
-```java</p>
-
-<pre><code>final String saveAs = "/sdcard/" + System.currentTimeMillis() + "_add.png";
-Uri contentUri = Uri.fromFile(new File(saveAs));
-Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,contentUri);
-getContext().sendBroadcast(mediaScanIntent);
-Uri uri = mediaScanIntent.getData();
-String path = uri.getPath();
-String externalStoragePath = Environment.getExternalStorageDirectory().getPath();
-Log.i("LOGTAG", "Androidyue onReceive intent= " + mediaScanIntent 
-                        + ";path=" + path + ";externalStoragePath=" +
-                        externalStoragePath);
-</code></pre>
-
-<p><code>
-我们看一下输出日志，分析原因。
-</code>bash
-LOGTAG Androidyue onReceive intent= Intent { act=android.intent.action.MEDIA_SCANNER_SCAN_FILE dat=file:///sdcard/1390136305831_add.png };path=/sdcard/1390136305831_add.png;externalStoragePath=/mnt/sdcard
-```
-上述输出分析，你发送的广播，action是正确的，数据规则也是正确的，而且你的文件路径也是存在的，<strong>但是</strong>，文件的路径<strong>/sdcard/1390136305831_add.png</strong>并不是以外部存储根路径<strong>/mnt/sdcard/</strong>开头。所以扫描操作没有开始，导致文件没有加入到媒体库。所以，请检查文件的路径。</p>
-
-<h2>如何从多媒体库中移除</h2>
-
-<p>如果我们删除一个多媒体文件的话，也就意味我们还需要将这个文件从媒体库中删除掉。</p>
-
-<h3>能不能简简单单发广播？</h3>
-
-<p>仅仅发一个广播能解决问题么？我倒是希望可以，但是实际上是不工作的，查看如下代码即可明白。
-```java</p>
-
-<pre><code>// this function is used to scan a single file
-public Uri scanSingleFile(String path, String volumeName, String mimeType) {
-    try {
-        initialize(volumeName);
-        prescan(path, true);
-
-        File file = new File(path);
-        if (!file.exists()) {
-            return null;
-        }
-
-        // lastModified is in milliseconds on Files.
-        long lastModifiedSeconds = file.lastModified() / 1000;
-
-        // always scan the file, so we can return the content://media Uri for existing files
-        return mClient.doScanFile(path, mimeType, lastModifiedSeconds, file.length(),
-                false, true, MediaScanner.isNoMediaPath(path));
-    } catch (RemoteException e) {
-        Log.e(TAG, "RemoteException in MediaScanner.scanFile()", e);
-        return null;
-    }
-}
-</code></pre>
-
-<p><code>
-正如上述代码，会对文件是否存在进行检查，如果文件不存在，直接停止向下执行。所以这样是不行的。那怎么办呢？
-</code>java</p>
-
-<pre><code>public void testDeleteFile() {
-    String existingFilePath = "/mnt/sdcard/1390116362913_add.png";
-    File  existingFile = new File(existingFilePath);
-    existingFile.delete();
-    ContentResolver resolver = getActivity().getContentResolver();
-    resolver.delete(Images.Media.EXTERNAL_CONTENT_URI, Images.Media.DATA + "=?", new String[]{existingFilePath});
-
-}
-</code></pre>
-
-<p>```
-上述代码是可以工作的，直接从MediaProvider删除即可。
-具体的删除代码请参考<a href="http://droidyue.com/blog/2014/02/09/code-snippet-for-media-on-android/" target="_blank">Code Snippet for Media on Android</a></p>
-
-<h2>One More Thing</h2>
-
-<ul>
-<li>你可以通过查看/data/data/com.android.providers.media/的external.db文件可以了解更多的信息。</li>
-</ul>
-
-
-<h3>Others</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android中检测当前是否为主线程]]></title>
-    <link href="http://droidyue.com/blog/2014/07/12/check-main-thread-in-android-chinese-edition/"/>
-    <updated>2014-07-12T16:50:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/12/check-main-thread-in-android-chinese-edition</id>
-    <content type="html"><![CDATA[<p>如果在Android中判断某个线程是否是主线程？对于这个问题，你可能说根据线程的名字，当然这个可以解决问题，但是这样是最可靠的么？万一某天Google一下子将线程的名字改称其他神马东西呢。</p>
-
-<!-- more -->
-
-
-<h2>方法揭晓</h2>
-
-<p>下面的方法是最可靠的解决方案。
-```java
-public static boolean isInMainThread() {</p>
-
-<pre><code>    return Looper.myLooper() == Looper.getMainLooper();
-</code></pre>
-
-<p>}
-```
-实际上，写到这里就基本解决了文章标题的问题了，但是仅仅研究到这里太肤浅了，刨的不够深，所以需要继续，希望你也可以继续读下去。</p>
-
-<h2>刨根问底</h2>
-
-<h3>实验一</h3>
-
-<p>好，现在，我们对这个稳定的方法做一些测试，首先，下面的方法会增加一些调试打印信息。
-```java
-private boolean isInMainThread() {</p>
-
-<pre><code>Looper myLooper = Looper.myLooper();
-Looper mainLooper = Looper.getMainLooper();
-Log.i(LOGTAG, "isInMainThread myLooper=" + myLooper 
-    + ";mainLooper=" + mainLooper);
-return myLooper == mainLooper;
-</code></pre>
-
-<p>}
-<code>
-好，然后我们在主线程中运行一个测试，调用上述方法。比如我们这样调用。
-</code>java
-Log.i(LOGTAG, &ldquo;testInMainThread inMainThread=&rdquo; + isInMainThread());
-<code>
-OK，我们看一下输出日志。验证OK。
-</code>bash
-I/TestInMainThread(32028): isInMainThread myLooper=Looper{40d35ef8};mainLooper=Looper{40d35ef8}
-I/TestInMainThread(32028): testInMainThread inMainThread=true
-```</p>
-
-<h3>实验二</h3>
-
-<p>现在我们继续在一个没有消息循环的非主线程，进行验证。
-```java
-new Thread() {</p>
-
-<pre><code>@Override
-public void run() {
-    Log.i(LOGTAG, "testIn NOT in MainThread isMainThread="
-        + isInMainThread());
-    super.run();
-}
-</code></pre>
-
-<p>}.start();
-```</p>
-
-<p>正如我们看到的如下日志结果，主线程的Looper（翻译成循环泵，不是很好听）已经被初始化赋值。但是我们新创建的线程的looper还是null。这是因为<strong>Android中的线程默认没有一个和它绑定了的消息循环</strong>（<strong>Threads by default do not have a message loop associated with them. Of course, the method works</strong>）
-<code>bash
-I/TestInMainThread(32028): isInMainThread myLooper=null;mainLooper=Looper{40d35ef8}
-I/TestInMainThread(32028): testIn NOT in MainThread isMainThread=false
-</code></p>
-
-<h3>实验三</h3>
-
-<p>继续，我们创建一个绑定了消息循环的线程，根据Android开发者文档说明，以下是一个典型的创建消息循环线程的示例，使用单独prepare（）方法和loop（）方法来创建一个绑定到Looper的Handler。
-```java
-new Thread() {</p>
-
-<pre><code>private Handler mHandler;
-@Override
-public void run() {
-    Looper.prepare();
-    mHandler = new Handler() {
-        public void handleMessage(Message msg) {
-            // process incoming messages here
-        }
-    };
-    Log.i(LOGTAG, "testInNonMainLooperThread isMainThread=" 
-        + isInMainThread());
-    Looper.loop();
-}
-</code></pre>
-
-<p>}.start();
-<code>
-OK，现在再次检查以下日志，
-</code>bash
-I/TestInMainThread(32028): isInMainThread myLooper=Looper{40d72c58};mainLooper=Looper{40d35ef8}
-I/TestInMainThread(32028): testInNonMainLooperThread isMainThread=false
-```
-两个Looper都被初始化赋值了，但是他们是不同的对象。</p>
-
-<h2>原理发掘</h2>
-
-<p>但是，这是为什么呢，这里面有什么奥秘呢？ 好，让我们看以下Looper.class
-```java</p>
-
-<pre><code>// sThreadLocal.get() will return null unless you've called prepare().
-static final ThreadLocal&lt;Looper&gt; sThreadLocal = new ThreadLocal&lt;Looper&gt;();
-private static Looper sMainLooper;  // guarded by Looper.class
-
-/**
- * Initialize the current thread as a looper, marking it as an
- * application's main looper. The main looper for your application
- * is created by the Android environment, so you should never need
- * to call this function yourself.  See also: {@link #prepare()}
- */
-public static void prepareMainLooper() {
-    prepare(false);
-    synchronized (Looper.class) {
-        if (sMainLooper != null) {
-            throw new IllegalStateException("The main Looper has already been prepared.");
-        }
-        sMainLooper = myLooper();
-    }
-}
-
-private static void prepare(boolean quitAllowed) {
-    if (sThreadLocal.get() != null) {
-        throw new RuntimeException("Only one Looper may be created per thread");
-    }
-    sThreadLocal.set(new Looper(quitAllowed));
-}
-
-/**
- * Return the Looper object associated with the current thread.  
- * Returns null if the calling thread is not associated with a Looper.
- */
-public static Looper myLooper() {
-    return sThreadLocal.get();
-}
-
- /** Returns the application's main looper, which lives in the main thread of the application.
- */
-public static Looper getMainLooper() {
-    synchronized (Looper.class) {
-        return sMainLooper;
-    }
-}
-</code></pre>
-
-<p>```</p>
-
-<p>对于主线程来说，prepareMainLooper这个方法会被Android运行环境调用，而不是程序显式调用。通过这个方法，主线程的looper被创建，并且将对象引用传递给sMainLooper。所以保证了主线程myLooper()获取到的引用和getMainLooper()获取到的都是同一个引用。</p>
-
-<p>对于没有消息循环的非主线程，默认的当前线程的looper是null，因为你从来没有手动地调用prepare()，所以它和主线程的looper不一样。</p>
-
-<p>对于绑定了消息循环的非主线程，当调用Looper.prepare方法时，主线程的Looper已经由Android运行环境创建，当调用prepare方法后，绑定到这个非主线程的looper被创建，当然，这不可能和主线程的Looper一样。</p>
-
-<p>综上所述，这个方法是可靠的。</p>
-
-<p>引用:</p>
-
-<ul>
-<li> <a href="http://developer.android.com/reference/android/os/Looper.html">http://developer.android.com/reference/android/os/Looper.html</a></li>
-<li> <a href="http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.2_r1/android/os/Looper.java/">http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.2_r1/android/os/Looper.java/</a></li>
-</ul>
-
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>

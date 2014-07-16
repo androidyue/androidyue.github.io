@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-07-15T21:52:40+08:00</updated>
+  <updated>2014-07-16T21:45:34+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,176 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[自定义控件进阶:declare-styleable重用attr]]></title>
+    <link href="http://droidyue.com/blog/2014/07/16/better-in-android-include-attrs-in-declare-stylable/"/>
+    <updated>2014-07-16T19:37:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/16/better-in-android-include-attrs-in-declare-stylable</id>
+    <content type="html"><![CDATA[<p>最近接触了Android自定义控件,涉及到自定义xml中得属性(attribute),其实也很简单,但是写着写着,发现代码不完美了,就是在attrs.xml这个文件中,发现属性冗余,于是就想有没有类似属性继承或者include之类的方法.本文将就declare-stylable中属性重用记录一下.</p>
+
+<!--more-->
+
+
+<h2>不完美的代码</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
+</span><span class='line'><span class="nt">&lt;resources&gt;</span>
+</span><span class='line'>  
+</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExTextView&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span> <span class="na">format=</span><span class="s">&quot;boolean&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>     <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span> <span class="na">format=</span><span class="s">&quot;reference&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExEditText&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span> <span class="na">format=</span><span class="s">&quot;boolean&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>     <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span> <span class="na">format=</span><span class="s">&quot;reference&quot;</span><span class="nt">/&gt;</span>  
+</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如上面代码,在ExTextView和ExEditText这个stylable中有着重复的属性申明.虽然上面可以工作,但是总感觉写的不专业,于是寻找优化方法.</p>
+
+<h2>这样可以么</h2>
+
+<p>尝试着为declare-stylable指定一个parent,如下代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
+</span><span class='line'><span class="nt">&lt;resources&gt;</span>
+</span><span class='line'>  
+</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExTextView&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span> <span class="na">format=</span><span class="s">&quot;boolean&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>     <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span> <span class="na">format=</span><span class="s">&quot;reference&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExEditText&quot;</span> <span class="na">parent=</span><span class="s">&quot;ExTextView&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>          
+</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>attrs.xml没有报告语法错误.但是当我使用<strong>R.styleable.ExEditText_supportDeviceType</strong>时候,R文件却没有生成,重新清理了工程还是不生效,不知道是否为adt插件的问题.其他人也遇到了这样的问题. <strong>这个方法目前是不行的</strong>.</p>
+
+<h2>终极答案</h2>
+
+<p>实际上我们可以在declare-stylable之前,申明要多次使用的属性,在declare-stylable节点内部,只需调用即可.具体代码如下.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
+</span><span class='line'><span class="nt">&lt;resources&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span> <span class="na">format=</span><span class="s">&quot;boolean&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span> <span class="na">format=</span><span class="s">&quot;reference&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  
+</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExTextView&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExEditText&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span><span class="nt">/&gt;</span> 
+</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>每次引用attr后,建议清理一下工程,确保R文件重新生成.</p>
+
+<h2>延伸阅读</h2>
+
+<ul>
+<li><a href="http://stackoverflow.com/questions/18827875/how-to-declare-several-stylable-attributes-with-the-same-name-for-different-tags">http://stackoverflow.com/questions/18827875/how-to-declare-several-stylable-attributes-with-the-same-name-for-different-tags</a></li>
+</ul>
+
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android支持动态申请权限么]]></title>
+    <link href="http://droidyue.com/blog/2014/07/16/does-android-support-granting-permission-dynamiclly/"/>
+    <updated>2014-07-16T18:52:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/16/does-android-support-granting-permission-dynamiclly</id>
+    <content type="html"><![CDATA[<p>作为Android开发者,为程序增加权限是在正常不过的事情了,做法必然是在mainifest中,写入类似这样<code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code>的信息. 以静态申请的形式来完成. 于是这里我想抛出一个问题,Android平台支持动态申请权限么.</p>
+
+<!--more-->
+
+
+<p>相信很多人回答都是不支持,当然这个答案是对的,但是为什么不支持呢,知其然更要知其所以然.了解其原因还是相当有必要的.</p>
+
+<h2>原因列举</h2>
+
+<ul>
+<li><p>Android没有提供动态申请权限的机制.</p></li>
+<li><p>目前的静态申请可以将权限安全隐患放在程序安装之前一次提示搞定,而如果动态申请,就会时不时弹出申请框.这样的用户体验太差了.</p></li>
+<li><p>一些权限申请需要依赖于设备的feature(特性),使用静态申请可以明确知道设备需要的特性,Google Play根据程序需要的特性和目标设备具有的特性来决定该设备是否被展示和安装.而动态申请无法明确知道需要的feature.可能导致可以展示的应用无法安装.</p></li>
+<li><p>可能会带来安全隐患问题.</p></li>
+</ul>
+
+
+<h2>延伸阅读</h2>
+
+<ul>
+<li><a href="http://stackoverflow.com/questions/4838779/get-android-permission-dynamiclly">http://stackoverflow.com/questions/4838779/get-android-permission-dynamiclly</a></li>
+<li><a href="http://stackoverflow.com/questions/7517171/is-there-any-way-to-ask-permission-programmatically">http://stackoverflow.com/questions/7517171/is-there-any-way-to-ask-permission-programmatically</a></li>
+</ul>
+
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Python中的字典遍历]]></title>
@@ -2624,149 +2794,6 @@ Handle a confirmation response from the user.</p></blockquote>
 
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B002A2LQR2/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002A2LQR2&linkCode=as2&tag=droidyue-23">Shell脚本学习指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002A2LQR2" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[EditText和AutoCompleteTextView设置文字选中颜色]]></title>
-    <link href="http://droidyue.com/blog/2014/07/01/set-selection-color-of-textviews/"/>
-    <updated>2014-07-01T20:58:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/01/set-selection-color-of-textviews</id>
-    <content type="html"><![CDATA[<p>EditText和AutoCompleteTextView设置文字选中颜色
-大多数Android Rom上,文本选择的背景色都是很好看的鲜绿色, 但是在某些垃圾的三星手机上,居然是蓝色,令人恶心反感,其实完全可以通过程序来修改,文本的默认选中背景色.</p>
-
-<!--more-->
-
-
-<h3>所用API解释</h3>
-
-<blockquote><p>android:textColorHighlight
-Color of the text selection highlight.</p></blockquote>
-
-<h3>EditText设置效果</h3>
-
-<p><img src="http://droidyueimg.qiniudn.com/demo-edittext_selection_bg.png"></p>
-
-<h3>AutoCompleteTextView 设置效果</h3>
-
-<p><img src="http://droidyueimg.qiniudn.com/demo_autocompletetextview_selection_bg.png"></p>
-
-<h3>实现代码</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;LinearLayout</span> <span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-</span><span class='line'>    <span class="na">android:layout_width=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>    <span class="na">android:layout_height=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>    <span class="na">android:orientation=</span><span class="s">&quot;vertical&quot;</span> <span class="nt">&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;EditText</span>
-</span><span class='line'>      <span class="na">android:id=</span><span class="s">&quot;@+id/et_inputBox&quot;</span>
-</span><span class='line'>      <span class="na">android:layout_height=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>      <span class="na">android:layout_width=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>      <span class="na">android:textColorHighlight=</span><span class="s">&quot;#B4DF87&quot;</span>
-</span><span class='line'>        <span class="nt">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;AutoCompleteTextView</span>
-</span><span class='line'>        <span class="na">android:id=</span><span class="s">&quot;@+id/act_input&quot;</span>
-</span><span class='line'>        <span class="na">android:layout_below=</span><span class="s">&quot;@id/et_inputBox&quot;</span>
-</span><span class='line'>        <span class="na">android:layout_width=</span><span class="s">&quot;fill_parent&quot;</span>
-</span><span class='line'>      <span class="na">android:layout_height=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>      <span class="na">android:textColorHighlight=</span><span class="s">&quot;#B4DF87&quot;</span>
-</span><span class='line'>        <span class="nt">/&gt;</span>
-</span><span class='line'><span class="nt">&lt;/LinearLayout&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>推荐</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00ELMXLOK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ELMXLOK&linkCode=as2&tag=droidyue-23">更优秀的APP:31个APP用户界面设计经典案例</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ELMXLOK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B007B78JUS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B007B78JUS&linkCode=as2&tag=droidyue-23">Android创意实例详解</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B007B78JUS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[在bash中检测进程是否正在运行]]></title>
-    <link href="http://droidyue.com/blog/2014/06/29/check-running-process-in-bash/"/>
-    <updated>2014-06-29T17:03:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/06/29/check-running-process-in-bash</id>
-    <content type="html"><![CDATA[<p>这里简单介绍一个自己写的检测某个进程是否存在的bash小脚本。直接上代码。</p>
-
-<!--more-->
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'><span class="nv">ps_out</span><span class="o">=</span><span class="sb">`</span>ps -ef | grep <span class="nv">$1</span> | grep -v <span class="s1">&#39;grep&#39;</span> | grep -v <span class="nv">$0</span><span class="sb">`</span>
-</span><span class='line'><span class="nv">result</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span> <span class="nv">$ps_out</span> | grep <span class="s2">&quot;$1&quot;</span><span class="k">)</span>
-</span><span class='line'><span class="k">if</span> <span class="o">[[</span> <span class="s2">&quot;$result&quot;</span> !<span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="o">]]</span>;<span class="k">then</span>
-</span><span class='line'><span class="k">    </span><span class="nb">echo</span> <span class="s2">&quot;Running&quot;</span>
-</span><span class='line'><span class="k">else</span>
-</span><span class='line'><span class="k">    </span><span class="nb">echo</span> <span class="s2">&quot;Not Running&quot;</span>
-</span><span class='line'><span class="k">fi</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>举例使用</h2>
-
-<p>比如我们启动了一个这样的进程<code>python -m SimpleHTTPServer 8000</code>,我们想检测这个进程是否存在，可以这样。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:38:07-androidyue~/osc_git/shell_works <span class="o">(</span>master<span class="o">)</span><span class="nv">$ </span>./checkRunningProcess.sh <span class="s1">&#39;SimpleHTTPServer&#39;</span>
-</span><span class='line'>Running
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>些许说明</h2>
-
-<ul>
-<li>该脚本会自动去除<strong>包含目标信息的grep进程</strong>。以及<strong>当前这个正在执行的脚本</strong>。</li>
-<li>使用保存文件后，确保具有可执行属性。</li>
-</ul>
-
-
-<h2>Read More</h2>
-
-<ul>
-<li><a href="http://stackoverflow.com/questions/2903354/bash-script-to-check-running-process/24140715#24140715">http://stackoverflow.com/questions/2903354/bash-script-to-check-running-process/24140715#24140715</a></li>
-</ul>
-
-
-<h2>推荐</h2>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B009O49G7Q/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009O49G7Q&linkCode=as2&tag=droidyue-23">Shell脚本编程诀窍:适用于Linux、Bash等</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009O49G7Q" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
