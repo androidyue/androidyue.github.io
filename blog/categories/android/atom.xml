@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-07-18T00:24:28+08:00</updated>
+  <updated>2014-07-18T22:37:28+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,177 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[你真的懂么:Android中删除Preference]]></title>
+    <link href="http://droidyue.com/blog/2014/07/18/remove-a-preference-from-the-screen/"/>
+    <updated>2014-07-18T20:50:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/18/remove-a-preference-from-the-screen</id>
+    <content type="html"><![CDATA[<p>Android的设置界面实现比较简单,有时甚至只需要使用一个简单的xml文件即可.声明简单,但是如何从PreferenceScreen或者PreferenceCategory中删除一个Preference会简单么.为什么有些人写的就无法删除成功呢?本文将从Android源码实现来分析一下.</p>
+
+<!--more-->
+
+
+<h2>声明文件</h2>
+
+<p>```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;PreferenceScreen xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>android:key="root"&gt;
+
+&lt;PreferenceCategory 
+    android:key="theme" 
+    android:title="Theme"
+    android:summary="Theme Settings"
+    &gt;
+    &lt;CheckBoxPreference
+        android:key="holo_theme"
+        android:title="Holo Theme"
+        android:summary="Use Holo Theme"
+        /&gt;
+
+&lt;/PreferenceCategory&gt;
+
+&lt;CheckBoxPreference
+    android:key="rmcache"
+    android:title="Auto Clear Cache"
+    android:summary="Enable Auto Clear Cache "
+    /&gt;
+</code></pre>
+
+<p></PreferenceScreen>
+```</p>
+
+<h2>层级关系</h2>
+
+<p><img class="<a" src="href="http://droidyueimg.qiniudn.com/preference_family_tree.png">http://droidyueimg.qiniudn.com/preference_family_tree.png</a>" title="preferece family tree" ></p>
+
+<h2>删除Preference</h2>
+
+<ul>
+<li><p>删除key为rmcache的Preference,这个Preference是PreferenceScreen root的子节点.
+<code>java
+PreferenceScreen screen = getPreferenceScreen();
+CheckBoxPreference autoClearCheckboxPref = (CheckBoxPreference) screen.findPreference("rmcache");
+screen.removePreference(autoClearCheckboxPref);
+</code></p></li>
+<li><p>删除key为holo_theme的Preference,其为PreferenceScreen root的孙子节点,非直接关系.
+<code>java
+PreferenceCategory themePrefCategory = (PreferenceCategory) screen.findPreference("theme");
+CheckBoxPreference holoCheckboxPref = (CheckBoxPreference)themePrefCategory.findPreference("holo_theme");
+themePrefCategory.removePreference(holoCheckboxPref);
+</code></p>
+
+<h2>为什么删除失败</h2>
+
+很多人出现了删除失败的问题,主要原因是使用了非父亲节点来删除,比如这样
+<code>java
+PreferenceScreen screen = getPreferenceScreen();
+CheckBoxPreference holoCheckboxPref = (CheckBoxPreference)screen.findPreference("holo_theme");
+screen.removePreference(holoCheckboxPref);
+</code>
+PreferenceGroup删除实现,其实PreferenceScreen和PreferenceCategory都是PreferenceGroup的子类.
+```java
+/**
+
+<ul>
+<li>Removes a {@link Preference} from this group.</li>
+<li></li>
+<li>@param preference The preference to remove.</li>
+<li>@return Whether the preference was found and removed.
+*/
+public boolean removePreference(Preference preference) {
+ final boolean returnValue = removePreferenceInt(preference);
+ notifyHierarchyChanged();
+ return returnValue;
+}</li>
+</ul>
+
+
+<p>private boolean removePreferenceInt(Preference preference) {
+    synchronized(this) {
+        preference.onPrepareForRemoval();
+        return mPreferenceList.remove(preference);
+    }
+}
+```
+而mPreferenceList中存放的都是当前PreferenceGroup的直接子Preference.</p></li>
+</ul>
+
+
+<h2>findPreference实现</h2>
+
+<p>findPreference查找不仅仅限于直接子Preference,会遍历其所有的子Preference.</p>
+
+<p>所以代码中同样有root PreferenceGroup和直接父PreferenceGroup引用时,通常后者效率会高.
+```java</p>
+
+<pre><code>/**
+ * Finds a {@link Preference} based on its key. If two {@link Preference}
+ * share the same key (not recommended), the first to appear will be
+ * returned (to retrieve the other preference with the same key, call this
+ * method on the first preference). If this preference has the key, it will
+ * not be returned.
+ * &lt;p&gt;
+ * This will recursively search for the preference into children that are
+ * also {@link PreferenceGroup PreferenceGroups}.
+ * 
+ * @param key The key of the preference to retrieve.
+ * @return The {@link Preference} with the key, or null.
+ */
+public Preference findPreference(CharSequence key) {
+    if (TextUtils.equals(getKey(), key)) {
+        return this;
+    }
+    final int preferenceCount = getPreferenceCount();
+    for (int i = 0; i &lt; preferenceCount; i++) {
+        final Preference preference = getPreference(i);
+        final String curKey = preference.getKey();
+
+        if (curKey != null &amp;&amp; curKey.equals(key)) {
+            return preference;
+        }
+
+        if (preference instanceof PreferenceGroup) {
+            final Preference returnedPreference = ((PreferenceGroup)preference)
+                    .findPreference(key);
+            if (returnedPreference != null) {
+                return returnedPreference;
+            }
+        }
+    }
+
+    return null;
+}
+</code></pre>
+
+<p>```</p>
+
+<h2>findPreference和removePreference实现比较</h2>
+
+<p>为什么findPreference遍历所有的子节点,而removePreference不会,只会删除直接子Preference</p>
+
+<h3>原因有以下几点:</h3>
+
+<ul>
+<li>findPreference支持遍历查找,减少了声明诸多的中间PreferenceGroup代码.而findPreference属于常用接口方法.</li>
+<li>removePreference调用较少.</li>
+<li>当存在key相同的Preference时,如果removePreference不限定直接子Preference,那么无法准确删除哪一个.</li>
+</ul>
+
+
+<hr />
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00CJ368JS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00CJ368JS&linkCode=as2&tag=droidyue-23">Android的设计与实现</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00CJ368JS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[自定义控件进阶:declare-styleable重用attr]]></title>
@@ -387,142 +558,6 @@ pm.clearPackagePreferredActivities(mContext.getPackageName());
 
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[顶部带进度条的Webview]]></title>
-    <link href="http://droidyue.com/blog/2014/07/12/ding-bu-dai-jin-du-tiao-de-webview/"/>
-    <updated>2014-07-12T21:34:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/12/ding-bu-dai-jin-du-tiao-de-webview</id>
-    <content type="html"><![CDATA[<p>写这篇文章,做份备忘,简单滴展示一个带进度条的Webview示例,进度条位于Webview上面.</p>
-
-<p>示例图如下</p>
-
-<!--more-->
-
-
-<p><img class="<a" src="href="http://droidyueimg.qiniudn.com/webview_with_progressbar.png">http://droidyueimg.qiniudn.com/webview_with_progressbar.png</a>" title="webview_with_progressbar" ></p>
-
-<h3>主Activity代码</h3>
-
-<p>```java
-package com.droidyue.demo.webviewprogressbar;
-import android.app.Activity;
-import android.os.Bundle;
-import android.view.Menu;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.webkit.WebChromeClient;
-import android.webkit.WebView;
-import android.widget.ProgressBar;</p>
-
-<p>import com.droidyue.demo.webviewprogressbar.R;</p>
-
-<p>public class MainActivity extends Activity {</p>
-
-<pre><code>@Override
-protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
-    final ProgressBar bar = (ProgressBar)findViewById(R.id.myProgressBar);
-
-    final WebView webView = (WebView)findViewById(R.id.myWebView);
-    webView.setWebChromeClient(new WebChromeClient() {
-
-        @Override
-        public void onProgressChanged(WebView view, int newProgress) {
-            if (newProgress == 100) {
-                bar.setVisibility(View.INVISIBLE);
-            } else {
-                if (View.INVISIBLE == bar.getVisibility()) {
-                    bar.setVisibility(View.VISIBLE);
-                }
-                bar.setProgress(newProgress);
-            }
-            super.onProgressChanged(view, newProgress);
-        }
-
-    });
-
-    findViewById(R.id.myButton).setOnClickListener(new OnClickListener() {
-
-        @Override
-        public void onClick(View arg0) {
-            webView.reload();
-        }
-
-    });
-    final String url = "http://droidyue.com";
-    webView.loadUrl(url);
-}
-
-
-@Override
-public boolean onCreateOptionsMenu(Menu menu) {
-    getMenuInflater().inflate(R.menu.main, menu);
-    return true;
-}
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<h3>布局文件代码</h3>
-
-<p>```xml
-&lt;RelativeLayout xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
-
-<pre><code>xmlns:tools="http://schemas.android.com/tools"
-android:layout_width="match_parent"
-android:layout_height="match_parent"
-android:paddingBottom="@dimen/activity_vertical_margin"
-android:paddingLeft="@dimen/activity_horizontal_margin"
-android:paddingRight="@dimen/activity_horizontal_margin"
-android:paddingTop="@dimen/activity_vertical_margin"
-tools:context=".MainActivity" &gt;
-
-&lt;Button 
-    android:id="@+id/myButton"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:text="Reload"
-    /&gt;
-
-&lt;ProgressBar 
-    style="?android:attr/progressBarStyleHorizontal"
-    android:id="@+id/myProgressBar"
-    android:layout_below="@id/myButton"
-    android:layout_width="match_parent"
-    android:layout_height="5px"
-    /&gt;
-&lt;WebView 
-    android:id="@+id/myWebView"
-    android:layout_below="@id/myProgressBar"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    /&gt;
-</code></pre>
-
-<p></RelativeLayout></p>
-
-<p><code>
-不要忘记在Mainfest加入使用网络权限哟.
-</code>xml
-&lt;uses-permission android:name=&ldquo;android.permission.INTERNET&rdquo;/>
-```</p>
-
-<p>实现很简单,没什么技术含量.备忘而已.</p>
-
-<p>关于如何自定义进度条请参考:<a href="http://winwyf.blog.51cto.com/4561999/857867" target="_blank"><a href="http://winwyf.blog.51cto.com/4561999/857867">http://winwyf.blog.51cto.com/4561999/857867</a></a></p>
-
-<h3>Others</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>

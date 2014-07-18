@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-07-18T00:24:28+08:00</updated>
+  <updated>2014-07-18T22:37:28+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,340 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[你真的懂么:Android中删除Preference]]></title>
+    <link href="http://droidyue.com/blog/2014/07/18/remove-a-preference-from-the-screen/"/>
+    <updated>2014-07-18T20:50:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/18/remove-a-preference-from-the-screen</id>
+    <content type="html"><![CDATA[<p>Android的设置界面实现比较简单,有时甚至只需要使用一个简单的xml文件即可.声明简单,但是如何从PreferenceScreen或者PreferenceCategory中删除一个Preference会简单么.为什么有些人写的就无法删除成功呢?本文将从Android源码实现来分析一下.</p>
+
+<!--more-->
+
+
+<h2>声明文件</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
+</span><span class='line'><span class="nt">&lt;PreferenceScreen</span> <span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
+</span><span class='line'>    <span class="na">android:key=</span><span class="s">&quot;root&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nt">&lt;PreferenceCategory</span>
+</span><span class='line'>      <span class="na">android:key=</span><span class="s">&quot;theme&quot;</span>
+</span><span class='line'>      <span class="na">android:title=</span><span class="s">&quot;Theme&quot;</span>
+</span><span class='line'>      <span class="na">android:summary=</span><span class="s">&quot;Theme Settings&quot;</span>
+</span><span class='line'>      <span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;CheckBoxPreference</span>
+</span><span class='line'>          <span class="na">android:key=</span><span class="s">&quot;holo_theme&quot;</span>
+</span><span class='line'>          <span class="na">android:title=</span><span class="s">&quot;Holo Theme&quot;</span>
+</span><span class='line'>          <span class="na">android:summary=</span><span class="s">&quot;Use Holo Theme&quot;</span>
+</span><span class='line'>          <span class="nt">/&gt;</span>
+</span><span class='line'>      
+</span><span class='line'>  <span class="nt">&lt;/PreferenceCategory&gt;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="nt">&lt;CheckBoxPreference</span>
+</span><span class='line'>      <span class="na">android:key=</span><span class="s">&quot;rmcache&quot;</span>
+</span><span class='line'>      <span class="na">android:title=</span><span class="s">&quot;Auto Clear Cache&quot;</span>
+</span><span class='line'>      <span class="na">android:summary=</span><span class="s">&quot;Enable Auto Clear Cache &quot;</span>
+</span><span class='line'>      <span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/PreferenceScreen&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>层级关系</h2>
+
+<p><img src="http://droidyueimg.qiniudn.com/preference_family_tree.png" title="preferece family tree" ></p>
+
+<h2>删除Preference</h2>
+
+<ul>
+<li>删除key为rmcache的Preference,这个Preference是PreferenceScreen root的子节点.</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">PreferenceScreen</span> <span class="n">screen</span> <span class="o">=</span> <span class="n">getPreferenceScreen</span><span class="o">();</span>
+</span><span class='line'><span class="n">CheckBoxPreference</span> <span class="n">autoClearCheckboxPref</span> <span class="o">=</span> <span class="o">(</span><span class="n">CheckBoxPreference</span><span class="o">)</span> <span class="n">screen</span><span class="o">.</span><span class="na">findPreference</span><span class="o">(</span><span class="s">&quot;rmcache&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">screen</span><span class="o">.</span><span class="na">removePreference</span><span class="o">(</span><span class="n">autoClearCheckboxPref</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>删除key为holo_theme的Preference,其为PreferenceScreen root的孙子节点,非直接关系.</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">PreferenceCategory</span> <span class="n">themePrefCategory</span> <span class="o">=</span> <span class="o">(</span><span class="n">PreferenceCategory</span><span class="o">)</span> <span class="n">screen</span><span class="o">.</span><span class="na">findPreference</span><span class="o">(</span><span class="s">&quot;theme&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">CheckBoxPreference</span> <span class="n">holoCheckboxPref</span> <span class="o">=</span> <span class="o">(</span><span class="n">CheckBoxPreference</span><span class="o">)</span><span class="n">themePrefCategory</span><span class="o">.</span><span class="na">findPreference</span><span class="o">(</span><span class="s">&quot;holo_theme&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">themePrefCategory</span><span class="o">.</span><span class="na">removePreference</span><span class="o">(</span><span class="n">holoCheckboxPref</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>为什么删除失败</h2>
+
+<p>很多人出现了删除失败的问题,主要原因是使用了非父亲节点来删除,比如这样</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">PreferenceScreen</span> <span class="n">screen</span> <span class="o">=</span> <span class="n">getPreferenceScreen</span><span class="o">();</span>
+</span><span class='line'><span class="n">CheckBoxPreference</span> <span class="n">holoCheckboxPref</span> <span class="o">=</span> <span class="o">(</span><span class="n">CheckBoxPreference</span><span class="o">)</span><span class="n">screen</span><span class="o">.</span><span class="na">findPreference</span><span class="o">(</span><span class="s">&quot;holo_theme&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">screen</span><span class="o">.</span><span class="na">removePreference</span><span class="o">(</span><span class="n">holoCheckboxPref</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>PreferenceGroup删除实现,其实PreferenceScreen和PreferenceCategory都是PreferenceGroup的子类.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>   <span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * Removes a {@link Preference} from this group.</span>
+</span><span class='line'><span class="cm">     * </span>
+</span><span class='line'><span class="cm">     * @param preference The preference to remove.</span>
+</span><span class='line'><span class="cm">     * @return Whether the preference was found and removed.</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">removePreference</span><span class="o">(</span><span class="n">Preference</span> <span class="n">preference</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">returnValue</span> <span class="o">=</span> <span class="n">removePreferenceInt</span><span class="o">(</span><span class="n">preference</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">notifyHierarchyChanged</span><span class="o">();</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">returnValue</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kt">boolean</span> <span class="nf">removePreferenceInt</span><span class="o">(</span><span class="n">Preference</span> <span class="n">preference</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">synchronized</span><span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">preference</span><span class="o">.</span><span class="na">onPrepareForRemoval</span><span class="o">();</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">mPreferenceList</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">preference</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>而mPreferenceList中存放的都是当前PreferenceGroup的直接子Preference.</p>
+
+<h2>findPreference实现</h2>
+
+<p>findPreference查找不仅仅限于直接子Preference,会遍历其所有的子Preference.</p>
+
+<p>所以代码中同样有root PreferenceGroup和直接父PreferenceGroup引用时,通常后者效率会高.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Finds a {@link Preference} based on its key. If two {@link Preference}</span>
+</span><span class='line'><span class="cm"> * share the same key (not recommended), the first to appear will be</span>
+</span><span class='line'><span class="cm"> * returned (to retrieve the other preference with the same key, call this</span>
+</span><span class='line'><span class="cm"> * method on the first preference). If this preference has the key, it will</span>
+</span><span class='line'><span class="cm"> * not be returned.</span>
+</span><span class='line'><span class="cm"> * &lt;p&gt;</span>
+</span><span class='line'><span class="cm"> * This will recursively search for the preference into children that are</span>
+</span><span class='line'><span class="cm"> * also {@link PreferenceGroup PreferenceGroups}.</span>
+</span><span class='line'><span class="cm"> * </span>
+</span><span class='line'><span class="cm"> * @param key The key of the preference to retrieve.</span>
+</span><span class='line'><span class="cm"> * @return The {@link Preference} with the key, or null.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">Preference</span> <span class="nf">findPreference</span><span class="o">(</span><span class="n">CharSequence</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">TextUtils</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">getKey</span><span class="o">(),</span> <span class="n">key</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="k">this</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="kt">int</span> <span class="n">preferenceCount</span> <span class="o">=</span> <span class="n">getPreferenceCount</span><span class="o">();</span>
+</span><span class='line'>    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">preferenceCount</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="n">Preference</span> <span class="n">preference</span> <span class="o">=</span> <span class="n">getPreference</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="n">String</span> <span class="n">curKey</span> <span class="o">=</span> <span class="n">preference</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">curKey</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">curKey</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">key</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">preference</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">preference</span> <span class="k">instanceof</span> <span class="n">PreferenceGroup</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kd">final</span> <span class="n">Preference</span> <span class="n">returnedPreference</span> <span class="o">=</span> <span class="o">((</span><span class="n">PreferenceGroup</span><span class="o">)</span><span class="n">preference</span><span class="o">)</span>
+</span><span class='line'>                    <span class="o">.</span><span class="na">findPreference</span><span class="o">(</span><span class="n">key</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">returnedPreference</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">returnedPreference</span><span class="o">;</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>findPreference和removePreference实现比较</h2>
+
+<p>为什么findPreference遍历所有的子节点,而removePreference不会,只会删除直接子Preference</p>
+
+<h3>原因有以下几点:</h3>
+
+<ul>
+<li>findPreference支持遍历查找,减少了声明诸多的中间PreferenceGroup代码.而findPreference属于常用接口方法.</li>
+<li>removePreference调用较少.</li>
+<li>当存在key相同的Preference时,如果removePreference不限定直接子Preference,那么无法准确删除哪一个.</li>
+</ul>
+
+
+<hr />
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00CJ368JS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00CJ368JS&linkCode=as2&tag=droidyue-23">Android的设计与实现</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00CJ368JS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[退订招商银行广告邮件那些事]]></title>
+    <link href="http://droidyue.com/blog/2014/07/18/unsubscribe-cmb-ad-dm/"/>
+    <updated>2014-07-18T13:44:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/18/unsubscribe-cmb-ad-dm</id>
+    <content type="html"><![CDATA[<p>自从办理信用卡留下了我的gmail邮箱之后,就偶尔收到招商银行的购物类的广告邮件,发现没有多大的用处,于是就决定清理掉.谁知逆天的是,它的退订简直是不能用.</p>
+
+<!--more-->
+
+
+<h2>招商银行购物类邮件</h2>
+
+<p>购物类广告邮件大概长成这个样子
+<img src="http://droidyueimg.qiniudn.com/cmb_ad_mail.png" title="CMB Ads DM" ></p>
+
+<h2>无法退订!!!</h2>
+
+<p>当我点击邮件中的退订链接,逆天了,这简直是没有人测试啊
+<img src="http://droidyueimg.qiniudn.com/cmb_ad_mail_unsubscribe_page.png" title="CMB unsubscripe page" ></p>
+
+<h2>能难倒程序员么</h2>
+
+<p>这段代码简直是太简单了</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">subEml</span><span class="p">(</span><span class="nx">flag</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">param</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">search</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="nx">flag</span> <span class="o">==</span> <span class="kc">true</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">url</span> <span class="o">=</span> <span class="s2">&quot;https://pbdw.ebank.cmbchina.com/edm/servlet/ExtImageServlet&quot;</span> <span class="o">+</span> <span class="nx">param</span><span class="p">;</span>
+</span><span class='line'>    <span class="nb">document</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">href</span> <span class="o">=</span> <span class="nx">url</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nb">window</span><span class="p">.</span><span class="nx">close</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>看一下<code>window.location.search</code>,结果就是get请求参数
+<img src="http://droidyueimg.qiniudn.com/cmb_ad_mail_params.png" title="cmb ad mail params" ></p>
+
+<h2>解决方法</h2>
+
+<h3>技术宅能听懂的</h3>
+
+<p>其实讲到这里,怎么做你懂得.</p>
+
+<p>将<code>window.location.search</code>得到的值,拼接<code>https://pbdw.ebank.cmbchina.com/edm/servlet/ExtImageServlet</code>,然后进行一个get请求即可.</p>
+
+<h3>小白能听懂的</h3>
+
+<p>点击退订链接后,地址然会有类似<a href="https://pbdw.ebank.cmbchina.com/cbmresource/22/unsub/unSubEml.html?CALL=DMZ_UNSUBINFO">https://pbdw.ebank.cmbchina.com/cbmresource/22/unsub/unSubEml.html?CALL=DMZ_UNSUBINFO</a> 这样的链接,从问号(包含)开始选择到结尾,复制,然后将复制的放在 <a href="https://pbdw.ebank.cmbchina.com/edm/servlet/ExtImageServlet">https://pbdw.ebank.cmbchina.com/edm/servlet/ExtImageServlet</a> 后面,将组合后的地址复制然后粘贴到地址栏按回车就可以了.</p>
+
+<h2>退订成功的标志</h2>
+
+<p>再一次无语的退订成功的界面
+<img src="http://droidyueimg.qiniudn.com/cmb_ad_mail_unsubscribe_result.png" title="cmd ad mail unsubscribed result" ></p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00JRUE7VW/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00JRUE7VW&linkCode=as2&tag=droidyue-23">白岩松:行走在爱与恨之间</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00JRUE7VW" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00KVZ5FBI/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KVZ5FBI&linkCode=as2&tag=droidyue-23">时寒冰说:未来二十年,经济大趋势(现实篇)</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00KVZ5FBI" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[tar time stamp in the future 问题解决]]></title>
@@ -2619,190 +2953,6 @@ Handle a confirmation response from the user.</p></blockquote>
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B008AGPWKO/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008AGPWKO&linkCode=as2&tag=droidyue-23">新日本语能力测试50天逐级突破N5、N4、N3:阅读天天做</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B008AGPWKO" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B0036CWCEG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0036CWCEG&linkCode=as2&tag=droidyue-23">新日本语能力考试N4语法解说篇</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0036CWCEG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[为Android程序申请权限注意]]></title>
-    <link href="http://droidyue.com/blog/2014/07/04/attentions-when-adding-permission-for-android-application/"/>
-    <updated>2014-07-04T14:54:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/04/attentions-when-adding-permission-for-android-application</id>
-    <content type="html"><![CDATA[<p>Android系统提供为程序提供了权限申请,即在manifest中使用<strong>uses-permission</strong>来申请即可.实现起来非常简单,但是有些问题会随之浮出水面. 常见的现象是,有时候新加一个权限,(在Google Play上)程序显示的支持的设备会减少.</p>
-
-<!--more-->
-
-
-<h2>为什么权限越多,支持设备越少</h2>
-
-<p>因为有些权限隐式地需要feature,即当你显示使用<strong>uses-permission</strong>,会默认地为程序加入<strong>uses-feature</strong>.     <br/>
-而Android以及Google Play判断是否可以安装和现实的依据是,设备包含的system features是否完全包含程序申请的全部features.    <strong>只有在全部满足了程序需要的feature的设备上才可以展示并安装</strong>.</p>
-
-<h2>如何查看程序使用了哪些features</h2>
-
-<p>使用<strong>aapt dump badging your_apk_file_path</strong>,具体可以参考<a href="http://droidyue.com/blog/2013/12/03/get-an-application-required-features/">获取程序需要的features</a></p>
-
-<h2>如何查看设备具有的features</h2>
-
-<p>Android提供了该API,具体参考<a href="http://droidyue.com/blog/2013/12/03/get-android-system-available-features/">获取系统支持的features</a></p>
-
-<h2>举个例子</h2>
-
-<p>我们在程序manifest加入一行申请摄像头的权限.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;uses-permission</span> <span class="na">android:name=</span><span class="s">&quot;android.permission.CAMERA&quot;</span> <span class="nt">/&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>然后查看程序加入的feature</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>14:29 <span class="nv">$ </span>aapt dump badging PermissionDemo.apk | grep uses-feature
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>我们就会发现,这两个权限是新加的</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>uses-feature:<span class="s1">&#39;android.hardware.camera&#39;</span>
-</span><span class='line'>uses-feature:<span class="s1">&#39;android.hardware.camera.autofocus&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>解决问题:如何加权限,不减少支持设备</h2>
-
-<p>如果你增加的权限并且及引入的feature不是必须使用的,可以显示地将该feature设置为不需要.继续上面的例子.在manifest中加入</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;uses-feature</span> <span class="na">android:name=</span><span class="s">&quot;android.hardware.camera.autofocus&quot;</span> <span class="na">android:required=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'><span class="nt">&lt;uses-feature</span> <span class="na">android:name=</span><span class="s">&quot;android.hardware.camera&quot;</span> <span class="na">android:required=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>重新生成程序.再次查看需要的权限.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>14:29 <span class="nv">$ </span>aapt dump badging PermissionDemo.apk | grep uses-feature
-</span><span class='line'>uses-feature-not-required:<span class="s1">&#39;android.hardware.camera.autofocus&#39;</span>
-</span><span class='line'>uses-feature-not-required:<span class="s1">&#39;android.hardware.camera&#39;</span>
-</span><span class='line'>uses-feature:<span class="s1">&#39;android.hardware.touchscreen&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>就这样,可以做到增加权限,同时保证支持设备不减少.</p>
-
-<h2>Show Me The Code</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;manifest</span> <span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-</span><span class='line'>    <span class="na">package=</span><span class="s">&quot;com.droidyue.demo.permission&quot;</span>
-</span><span class='line'>    <span class="na">android:versionCode=</span><span class="s">&quot;1&quot;</span>
-</span><span class='line'>    <span class="na">android:versionName=</span><span class="s">&quot;1.0&quot;</span> <span class="nt">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;uses-permission</span> <span class="na">android:name=</span><span class="s">&quot;android.permission.CAMERA&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;uses-feature</span> <span class="na">android:name=</span><span class="s">&quot;android.hardware.camera.autofocus&quot;</span> <span class="na">android:required=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;uses-feature</span> <span class="na">android:name=</span><span class="s">&quot;android.hardware.camera&quot;</span> <span class="na">android:required=</span><span class="s">&quot;false&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;uses-sdk</span>
-</span><span class='line'>        <span class="na">android:minSdkVersion=</span><span class="s">&quot;8&quot;</span>
-</span><span class='line'>        <span class="na">android:targetSdkVersion=</span><span class="s">&quot;19&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;application</span>
-</span><span class='line'>        <span class="na">android:allowBackup=</span><span class="s">&quot;true&quot;</span>
-</span><span class='line'>        <span class="na">android:icon=</span><span class="s">&quot;@drawable/ic_launcher&quot;</span>
-</span><span class='line'>        <span class="na">android:label=</span><span class="s">&quot;@string/app_name&quot;</span>
-</span><span class='line'>        <span class="na">android:theme=</span><span class="s">&quot;@style/AppTheme&quot;</span> <span class="nt">&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/application&gt;</span>
-</span><span class='line'><span class="nt">&lt;/manifest&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>延伸阅读</h2>
-
-<ul>
-<li><a href="http://developer.android.com/guide/topics/manifest/uses-feature-element.html#permissions">http://developer.android.com/guide/topics/manifest/uses-feature-element.html#permissions</a></li>
-</ul>
-
-
-<h2>推荐</h2>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00CE1JQO4/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00CE1JQO4&linkCode=as2&tag=droidyue-23">Android 4高级编程</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00CE1JQO4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00J4DXWDG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00J4DXWDG&linkCode=as2&tag=droidyue-23">Android编程权威指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00J4DXWDG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Gitlab开启Commit中comments通知]]></title>
-    <link href="http://droidyue.com/blog/2014/07/03/receive-notifications-when-comments-for-commits-are-created-in-gitlab/"/>
-    <updated>2014-07-03T20:58:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/03/receive-notifications-when-comments-for-commits-are-created-in-gitlab</id>
-    <content type="html"><![CDATA[<p>团队中使用Gitlab来管理代码,带来了很大的效率提高.于是就这样边使用边摸索着了解gitlab的功能.今天解决了一个关于通知的问题.
-在gitlab中很常见的一个功能就是对代码增加评论,如下图所示.</p>
-
-<!--more-->
-
-
-<p><img src="http://droidyueimg.qiniudn.com/add_commit_comments.png">
-那么,我增加了评论对方为什么收不到呢? 如果不支持对方收到,那么评论这样的代码审核还有什么太大的效率呢? 实际上对方是能否收到的,只是需要设置一下对方接受通知的级别.</p>
-
-<h3>如下修改</h3>
-
-<p>让对方(建议是项目的全体开发)登陆,然后选择个人资料
-<img src="http://droidyueimg.qiniudn.com/login_user_profile.png">
-选择Notification项目,设置Notification Level为Watch.
-<img src="http://droidyueimg.qiniudn.com/set_notify_level_global.png">
-以上即可搞定.然后有修改后就能收到邮件通知了。</p>
-
-<p>&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;实现和完美的分割线&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;</p>
-
-<h3>单独设置组的Notification Level</h3>
-
-<p><img src="http://droidyueimg.qiniudn.com/set_notify_level_group.png"></p>
-
-<h3>单独设置工程的Notification Level</h3>
-
-<p><img src="http://droidyueimg.qiniudn.com/set_notify_level_group.png"></p>
-
-<h2>延伸链接</h2>
-
-<ul>
-<li><a href="https://about.gitlab.com/">https://about.gitlab.com/</a></li>
-</ul>
-
-
-<h2>推荐</h2>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00DSZVXH8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00DSZVXH8&linkCode=as2&tag=droidyue-23">Git版本控制</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00DSZVXH8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
