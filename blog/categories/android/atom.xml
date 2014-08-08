@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-08-07T22:12:17+08:00</updated>
+  <updated>2014-08-08T21:51:06+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,210 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[赶走那些Android工程中得冗余字符串]]></title>
+    <link href="http://droidyue.com/blog/2014/08/08/remove-repeated-string-resources-in-android-project/"/>
+    <updated>2014-08-08T19:32:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/08/08/remove-repeated-string-resources-in-android-project</id>
+    <content type="html"><![CDATA[<p>Android提供了一套很方便的进行资源（语言）国际化机制，为了更好地支持多语言，很多工程的翻译往往会放到类似crowdin这样的平台上。资源是全了，但是还是会有一些问题。</p>
+
+<!--more-->
+
+
+<h2>哪些问题</h2>
+
+<p>以下使用一些语言进行举例。其中values为工程默认的资源。</p>
+
+<ul>
+<li>某语言的资源和某语言限定区域的资源之间。如<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，这种表现最为严重。</li>
+<li>某语言的资源和默认的资源之间。<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串，可能原因是由于<strong>values-fr</strong>存在未翻译字符串导致</li>
+</ul>
+
+
+<h2>为什么要去重</h2>
+
+<ul>
+<li>洁癖，容不下半点冗余。</li>
+</ul>
+
+
+<h2>解决思路</h2>
+
+<ul>
+<li><p>如果<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，去除<strong>values-fr-rCA</strong>中的重复字符串，保留<strong>values-fr</strong>。这样可以保证在values-fr-rCA下也可以正确读取到资源。</p></li>
+<li><p>如果<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串。如去除<strong>values-fr</strong>中得重复字符串，保留values的条目。</p></li>
+</ul>
+
+
+<h2>Py脚本</h2>
+
+<p>```python filenos:false removeRepeatedStrings.py <a href="https://raw.githubusercontent.com/androidyue/DroidResCleaner/master/removeRepeatedStrings.py">https://raw.githubusercontent.com/androidyue/DroidResCleaner/master/removeRepeatedStrings.py</a></p>
+
+<h1>!/usr/bin/env python</h1>
+
+<h1>coding=utf-8</h1>
+
+<p>from os import listdir,path, system
+from sys import argv
+try:</p>
+
+<pre><code>import xml.etree.cElementTree as ET
+</code></pre>
+
+<p>except ImportError:</p>
+
+<pre><code>import xml.etree.ElementTree as ET
+</code></pre>
+
+<p>def genRegionLangPair(filePath):</p>
+
+<pre><code>basicLanguage = None
+if ('values' in filePath) :
+    hasRegionLimit = ('r' == filePath[-3:-2])
+    if (hasRegionLimit):
+        basicLanguage = filePath[0:-4]
+        if (not path.exists(basicLanguage)) :
+            return None 
+        belongsToEnglish =  ("values-en" in basicLanguage)
+        if (belongsToEnglish):
+            #Compare with the res/values/strings.xml
+            return (path.dirname(basicLanguage) + '/values/strings.xml', filePath + "/strings.xml")
+        else:
+            return (basicLanguage + '/strings.xml', filePath + "/strings.xml")
+return None
+</code></pre>
+
+<p>def genLangPair(filePath):</p>
+
+<pre><code>def shouldGenLanPair(filePath):
+    if (not 'values' in filePath ):
+        return False
+    if('dpi' in filePath):
+        return False
+    if ('dimes' in filePath):
+        return False
+    if ('large' in filePath):
+        return False 
+    return True
+
+if(shouldGenLanPair(filePath)):
+    basicLanguage = path.dirname(filePath) + '/values/strings.xml'
+    targetLanguage = filePath + '/strings.xml'
+    if (not path.exists(targetLanguage)):
+       return None 
+
+    if (not path.samefile(basicLanguage,targetLanguage)) :
+        return (basicLanguage, targetLanguage)
+return None
+</code></pre>
+
+<p>def genCompareList(filePath):</p>
+
+<pre><code>compareLists = []
+for file in listdir(filePath):
+    regionPair = genRegionLangPair(filePath + '/' + file)
+    if (None != regionPair):
+        compareLists.append(regionPair)
+
+    languagePair = genLangPair(filePath + '/' + file) 
+    if (None != languagePair) :
+        compareLists.append(languagePair)
+
+return compareLists
+</code></pre>
+
+<p>def getXmlEntries(filePath):</p>
+
+<pre><code>root = ET.ElementTree(file=filePath).getroot()
+entries = {}
+for child in root:
+    attrib = child.attrib
+    if (None != attrib) :
+        entries[attrib.get('name')] = child.text
+print 'xmlEntriesCount',len(entries)
+return entries
+</code></pre>
+
+<p>def rewriteRegionFile(sourceEntries, filePath):</p>
+
+<pre><code>if (not path.exists(filePath)):
+    return 
+ET.register_namespace('xliff',"urn:oasis:names:tc:xliff:document:1.2")
+tree = ET.ElementTree(file=filePath)
+root = tree.getroot()
+print root
+totalCount = 0
+removeCount = 0
+unRemoveCount = 0
+print len(root)
+toRemoveList = []
+for child in root:
+    totalCount = totalCount + 1
+    attrib = child.attrib
+    if (None == attrib):
+        continue
+
+    childName = attrib.get('name')
+
+    if (sourceEntries.get(childName) == child.text):
+        removeCount = removeCount + 1
+        toRemoveList.append(child)
+    else:
+        unRemoveCount = unRemoveCount + 1
+        print childName, sourceEntries.get(childName), child.text
+print filePath,totalCount, removeCount,unRemoveCount
+
+for aItem in toRemoveList:
+    root.remove(aItem)
+
+if (len(root) != 0 ):
+    tree.write(filePath, encoding="UTF-8")
+else:
+    command = 'rm -rf %s'%(path.dirname(filePath))
+    print command
+    system(command)
+</code></pre>
+
+<p>def main(projectDir):</p>
+
+<pre><code>lists = genCompareList(projectDir + "/res/")
+
+for item in lists:
+    print item
+    src = item[0]
+    dest = item[1]
+    rewriteRegionFile(getXmlEntries(src),dest)
+</code></pre>
+
+<p>if <strong>name</strong> == &ldquo;<strong>main</strong>&rdquo;:</p>
+
+<pre><code>if (len(argv) == 2) :
+    main(argv[1])
+</code></pre>
+
+<p>```</p>
+
+<h2>如何使用</h2>
+
+<p><code>bash filenos:false
+python removeRepeatedStrings.py your_android_project_root_dir
+</code></p>
+
+<h2>工程参与</h2>
+
+<p><a href="https://github.com/androidyue/DroidResCleaner/blob/master/removeRepeatedStrings.py" target="_blank">RemoveRepeatedStrings.py</a></p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00DZEX5JQ/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00DZEX5JQ&linkCode=as2&tag=droidyue-23">控制你行为的秘密</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00DZEX5JQ" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B0090HBORW/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0090HBORW&linkCode=as2&tag=droidyue-23">好工作是设计出来的</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0090HBORW" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B001F7AEFI/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001F7AEFI&linkCode=as2&tag=droidyue-23">原来这才是瑞士多功能军刀</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B001F7AEFI" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[如何从UA分辨出Android设备类型]]></title>
@@ -337,110 +541,6 @@ android:button="@drawable/custom_checkbox"
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B00FQEDTA8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00FQEDTA8&linkCode=as2&tag=droidyue-23">从响应用户交互出发，设计Android的UI</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00FQEDTA8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B009NKMGTG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009NKMGTG&linkCode=as2&tag=droidyue-23">一个都不能少的Android UI基础教程</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009NKMGTG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[捕获Android文本中链接点击事件]]></title>
-    <link href="http://droidyue.com/blog/2014/07/27/capture-link-click-event-in-text-on-android/"/>
-    <updated>2014-07-27T09:33:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/27/capture-link-click-event-in-text-on-android</id>
-    <content type="html"><![CDATA[<p>Android中的TTextView很强大，我们可以不仅可以设置纯文本为其内容，还可以设置包含网址和电子邮件地址的内容，并且使得这些点击可以点击。但是我们可以捕获并控制这些链接的点击事件么，当然是可以的。</p>
-
-<p>本文将一个超级简单的例子介绍一下如何实现在Android TextView　捕获链接的点击事件。</p>
-
-<!--more-->
-
-
-<h2>关键实现</h2>
-
-<p>实现原理就是将所有的URL设置成ClickSpan，然后在它的onClick事件中加入你想要的控制逻辑就可以了。
-```java</p>
-
-<pre><code>private void setLinkClickable(final SpannableStringBuilder clickableHtmlBuilder, 
-        final URLSpan urlSpan) {
-    int start = clickableHtmlBuilder.getSpanStart(urlSpan);
-    int end = clickableHtmlBuilder.getSpanEnd(urlSpan);
-    int flags = clickableHtmlBuilder.getSpanFlags(urlSpan);
-    ClickableSpan clickableSpan = new ClickableSpan() {
-          public void onClick(View view) {
-              //Do something with URL here.
-
-          }
-    };
-    clickableHtmlBuilder.setSpan(clickableSpan, start, end, flags);
-}
-
-private CharSequence getClickableHtml(String html) {
-    Spanned spannedHtml = Html.fromHtml(html);
-    SpannableStringBuilder clickableHtmlBuilder = new SpannableStringBuilder(spannedHtml);
-    URLSpan[] urls = clickableHtmlBuilder.getSpans(0, spannedHtml.length(), URLSpan.class);   
-    for(final URLSpan span : urls) {
-        setLinkClickable(clickableHtmlBuilder, span);
-    }
-    return clickableHtmlBuilder;
-}
-</code></pre>
-
-<p>```</p>
-
-<h2>如何使用</h2>
-
-<p>```java</p>
-
-<pre><code>    TextView myTextView = (TextView)findViewById(R.id.myTextView);
-    String url = "This is a page with lots of URLs. &lt;a href=\"http://droidyue.com\"&gt;droidyue.com&lt;/&gt; " +
-            "This left is a very good blog. There are so many great blogs there. You can find what" +
-            "you want in that blog."  
-            + "The Next Link is &lt;a href=\"http://www.google.com.hk\"&gt;Google HK&lt;/a&gt;";
-    myTextView.setText(getClickableHtml(url));
-</code></pre>
-
-<p>```</p>
-
-<h2>实现自己的控制</h2>
-
-<p>我们需要在ClickSpan的onClick方法中加入自己的控制逻辑，比如我们使用傲游浏览器打开点击的链接。
-```java
-public void onClick(View view) {</p>
-
-<pre><code>Log.i(LOGTAG, "onClick url=" + urlSpan.getURL() );
-Intent intent = new Intent(Intent.ACTION_VIEW);
-intent.setData(Uri.parse(urlSpan.getURL()));
-intent.setPackage("com.mx.browser");
-startActivity(intent);
-</code></pre>
-
-<p>}
-```</p>
-
-<h2>提醒</h2>
-
-<p>不要忘了设置TextView的autoLink属性。
-```xml
-&lt;TextView</p>
-
-<pre><code>android:layout_width="wrap_content"
-android:layout_height="wrap_content"
-android:text="@string/hello_world" 
-android:id="@+id/myTextView"
-android:autoLink="web" 
-</code></pre>
-
-<p>/>
-```</p>
-
-<h2>demo源码</h2>
-
-<p><a href="http://pan.baidu.com/s/1i3kQ1RB" target="_blank">百度云盘</a></p>
-
-<h3>其他</h3>
-
-<ul>
-<li><p><a href="http://www.amazon.cn/gp/product/B00CE1JQO4/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00CE1JQO4&linkCode=as2&tag=droidyue-23">Android中的高级编程部分</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00CE1JQO4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></p></li>
-<li><p><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">精通Android其实并不难</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></p></li>
 </ul>
 
 ]]></content>
