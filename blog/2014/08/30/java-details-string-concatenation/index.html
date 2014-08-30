@@ -1,0 +1,594 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Java细节：字符串的拼接 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Python,Android,Hack,Github,Google,Linux,Mac,日语,日剧,日本,随想,点滴生活" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="工作日忙于项目的逻辑实现，周六有点时间，从书柜里拿出厚厚的英文版Thinking In Java，读到了字符串对象的拼接。参考着这本书做个翻译，加上自己思考的东西，写上这篇文章记录一下。 不可变的String对象 在Java中,String对象是不可变的(Immutable)。在代码中， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.useso.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>Better Than Before</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/values/">作品集</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Java细节：字符串的拼接</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-08-30T18:18:00+08:00" pubdate data-updated="true">Aug 30<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>工作日忙于项目的逻辑实现，周六有点时间，从书柜里拿出厚厚的英文版<em>Thinking In Java</em>，读到了字符串对象的拼接。参考着这本书做个翻译，加上自己思考的东西，写上这篇文章记录一下。</p>
+
+<!--more-->
+
+
+<h2>不可变的String对象</h2>
+
+<p>在Java中,String对象是不可变的(Immutable)。在代码中，可以创建多个某一个String对象的别名。但是这些别名都是的引用是相同的。<br/>
+比如s1和s2都是&#8221;droidyue.com&#8221;对象的别名，别名保存着到真实对象的引用。所以s1 = s2</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">s1</span> <span class="o">=</span> <span class="s">&quot;droidyue.com&quot;</span><span class="o">;</span>
+</span><span class='line'><span class="n">String</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">s1</span><span class="o">;</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;s1 and s2 has the same reference =&quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">s1</span> <span class="o">==</span> <span class="n">s2</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Java中仅有的重载运算符</h2>
+
+<p>在Java中，唯一被重载的运算符就是字符串的拼接相关的。<code>+</code>,<code>+=</code>。除此之外，Java设计者不允许重载其他的运算符。</p>
+
+<h2>拼接剖析</h2>
+
+<h3>真的有性能代价么</h3>
+
+<p>了解了上面两点，可能会有这样的思考，既然Sting对象不可变，那么多个（三个及以上）字符串拼接必然产生多余的中间String对象。</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">&quot;Andy&quot;</span><span class="o">;</span>
+</span><span class='line'><span class="n">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">&quot;24&quot;</span><span class="o">;</span>
+</span><span class='line'><span class="n">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">&quot;Developer&quot;</span><span class="o">;</span>
+</span><span class='line'><span class="n">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>要得到上面的info，就会userName和age拼接生成临时一个String对象t1,内容为<code>Andy24</code>，然后有t1和job拼接生成最终我们需要的info对象，这其中，产生了一个中间的t1，而且t1创建之后，没有主动回收，势必会占一定的空间。如果是一个很多(假设上百个，多见于对对象的toString的调用)字符串的拼接，那么代价就更大了，性能一下会降低很多。</p>
+
+<h3>编译器的优化处理</h3>
+
+<p>真的会有上面的性能代价么，字符串拼接这么常用，没有特殊的处理优化么，答案是有的，这个优化进行在编译器编译.java到bytecode时。</p>
+
+<p>一个Java程序如果想运行起来，需要经过两个时期，编译时和运行时。在编译时，Java 编译器(Compiler)将java文件转换成字节码。在运行时，Java虚拟机（JVM）运行编译时生成的字节码。通过这样两个时期，Java做到了所谓的一处编译，处处运行。</p>
+
+<p>我们实验一下编译期都做了哪些优化，我们制造一段可能会出现性能代价的代码。</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Concatenation</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">&quot;Andy&quot;</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">&quot;24&quot;</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">&quot;Developer&quot;</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">info</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对Concatenation.java进行编译一下。得到Concatenation.class</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>javac Concatenation.java
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后我们使用javap反编译一下编译出来的Concatenation.class文件。<code>javap -c Concatenation.class</code>。如果没有找到javap命令，请考虑将javap所在目录加入环境变量或者使用javap的完整路径。</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:22:04-androidyue~/workspace_adt/strings/src<span class="nv">$ </span>javap -c Concatenation.class
+</span><span class='line'>Compiled from <span class="s2">&quot;Concatenation.java&quot;</span>
+</span><span class='line'>public class Concatenation <span class="o">{</span>
+</span><span class='line'>  public Concatenation<span class="o">()</span>;
+</span><span class='line'>    Code:
+</span><span class='line'>       0: aload_0
+</span><span class='line'>       1: invokespecial <span class="c">#1                  // Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>       4: <span class="k">return        </span>
+</span><span class='line'>
+</span><span class='line'><span class="k">  </span>public static void main<span class="o">(</span>java.lang.String<span class="o">[])</span>;
+</span><span class='line'>    Code:
+</span><span class='line'>       0: ldc           <span class="c">#2                  // String Andy</span>
+</span><span class='line'>       2: astore_1
+</span><span class='line'>       3: ldc           <span class="c">#3                  // String 24</span>
+</span><span class='line'>       5: astore_2
+</span><span class='line'>       6: ldc           <span class="c">#4                  // String Developer</span>
+</span><span class='line'>       8: astore_3
+</span><span class='line'>       9: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class='line'>      12: dup
+</span><span class='line'>      13: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>      16: aload_1
+</span><span class='line'>      17: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      20: aload_2
+</span><span class='line'>      21: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      24: aload_3
+</span><span class='line'>      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+</span><span class='line'>      31: astore        4
+</span><span class='line'>      33: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      36: aload         4
+</span><span class='line'>      38: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      41: <span class="k">return</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中，ldc，astore等为java字节码的指令，类似汇编指令。后面的注释使用了Java相关的内容进行了说明。
+我们可以看到上面有很多StringBuilder,但是我们在Java代码里并没有显示地调用，这就是Java编译器做的优化，当Java编译器遇到字符串拼接的时候，会创建一个StringBuilder对象，后面的拼接，实际上是调用StringBuffer对象的append方法。这样就不会有我们上面担心的问题了。</p>
+
+<h3>仅靠编译器优化？</h3>
+
+<p>既然编译器帮我们做了优化，是不是仅仅依靠编译器的优化就够了呢，当然不是。 <br/>
+下面我们看一段未优化性能较低的代码</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span>  <span class="nf">implicitUseStringBuilder</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">String</span> <span class="n">result</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">result</span> <span class="o">+=</span> <span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">];</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用javac编译，使用javap查看</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>public void implicitUseStringBuilder<span class="o">(</span>java.lang.String<span class="o">[])</span>;
+</span><span class='line'>    Code:
+</span><span class='line'>       0: ldc           <span class="c">#11                 // String </span>
+</span><span class='line'>       2: astore_2
+</span><span class='line'>       3: iconst_0
+</span><span class='line'>       4: istore_3
+</span><span class='line'>       5: iload_3
+</span><span class='line'>       6: aload_1
+</span><span class='line'>       7: arraylength
+</span><span class='line'>       8: if_icmpge     38
+</span><span class='line'>      11: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class='line'>      14: dup
+</span><span class='line'>      15: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>      18: aload_2
+</span><span class='line'>      19: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      22: aload_1
+</span><span class='line'>      23: iload_3
+</span><span class='line'>      24: aaload
+</span><span class='line'>      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+</span><span class='line'>      31: astore_2
+</span><span class='line'>      32: iinc          3, 1
+</span><span class='line'>      35: goto          5
+</span><span class='line'>      38: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      41: aload_2
+</span><span class='line'>      42: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      45: <span class="k">return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中<code>8: if_icmpge     38</code> 和<code>35: goto          5</code>构成了一个循环。<code>8: if_icmpge     38</code>的意思是如果JVM操作数栈的整数对比大于等于（i &lt; values.length的相反结果）成立，则跳到第38行（System.out）。<code>35: goto          5</code>则表示直接跳到第5行。</p>
+
+<p>但是这里面有一个很重要的就是StringBuilder对象创建发生在循环之间，也就是意味着有多少次循环会创建多少个StringBuffer对象，这样明显不好。赤裸裸地低水平代码啊。</p>
+
+<p>稍微优化一下，瞬间提升逼格。</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">explicitUseStringBuider</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">StringBuilder</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringBuilder</span><span class="o">();</span>
+</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">result</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对应的编译后的信息</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>public void explicitUseStringBuider<span class="o">(</span>java.lang.String<span class="o">[])</span>;
+</span><span class='line'>    Code:
+</span><span class='line'>       0: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class='line'>       3: dup
+</span><span class='line'>       4: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>       7: astore_2
+</span><span class='line'>       8: iconst_0
+</span><span class='line'>       9: istore_3
+</span><span class='line'>      10: iload_3
+</span><span class='line'>      11: aload_1
+</span><span class='line'>      12: arraylength
+</span><span class='line'>      13: if_icmpge     30
+</span><span class='line'>      16: aload_2
+</span><span class='line'>      17: aload_1
+</span><span class='line'>      18: iload_3
+</span><span class='line'>      19: aaload
+</span><span class='line'>      20: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      23: pop
+</span><span class='line'>      24: iinc          3, 1
+</span><span class='line'>      27: goto          10
+</span><span class='line'>      30: <span class="k">return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>从上面可以看出，<code>13: if_icmpge     30</code>和<code>27: goto          10</code>构成了一个loop循环，而<code>0: new           #5</code>位于循环之外，所以不会多次创建StringBuffer.</p>
+
+<p>总的来说，我们在循环体中需要尽量避免隐式或者显式创建StringBuffer. 所以哪些了解代码如何编译，内部如何执行的人，写的代码档次都比较高。</p>
+
+<p>以上文章，如有错误，请批评指正 。</p>
+
+<h3>推荐阅读</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011F7WU4&linkCode=as2&tag=droidyue-23">Java编程思想(第4版)</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011F7WU4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B0011C3CVA/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C3CVA&linkCode=as2&tag=droidyue-23">Java编程思想（英文版）</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011C3CVA" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00D2ID4PK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-08-30T18:18:00+08:00" pubdate data-updated="true">Aug 30<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/xi-jie/'>细节</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/08/30/add-exceptions-in-applying-css/" title="Previous Post: 也说CSS之not：为样式加入例外处理">&laquo; 也说CSS之not：为样式加入例外处理</a>
+      
+      
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2014/08/30/java-details-string-concatenation" data-title="Java细节：字符串的拼接" data-url="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/08/30/add-exceptions-in-applying-css/">也说CSS之not：为样式加入例外处理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/08/30/story-thinking-guituisaipao/">龟兔赛跑中为什么要用兔子</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/08/28/nai-form-in-nihongo/">日语中的ない形</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/08/26/write-emails-using-markdown-in-browsers/">工作利器：终于可以使用Markdown写邮件啦</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="http://hao.360.cn/?src=lm&ls=n2e7e17de97" target="_blank">网址导航</a></li>
+    <li><a href="http://www.pcyoyo.com" target="_blank">Pcyoyo</a></li>
+    <li><a href="http://www.dnnode.cn" target="_blank">第恩Web</a></li>
+</ul>
+</section>
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+    <input type="hidden" name="cmd" value="_donations">
+    <input type="hidden" name="business" value="andrewallanwallace@gmail.com">
+    <input type="hidden" name="lc" value="US">
+    <input type="hidden" name="item_name" value="droiyue blog">
+    <input type="hidden" name="no_note" value="0">
+    <input type="hidden" name="currency_code" value="USD">
+    <input type="hidden" name="bn" value="PP-DonationsBF:btn_donateCC_LG.gif:NonHostedGuest">
+    <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+    <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+</form>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>

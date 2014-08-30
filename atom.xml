@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-08-30T11:48:37+08:00</updated>
+  <updated>2014-08-30T18:34:47+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,329 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Java细节：字符串的拼接]]></title>
+    <link href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/"/>
+    <updated>2014-08-30T18:18:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/08/30/java-details-string-concatenation</id>
+    <content type="html"><![CDATA[<p>工作日忙于项目的逻辑实现，周六有点时间，从书柜里拿出厚厚的英文版<em>Thinking In Java</em>，读到了字符串对象的拼接。参考着这本书做个翻译，加上自己思考的东西，写上这篇文章记录一下。</p>
+
+<!--more-->
+
+
+<h2>不可变的String对象</h2>
+
+<p>在Java中,String对象是不可变的(Immutable)。在代码中，可以创建多个某一个String对象的别名。但是这些别名都是的引用是相同的。<br/>
+比如s1和s2都是&#8221;droidyue.com&#8221;对象的别名，别名保存着到真实对象的引用。所以s1 = s2</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">s1</span> <span class="o">=</span> <span class="s">&quot;droidyue.com&quot;</span><span class="o">;</span>
+</span><span class='line'><span class="n">String</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">s1</span><span class="o">;</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;s1 and s2 has the same reference =&quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">s1</span> <span class="o">==</span> <span class="n">s2</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Java中仅有的重载运算符</h2>
+
+<p>在Java中，唯一被重载的运算符就是字符串的拼接相关的。<code>+</code>,<code>+=</code>。除此之外，Java设计者不允许重载其他的运算符。</p>
+
+<h2>拼接剖析</h2>
+
+<h3>真的有性能代价么</h3>
+
+<p>了解了上面两点，可能会有这样的思考，既然Sting对象不可变，那么多个（三个及以上）字符串拼接必然产生多余的中间String对象。</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">&quot;Andy&quot;</span><span class="o">;</span>
+</span><span class='line'><span class="n">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">&quot;24&quot;</span><span class="o">;</span>
+</span><span class='line'><span class="n">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">&quot;Developer&quot;</span><span class="o">;</span>
+</span><span class='line'><span class="n">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>要得到上面的info，就会userName和age拼接生成临时一个String对象t1,内容为<code>Andy24</code>，然后有t1和job拼接生成最终我们需要的info对象，这其中，产生了一个中间的t1，而且t1创建之后，没有主动回收，势必会占一定的空间。如果是一个很多(假设上百个，多见于对对象的toString的调用)字符串的拼接，那么代价就更大了，性能一下会降低很多。</p>
+
+<h3>编译器的优化处理</h3>
+
+<p>真的会有上面的性能代价么，字符串拼接这么常用，没有特殊的处理优化么，答案是有的，这个优化进行在编译器编译.java到bytecode时。</p>
+
+<p>一个Java程序如果想运行起来，需要经过两个时期，编译时和运行时。在编译时，Java 编译器(Compiler)将java文件转换成字节码。在运行时，Java虚拟机（JVM）运行编译时生成的字节码。通过这样两个时期，Java做到了所谓的一处编译，处处运行。</p>
+
+<p>我们实验一下编译期都做了哪些优化，我们制造一段可能会出现性能代价的代码。</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Concatenation</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">&quot;Andy&quot;</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">&quot;24&quot;</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">&quot;Developer&quot;</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">info</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对Concatenation.java进行编译一下。得到Concatenation.class</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>javac Concatenation.java
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后我们使用javap反编译一下编译出来的Concatenation.class文件。<code>javap -c Concatenation.class</code>。如果没有找到javap命令，请考虑将javap所在目录加入环境变量或者使用javap的完整路径。</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:22:04-androidyue~/workspace_adt/strings/src<span class="nv">$ </span>javap -c Concatenation.class
+</span><span class='line'>Compiled from <span class="s2">&quot;Concatenation.java&quot;</span>
+</span><span class='line'>public class Concatenation <span class="o">{</span>
+</span><span class='line'>  public Concatenation<span class="o">()</span>;
+</span><span class='line'>    Code:
+</span><span class='line'>       0: aload_0
+</span><span class='line'>       1: invokespecial <span class="c">#1                  // Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>       4: <span class="k">return        </span>
+</span><span class='line'>
+</span><span class='line'><span class="k">  </span>public static void main<span class="o">(</span>java.lang.String<span class="o">[])</span>;
+</span><span class='line'>    Code:
+</span><span class='line'>       0: ldc           <span class="c">#2                  // String Andy</span>
+</span><span class='line'>       2: astore_1
+</span><span class='line'>       3: ldc           <span class="c">#3                  // String 24</span>
+</span><span class='line'>       5: astore_2
+</span><span class='line'>       6: ldc           <span class="c">#4                  // String Developer</span>
+</span><span class='line'>       8: astore_3
+</span><span class='line'>       9: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class='line'>      12: dup
+</span><span class='line'>      13: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>      16: aload_1
+</span><span class='line'>      17: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      20: aload_2
+</span><span class='line'>      21: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      24: aload_3
+</span><span class='line'>      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+</span><span class='line'>      31: astore        4
+</span><span class='line'>      33: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      36: aload         4
+</span><span class='line'>      38: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      41: <span class="k">return</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中，ldc，astore等为java字节码的指令，类似汇编指令。后面的注释使用了Java相关的内容进行了说明。
+我们可以看到上面有很多StringBuilder,但是我们在Java代码里并没有显示地调用，这就是Java编译器做的优化，当Java编译器遇到字符串拼接的时候，会创建一个StringBuilder对象，后面的拼接，实际上是调用StringBuffer对象的append方法。这样就不会有我们上面担心的问题了。</p>
+
+<h3>仅靠编译器优化？</h3>
+
+<p>既然编译器帮我们做了优化，是不是仅仅依靠编译器的优化就够了呢，当然不是。 <br/>
+下面我们看一段未优化性能较低的代码</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span>  <span class="nf">implicitUseStringBuilder</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">String</span> <span class="n">result</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">result</span> <span class="o">+=</span> <span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">];</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用javac编译，使用javap查看</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>public void implicitUseStringBuilder<span class="o">(</span>java.lang.String<span class="o">[])</span>;
+</span><span class='line'>    Code:
+</span><span class='line'>       0: ldc           <span class="c">#11                 // String </span>
+</span><span class='line'>       2: astore_2
+</span><span class='line'>       3: iconst_0
+</span><span class='line'>       4: istore_3
+</span><span class='line'>       5: iload_3
+</span><span class='line'>       6: aload_1
+</span><span class='line'>       7: arraylength
+</span><span class='line'>       8: if_icmpge     38
+</span><span class='line'>      11: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class='line'>      14: dup
+</span><span class='line'>      15: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>      18: aload_2
+</span><span class='line'>      19: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      22: aload_1
+</span><span class='line'>      23: iload_3
+</span><span class='line'>      24: aaload
+</span><span class='line'>      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+</span><span class='line'>      31: astore_2
+</span><span class='line'>      32: iinc          3, 1
+</span><span class='line'>      35: goto          5
+</span><span class='line'>      38: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      41: aload_2
+</span><span class='line'>      42: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      45: <span class="k">return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中<code>8: if_icmpge     38</code> 和<code>35: goto          5</code>构成了一个循环。<code>8: if_icmpge     38</code>的意思是如果JVM操作数栈的整数对比大于等于（i &lt; values.length的相反结果）成立，则跳到第38行（System.out）。<code>35: goto          5</code>则表示直接跳到第5行。</p>
+
+<p>但是这里面有一个很重要的就是StringBuilder对象创建发生在循环之间，也就是意味着有多少次循环会创建多少个StringBuffer对象，这样明显不好。赤裸裸地低水平代码啊。</p>
+
+<p>稍微优化一下，瞬间提升逼格。</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">explicitUseStringBuider</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">StringBuilder</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringBuilder</span><span class="o">();</span>
+</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">result</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对应的编译后的信息</p>
+
+<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>public void explicitUseStringBuider<span class="o">(</span>java.lang.String<span class="o">[])</span>;
+</span><span class='line'>    Code:
+</span><span class='line'>       0: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class='line'>       3: dup
+</span><span class='line'>       4: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>       7: astore_2
+</span><span class='line'>       8: iconst_0
+</span><span class='line'>       9: istore_3
+</span><span class='line'>      10: iload_3
+</span><span class='line'>      11: aload_1
+</span><span class='line'>      12: arraylength
+</span><span class='line'>      13: if_icmpge     30
+</span><span class='line'>      16: aload_2
+</span><span class='line'>      17: aload_1
+</span><span class='line'>      18: iload_3
+</span><span class='line'>      19: aaload
+</span><span class='line'>      20: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>      23: pop
+</span><span class='line'>      24: iinc          3, 1
+</span><span class='line'>      27: goto          10
+</span><span class='line'>      30: <span class="k">return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>从上面可以看出，<code>13: if_icmpge     30</code>和<code>27: goto          10</code>构成了一个loop循环，而<code>0: new           #5</code>位于循环之外，所以不会多次创建StringBuffer.</p>
+
+<p>总的来说，我们在循环体中需要尽量避免隐式或者显式创建StringBuffer. 所以哪些了解代码如何编译，内部如何执行的人，写的代码档次都比较高。</p>
+
+<p>以上文章，如有错误，请批评指正 。</p>
+
+<h3>推荐阅读</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011F7WU4&linkCode=as2&tag=droidyue-23">Java编程思想(第4版)</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011F7WU4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B0011C3CVA/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C3CVA&linkCode=as2&tag=droidyue-23">Java编程思想（英文版）</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011C3CVA" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00D2ID4PK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[也说CSS之not：为样式加入例外处理]]></title>
@@ -1908,250 +2231,6 @@
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/1430218339/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=1430218339&linkCode=as2&tag=droidyue-23">Pro Git</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=1430218339" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/1430218339/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=1430218339&linkCode=as2&tag=droidyue-23">成为大神必读的Git书籍</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=1430218339" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Ocotpress集成多说评论]]></title>
-    <link href="http://droidyue.com/blog/2014/07/29/integrate-duoshuo-in-octopress/"/>
-    <updated>2014-07-29T21:02:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/29/integrate-duoshuo-in-octopress</id>
-    <content type="html"><![CDATA[<p>Octopress默认自带了DISQUS，但是对于国内不是很好用。于是一开始替换了国内的友言。但是后来发现用友言的人不多，而且感觉友言加载速度比较慢。然后就是到了今天的多说了。官方并没有给出具体针对Octopress的解决指导。我这里记录一下如何集成，并且解决一些常见的问题。</p>
-
-<!--more-->
-
-
-<h2>集成</h2>
-
-<h3>来说评论框</h3>
-
-<p>这就是多说提供的通用代码中,其实理论上以下三个值通过javascript都可以得到的。</p>
-
-<figure class='code'><figcaption><span>linenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- 多说评论框 start --&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;ds-thread&quot;</span> <span class="na">data-thread-key=</span><span class="s">&quot;请将此处替换成文章在你的站点中的ID&quot;</span> <span class="na">data-title=</span><span class="s">&quot;请替换成文章的标题&quot;</span> <span class="na">data-url=</span><span class="s">&quot;请替换成文章的网址&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
-</span><span class='line'><span class="c">&lt;!-- 多说评论框 end --&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>如果换成Octopress（准确的来说是jekyll ）的变量，应该是这样子。</p>
-
-<figure class='code'><figcaption><span>linenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- 多说评论框 start --&gt;</span>
-</span><span class='line'><span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;ds-thread&quot;</span> <span class="na">data-thread-key=</span><span class="s">&quot;{{ page.id }}&quot;</span> <span class="na">data-title=</span><span class="s">&quot;{{ page.title }}&quot;</span> <span class="na">data-url=</span><span class="s">&quot;{{site.url}}{{ page.url  }}&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
-</span><span class='line'><span class="c">&lt;!-- 多说评论框 end --&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>整合公共JS代码</h3>
-
-<p>在Octopress的<strong>source/_includes/post</strong>目录下，新建一个文件，比如<strong>duoshuo.html</strong>
-其代码如下,</p>
-
-<figure class='code'><figcaption><span>source/_includes/post/duoshuo.html linenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- 多说评论框 start --&gt;</span>
-</span><span class='line'><span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&quot;ds-thread&quot;</span> <span class="na">data-thread-key=</span><span class="s">&quot;{{ page.id }}&quot;</span> <span class="na">data-title=</span><span class="s">&quot;{{ page.title }}&quot;</span> <span class="na">data-url=</span><span class="s">&quot;{{site.url}}{{ page.url  }}&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
-</span><span class='line'><span class="c">&lt;!-- 多说评论框 end --&gt;</span>
-</span><span class='line'><span class="c">&lt;!-- 多说公共JS代码 start (一个网页只需插入一次) --&gt;</span>
-</span><span class='line'><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>    <span class="kd">var</span> <span class="nx">duoshuoQuery</span> <span class="o">=</span> <span class="p">{</span><span class="nx">short_name</span><span class="o">:</span><span class="s2">&quot;your_short_name&quot;</span><span class="p">};</span>
-</span><span class='line'>    <span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="kd">var</span> <span class="nx">ds</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s1">&#39;script&#39;</span><span class="p">);</span>
-</span><span class='line'>        <span class="nx">ds</span><span class="p">.</span><span class="nx">type</span> <span class="o">=</span> <span class="s1">&#39;text/javascript&#39;</span><span class="p">;</span><span class="nx">ds</span><span class="p">.</span><span class="nx">async</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
-</span><span class='line'>        <span class="nx">ds</span><span class="p">.</span><span class="nx">src</span> <span class="o">=</span> <span class="p">(</span><span class="nb">document</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">protocol</span> <span class="o">==</span> <span class="s1">&#39;https:&#39;</span> <span class="o">?</span> <span class="s1">&#39;https:&#39;</span> <span class="o">:</span> <span class="s1">&#39;http:&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;//static.duoshuo.com/embed.js&#39;</span><span class="p">;</span>
-</span><span class='line'>        <span class="nx">ds</span><span class="p">.</span><span class="nx">charset</span> <span class="o">=</span> <span class="s1">&#39;UTF-8&#39;</span><span class="p">;</span>
-</span><span class='line'>        <span class="p">(</span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="s1">&#39;head&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>         <span class="o">||</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="s1">&#39;body&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]).</span><span class="nx">appendChild</span><span class="p">(</span><span class="nx">ds</span><span class="p">);</span>
-</span><span class='line'>     <span class="p">})();</span>
-</span><span class='line'> <span class="nt">&lt;/script&gt;</span>
-</span><span class='line'> <span class="c">&lt;!-- 多说公共JS代码 end --&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>注意，请修改上面代码中的short_name</p>
-
-<figure class='code'><figcaption><span>linenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'> <span class="kd">var</span> <span class="nx">duoshuoQuery</span> <span class="o">=</span> <span class="p">{</span><span class="nx">short_name</span><span class="o">:</span><span class="s2">&quot;your_short_name&quot;</span><span class="p">};</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>将文件嵌入到<strong><code>&lt;body&gt;&lt;/body&gt;</code></strong></h3>
-
-<p>将上面的文件嵌入到<strong>source/_layouts/post.html</strong>下，可参考下列代码。</p>
-
-<figure class='code'><figcaption><span>source/_layouts/post.html linenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'>  <span class="nt">&lt;/footer&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;/article&gt;</span>
-</span><span class='line'>{% if page.comments == true %}
-</span><span class='line'>  <span class="nt">&lt;section&gt;</span>
-</span><span class='line'>   {% include post/duoshuo.html %}
-</span><span class='line'>  <span class="nt">&lt;/section&gt;</span>
-</span><span class='line'> {% endif %}
-</span><span class='line'><span class="nt">&lt;/div&gt;</span>
-</span><span class='line'>{% unless page.sidebar == false %}
-</span><span class='line'><span class="nt">&lt;aside</span> <span class="na">class=</span><span class="s">&quot;sidebar&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>  {% if site.post_asides.size %}
-</span><span class='line'>    {% include_array post_asides %}
-</span><span class='line'>  {% else %}
-</span><span class='line'>    {% include_array default_asides %}
-</span><span class='line'>  {% endif %}
-</span><span class='line'><span class="nt">&lt;/aside&gt;</span>
-</span><span class='line'>{% endunless %}
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>同样，将文件嵌入到<strong>source/_layouts/page.html</strong>里面</p>
-
-<figure class='code'><figcaption><span>source/_layouts/page.html lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'>{% if  page.comments == true %}
-</span><span class='line'><span class="nt">&lt;section&gt;</span>
-</span><span class='line'> {% include post/duoshuo.html %}
-</span><span class='line'>  <span class="nt">&lt;/section&gt;</span>
-</span><span class='line'>{% endif %}
-</span><span class='line'><span class="nt">&lt;/div&gt;</span>
-</span><span class='line'>{% unless page.sidebar == false %}
-</span><span class='line'><span class="nt">&lt;aside</span> <span class="na">class=</span><span class="s">&quot;sidebar&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>  {% if site.page_asides.size %}
-</span><span class='line'>    {% include_array page_asides %}
-</span><span class='line'>  {% else %}
-</span><span class='line'>    {% include_array default_asides %}
-</span><span class='line'>  {% endif %}
-</span><span class='line'><span class="nt">&lt;/aside&gt;</span>
-</span><span class='line'>{% endunless %}
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>到这里，基本可以跑成功了。</p>
-
-<h2>问题解决</h2>
-
-<h3>表象</h3>
-
-<p>不要高兴的太早，集成后的多说还是有点小问题，就是当需要登陆或者输入邮箱地址的时候，会出现如下图的问题，登陆框的背后有一层带颜色的层。
-<img src="http://droidyueimg.qiniudn.com/duoshuo_background_issue.png" title="duoshuo issue in Octopress" ></p>
-
-<h3>原因</h3>
-
-<p>具体原因是我所使用的css为所有的body div增加了一个背景。下图为id为ds-wrapper的div的背景属性
-<img src="http://droidyueimg.qiniudn.com/div_background_property.png" title="ds-wrapper div background" ></p>
-
-<h3>解决</h3>
-
-<p>昨天晚上自己找到了一个可行的办法，思路就是对所有body div的设置不应用到id为ds-wrapper的div
-默认的设置如下。文件为sass/base/_theme.scss</p>
-
-<figure class='code'><figcaption><span>sass/base/_theme.scss linenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='css'><span class='line'><span class="nt">body</span> <span class="p">{</span>
-</span><span class='line'>  <span class="o">&gt;</span> <span class="n">div</span> <span class="err">{</span>
-</span><span class='line'>    <span class="k">background</span><span class="o">:</span> <span class="err">$</span><span class="n">sidebar</span><span class="o">-</span><span class="n">bg</span> <span class="err">$</span><span class="n">noise</span><span class="o">-</span><span class="n">bg</span><span class="p">;</span>
-</span><span class='line'>    <span class="k">border-bottom</span><span class="o">:</span> <span class="m">1px</span> <span class="k">solid</span> <span class="err">$</span><span class="k">page</span><span class="o">-</span><span class="k">border-bottom</span><span class="p">;</span>
-</span><span class='line'>    <span class="o">&gt;</span> <span class="n">div</span> <span class="err">{</span>
-</span><span class='line'>      <span class="k">background</span><span class="o">:</span> <span class="err">$</span><span class="n">main</span><span class="o">-</span><span class="n">bg</span> <span class="err">$</span><span class="n">noise</span><span class="o">-</span><span class="n">bg</span><span class="p">;</span>
-</span><span class='line'>      <span class="k">border-right</span><span class="o">:</span> <span class="m">1px</span> <span class="k">solid</span> <span class="err">$</span><span class="n">sidebar</span><span class="o">-</span><span class="k">border</span><span class="p">;</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>  <span class="err">}</span>
-</span><span class='line'><span class="err">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>使用not把ds-wrapper加入例外，修改为这样的设置</p>
-
-<figure class='code'><figcaption><span>sass/base/_theme.scss linenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='css'><span class='line'><span class="nt">body</span> <span class="p">{</span>
-</span><span class='line'>  <span class="o">&gt;</span> <span class="n">div</span><span class="o">:</span><span class="n">not</span><span class="p">(</span><span class="m">#ds</span><span class="o">-</span><span class="n">wrapper</span><span class="p">)</span><span class="err">{</span>
-</span><span class='line'>    <span class="k">background</span><span class="o">:</span> <span class="err">$</span><span class="n">sidebar</span><span class="o">-</span><span class="n">bg</span> <span class="err">$</span><span class="n">noise</span><span class="o">-</span><span class="n">bg</span><span class="p">;</span>
-</span><span class='line'>    <span class="k">border-bottom</span><span class="o">:</span> <span class="m">1px</span> <span class="k">solid</span> <span class="err">$</span><span class="k">page</span><span class="o">-</span><span class="k">border-bottom</span><span class="p">;</span>
-</span><span class='line'>    <span class="o">&gt;</span> <span class="n">div</span> <span class="err">{</span>
-</span><span class='line'>      <span class="k">background</span><span class="o">:</span> <span class="err">$</span><span class="n">main</span><span class="o">-</span><span class="n">bg</span> <span class="err">$</span><span class="n">noise</span><span class="o">-</span><span class="n">bg</span><span class="p">;</span>
-</span><span class='line'>      <span class="k">border-right</span><span class="o">:</span> <span class="m">1px</span> <span class="k">solid</span> <span class="err">$</span><span class="n">sidebar</span><span class="o">-</span><span class="k">border</span><span class="p">;</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>  <span class="err">}</span>
-</span><span class='line'><span class="err">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>到这里，就比较完美的解决了问题，边Google变StackOverflow解决了问题了，哈哈。</p>
-
-<h2>延伸</h2>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/%3anot?redirectlocale=en-US&redirectslug=CSS%2F%3Anot" target="_blank">CSS not API</a></p>
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00B01LKQ6/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00B01LKQ6&linkCode=as2&tag=droidyue-23">如何以数据驱动决策,提升网站价值</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00B01LKQ6" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0011BTJV8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011BTJV8&linkCode=as2&tag=droidyue-23">访客至上的网页设计秘笈</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011BTJV8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
