@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-09-12T22:24:16+08:00</updated>
+  <updated>2014-09-14T13:15:44+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,156 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[我的七牛参赛作品]]></title>
+    <link href="http://droidyue.com/blog/2014/09/13/my-work-for-qiniu-demo/"/>
+    <updated>2014-09-13T13:19:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/09/13/my-work-for-qiniu-demo</id>
+    <content type="html"><![CDATA[<p>使用Ocopress写博客将近一年多了，大概几个月前同事给我推荐了<a href="https://portal.qiniu.com/signup?code=3l8cqx1u74rbm" target="_blank">七牛</a>做网站的静态文件存储服务，于是果断尝试了一下，发现真实不错。速度不错，而且有免费套餐。很是支持。最近发现七牛有一个demo大赛，于是果断参加了。</p>
+
+<!--more-->
+
+
+<h2>痛点</h2>
+
+<ul>
+<li>域名Godaddy购买，无法备案，不能使用七牛的独立域名绑定</li>
+<li>服务器为github pages， 有300M空间限制，所以只能把静态文件放到七牛</li>
+<li>每次写带图片等资源的博客，都需要先上传到七牛，然后得到外链地址，贴回到博客，过于繁琐啦。</li>
+</ul>
+
+
+<h2>解决思路</h2>
+
+<p>由于ocotpress程序是将markdown文档转换成纯静态的HTML网页，我们可以在这个转换过程之前或者期间将图片等资源自动上传到七牛服务器，然后替换这些资源的地址为已上传文件的外链。</p>
+
+<h2>实现细节</h2>
+
+<ul>
+<li>通过rb-inotify检测文件变化，新文件会直接上传，已经上传过的文件则覆盖更新。避免在生成html网页时大量拥挤上传</li>
+<li>进行rake generate时，对没有上传的文件进行上传</li>
+<li>通过sqlite数据库，记录文件路径和最后修改时间进行验证。</li>
+</ul>
+
+
+<h2>好处</h2>
+
+<ul>
+<li>节省了博客在github中的空间占用，让github空间限制几乎不再存在。只剩纯文本了，能占用多少空间</li>
+<li>提高了在国内的访问的速度</li>
+<li>使用更多的七牛的服务，比如防盗链等功能。</li>
+</ul>
+
+
+<h2>安装</h2>
+
+<h3>超级简单的一步安装</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">cd </span>YOUR_OCTOPRESS_ROOT_DIR
+</span><span class='line'>curl -o /tmp/install.sh https://gitcafe.com/androidyue/octopress_qiniu/raw/master/install.sh <span class="o">&amp;&amp;</span> bash /tmp/install.sh
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>配置文件</h3>
+
+<p>安装过程中，会使用vi打开一个配置文件，文件内容为，文件路径位于家目录下的.qiniu.ini。按照自己的实际情况填写配置即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#Qiniu Config File</span>
+</span><span class='line'>
+</span><span class='line'><span class="c">#Project</span>
+</span><span class='line'><span class="o">[</span>octopress<span class="o">]</span>
+</span><span class='line'><span class="c">#Your Bucket to Store Images In Octopress</span>
+</span><span class='line'><span class="nv">image_bucket</span> <span class="o">=</span> <span class="s2">&quot;your_bucket&quot;</span>
+</span><span class='line'><span class="c">#Your Image Folder Path to store the files locally. Usually it&#39;s #{OCTORESS_DIRECTORY}/public/images/</span>
+</span><span class='line'><span class="nv">image_dir</span> <span class="o">=</span> <span class="s2">&quot;image_dir_in_octopress&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c">#Auth Info</span>
+</span><span class='line'><span class="c">#Generate two following two keys in Qiniu Web Portal</span>
+</span><span class='line'><span class="o">[</span>auth<span class="o">]</span>
+</span><span class='line'><span class="nv">access_key</span> <span class="o">=</span> <span class="s2">&quot;your_access_key&quot;</span>
+</span><span class='line'><span class="nv">secret_key</span> <span class="o">=</span> <span class="s2">&quot;your_secret_key&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>启动程序</h2>
+
+<p>配置完成，轻松执行一个脚本就可以启动监控文件变化自动上传的程序了。当检测目录有文件变化时就会自动上传到七牛的文件服务器。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>YOUR_OCTOPRESS_ROOT_DIR/startQiniu.sh
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>文件介绍</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>.
+</span><span class='line'>|-- install.sh  <span class="c">#快捷安装脚本</span>
+</span><span class='line'>|-- octopress   <span class="c">#覆盖octopress程序的目录</span>
+</span><span class='line'>|   <span class="sb">`</span>-- plugins
+</span><span class='line'>|       <span class="sb">`</span>-- image_tag.rb <span class="c"># 覆盖Octopress 程序自带的image_tag，实现图片上传到七牛</span>
+</span><span class='line'>|-- qiniu       <span class="c">#工具程序的主目录</span>
+</span><span class='line'>|   |-- qiniuCLI.rb    <span class="c">#命令行工具，这个工具是所有上传下载请求的对外处理程序，本工具中所有的请求都是直接调用这个工具。</span>
+</span><span class='line'>|   |-- .qiniu_config_template.ini <span class="c">#配置文件模板，不要对这个文件直接配置，请使用家目录下的.qiniu.ini进行配置</span>
+</span><span class='line'>|   |-- qiniuCore.rb   <span class="c">#最主要的处理脚本。支持从ini文件读取配置，数据库存储文件的上传信息，调用七牛的SDK来完成文件的上传和下载。</span>
+</span><span class='line'>|   |-- .qiniu.db      <span class="c">#数据库文件，存储上传的记录</span>
+</span><span class='line'>|   |-- qiniuFileNotifier.rb  <span class="c">#监控配置目录变化，自动上传或者覆盖文件。</span>
+</span><span class='line'>|   <span class="sb">`</span>-- .setupQiniu.rb <span class="c">#安装需要的gem，复制配置文件到家目录</span>
+</span><span class='line'>|-- README.md  <span class="c">#说明文件</span>
+</span><span class='line'><span class="sb">`</span>-- startQiniu.sh <span class="c">#检查安装情况并启动文件监控自动上传启动程序</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>源码地址</h2>
+
+<ul>
+<li><a href="https://gitcafe.com/androidyue/octopress_qiniu" target="_blank">我的七牛参赛作品</a></li>
+</ul>
+
+
+<h3>解答问题</h3>
+
+<ul>
+<li>提问：为什么配置文件放在家目录下</li>
+<li><p>回答：配置文件中包含了七牛的accessKey和accessSecret，默认的ocotpress受git管理，为了避免将配置文件误加入git管理，传到服务器端造成前面的accessKey和acessSecret泄露，所以放到家目录下。</p></li>
+<li><p>提问：既然文件都上传到了，是不是可以删除掉存储到public/images/的文件</p></li>
+<li>回答：当然可以，因为生成的网页的图片地址为七牛的外链地址，目前程序没有做主动删除文件的操作。</li>
+</ul>
+
+
+<p>最后希望大家多多支持，投我一票哈。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android根据资源名获取资源ID]]></title>
@@ -2556,94 +2706,6 @@
 <li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">如何才能精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">你能看懂Android系统源代码么</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B00LVHTI9U/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00LVHTI9U&linkCode=as2&tag=droidyue-23">第一行代码:Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00LVHTI9U" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Octopress添加回到顶部功能]]></title>
-    <link href="http://droidyue.com/blog/2014/08/03/integrate-scroll-to-top-in-octopress/"/>
-    <updated>2014-08-03T20:47:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/08/03/integrate-scroll-to-top-in-octopress</id>
-    <content type="html"><![CDATA[<p>在Octopress当阅读到文章底部的时候，或多或少都想回到顶部，而默认的Octopress没有提供回到顶部的功能，于是一不做二不休，自己找个控件加上。</p>
-
-<!--more-->
-
-
-<h2>现成的资源</h2>
-
-<p><a href="http://www.scrolltotop.com/" target="_blank">Scroll To Top</a> 这个网站提供了数十种回到顶部的样式。你可以根据自己的需要，添加所中意的widget。</p>
-
-<h2>如何添加</h2>
-
-<h3>新建一个文件来存放widget代码</h3>
-
-<p>文件归属目录<strong>source/_includes/custom/</strong>,假设文件名为<strong>scroll_to_top.html</strong></p>
-
-<figure class='code'><figcaption><span>linenos:false source/_includes/custom/scroll_to_top.html</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;http://arrow.scrolltotop.com/arrow37.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
-</span><span class='line'><span class="nt">&lt;noscript&gt;</span>Not seeing a <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">&quot;http://www.scrolltotop.com/&quot;</span><span class="nt">&gt;</span>Scroll to Top Button<span class="nt">&lt;/a&gt;</span>? Go to our FAQ page for more info.<span class="nt">&lt;/noscript&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>注意，默认Octopress引入了jquery.min.js，所以没有必要再次引入。</p>
-
-<h3>引入代码</h3>
-
-<p>回到顶部功能，不仅仅要在文章页生效，同时也需要对类似归档页面有效才完美。于是我们需要找一个公用的位置。这个位置就是<strong>source/_layouts/default.html</strong></p>
-
-<figure class='code'><figcaption><span>linenos:false source/_layouts/default.html</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'>  <span class="nt">&lt;footer</span> <span class="na">role=</span><span class="s">&quot;contentinfo&quot;</span><span class="nt">&gt;</span>{% include footer.html %}<span class="nt">&lt;/footer&gt;</span>
-</span><span class='line'>  {% include after_footer.html %}
-</span><span class='line'>  {% include custom/scroll_to_top.html %}
-</span><span class='line'><span class="nt">&lt;/body&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>更加完美</h2>
-
-<p>Octopress默认的为所有的div添加了一个背景，所以上述完成之后看到的图片是有一个灰色背景的，需要去除一下。修改以下文件即可。<strong>sass/base/_theme.scss</strong></p>
-
-<figure class='code'><figcaption><span>linenos:false sass/base/_theme.scss</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='css'><span class='line'><span class="nt">body</span> <span class="p">{</span>
-</span><span class='line'>  <span class="o">&gt;</span> <span class="n">div</span><span class="o">:</span><span class="n">not</span><span class="p">(</span><span class="m">#ds</span><span class="o">-</span><span class="n">wrapper</span><span class="p">)</span><span class="o">:</span><span class="n">not</span><span class="p">(</span><span class="m">#topcon</span><span class="n">trol</span><span class="p">)</span><span class="err">{</span>
-</span><span class='line'>    <span class="k">background</span><span class="o">:</span> <span class="err">$</span><span class="n">sidebar</span><span class="o">-</span><span class="n">bg</span> <span class="err">$</span><span class="n">noise</span><span class="o">-</span><span class="n">bg</span><span class="p">;</span>
-</span><span class='line'>    <span class="k">border-bottom</span><span class="o">:</span> <span class="m">1px</span> <span class="k">solid</span> <span class="err">$</span><span class="k">page</span><span class="o">-</span><span class="k">border-bottom</span><span class="p">;</span>
-</span><span class='line'>    <span class="o">&gt;</span> <span class="n">div</span> <span class="err">{</span>
-</span><span class='line'>      <span class="k">background</span><span class="o">:</span> <span class="err">$</span><span class="n">main</span><span class="o">-</span><span class="n">bg</span> <span class="err">$</span><span class="n">noise</span><span class="o">-</span><span class="n">bg</span><span class="p">;</span>
-</span><span class='line'>      <span class="k">border-right</span><span class="o">:</span> <span class="m">1px</span> <span class="k">solid</span> <span class="err">$</span><span class="n">sidebar</span><span class="o">-</span><span class="k">border</span><span class="p">;</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>  <span class="err">}</span>
-</span><span class='line'><span class="err">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其中我们添加的div的id为topcontrol。当然前面的ds-wrapper是为了去除多说评论框登陆的背景问题，如不需要可以去掉。</p>
-
-<p>到这里，你已经完成了一个可以秒杀新浪微博的回到顶部的功能啦，恭喜哈。</p>
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00B01LKQ6/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00B01LKQ6&linkCode=as2&tag=droidyue-23">如何以数据驱动决策,提升网站价值</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00B01LKQ6" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0011BTJV8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011BTJV8&linkCode=as2&tag=droidyue-23">访客至上的网页设计秘笈</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011BTJV8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00C5KS5AA/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00C5KS5AA&linkCode=as2&tag=droidyue-23">极客:改变世界的创新基因</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00C5KS5AA" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
