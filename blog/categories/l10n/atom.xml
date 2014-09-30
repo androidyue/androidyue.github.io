@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: L10n | 技术小黑屋]]></title>
+  <link href="http://droidyue.com/blog/categories/l10n/atom.xml" rel="self"/>
+  <link href="http://droidyue.com/"/>
+  <updated>2014-09-30T21:54:16+08:00</updated>
+  <id>http://droidyue.com/</id>
+  <author>
+    <name><![CDATA[androidyue]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[利用WebView实现网页的i18n]]></title>
+    <link href="http://droidyue.com/blog/2014/09/30/i18n-web-page-using-webview-in-android/"/>
+    <updated>2014-09-30T21:44:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/09/30/i18n-web-page-using-webview-in-android</id>
+    <content type="html"><![CDATA[<p>软件如果想在全球获得更多的用户，国际化与本地化（internationalization and localization 简称：i18n 和L10n）是非常必要的。本文将介绍一个很geeky的方法来利用webview实现html的i18n。</p>
+
+<!--more-->
+
+
+<h2>基本概念</h2>
+
+<p>国际化是指在设计软件，将软件与特定语言及地区脱钩的过程。当软件被移植到不同的语言及地区时，软件本身不用做内部工程上的改变或修正。本地化则是指当移植软件时，加上与特定区域设置有关的信息和翻译文件的过程。</p>
+
+<p>国际化和本地化之间的区别虽然微妙，但却很重要。国际化意味着产品有适用于任何地方的“潜力”；本地化则是为了更适合于“特定”地方的使用，而另外增添的特色。用一项产品来说，国际化只需做一次，但本地化则要针对不同的区域各做一次。 这两者之间是互补的，并且两者合起来才能让一个系统适用于各地。</p>
+
+<p>上述摘自<a href="http://zh.wikipedia.org/wiki/%E5%9B%BD%E9%99%85%E5%8C%96%E4%B8%8E%E6%9C%AC%E5%9C%B0%E5%8C%96">维基百科 国际化与本地化</a></p>
+
+<h2>问题</h2>
+
+<p>如何实现网页的国际化和本地化，支持更多的语言呢？最简单的逻辑可能类似如下伪代码实现
+```javascript lineos:false
+if (isChinese) {</p>
+
+<pre><code>lable.innerText = "中文"
+</code></pre>
+
+<p>} else if (isEnglish) {</p>
+
+<pre><code>lable.innerText = "English"
+</code></pre>
+
+<p>}
+```
+但是这样是很有问题的，如果增加了语言必然要修改代码代码，违背了对修改关闭的原则。所以上述并不是一种很好的方法</p>
+
+<h2>更Hacky的实现</h2>
+
+<p>实现思路主要是借助强大的Android系统的资源适配机制（基于设备设备的信息Locale等匹配最合适的资源）。貌似这个是Chrome中网页实现i18n的逻辑。实现步骤主要如下</p>
+
+<ul>
+<li>Android程序提供必要多个Locale的资源</li>
+<li>将网页需要的文字资源组成JSON交换格式</li>
+<li>WebView注入一个变量，变量内容为上一步的JSON数据</li>
+<li>网页实现读取资源，为元素设置内容</li>
+<li>加载网页</li>
+</ul>
+
+
+<h3>提供多个Locale文字资源</h3>
+
+<h4>values/strings.xml</h4>
+
+<p>```xml lineos:false
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+<resources></p>
+
+<pre><code>&lt;string name="city_beijing"&gt;Beijing&lt;/string&gt;
+&lt;string name="country_china"&gt;China&lt;/string&gt;
+</code></pre>
+
+<p></resources>
+```</p>
+
+<h4>values-zh-rCN/strings.xml</h4>
+
+<p>```xml lineos:false
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+<resources></p>
+
+<pre><code>&lt;string name="city_beijing"&gt;北京&lt;/string&gt;
+&lt;string name="country_china"&gt;中国&lt;/string&gt;
+</code></pre>
+
+<p></resources>
+```</p>
+
+<h3>接下来的代码</h3>
+
+<p>```java lineos:false
+WebView myWebView = new WebView(this);
+addContentView(myWebView, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+//将网页需要的文字资源组成JSON交换格式
+JSONObject jsObj = new JSONObject();
+try {</p>
+
+<pre><code>jsObj.put("country", getString(R.string.country_china));
+jsObj.put("city", getString(R.string.city_beijing));
+</code></pre>
+
+<p>} catch (JSONException e) {</p>
+
+<pre><code>e.printStackTrace();
+</code></pre>
+
+<p>}
+//WebView注入一个变量，变量内容为上一步的JSON数据
+String injectString = &ldquo;var textRes = &rdquo; + jsObj;
+Log.i(LOGTAG, &ldquo;injuectString = &rdquo; + injectString);
+WebSettings settings = myWebView.getSettings();
+settings.setJavaScriptEnabled(true);
+myWebView.loadUrl(&ldquo;javascript:&rdquo; + injectString);
+myWebView.loadUrl(&ldquo;file:///android_asset/location.html&rdquo;);
+```</p>
+
+<h3>网页实现</h3>
+
+<p>```html lineos:false
+<html></p>
+
+<pre><code>&lt;head&gt;
+    &lt;title&gt;i18n Test&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;label id="country"&gt;&lt;/label&gt;
+    &lt;lable id="city"&gt;&lt;/lable&gt;
+&lt;/body&gt;
+&lt;script type="text/javascript"&gt;
+    document.getElementById('country').innerText= textRes.country
+    document.getElementById('city').innerText = textRes.city
+&lt;/script&gt;
+</code></pre>
+
+<p></html>
+```</p>
+
+<h3>结果</h3>
+
+<ul>
+<li>当系统语言为中文简体环境下网页显示<strong>中国 北京</strong></li>
+<li>当系统语言为非中文简体环境下网页显示<strong>China Beijing</strong></li>
+</ul>
+
+
+<h3>Demo源码下载</h3>
+
+<p><a href="http://pan.baidu.com/s/1sjwNamL">@百度网盘</a></p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">这样才可以精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B002JCU2TG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002JCU2TG&linkCode=as2&tag=droidyue-23">瞬间之美:Web界面设计如何让用户心动</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002JCU2TG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>
