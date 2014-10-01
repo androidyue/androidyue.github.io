@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-10-01T09:46:32+08:00</updated>
+  <updated>2014-10-01T17:28:23+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,209 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[WebView处理网页位置请求]]></title>
+    <link href="http://droidyue.com/blog/2014/10/01/handle-geolocation-request-in-webview/"/>
+    <updated>2014-10-01T17:23:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/10/01/handle-geolocation-request-in-webview</id>
+    <content type="html"><![CDATA[<p>随着移动设备的激增，LBS（Location Based Service）已然成为趋势，其最关键的还是获取设备的位置信息。native代码获取位置信息轻轻松松可以搞定，实际上网页获取位置信息也不是那么困难。</p>
+
+<p>在HTML5中，提供了一套定位用户信息的接口，当然这个位置信息是通过客户端，准确说是浏览器获取的。</p>
+
+<!--more-->
+
+
+<p>注意，位置信息属于个人隐私的范围，只有经过用户同意之后才能获取到信息。</p>
+
+<h2>网页如何实现请求位置信息</h2>
+
+<p>使用getCurrentPosition()方法来请求位置信息。<br/>
+下面是一个很简单的示例，来展示用户位置信息的经度和纬度。
+```html lineos:false
+&lt;!DOCTYPE html>
+<html></p>
+
+<pre><code>&lt;body&gt;
+&lt;p id="demo"&gt;Click the button to get your coordinates:&lt;/p&gt;
+&lt;button onclick="getLocation()"&gt;Try It&lt;/button&gt;
+
+&lt;script&gt;
+    var x = document.getElementById("demo");
+
+    function getLocation() {
+        console.info("getLocation working")
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showPosition,showError);
+        } else { 
+            x.innerHTML = "Geolocation is not supported by this browser.";
+        }
+    }
+
+    function showPosition(position) {
+        x.innerHTML="Latitude: " + position.coords.latitude + "&lt;br&gt;Longitude: " + position.coords.longitude;
+    }
+
+    function showError(error) {
+        switch(error.code) {
+        case error.PERMISSION_DENIED:
+            x.innerHTML = "User denied the request for Geolocation."
+            break;
+        case error.POSITION_UNAVAILABLE:
+            x.innerHTML = "Location information is unavailable."
+            break;
+        case error.TIMEOUT:
+            x.innerHTML = "The request to get user location timed out."
+            break;
+        case error.UNKNOWN_ERROR:
+            x.innerHTML = "An unknown error occurred."
+            break;
+    }
+</code></pre>
+
+<p>}</p>
+
+<pre><code>&lt;/script&gt;
+
+&lt;/body&gt;
+</code></pre>
+
+<p></html>
+```</p>
+
+<h3>示例阐述</h3>
+
+<ul>
+<li> 检测getLocation方法是否可用</li>
+<li> 如果可以调用getCurrentPosition方法，否则提示浏览器不支持</li>
+<li> 如果getCurrentPosition获取信息成功，返回一个坐标系的对象，并将这个对象作为参数传递到showPosition方法,如果失败，调用showError方法，并将错误码作为showError方法的参数。</li>
+<li> showPosition方法展示经度和纬度信息</li>
+<li> showError方法用来处理请求错误</li>
+</ul>
+
+
+<p>上述部分参考自<a href="http://www.w3schools.com/HTML/html5_geolocation.asp">html5_geolocation w3cschool</a>，更多高级操作请访问左侧链接。</p>
+
+<h2>WebView如何返回给网页</h2>
+
+<h3>大致操作步骤</h3>
+
+<ul>
+<li>在manifest中申请android.permission.ACCESS_FINE_LOCATION 或 android.permission.ACCESS_COARSE_LOCATION 权限。两者都有更好。</li>
+<li>设置webivew开启javascript功能，地理定位功能，设置物理定位数据库路径</li>
+<li>在onGeolocationPermissionsShowPrompt处理物理位置请求，常用的是提示用户，让用户决定是否允许。</li>
+</ul>
+
+
+<h3>使用的API</h3>
+
+<ul>
+<li>android.permission.ACCESS_FINE_LOCATION 通过GPS，基站，Wifi等获取<strong>精确的</strong>位置信息。</li>
+<li>android.permission.ACCESS_COARSE_LOCATION 通过基站，Wifi等获取<strong>错略的</strong>位置信息。</li>
+<li>onGeolocationPermissionsShowPrompt 位置信息请求回调，通常在这里弹出选择是否赋予权限的对话框</li>
+<li>GeolocationPermissions.Callback.invoke(String origin, boolean allow, boolean remember)决定是否真正提供给网页信息，可根据用户的选择结果选择处理。
+
+<h3>实现代码</h3>
+
+<p>```java lineos:false
+final WebView webView = new WebView(this);
+addContentView(webView,  new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)  );
+WebSettings settings = webView.getSettings();
+settings.setJavaScriptEnabled(true);
+settings.setGeolocationEnabled(true);
+settings.setGeolocationDatabasePath(getFilesDir().getPath());</p></li>
+</ul>
+
+
+<p>webView.setWebChromeClient(new WebChromeClient() {</p>
+
+<pre><code>@Override
+public void onGeolocationPermissionsHidePrompt() {
+    super.onGeolocationPermissionsHidePrompt();
+    Log.i(LOGTAG, "onGeolocationPermissionsHidePrompt");
+}
+
+@Override
+public void onGeolocationPermissionsShowPrompt(final String origin,
+                final Callback callback) {
+    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+    builder.setMessage("Allow to access location information?");
+    OnClickListener dialogButtonOnClickListener = new OnClickListener() {
+
+        @Override
+        public void onClick(DialogInterface dialog, int clickedButton) {
+            if (DialogInterface.BUTTON_POSITIVE == clickedButton) {
+                callback.invoke(origin, true, true);
+            } else if (DialogInterface.BUTTON_NEGATIVE == clickedButton) {
+                callback.invoke(origin, false, false);
+            }
+        }
+    };
+    builder.setPositiveButton("Allow", dialogButtonOnClickListener);
+    builder.setNegativeButton("Deny", dialogButtonOnClickListener);
+    builder.show();
+    super.onGeolocationPermissionsShowPrompt(origin, callback);
+    Log.i(LOGTAG, "onGeolocationPermissionsShowPrompt");
+}
+</code></pre>
+
+<p>});
+webView.loadUrl(&ldquo;file:///android_asset/geolocation.html&rdquo;);
+```</p>
+
+<h2>疑问解答</h2>
+
+<h3>I/SqliteDatabaseCpp(21863): sqlite returned: error code = 14</h3>
+
+<p>原因是你没有设置setGeolocationDatabasePath，按照上面例子设置即可。</p>
+
+<h3>点击之后没有任何变化</h3>
+
+<ul>
+<li>检查代码是否按照上面一样，是否有错误。</li>
+<li>在第一次请求的是否，需要的反应时间比较长。</li>
+</ul>
+
+
+<h3>检测定位服务是否可用</h3>
+
+<p>当GPS_PROVIDER和NETWORK_PROVIDER有一者可用，定位服务就可以用，当两者都不能用时，即定位服务不可以用。<br/>
+注意PASSIVE_PROVIDER不能作为定位服务可用的标志。因为这个provider只会返回其他Provider提供的位置信息，自己无法定位。
+```java lineos:false
+private void testGeolocationOK() {</p>
+
+<pre><code>    LocationManager manager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+    boolean gpsProviderOK = manager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+    boolean networkProviderOK = manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+    boolean geolocationOK = gpsProviderOK &amp;&amp; networkProviderOK;
+    Log.i(LOGTAG, "gpsProviderOK = " + gpsProviderOK + "; networkProviderOK = " + networkProviderOK + "; geoLocationOK=" + geolocationOK);
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>跳转到位置设置界面</h3>
+
+<p>我们只需要发送一个简单的隐式intent即可启动位置设置界面
+<code>java lineos:false
+Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+startActivity(intent);
+</code></p>
+
+<h2>示例代码</h2>
+
+<p><a href="http://pan.baidu.com/s/1gdrHIin">百度云盘</a></p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B007RSKTXQ/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B007RSKTXQ&linkCode=as2&tag=droidyue-23">程序员装B必备：黑轴机械键盘</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B007RSKTXQ" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00E7XVAZA/ref=as_li_qf_sp_asin_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00E7XVAZA&linkCode=as2&tag=droidyue-23">位置信息服务(LBS)关键技术及应用</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00E7XVAZA" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00KHG1006/ref=as_li_qf_sp_asin_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KHG1006&linkCode=as2&tag=droidyue-23">基于语义Web的LBS服务架构及其服务发现算法研究</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00KHG1006" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[利用WebView实现网页的i18n]]></title>
@@ -697,79 +900,6 @@ public int getIdentifier(String name, String defType, String defPackage) {
 <li><a href="http://www.amazon.cn/gp/product/B00J4DXWDG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00J4DXWDG&linkCode=as2&tag=droidyue-23">Android编程权威指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00J4DXWDG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011F7WU4&linkCode=as2&tag=droidyue-23">收藏必备：Java编程思想</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011F7WU4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B0011C2P7W/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C2P7W&linkCode=as2&tag=droidyue-23">经典著作：人月神话</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011C2P7W" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android UI之自定义Window Title样式]]></title>
-    <link href="http://droidyue.com/blog/2014/08/14/style-android-window-title/"/>
-    <updated>2014-08-14T20:07:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/08/14/style-android-window-title</id>
-    <content type="html"><![CDATA[<p>Android提供了很多控件便于开发者进行UI相关的程序设计。但是很多时候，默认的一些UI设置不足以满足我们的需求，要么不好看，要么高度不够，亦或者是与应用界面不协调。于是这时候需要通过自定义样式或者自定义控件来实现。</p>
-
-<p>当然，在空间足以满足需求的情况下，通常需要定义样式就可以搞定。本文将简单介绍如何通过自定义样式来实现定义Window Title。</p>
-
-<!--more-->
-
-
-<h2>先看一下效果图</h2>
-
-<p><img class="<a" src="href="http://droidyueimg.qiniudn.com/style_window_title.png">http://droidyueimg.qiniudn.com/style_window_title.png</a>" title="Custom Window Title Using Style" ></p>
-
-<h2>逐步实现</h2>
-
-<p>在<strong>res/values/styles.xml</strong>文件中加入下列代码
-```xml lineos:false res/values/styles.xml</p>
-
-<p> <style name="MyActivityTheme" parent="android:Theme.Light" ></p>
-
-<pre><code>    &lt;item name="android:windowTitleBackgroundStyle"&gt;@style/windowTitleBackgroundStyle&lt;/item&gt;
-    &lt;item name="android:windowTitleStyle"&gt;@style/windowTitleStyle&lt;/item&gt;
-    &lt;!-- Window Header Height --&gt;
-    &lt;item name="android:windowTitleSize"&gt;54dp&lt;/item&gt;
-&lt;/style&gt;
-
-&lt;!-- Preference Settings Window Title --&gt;
-&lt;style name="windowTitleBackgroundStyle"&gt;  
-    &lt;item name="android:background"&gt;#CCE8CF&lt;/item&gt;                
-&lt;/style&gt;
-
-&lt;style name="windowTitleStyle"&gt;
-    &lt;item name="android:textColor"&gt;#FF0000&lt;/item&gt;
-    &lt;item name="android:paddingLeft"&gt;25dp&lt;/item&gt;
-    &lt;item name="android:textSize"&gt;20sp&lt;/item&gt;
-&lt;/style&gt;
-</code></pre>
-
-<p><code>
-在Manifest中指定Activity或者Application的主题为上面定义的MyActivityTheme，下面以设置Activity为例。
-</code>xml lineos:false
-&lt;activity</p>
-
-<pre><code>android:name="com.example.stylewindowtitle.MainActivity"
-android:label="@string/app_name"
-android:theme="@style/MyActivityTheme"
-</code></pre>
-
-<blockquote></blockquote>
-
-<!--code goes here-->
-
-
-<p>```</p>
-
-<h2>延伸阅读</h2>
-
-<p><a href="http://developer.android.com/reference/android/R.attr.html" target="_blank">Android中的属性</a></p>
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00D73BJWK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D73BJWK&linkCode=as2&tag=droidyue-23">浪潮之巅</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00D73BJWK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B004Y4QWMS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004Y4QWMS&linkCode=as2&tag=droidyue-23">启示录:打造用户喜爱的产品</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B004Y4QWMS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/0307463745/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=0307463745&linkCode=as2&tag=droidyue-23">Rework</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=0307463745" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
