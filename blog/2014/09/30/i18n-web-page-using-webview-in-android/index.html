@@ -1,0 +1,455 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>利用WebView实现网页的i18n - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="利用WebView实现网页的i18n Sep 30th, 2014 软件如果想在全球获得更多的用户，国际化与本地化（internationalization and localization 简称：i18n 和L10n）是非常必要的。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2014/09/30/i18n-web-page-using-webview-in-android">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="http://droidyue-tools.qiniudn.com/open_url_in_new_tab.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>Better Than Before</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/atom.xml">RSS订阅</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">利用WebView实现网页的i18n</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-09-30T21:44:00+08:00" pubdate data-updated="true">Sep 30<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>软件如果想在全球获得更多的用户，国际化与本地化（internationalization and localization 简称：i18n 和L10n）是非常必要的。本文将介绍一个很geeky的方法来利用webview实现html的i18n。</p>
+
+<!--more-->
+
+
+<h2>基本概念</h2>
+
+<p>国际化是指在设计软件，将软件与特定语言及地区脱钩的过程。当软件被移植到不同的语言及地区时，软件本身不用做内部工程上的改变或修正。本地化则是指当移植软件时，加上与特定区域设置有关的信息和翻译文件的过程。</p>
+
+<p>国际化和本地化之间的区别虽然微妙，但却很重要。国际化意味着产品有适用于任何地方的“潜力”；本地化则是为了更适合于“特定”地方的使用，而另外增添的特色。用一项产品来说，国际化只需做一次，但本地化则要针对不同的区域各做一次。 这两者之间是互补的，并且两者合起来才能让一个系统适用于各地。</p>
+
+<p>上述摘自<a href="http://zh.wikipedia.org/wiki/%E5%9B%BD%E9%99%85%E5%8C%96%E4%B8%8E%E6%9C%AC%E5%9C%B0%E5%8C%96">维基百科 国际化与本地化</a></p>
+
+<h2>问题</h2>
+
+<p>如何实现网页的国际化和本地化，支持更多的语言呢？最简单的逻辑可能类似如下伪代码实现</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nx">isChinese</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">lable</span><span class="p">.</span><span class="nx">innerText</span> <span class="o">=</span> <span class="s2">&quot;中文&quot;</span>
+</span><span class='line'><span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isEnglish</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">lable</span><span class="p">.</span><span class="nx">innerText</span> <span class="o">=</span> <span class="s2">&quot;English&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是这样是很有问题的，如果增加了语言必然要修改代码代码，违背了对修改关闭的原则。所以上述并不是一种很好的方法</p>
+
+<h2>更Hacky的实现</h2>
+
+<p>实现思路主要是借助强大的Android系统的资源适配机制（基于设备设备的信息Locale等匹配最合适的资源）。貌似这个是Chrome中网页实现i18n的逻辑。实现步骤主要如下</p>
+
+<ul>
+<li>Android程序提供必要多个Locale的资源</li>
+<li>将网页需要的文字资源组成JSON交换格式</li>
+<li>WebView注入一个变量，变量内容为上一步的JSON数据</li>
+<li>网页实现读取资源，为元素设置内容</li>
+<li>加载网页</li>
+</ul>
+
+
+<h3>提供多个Locale文字资源</h3>
+
+<h4>values/strings.xml</h4>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
+</span><span class='line'><span class="nt">&lt;resources&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;city_beijing&quot;</span><span class="nt">&gt;</span>Beijing<span class="nt">&lt;/string&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;country_china&quot;</span><span class="nt">&gt;</span>China<span class="nt">&lt;/string&gt;</span>
+</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>values-zh-rCN/strings.xml</h4>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
+</span><span class='line'><span class="nt">&lt;resources&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;city_beijing&quot;</span><span class="nt">&gt;</span>北京<span class="nt">&lt;/string&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;country_china&quot;</span><span class="nt">&gt;</span>中国<span class="nt">&lt;/string&gt;</span>
+</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>接下来的代码</h3>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">WebView</span> <span class="n">myWebView</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WebView</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'><span class="n">addContentView</span><span class="o">(</span><span class="n">myWebView</span><span class="o">,</span> <span class="k">new</span> <span class="n">LayoutParams</span><span class="o">(</span><span class="n">LayoutParams</span><span class="o">.</span><span class="na">MATCH_PARENT</span><span class="o">,</span> <span class="n">LayoutParams</span><span class="o">.</span><span class="na">MATCH_PARENT</span><span class="o">));</span>
+</span><span class='line'><span class="c1">//将网页需要的文字资源组成JSON交换格式</span>
+</span><span class='line'><span class="n">JSONObject</span> <span class="n">jsObj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JSONObject</span><span class="o">();</span>
+</span><span class='line'><span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">jsObj</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;country&quot;</span><span class="o">,</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">country_china</span><span class="o">));</span>
+</span><span class='line'>  <span class="n">jsObj</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;city&quot;</span><span class="o">,</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">city_beijing</span><span class="o">));</span>
+</span><span class='line'><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">JSONException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="c1">//WebView注入一个变量，变量内容为上一步的JSON数据</span>
+</span><span class='line'><span class="n">String</span> <span class="n">injectString</span> <span class="o">=</span> <span class="s">&quot;var textRes = &quot;</span> <span class="o">+</span> <span class="n">jsObj</span><span class="o">;</span>
+</span><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;injuectString = &quot;</span> <span class="o">+</span> <span class="n">injectString</span><span class="o">);</span>
+</span><span class='line'><span class="n">WebSettings</span> <span class="n">settings</span> <span class="o">=</span> <span class="n">myWebView</span><span class="o">.</span><span class="na">getSettings</span><span class="o">();</span>
+</span><span class='line'><span class="n">settings</span><span class="o">.</span><span class="na">setJavaScriptEnabled</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class='line'><span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">&quot;javascript:&quot;</span> <span class="o">+</span> <span class="n">injectString</span><span class="o">);</span>
+</span><span class='line'><span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">&quot;file:///android_asset/location.html&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>网页实现</h3>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;html&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;head&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;title&gt;</span>i18n Test<span class="nt">&lt;/title&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/head&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;body&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;label</span> <span class="na">id=</span><span class="s">&quot;country&quot;</span><span class="nt">&gt;&lt;/label&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;lable</span> <span class="na">id=</span><span class="s">&quot;city&quot;</span><span class="nt">&gt;&lt;/lable&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/body&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">).</span><span class="nx">innerText</span><span class="o">=</span> <span class="nx">textRes</span><span class="p">.</span><span class="nx">country</span>
+</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;city&#39;</span><span class="p">).</span><span class="nx">innerText</span> <span class="o">=</span> <span class="nx">textRes</span><span class="p">.</span><span class="nx">city</span>
+</span><span class='line'>  <span class="nt">&lt;/script&gt;</span>
+</span><span class='line'><span class="nt">&lt;/html&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>结果</h3>
+
+<ul>
+<li>当系统语言为中文简体环境下网页显示<strong>中国 北京</strong></li>
+<li>当系统语言为非中文简体环境下网页显示<strong>China Beijing</strong></li>
+</ul>
+
+
+<h3>Demo源码下载</h3>
+
+<p><a href="http://pan.baidu.com/s/1sjwNamL">@百度网盘</a></p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">这样才可以精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B002JCU2TG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002JCU2TG&linkCode=as2&tag=droidyue-23">瞬间之美:Web界面设计如何让用户心动</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002JCU2TG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+</div>
+
+
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js">
+  </script>
+  <!-- droidyue -->
+  <ins class="adsbygoogle"
+      style="display:inline-block;width:728px;height:90px"
+      data-ad-client="ca-pub-7565659593663612"
+      data-ad-slot="3065659745">
+  </ins>
+  <script>
+    
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+  
+<iframe src="http://rcm-cn.amazon-adsystem.com/e/cm?t=droidyue-23&o=28&p=48&l=ez&f=ifr&f=ifr" width="728" height="90" scrolling="no" marginwidth="0" marginheight="0" border="0" frameborder="0" style="border:none;"></iframe>
+
+
+  
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-09-30T21:44:00+08:00" pubdate data-updated="true">Sep 30<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/javascript/'>Javascript</a>, <a class='category' href='/blog/categories/l10n/'>L10n</a>, <a class='category' href='/blog/categories/i18n/'>i18n</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/09/29/open-url-in-new-tab-using-javascript/" title="Previous Post: 每周一脚本：js设置链接为新标签打开">&laquo; 每周一脚本：js设置链接为新标签打开</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/10/01/great-markdown-viewer-as-a-chrome-extension/" title="Next Post: 实时预览Markdown利器">实时预览Markdown利器 &raquo;</a>
+        
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2014/09/30/i18n-web-page-using-webview-in-android" data-title="利用WebView实现网页的i18n" data-url="http://droidyue.com/blog/2014/09/30/i18n-web-page-using-webview-in-android/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/10/03/handle-image-data-in-android/">Android处理图像数据全记录</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/02/the-private-modifier-in-java/">细话Java："失效"的private修饰符</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/01/handle-geolocation-request-in-webview/">WebView处理网页位置请求</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/01/great-markdown-viewer-as-a-chrome-extension/">实时预览Markdown利器</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/09/30/i18n-web-page-using-webview-in-android/">利用WebView实现网页的i18n</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="/links/">友情链接</a></li>
+    <li><a href="/donate/">捐赠 Donate!</a></li>
+    <li><a href="http://droidyue.com/blog/2014/09/13/my-work-for-qiniu-demo/" target="blank">为我投票^_^</a></li>
+    <li><a href="https://portal.qiniu.com/signup?code=3l8cqx1u74rbm" target="_blank">国内最好的免费CDN图床</a></li>
+</ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>

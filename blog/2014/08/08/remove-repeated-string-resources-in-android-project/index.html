@@ -1,0 +1,589 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>赶走那些Android工程中得冗余字符串 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="赶走那些Android工程中得冗余字符串 Aug 8th, 2014 Android提供了一套很方便的进行资源（语言）国际化机制，为了更好地支持多语言，很多工程的翻译往往会放到类似crowdin这样的平台上。资源是全了，但是还是会有一些问题。 哪些问题 以下使用一些语言进行举例。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2014/08/08/remove-repeated-string-resources-in-android-project">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="http://droidyue-tools.qiniudn.com/open_url_in_new_tab.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>Better Than Before</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/atom.xml">RSS订阅</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">赶走那些Android工程中得冗余字符串</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-08-08T19:32:00+08:00" pubdate data-updated="true">Aug 8<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Android提供了一套很方便的进行资源（语言）国际化机制，为了更好地支持多语言，很多工程的翻译往往会放到类似crowdin这样的平台上。资源是全了，但是还是会有一些问题。</p>
+
+<!--more-->
+
+
+<h2>哪些问题</h2>
+
+<p>以下使用一些语言进行举例。其中values为工程默认的资源。</p>
+
+<ul>
+<li>某语言的资源和某语言限定区域的资源之间。如<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，这种表现最为严重。</li>
+<li>某语言的资源和默认的资源之间。<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串，可能原因是由于<strong>values-fr</strong>存在未翻译字符串导致</li>
+</ul>
+
+
+<h2>为什么要去重</h2>
+
+<ul>
+<li>洁癖，容不下半点冗余。</li>
+</ul>
+
+
+<h2>解决思路</h2>
+
+<ul>
+<li><p>如果<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，去除<strong>values-fr-rCA</strong>中的重复字符串，保留<strong>values-fr</strong>。这样可以保证在values-fr-rCA下也可以正确读取到资源。</p></li>
+<li><p>如果<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串。如去除<strong>values-fr</strong>中得重复字符串，保留values的条目。</p></li>
+</ul>
+
+
+<h2>Py脚本</h2>
+
+<figure class='code'><figcaption><span>filenos:false removeRepeatedStrings.py</span><a href='https://raw.githubusercontent.com/androidyue/DroidResCleaner/master/removeRepeatedStrings.py'>link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'><span class="c"># coding=utf-8</span>
+</span><span class='line'><span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">listdir</span><span class="p">,</span><span class="n">path</span><span class="p">,</span> <span class="n">system</span>
+</span><span class='line'><span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">argv</span>
+</span><span class='line'><span class="k">try</span><span class="p">:</span>
+</span><span class='line'>    <span class="kn">import</span> <span class="nn">xml.etree.cElementTree</span> <span class="kn">as</span> <span class="nn">ET</span>
+</span><span class='line'><span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span class='line'>    <span class="kn">import</span> <span class="nn">xml.etree.ElementTree</span> <span class="kn">as</span> <span class="nn">ET</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">genRegionLangPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>    <span class="n">basicLanguage</span> <span class="o">=</span> <span class="bp">None</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="s">&#39;values&#39;</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">)</span> <span class="p">:</span>
+</span><span class='line'>        <span class="n">hasRegionLimit</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;r&#39;</span> <span class="o">==</span> <span class="n">filePath</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">hasRegionLimit</span><span class="p">):</span>
+</span><span class='line'>            <span class="n">basicLanguage</span> <span class="o">=</span> <span class="n">filePath</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">))</span> <span class="p">:</span>
+</span><span class='line'>                <span class="k">return</span> <span class="bp">None</span>
+</span><span class='line'>            <span class="n">belongsToEnglish</span> <span class="o">=</span>  <span class="p">(</span><span class="s">&quot;values-en&quot;</span> <span class="ow">in</span> <span class="n">basicLanguage</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="n">belongsToEnglish</span><span class="p">):</span>
+</span><span class='line'>                <span class="c">#Compare with the res/values/strings.xml</span>
+</span><span class='line'>                <span class="k">return</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;/values/strings.xml&#39;</span><span class="p">,</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">&quot;/strings.xml&quot;</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>                <span class="k">return</span> <span class="p">(</span><span class="n">basicLanguage</span> <span class="o">+</span> <span class="s">&#39;/strings.xml&#39;</span><span class="p">,</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">&quot;/strings.xml&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="bp">None</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">genLangPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">shouldGenLanPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="s">&#39;values&#39;</span> <span class="ow">in</span> <span class="n">filePath</span> <span class="p">):</span>
+</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="s">&#39;dpi&#39;</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="s">&#39;dimes&#39;</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="s">&#39;large&#39;</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
+</span><span class='line'>        <span class="k">return</span> <span class="bp">True</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">shouldGenLanPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">)):</span>
+</span><span class='line'>        <span class="n">basicLanguage</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filePath</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;/values/strings.xml&#39;</span>
+</span><span class='line'>        <span class="n">targetLanguage</span> <span class="o">=</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">&#39;/strings.xml&#39;</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">targetLanguage</span><span class="p">)):</span>
+</span><span class='line'>           <span class="k">return</span> <span class="bp">None</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">samefile</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">,</span><span class="n">targetLanguage</span><span class="p">))</span> <span class="p">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="p">(</span><span class="n">basicLanguage</span><span class="p">,</span> <span class="n">targetLanguage</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="bp">None</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">genCompareList</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>    <span class="n">compareLists</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class='line'>    <span class="k">for</span> <span class="nb">file</span> <span class="ow">in</span> <span class="n">listdir</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>        <span class="n">regionPair</span> <span class="o">=</span> <span class="n">genRegionLangPair</span><span class="p">(</span><span class="n">filePath</span> <span class="o">+</span> <span class="s">&#39;/&#39;</span> <span class="o">+</span> <span class="nb">file</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">regionPair</span><span class="p">):</span>
+</span><span class='line'>            <span class="n">compareLists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">regionPair</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">languagePair</span> <span class="o">=</span> <span class="n">genLangPair</span><span class="p">(</span><span class="n">filePath</span> <span class="o">+</span> <span class="s">&#39;/&#39;</span> <span class="o">+</span> <span class="nb">file</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">languagePair</span><span class="p">)</span> <span class="p">:</span>
+</span><span class='line'>            <span class="n">compareLists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">languagePair</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">compareLists</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">getXmlEntries</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>    <span class="n">root</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">ElementTree</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="n">filePath</span><span class="p">)</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">entries</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">root</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">attrib</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">attrib</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">attrib</span><span class="p">)</span> <span class="p">:</span>
+</span><span class='line'>            <span class="n">entries</span><span class="p">[</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">text</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;xmlEntriesCount&#39;</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">entries</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">rewriteRegionFile</span><span class="p">(</span><span class="n">sourceEntries</span><span class="p">,</span> <span class="n">filePath</span><span class="p">):</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filePath</span><span class="p">)):</span>
+</span><span class='line'>        <span class="k">return</span>
+</span><span class='line'>    <span class="n">ET</span><span class="o">.</span><span class="n">register_namespace</span><span class="p">(</span><span class="s">&#39;xliff&#39;</span><span class="p">,</span><span class="s">&quot;urn:oasis:names:tc:xliff:document:1.2&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">tree</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">ElementTree</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="n">filePath</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">root</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+</span><span class='line'>    <span class="k">print</span> <span class="n">root</span>
+</span><span class='line'>    <span class="n">totalCount</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="n">removeCount</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="n">unRemoveCount</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="k">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">toRemoveList</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class='line'>    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">root</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">totalCount</span> <span class="o">=</span> <span class="n">totalCount</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>        <span class="n">attrib</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">attrib</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">==</span> <span class="n">attrib</span><span class="p">):</span>
+</span><span class='line'>            <span class="k">continue</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">childName</span> <span class="o">=</span> <span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">sourceEntries</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">childName</span><span class="p">)</span> <span class="o">==</span> <span class="n">child</span><span class="o">.</span><span class="n">text</span><span class="p">):</span>
+</span><span class='line'>            <span class="n">removeCount</span> <span class="o">=</span> <span class="n">removeCount</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="n">toRemoveList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>            <span class="n">unRemoveCount</span> <span class="o">=</span> <span class="n">unRemoveCount</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="k">print</span> <span class="n">childName</span><span class="p">,</span> <span class="n">sourceEntries</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">childName</span><span class="p">),</span> <span class="n">child</span><span class="o">.</span><span class="n">text</span>
+</span><span class='line'>    <span class="k">print</span> <span class="n">filePath</span><span class="p">,</span><span class="n">totalCount</span><span class="p">,</span> <span class="n">removeCount</span><span class="p">,</span><span class="n">unRemoveCount</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">for</span> <span class="n">aItem</span> <span class="ow">in</span> <span class="n">toRemoveList</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">root</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">aItem</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">):</span>
+</span><span class='line'>        <span class="n">tree</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filePath</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">&quot;UTF-8&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">command</span> <span class="o">=</span> <span class="s">&#39;rm -rf </span><span class="si">%s</span><span class="s">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filePath</span><span class="p">))</span>
+</span><span class='line'>        <span class="k">print</span> <span class="n">command</span>
+</span><span class='line'>        <span class="n">system</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">projectDir</span><span class="p">):</span>
+</span><span class='line'>    <span class="n">lists</span> <span class="o">=</span> <span class="n">genCompareList</span><span class="p">(</span><span class="n">projectDir</span> <span class="o">+</span> <span class="s">&quot;/res/&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">lists</span><span class="p">:</span>
+</span><span class='line'>        <span class="k">print</span> <span class="n">item</span>
+</span><span class='line'>        <span class="n">src</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span class='line'>        <span class="n">dest</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</span><span class='line'>        <span class="n">rewriteRegionFile</span><span class="p">(</span><span class="n">getXmlEntries</span><span class="p">(</span><span class="n">src</span><span class="p">),</span><span class="n">dest</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">:</span>
+</span><span class='line'>        <span class="n">main</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>如何使用</h2>
+
+<figure class='code'><figcaption><span>filenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>python removeRepeatedStrings.py your_android_project_root_dir
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>工程参与</h2>
+
+<p><a href="https://github.com/androidyue/DroidResCleaner/blob/master/removeRepeatedStrings.py" target="_blank">RemoveRepeatedStrings.py</a></p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00DZEX5JQ/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00DZEX5JQ&linkCode=as2&tag=droidyue-23">控制你行为的秘密</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00DZEX5JQ" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B0090HBORW/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0090HBORW&linkCode=as2&tag=droidyue-23">好工作是设计出来的</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0090HBORW" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B001F7AEFI/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001F7AEFI&linkCode=as2&tag=droidyue-23">原来这才是瑞士多功能军刀</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B001F7AEFI" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+</div>
+
+
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js">
+  </script>
+  <!-- droidyue -->
+  <ins class="adsbygoogle"
+      style="display:inline-block;width:728px;height:90px"
+      data-ad-client="ca-pub-7565659593663612"
+      data-ad-slot="3065659745">
+  </ins>
+  <script>
+    
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+  
+<iframe src="http://rcm-cn.amazon-adsystem.com/e/cm?t=droidyue-23&o=28&p=48&l=ez&f=ifr&f=ifr" width="728" height="90" scrolling="no" marginwidth="0" marginheight="0" border="0" frameborder="0" style="border:none;"></iframe>
+
+
+  
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-08-08T19:32:00+08:00" pubdate data-updated="true">Aug 8<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/python/'>Python</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/08/06/fix-conflicts-of-jiathis-in-octopress/" title="Previous Post: Octopress中处理加网分享问题">&laquo; Octopress中处理加网分享问题</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/08/13/create-fignerprint-for-weibo-or-wechat-in-the-easiest-way/" title="Next Post: 超简单生成微博微信应用签名">超简单生成微博微信应用签名 &raquo;</a>
+        
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2014/08/08/remove-repeated-string-resources-in-android-project" data-title="赶走那些Android工程中得冗余字符串" data-url="http://droidyue.com/blog/2014/08/08/remove-repeated-string-resources-in-android-project/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/10/03/handle-image-data-in-android/">Android处理图像数据全记录</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/02/the-private-modifier-in-java/">细话Java："失效"的private修饰符</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/01/handle-geolocation-request-in-webview/">WebView处理网页位置请求</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/10/01/great-markdown-viewer-as-a-chrome-extension/">实时预览Markdown利器</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/09/30/i18n-web-page-using-webview-in-android/">利用WebView实现网页的i18n</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="/links/">友情链接</a></li>
+    <li><a href="/donate/">捐赠 Donate!</a></li>
+    <li><a href="http://droidyue.com/blog/2014/09/13/my-work-for-qiniu-demo/" target="blank">为我投票^_^</a></li>
+    <li><a href="https://portal.qiniu.com/signup?code=3l8cqx1u74rbm" target="_blank">国内最好的免费CDN图床</a></li>
+</ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
