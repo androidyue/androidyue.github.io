@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-10-12T09:49:56+08:00</updated>
+  <updated>2014-10-12T10:07:58+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,118 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[译文：理解Java中的弱引用]]></title>
+    <link href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/"/>
+    <updated>2014-10-12T09:56:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java</id>
+    <content type="html"><![CDATA[<p>不久之前，我面试了一些求职Java高级开发工程师的应聘者。我常常会面试他们说，“你能给我介绍一些Java中得弱引用吗？”，如果面试者这样说，“嗯，是不是垃圾回收有关的？”，我就会基本满意了，我并不期待回答是一篇诘究本末的论文描述。</p>
+
+<p>然而事与愿违，我很吃惊的发现，在将近20多个有着平均5年开发经验和高学历背景的应聘者中，居然只有两个人知道弱引用的存在，但是在这两个人之中只有一个人真正了解这方面的知识。在面试过程中，我还尝试提示一些东西，来看看有没有人突然说一声“原来是这个啊”，结果很是让我失望。我开始困惑，为什么这块的知识如此不被重视，毕竟弱引用是一个很有用途的特性，况且这个特性已经在7年前 Java 1.2发布时便引入了。</p>
+
+<!--more-->
+
+
+<p>好吧，这里我不期待你看完本文之后成为一个弱引用方面的专家，但是我认为至少你应该了解什么是弱引用，如何使用它们，并且什么场景使用。既然它们是一些不知名的概念，我简单就着前面的三个问题来说明一下。</p>
+
+<h2>强引用(Strong Reference)</h2>
+
+<p>强引用就是我们经常使用的引用，其写法如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">StringBuffer</span> <span class="n">buffer</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringBuffer</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面创建了一个StringBuffer对象，并将这个对象的（强）引用存到变量buffer中。是的，就是这个小儿科的操作（请原谅我这样的说法）。强引用最重要的就是它能够让引用变得强（Strong），这就决定了它和垃圾回收器的交互。具体来说，如果一个对象通过一串强引用链接可到达(Strongly reachable)，它是不会被回收的。如果你不想让你正在使用的对象被回收，这就正是你所需要的。</p>
+
+<h3>但是强引用如此之强</h3>
+
+<p>在一个程序里，将一个类设置成不可被扩展是有点不太常见的，当然这个完全可以通过类标记成final实现。或者也可以更加复杂一些，就是通过内部包含了未知数量具体实现的工厂方法返回一个接口(Interface)。举个例子，我们想要使用一个叫做Widget的类，但是这个类不能被继承，所以无法增加新的功能。</p>
+
+<p>但是我们如果想追踪Widget对象的额外信息，我们该怎么办？ 假设我们需要记录每个对象的序列号，但是由于Widget类并不包含这个属性，而且也不能扩展导致我们也不能增加这个属性。其实一点问题也没有，HashMap完全可以解决上述的问题。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">serialNumberMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">widget</span><span class="o">,</span> <span class="n">widgetSerialNumber</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这表面看上去没有问题，但是widget对象的强引用很有可能会引发问题。我们可以确信当一个widget序列号不需要时，我们应该将这个条目从map中移除。如果我们没有移除的话，可能会导致内存泄露，亦或者我们手动移除时删除了我们正在使用的widgets，会导致有效数据的丢失。其实这些问题很类似，这就是没有垃圾回收机制的语言管理内存时常遇到的问题。但是我们不用去担心这个问题，因为我们使用的时具有垃圾回收机制的Java语言。</p>
+
+<p>另一个强引用可能带来的问题就是缓存,尤其是像图片这样的大文件的缓存。假设你有一个程序需要处理用户提供的图片，通常的做法就是做图片数据缓存，因为从磁盘加载图片代价很大，并且同时我们也想避免在内存中同时存在两份一样的图片数据。</p>
+
+<p>缓存被设计的目的就是避免我们去再次加载哪些不需要的文件。你会很快发现在缓存中会一直包含一个到已经指向内存中图片数据的引用。使用强引用会强制图片数据留在内存，这就需要你来决定什么时候图片数据不需要并且手动从缓存中移除，进而可以让垃圾回收器回收。因此你再一次被强制做垃圾回收器该做的工作，并且人为决定是该清理到哪一个对象。</p>
+
+<h2>弱引用(Weak Reference)</h2>
+
+<p>弱引用简单来说就是将对象留在内存的能力不是那么强的引用。使用WeakReference，垃圾回收器会帮你来决定引用的对象何时回收并且将对象从内存移除。创建弱引用如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">Widget</span><span class="o">&gt;</span> <span class="n">weakWidget</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">Widget</span><span class="o">&gt;(</span><span class="n">widget</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用weakWidget.get()就可以得到真实的Widget对象，因为弱引用不能阻挡垃圾回收器对其回收，你会发现（当没有任何强引用到widget对象时）使用get时突然返回null。</p>
+
+<p>解决上述的widget序列数记录的问题，最简单的办法就是使用Java内置的WeakHashMap类。WeakHashMap和HashMap几乎一样，唯一的区别就是它的键（不是值!!!）使用WeakReference引用。当WeakHashMap的键标记为垃圾的时候，这个键对应的条目就会自动被移除。这就避免了上面不需要的Widget对象手动删除的问题。使用WeakHashMap可以很便捷地转为HashMap或者Map。</p>
+
+<h3>引用队列(Reference Queue)</h3>
+
+<p>一旦弱引用对象开始返回null，该弱引用指向的对象就被标记成了垃圾。而这个弱引用对象（非其指向的对象）就没有什么用了。通常这时候需要进行一些清理工作。比如WeakHashMap会在这时候移除没用的条目来避免保存无限制增长的没有意义的弱引用。</p>
+
+<p>引用队列可以很容易地实现跟踪不需要的引用。当你在构造WeakReference时传入一个ReferenceQueue对象，当该引用指向的对象被标记为垃圾的时候，这个引用对象会自动地加入到引用队列里面。接下来，你就可以在固定的周期，处理传入的引用队列，比如做一些清理工作来处理这些没有用的引用对象。</p>
+
+<h2>四种引用</h2>
+
+<p>Java中实际上有四种强度不同的引用，从强到弱它们分别是，强引用，软引用，弱引用和虚引用。上面部分介绍了强引用和弱引用，下面介绍剩下的两个，软引用和虚引用。</p>
+
+<h2>软引用（Soft Reference）</h2>
+
+<p>软引用基本上和弱引用差不多，只是相比弱引用，它阻止垃圾回收期回收其指向的对象的能力强一些。如果一个对象是弱引用可到达，那么这个对象会被垃圾回收器接下来的回收周期销毁。但是如果是软引用可以到达，那么这个对象会停留在内存更时间上长一些。当内存不足时垃圾回收器才会回收这些软引用可到达的对象。</p>
+
+<p>由于软引用可到达的对象比弱引用可达到的对象滞留内存时间会长一些，我们可以利用这个特性来做缓存。这样的话，你就可以节省了很多事情，垃圾回收器会关心当前哪种可到达类型以及内存的消耗程度来进行处理。</p>
+
+<h2>虚引用 （Phantom Reference）</h2>
+
+<p>与软引用，弱引用不同，虚引用指向的对象十分脆弱，我们不可以通过get方法来得到其指向的对象。它的唯一作用就是当其指向的对象被回收之后，自己被加入到引用队列，用作记录该引用指向的对象已被销毁。</p>
+
+<p>当弱引用的指向对象变得弱引用可到达，该弱引用就会加入到引用队列。这一操作发生在对象析构或者垃圾回收真正发生之前。理论上，这个即将被回收的对象是可以在一个不符合规范的析构方法里面重新复活。但是这个弱引用会销毁。虚引用只有在其指向的对象从内存中移除掉之后才会加入到引用队列中。其get方法一直返回null就是为了阻止其指向的几乎被销毁的对象重新复活。</p>
+
+<p>虚引用使用场景主要由两个。它允许你知道具体何时其引用的对象从内存中移除。而实际上这是Java中唯一的方式。这一点尤其表现在处理类似图片的大文件的情况。当你确定一个图片数据对象应该被回收，你可以利用虚引用来判断这个对象回收之后在继续加载下一张图片。这样可以尽可能地避免可怕的内存溢出错误。</p>
+
+<p>第二点，虚引用可以避免很多析构时的问题。finalize方法可以通过创建强引用指向快被销毁的对象来让这些对象重新复活。然而，一个重写了finalize方法的对象如果想要被回收掉，需要经历两个单独的垃圾收集周期。在第一个周期中，某个对象被标记为可回收，进而才能进行析构。但是因为在析构过程中仍有微弱的可能这个对象会重新复活。这种情况下，在这个对象真实销毁之前，垃圾回收器需要再次运行。因为析构可能并不是很及时，所以在调用对象的析构之前，需要经历数量不确定的垃圾收集周期。这就意味着在真正清理掉这个对象的时候可能发生很大的延迟。这就是为什么当大部分堆被标记成垃圾时还是会出现烦人的内存溢出错误。</p>
+
+<p>使用虚引用，上述情况将引刃而解，当一个虚引用加入到引用队列时，你绝对没有办法得到一个销毁了的对象。因为这时候，对象已经从内存中销毁了。因为虚引用不能被用作让其指向的对象重生，所以其对象会在垃圾回收的第一个周期就将被清理掉。</p>
+
+<p>显而易见，finalize方法不建议被重写。因为虚引用明显地安全高效，去掉finalize方法可以虚拟机变得明显简单。当然你也可以去重写这个方法来实现更多。这完全看个人选择。</p>
+
+<h2>总结</h2>
+
+<p>我想看到这里，很多人开始发牢骚了，为什么你要讲一个过去十年的老古董API呢，好吧，以我的经验看，很多的Java程序员并不是很了解这个知识，我认为有一些深入的理解是很必要的，同时我希望大家能从本文中收获一些东西。</p>
+
+<h2>原文信息</h2>
+
+<ul>
+<li>文章出自  <a href="https://weblogs.java.net/blog/enicholas/archive/2006/05/understanding_w.html">Understanding Weak References</a></li>
+<li>作者为<a href="https://www.java.net/blogs/enicholas">Ethan Nicholas</a>，Yahoo! Publishing Tools team Leader，Yahoo! SiteBuilder Web程序的早期作者。</li>
+</ul>
+
+
+<h2>附注信息</h2>
+
+<p>本文涉及到很多概念对于初次接触的人相对比较难以理解，建议结合英文原文进行研究。</p>
+
+<h3>Java高阶推荐</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00H1FXTNM/ref=as_li_qf_sp_asin_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00H1FXTNM&linkCode=as2&tag=droidyue-23">Java虚拟机规范(Java SE 7版)</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00H1FXTNM" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00IOB0K1Q/ref=as_li_qf_sp_asin_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00IOB0K1Q&linkCode=as2&tag=droidyue-23">图灵程序设计丛书:Java性能优化权威指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00IOB0K1Q" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践(第2版)</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00D2ID4PK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[腾讯云分析问题]]></title>
@@ -3144,329 +3256,6 @@ this$0就是内部类持有的外部类引用，通过构造方法传递引用�
 
 
 <p>同时，这些职位也同时在热招，测试工程师，安卓开发工程师，网页设计师（游戏），游戏客服，手机推广专员，前端工程师，服务器开发工程师，更多详细内容，请参考<a href="http://www.maxthon.cn/jobs/" target="_blank">来傲游工作</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Java细节：字符串的拼接]]></title>
-    <link href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/"/>
-    <updated>2014-08-30T18:18:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/08/30/java-details-string-concatenation</id>
-    <content type="html"><![CDATA[<p>工作日忙于项目的逻辑实现，周六有点时间，从书柜里拿出厚厚的英文版<em>Thinking In Java</em>，读到了字符串对象的拼接。参考着这本书做个翻译，加上自己思考的东西，写上这篇文章记录一下。</p>
-
-<!--more-->
-
-
-<h2>不可变的String对象</h2>
-
-<p>在Java中,String对象是不可变的(Immutable)。在代码中，可以创建多个某一个String对象的别名。但是这些别名都是的引用是相同的。<br/>
-比如s1和s2都是&#8221;droidyue.com&#8221;对象的别名，别名保存着到真实对象的引用。所以s1 = s2</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">s1</span> <span class="o">=</span> <span class="s">&quot;droidyue.com&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">s1</span><span class="o">;</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;s1 and s2 has the same reference =&quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">s1</span> <span class="o">==</span> <span class="n">s2</span><span class="o">));</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Java中仅有的重载运算符</h2>
-
-<p>在Java中，唯一被重载的运算符就是字符串的拼接相关的。<code>+</code>,<code>+=</code>。除此之外，Java设计者不允许重载其他的运算符。</p>
-
-<h2>拼接剖析</h2>
-
-<h3>真的有性能代价么</h3>
-
-<p>了解了上面两点，可能会有这样的思考，既然Sting对象不可变，那么多个（三个及以上）字符串拼接必然产生多余的中间String对象。</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">&quot;Andy&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">&quot;24&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">&quot;Developer&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>要得到上面的info，就会userName和age拼接生成临时一个String对象t1,内容为<code>Andy24</code>，然后有t1和job拼接生成最终我们需要的info对象，这其中，产生了一个中间的t1，而且t1创建之后，没有主动回收，势必会占一定的空间。如果是一个很多(假设上百个，多见于对对象的toString的调用)字符串的拼接，那么代价就更大了，性能一下会降低很多。</p>
-
-<h3>编译器的优化处理</h3>
-
-<p>真的会有上面的性能代价么，字符串拼接这么常用，没有特殊的处理优化么，答案是有的，这个优化进行在编译器编译.java到bytecode时。</p>
-
-<p>一个Java程序如果想运行起来，需要经过两个时期，编译时和运行时。在编译时，Java 编译器(Compiler)将java文件转换成字节码。在运行时，Java虚拟机（JVM）运行编译时生成的字节码。通过这样两个时期，Java做到了所谓的一处编译，处处运行。</p>
-
-<p>我们实验一下编译期都做了哪些优化，我们制造一段可能会出现性能代价的代码。</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Concatenation</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">&quot;Andy&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">&quot;24&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">&quot;Developer&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">info</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>对Concatenation.java进行编译一下。得到Concatenation.class</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>javac Concatenation.java
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>然后我们使用javap反编译一下编译出来的Concatenation.class文件。<code>javap -c Concatenation.class</code>。如果没有找到javap命令，请考虑将javap所在目录加入环境变量或者使用javap的完整路径。</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:22:04-androidyue~/workspace_adt/strings/src<span class="nv">$ </span>javap -c Concatenation.class
-</span><span class='line'>Compiled from <span class="s2">&quot;Concatenation.java&quot;</span>
-</span><span class='line'>public class Concatenation <span class="o">{</span>
-</span><span class='line'>  public Concatenation<span class="o">()</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: aload_0
-</span><span class='line'>       1: invokespecial <span class="c">#1                  // Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>       4: <span class="k">return        </span>
-</span><span class='line'>
-</span><span class='line'><span class="k">  </span>public static void main<span class="o">(</span>java.lang.String<span class="o">[])</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: ldc           <span class="c">#2                  // String Andy</span>
-</span><span class='line'>       2: astore_1
-</span><span class='line'>       3: ldc           <span class="c">#3                  // String 24</span>
-</span><span class='line'>       5: astore_2
-</span><span class='line'>       6: ldc           <span class="c">#4                  // String Developer</span>
-</span><span class='line'>       8: astore_3
-</span><span class='line'>       9: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
-</span><span class='line'>      12: dup
-</span><span class='line'>      13: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>      16: aload_1
-</span><span class='line'>      17: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      20: aload_2
-</span><span class='line'>      21: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      24: aload_3
-</span><span class='line'>      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
-</span><span class='line'>      31: astore        4
-</span><span class='line'>      33: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      36: aload         4
-</span><span class='line'>      38: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      41: <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其中，ldc，astore等为java字节码的指令，类似汇编指令。后面的注释使用了Java相关的内容进行了说明。
-我们可以看到上面有很多StringBuilder,但是我们在Java代码里并没有显示地调用，这就是Java编译器做的优化，当Java编译器遇到字符串拼接的时候，会创建一个StringBuilder对象，后面的拼接，实际上是调用StringBuilder对象的append方法。这样就不会有我们上面担心的问题了。</p>
-
-<h3>仅靠编译器优化？</h3>
-
-<p>既然编译器帮我们做了优化，是不是仅仅依靠编译器的优化就够了呢，当然不是。 <br/>
-下面我们看一段未优化性能较低的代码</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span>  <span class="nf">implicitUseStringBuilder</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">String</span> <span class="n">result</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">;</span>
-</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">result</span> <span class="o">+=</span> <span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">];</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>使用javac编译，使用javap查看</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>public void implicitUseStringBuilder<span class="o">(</span>java.lang.String<span class="o">[])</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: ldc           <span class="c">#11                 // String </span>
-</span><span class='line'>       2: astore_2
-</span><span class='line'>       3: iconst_0
-</span><span class='line'>       4: istore_3
-</span><span class='line'>       5: iload_3
-</span><span class='line'>       6: aload_1
-</span><span class='line'>       7: arraylength
-</span><span class='line'>       8: if_icmpge     38
-</span><span class='line'>      11: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
-</span><span class='line'>      14: dup
-</span><span class='line'>      15: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>      18: aload_2
-</span><span class='line'>      19: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      22: aload_1
-</span><span class='line'>      23: iload_3
-</span><span class='line'>      24: aaload
-</span><span class='line'>      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
-</span><span class='line'>      31: astore_2
-</span><span class='line'>      32: iinc          3, 1
-</span><span class='line'>      35: goto          5
-</span><span class='line'>      38: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      41: aload_2
-</span><span class='line'>      42: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      45: <span class="k">return</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其中<code>8: if_icmpge     38</code> 和<code>35: goto          5</code>构成了一个循环。<code>8: if_icmpge     38</code>的意思是如果JVM操作数栈的整数对比大于等于（i &lt; values.length的相反结果）成立，则跳到第38行（System.out）。<code>35: goto          5</code>则表示直接跳到第5行。</p>
-
-<p>但是这里面有一个很重要的就是StringBuilder对象创建发生在循环之间，也就是意味着有多少次循环会创建多少个StringBuilder对象，这样明显不好。赤裸裸地低水平代码啊。</p>
-
-<p>稍微优化一下，瞬间提升逼格。</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">explicitUseStringBuider</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">StringBuilder</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringBuilder</span><span class="o">();</span>
-</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">result</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>对应的编译后的信息</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>public void explicitUseStringBuider<span class="o">(</span>java.lang.String<span class="o">[])</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
-</span><span class='line'>       3: dup
-</span><span class='line'>       4: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>       7: astore_2
-</span><span class='line'>       8: iconst_0
-</span><span class='line'>       9: istore_3
-</span><span class='line'>      10: iload_3
-</span><span class='line'>      11: aload_1
-</span><span class='line'>      12: arraylength
-</span><span class='line'>      13: if_icmpge     30
-</span><span class='line'>      16: aload_2
-</span><span class='line'>      17: aload_1
-</span><span class='line'>      18: iload_3
-</span><span class='line'>      19: aaload
-</span><span class='line'>      20: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      23: pop
-</span><span class='line'>      24: iinc          3, 1
-</span><span class='line'>      27: goto          10
-</span><span class='line'>      30: <span class="k">return</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>从上面可以看出，<code>13: if_icmpge     30</code>和<code>27: goto          10</code>构成了一个loop循环，而<code>0: new           #5</code>位于循环之外，所以不会多次创建StringBuilder.</p>
-
-<p>总的来说，我们在循环体中需要尽量避免隐式或者显式创建StringBuilder. 所以那些了解代码如何编译，内部如何执行的人，写的代码档次都比较高。</p>
-
-<p>以上文章，如有错误，请批评指正 。</p>
-
-<h3>推荐阅读</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011F7WU4&linkCode=as2&tag=droidyue-23">Java编程思想(第4版)</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011F7WU4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0011C3CVA/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C3CVA&linkCode=as2&tag=droidyue-23">Java编程思想（英文版）</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011C3CVA" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00D2ID4PK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
 ]]></content>
   </entry>
   
