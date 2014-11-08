@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-11-05T23:36:50+08:00</updated>
+  <updated>2014-11-08T14:52:10+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,114 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[译文：Android中糟糕的AsyncTask]]></title>
+    <link href="http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/"/>
+    <updated>2014-11-08T14:33:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android</id>
+    <content type="html"><![CDATA[<p>AsyncTask是一个很常用的API，尤其异步处理数据并将数据应用到视图的操作场合。其实AsyncTask并不是那么好，甚至有些糟糕。本文我会讲AsyncTask会引起哪些问题，如何修复这些问题，并且关于AsyncTask的一些替代方案。</p>
+
+<h2>AsyncTask</h2>
+
+<p>从Android API 3（1.5 Cupcake）开始，AsyncTask被引入用来帮助开发者更简单地管理线程。实际上在Android 1.0和1.1也是有类似的实现，那就是UserTask。UserTask和AsyncTask有着相同的API及实现，但是由于由于1.0和1.1的设备份额微乎其微，这里的概念就不会涉及到UserTask。</p>
+
+<!--more-->
+
+
+<h2>生命周期</h2>
+
+<p>关于AsyncTask存在一个这样广泛的误解，很多人认为一个在Activity中的AsyncTask会随着Activity的销毁而销毁。然后事实并非如此。AsyncTask会一直执行doInBackground()方法直到方法执行结束。一旦上述方法结束，会依据情况进行不同的操作。</p>
+
+<ul>
+<li>如果cancel(boolean)调用了，则执行onCancelled(Result)方法</li>
+<li>如果cancel(boolean)没有调用，则执行onPostExecute(Result)方法</li>
+</ul>
+
+
+<p>如果我们的AsyncTask没有在Activity销毁时取消，这会导致AsyncTask崩溃，因为在onPostExecute(Result)方法中处理的视图已经不再存在。</p>
+
+<p>AsyncTask的cancel方法需要一个布尔值的参数，参数名为mayInterruptIfRunning,意思是<code>如果正在执行是否可以打断</code>,如果这个值设置为true，表示这个任务可以被打断，否则，正在执行的程序会继续执行直到完成。如果在doInBackground()方法中有一个循环操作，我们应该在循环中使用isCancelled()来判断，如果返回为true，我们应该避免执行后续无用的循环操作。</p>
+
+<p>总之，我们使用AsyncTask需要确保AsyncTask正确地取消。</p>
+
+<h2>不好好工作的cancel()</h2>
+
+<p>简而言之的答案，<strong>有时候起作用</strong>。</p>
+
+<p>如果你调用了AsyncTask的cancel(false)，doInBackground()仍然会执行到方法结束，只是不会去调用onPostExecute()方法。但是实际上这是让应用程序执行了没有意义的操作。那么是不是我们调用cancel(true)前面的问题就能解决呢？并非如此。如果mayInterruptIfRunning设置为true，会使任务尽早结束，但是如果的doInBackground()有不可打断的方法会失效，比如这个BitmapFactory.decodeStream() IO操作。但是你可以提前关闭IO流并捕获这样操作抛出的异常。但是这样会使得cancel()方法没有任何意义。</p>
+
+<h2>内存泄露</h2>
+
+<p>还有一种常见的情况就是，在Activity中使用非静态匿名内部AsyncTask类，由于Java内部类的特点，AsyncTask内部类会持有外部类的隐式引用。详细请参考<a href="http://droidyue.com/blog/2014/10/02/the-private-modifier-in-java/">细话Java：&#8221;失效&#8221;的private修饰符</a>,由于AsyncTask的生命周期可能比Activity的长，当Activity进行销毁AsyncTask还在执行时，由于AsyncTask持有Activity的引用，导致Activity对象无法回收，进而产生内存泄露。</p>
+
+<h2>结果丢失</h2>
+
+<p>另一个问题就是在屏幕旋转等造成Activity重新创建时AsyncTask数据丢失的问题。当Activity销毁并创新创建后，还在运行的AsyncTask会持有一个Activity的非法引用即之前的Activity实例。导致onPostExecute()没有任何作用。</p>
+
+<h2>串行还是并行</h2>
+
+<p>关于AsyncTask时串行还是并行有很多疑问，这很正常，因为它经过多次的修改。如果你并不明白什么时串行还是并行，可以通过接下来的例子了解，假设我们在一个方法体里面有如下两行代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">new</span> <span class="nf">AsyncTask1</span><span class="o">().</span><span class="na">execute</span><span class="o">();</span>
+</span><span class='line'><span class="k">new</span> <span class="nf">AsyncTask2</span><span class="o">().</span><span class="na">execute</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的两个任务时同时执行呢，还是AsyncTask1执行结束之后，AsyncTask2才能执行呢？实际上是结果依据API不同而不同。</p>
+
+<h3>在1.6(Donut)之前:</h3>
+
+<p>在第一版的AsyncTask，任务是串行调度。一个任务执行完成另一个才能执行。由于串行执行任务，使用多个AsyncTask可能会带来有些问题。所以这并不是一个很好的处理异步（尤其是需要将结果作用于UI试图）操作的方法。</p>
+
+<h3>从1.6到2.3(Gingerbread)</h3>
+
+<p>后来Android团队决定让AsyncTask并行来解决1.6之前引起的问题，这个问题是解决了，新的问题又出现了。很多开发者实际上依赖于顺序执行的行为。于是很多并发的问题蜂拥而至。</p>
+
+<h3>3.0（Honeycomb）到现在</h3>
+
+<p>好吧，开发者可能并不喜欢让AsyncTask并行，于是Android团队又把AsyncTask改成了串行。当然这一次的修改并没有完全禁止AsyncTask并行。你可以通过设置executeOnExecutor(Executor)来实现多个AsyncTask并行。关于API文档的描述如下</p>
+
+<blockquote><p>If we want to make sure we have control over the execution, whether it will run serially or parallel, we can check at runtime with this code to make sure it runs parallel:</p></blockquote>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="n">AsyncTask</span> <span class="n">as</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">Build</span><span class="o">.</span><span class="na">VERSION</span><span class="o">.</span><span class="na">SDK_INT</span> <span class="o">&lt;=</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION_CODES</span><span class="o">.</span><span class="na">HONEYCOMB_MR1</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">as</span><span class="o">.</span><span class="na">execute</span><span class="o">();</span>
+</span><span class='line'>  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">as</span><span class="o">.</span><span class="na">executeOnExecutor</span><span class="o">(</span><span class="n">AsyncTask</span><span class="o">.</span><span class="na">THREAD_POOL_EXECUTOR</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="c1">//(This code does not work for API lvl 1 to 3)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>真的需要AsyncTask么</h2>
+
+<p>并非如此，使用AsyncTask虽然可以以简短的代码实现异步操作，但是正如本文提到的，你需要让AsyncTask正常工作的话，需要注意很多条条框框。推荐的一种进行异步操作的技术就是使用Loaders。这个方法从Android 3.0 (Honeycomb)开始引入，在android支持包中也有包含。可以通过查看官方的文档来详细了解<a href="http://developer.android.com/guide/components/loaders.html">Loaders</a>。</p>
+
+<p>本次译文对原文有少部分删减修改处理。</p>
+
+<h2>引用推荐</h2>
+
+<ul>
+<li><a href="http://bon-app-etit.blogspot.hk/2013/04/the-dark-side-of-asynctask.html">原文地址(墙外的 Orz)</a></li>
+<li><a href="http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.4_r1/android/os/AsyncTask.java#AsyncTask">Grepcode AsyncTsk 源码参考</a></li>
+<li><a href="http://blog.danlew.net/2014/06/21/the-hidden-pitfalls-of-asynctask/">另一篇介绍AsyncTask陷阱的文章</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_qf_sp_asin_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">罗升阳的Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Google IO：Android内存管理主题演讲记录]]></title>
@@ -3254,98 +3362,6 @@ this$0就是内部类持有的外部类引用，通过构造方法传递引用�
 <li><a href="http://www.amazon.cn/gp/product/B00LVHTI9U/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00LVHTI9U&linkCode=as2&tag=droidyue-23">第一行代码:Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00LVHTI9U" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B0097CON2S/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0097CON2S&linkCode=as2&tag=droidyue-23">JavaScript语言精粹</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0097CON2S" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B00B14IGUK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00B14IGUK&linkCode=as2&tag=droidyue-23">安全技术大系:Web前端黑客技术揭秘</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00B14IGUK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[每周一脚本：过滤单个Android程序日志]]></title>
-    <link href="http://droidyue.com/blog/2014/09/15/weekly-scripts-grep-android-application-log-in-terminal/"/>
-    <updated>2014-09-15T18:55:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/09/15/weekly-scripts-grep-android-application-log-in-terminal</id>
-    <content type="html"><![CDATA[<p>在Android软件开发中，增加日志的作用很重要，便于我们了解程序的执行情况和数据。Eclipse开发工具会提供了可视化的工具，但是还是感觉终端效率会高一些，于是自己写了一个python的脚本来通过包名来过滤某一程序的日志。</p>
-
-<h3>原理</h3>
-
-<p>通过包名得到对应的进程ID（可能多个），然后使用adb logcat 过滤进程ID即可得到对应程序的日志。</p>
-
-<!--more-->
-
-
-<h3>源码</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span><a href='https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py'>link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
-</span><span class='line'><span class="c">#coding:utf-8</span>
-</span><span class='line'><span class="c">#This script is aimed to grep logs by application(User should input a packageName and then we look up for the process ids then separate logs by process ids).</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">import</span> <span class="nn">os</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">sys</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">packageName</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">command</span> <span class="o">=</span> <span class="s">&quot;adb shell ps | grep </span><span class="si">%s</span><span class="s"> | awk &#39;{print $2}&#39;&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">packageName</span><span class="p">)</span>
-</span><span class='line'><span class="n">p</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
-</span><span class='line'><span class="c">##for some applications,there are multiple processes,so we should get all the process id</span>
-</span><span class='line'><span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span class='line'><span class="n">filters</span> <span class="o">=</span> <span class="n">pid</span>
-</span><span class='line'><span class="k">while</span><span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="p">):</span>
-</span><span class='line'>    <span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">):</span>
-</span><span class='line'>        <span class="n">filters</span> <span class="o">=</span> <span class="n">filters</span> <span class="o">+</span>  <span class="s">&quot;|&quot;</span> <span class="o">+</span> <span class="n">pid</span>
-</span><span class='line'>        <span class="c">#print &#39;command = %s;filters=%s&#39;%(command, filters)</span>
-</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">filters</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">)</span> <span class="p">:</span>
-</span><span class='line'>    <span class="n">cmd</span> <span class="o">=</span> <span class="s">&#39;adb logcat | grep --color=always -E &quot;</span><span class="si">%s</span><span class="s">&quot; &#39;</span><span class="o">%</span><span class="p">(</span><span class="n">filters</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>使用方法</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>python logcatPkg.py com.mx.browser
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>最新代码</h3>
-
-<p> <a href="https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py" target="_blank">locatPkg.py</a></p>
-
-<h3>不足</h3>
-
-<ul>
-<li> 当脚本执行后，Android程序如果关闭或者重新启动，导致进程ID变化，无法自动继续输出日志，只能再次执行此脚本。</li>
-</ul>
-
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00KVLDS20/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KVLDS20&linkCode=as2&tag=droidyue-23">仅用两周就能自制脚本语言？</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00KVLDS20" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B002A2LQR2/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002A2LQR2&linkCode=as2&tag=droidyue-23">一个不错的Shell脚本学习指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002A2LQR2" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B005YWYH6C/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005YWYH6C&linkCode=as2&tag=droidyue-23">Windows 7脚本编程和命令行工具指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B005YWYH6C" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>

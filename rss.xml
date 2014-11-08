@@ -6,11 +6,119 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Wed, 05 Nov 2014 15:36:50 GMT</pubDate>
+  <pubDate>Sat, 08 Nov 2014 06:52:10 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;p&gt;AsyncTask是一个很常用的API，尤其异步处理数据并将数据应用到视图的操作场合。其实AsyncTask并不是那么好，甚至有些糟糕。本文我会讲AsyncTask会引起哪些问题，如何修复这些问题，并且关于AsyncTask的一些替代方案。&lt;/p&gt;
+
+&lt;h2&gt;AsyncTask&lt;/h2&gt;
+
+&lt;p&gt;从Android API 3（1.5 Cupcake）开始，AsyncTask被引入用来帮助开发者更简单地管理线程。实际上在Android 1.0和1.1也是有类似的实现，那就是UserTask。UserTask和AsyncTask有着相同的API及实现，但是由于由于1.0和1.1的设备份额微乎其微，这里的概念就不会涉及到UserTask。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;生命周期&lt;/h2&gt;
+
+&lt;p&gt;关于AsyncTask存在一个这样广泛的误解，很多人认为一个在Activity中的AsyncTask会随着Activity的销毁而销毁。然后事实并非如此。AsyncTask会一直执行doInBackground()方法直到方法执行结束。一旦上述方法结束，会依据情况进行不同的操作。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;如果cancel(boolean)调用了，则执行onCancelled(Result)方法&lt;/li&gt;
+&lt;li&gt;如果cancel(boolean)没有调用，则执行onPostExecute(Result)方法&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;如果我们的AsyncTask没有在Activity销毁时取消，这会导致AsyncTask崩溃，因为在onPostExecute(Result)方法中处理的视图已经不再存在。&lt;/p&gt;
+
+&lt;p&gt;AsyncTask的cancel方法需要一个布尔值的参数，参数名为mayInterruptIfRunning,意思是&lt;code&gt;如果正在执行是否可以打断&lt;/code&gt;,如果这个值设置为true，表示这个任务可以被打断，否则，正在执行的程序会继续执行直到完成。如果在doInBackground()方法中有一个循环操作，我们应该在循环中使用isCancelled()来判断，如果返回为true，我们应该避免执行后续无用的循环操作。&lt;/p&gt;
+
+&lt;p&gt;总之，我们使用AsyncTask需要确保AsyncTask正确地取消。&lt;/p&gt;
+
+&lt;h2&gt;不好好工作的cancel()&lt;/h2&gt;
+
+&lt;p&gt;简而言之的答案，&lt;strong&gt;有时候起作用&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;如果你调用了AsyncTask的cancel(false)，doInBackground()仍然会执行到方法结束，只是不会去调用onPostExecute()方法。但是实际上这是让应用程序执行了没有意义的操作。那么是不是我们调用cancel(true)前面的问题就能解决呢？并非如此。如果mayInterruptIfRunning设置为true，会使任务尽早结束，但是如果的doInBackground()有不可打断的方法会失效，比如这个BitmapFactory.decodeStream() IO操作。但是你可以提前关闭IO流并捕获这样操作抛出的异常。但是这样会使得cancel()方法没有任何意义。&lt;/p&gt;
+
+&lt;h2&gt;内存泄露&lt;/h2&gt;
+
+&lt;p&gt;还有一种常见的情况就是，在Activity中使用非静态匿名内部AsyncTask类，由于Java内部类的特点，AsyncTask内部类会持有外部类的隐式引用。详细请参考&lt;a href="http://droidyue.com/blog/2014/10/02/the-private-modifier-in-java/"&gt;细话Java：&amp;#8221;失效&amp;#8221;的private修饰符&lt;/a&gt;,由于AsyncTask的生命周期可能比Activity的长，当Activity进行销毁AsyncTask还在执行时，由于AsyncTask持有Activity的引用，导致Activity对象无法回收，进而产生内存泄露。&lt;/p&gt;
+
+&lt;h2&gt;结果丢失&lt;/h2&gt;
+
+&lt;p&gt;另一个问题就是在屏幕旋转等造成Activity重新创建时AsyncTask数据丢失的问题。当Activity销毁并创新创建后，还在运行的AsyncTask会持有一个Activity的非法引用即之前的Activity实例。导致onPostExecute()没有任何作用。&lt;/p&gt;
+
+&lt;h2&gt;串行还是并行&lt;/h2&gt;
+
+&lt;p&gt;关于AsyncTask时串行还是并行有很多疑问，这很正常，因为它经过多次的修改。如果你并不明白什么时串行还是并行，可以通过接下来的例子了解，假设我们在一个方法体里面有如下两行代码&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nf"&gt;AsyncTask1&lt;/span&gt;&lt;span class="o"&gt;().&lt;/span&gt;&lt;span class="na"&gt;execute&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nf"&gt;AsyncTask2&lt;/span&gt;&lt;span class="o"&gt;().&lt;/span&gt;&lt;span class="na"&gt;execute&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上面的两个任务时同时执行呢，还是AsyncTask1执行结束之后，AsyncTask2才能执行呢？实际上是结果依据API不同而不同。&lt;/p&gt;
+
+&lt;h3&gt;在1.6(Donut)之前:&lt;/h3&gt;
+
+&lt;p&gt;在第一版的AsyncTask，任务是串行调度。一个任务执行完成另一个才能执行。由于串行执行任务，使用多个AsyncTask可能会带来有些问题。所以这并不是一个很好的处理异步（尤其是需要将结果作用于UI试图）操作的方法。&lt;/p&gt;
+
+&lt;h3&gt;从1.6到2.3(Gingerbread)&lt;/h3&gt;
+
+&lt;p&gt;后来Android团队决定让AsyncTask并行来解决1.6之前引起的问题，这个问题是解决了，新的问题又出现了。很多开发者实际上依赖于顺序执行的行为。于是很多并发的问题蜂拥而至。&lt;/p&gt;
+
+&lt;h3&gt;3.0（Honeycomb）到现在&lt;/h3&gt;
+
+&lt;p&gt;好吧，开发者可能并不喜欢让AsyncTask并行，于是Android团队又把AsyncTask改成了串行。当然这一次的修改并没有完全禁止AsyncTask并行。你可以通过设置executeOnExecutor(Executor)来实现多个AsyncTask并行。关于API文档的描述如下&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;If we want to make sure we have control over the execution, whether it will run serially or parallel, we can check at runtime with this code to make sure it runs parallel:&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;execute&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;AsyncTask&lt;/span&gt; &lt;span class="n"&gt;as&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Build&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;VERSION&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;SDK_INT&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;=&lt;/span&gt; &lt;span class="n"&gt;Build&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;VERSION_CODES&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;HONEYCOMB_MR1&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;as&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;execute&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt; &lt;span class="k"&gt;else&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;as&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;executeOnExecutor&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;AsyncTask&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;THREAD_POOL_EXECUTOR&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="c1"&gt;//(This code does not work for API lvl 1 to 3)&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h2&gt;真的需要AsyncTask么&lt;/h2&gt;
+
+&lt;p&gt;并非如此，使用AsyncTask虽然可以以简短的代码实现异步操作，但是正如本文提到的，你需要让AsyncTask正常工作的话，需要注意很多条条框框。推荐的一种进行异步操作的技术就是使用Loaders。这个方法从Android 3.0 (Honeycomb)开始引入，在android支持包中也有包含。可以通过查看官方的文档来详细了解&lt;a href="http://developer.android.com/guide/components/loaders.html"&gt;Loaders&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;本次译文对原文有少部分删减修改处理。&lt;/p&gt;
+
+&lt;h2&gt;引用推荐&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="http://bon-app-etit.blogspot.hk/2013/04/the-dark-side-of-asynctask.html"&gt;原文地址(墙外的 Orz)&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.4_r1/android/os/AsyncTask.java#AsyncTask"&gt;Grepcode AsyncTsk 源码参考&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://blog.danlew.net/2014/06/21/the-hidden-pitfalls-of-asynctask/"&gt;另一篇介绍AsyncTask陷阱的文章&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_qf_sp_asin_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B009OLU8EE&amp;linkCode=as2&amp;tag=droidyue-23"&gt;罗升阳的Android系统源代码情景分析&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+    <title>译文：Android中糟糕的AsyncTask</title>
+    <link>http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/</link>
+    <pubDate>Sat, 08 Nov 2014 06:33:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;翻出了3年前的Google IO大会的主题演讲  &lt;strong&gt;Google IO 2011 Memory management for Android Apps&lt;/strong&gt;，该演讲介绍了Android系统在垃圾回收上的变化和如何发现并内存泄露以及如何管理Android中的内存。本演讲对开发者还是有很大的帮助。&lt;/p&gt;
 
@@ -3255,98 +3363,6 @@ this$0就是内部类持有的外部类引用，通过构造方法传递引用�
     <link>http://droidyue.com/blog/2014/09/20/interaction-between-java-and-javascript-in-android/</link>
     <pubDate>Sat, 20 Sep 2014 13:37:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2014/09/20/interaction-between-java-and-javascript-in-android</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;在Android软件开发中，增加日志的作用很重要，便于我们了解程序的执行情况和数据。Eclipse开发工具会提供了可视化的工具，但是还是感觉终端效率会高一些，于是自己写了一个python的脚本来通过包名来过滤某一程序的日志。&lt;/p&gt;
-
-&lt;h3&gt;原理&lt;/h3&gt;
-
-&lt;p&gt;通过包名得到对应的进程ID（可能多个），然后使用adb logcat 过滤进程ID即可得到对应程序的日志。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;h3&gt;源码&lt;/h3&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;a href='https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py'&gt;link&lt;/a&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;span class='line-number'&gt;21&lt;/span&gt;
-&lt;span class='line-number'&gt;22&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='python'&gt;&lt;span class='line'&gt;&lt;span class="c"&gt;#!/usr/bin/env python&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="c"&gt;#coding:utf-8&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="c"&gt;#This script is aimed to grep logs by application(User should input a packageName and then we look up for the process ids then separate logs by process ids).&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;os&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;sys&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;packageName&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sys&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;argv&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;command&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;adb shell ps | grep &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s"&gt; | awk &amp;#39;{print $2}&amp;#39;&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;packageName&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;os&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;popen&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;command&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="c"&gt;##for some applications,there are multiple processes,so we should get all the process id&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;pid&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;readline&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;strip&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;filters&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;pid&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="k"&gt;while&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;pid&lt;/span&gt; &lt;span class="o"&gt;!=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;pid&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;readline&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;strip&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;pid&lt;/span&gt; &lt;span class="o"&gt;!=&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;filters&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;filters&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;  &lt;span class="s"&gt;&amp;quot;|&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;pid&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="c"&gt;#print &amp;#39;command = %s;filters=%s&amp;#39;%(command, filters)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;filters&lt;/span&gt; &lt;span class="o"&gt;!=&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;:&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;cmd&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;adb logcat | grep --color=always -E &amp;quot;&lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s"&gt;&amp;quot; &amp;#39;&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;filters&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;os&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;system&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;cmd&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;h3&gt;使用方法&lt;/h3&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='bash'&gt;&lt;span class='line'&gt;python logcatPkg.py com.mx.browser
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;h3&gt;最新代码&lt;/h3&gt;
-
-&lt;p&gt; &lt;a href="https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py" target="_blank"&gt;locatPkg.py&lt;/a&gt;&lt;/p&gt;
-
-&lt;h3&gt;不足&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt; 当脚本执行后，Android程序如果关闭或者重新启动，导致进程ID变化，无法自动继续输出日志，只能再次执行此脚本。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;其他&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00KVLDS20/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00KVLDS20&amp;linkCode=as2&amp;tag=droidyue-23"&gt;仅用两周就能自制脚本语言？&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00KVLDS20" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B002A2LQR2/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B002A2LQR2&amp;linkCode=as2&amp;tag=droidyue-23"&gt;一个不错的Shell脚本学习指南&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B002A2LQR2" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B005YWYH6C/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B005YWYH6C&amp;linkCode=as2&amp;tag=droidyue-23"&gt;Windows 7脚本编程和命令行工具指南&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B005YWYH6C" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-    <title>每周一脚本：过滤单个Android程序日志</title>
-    <link>http://droidyue.com/blog/2014/09/15/weekly-scripts-grep-android-application-log-in-terminal/</link>
-    <pubDate>Mon, 15 Sep 2014 10:55:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2014/09/15/weekly-scripts-grep-android-application-log-in-terminal</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
