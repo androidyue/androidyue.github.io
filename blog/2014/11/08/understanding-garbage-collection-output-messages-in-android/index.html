@@ -1,0 +1,381 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>译文：理解Android中垃圾回收日志信息 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="译文：理解Android中垃圾回收日志信息 Nov 8th, 2014 如果你是一名Android开发者并且常常看程序日志的话，那么下面的这些信息对你来说可能一点都不陌生。 1
+2
+3
+4
+5
+GC_CONCURRENT freed 178K, 41% free 3673K/6151K, &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2014/11/08/understanding-garbage-collection-output-messages-in-android">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script type="text/javascript">
+      $(document).bind('DOMNodeInserted', function(event) {
+			$('a[href^="http"]').each(
+				function(){
+					if (!$(this).attr('target')) {
+						$(this).attr('target', '_blank')
+					}
+                
+				}
+			);
+		});
+  </script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>一个有态度的技术分享媒体</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">文章订阅</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">译文：理解Android中垃圾回收日志信息</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-08T18:16:00+08:00" pubdate data-updated="true">Nov 8<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>如果你是一名Android开发者并且常常看程序日志的话，那么下面的这些信息对你来说可能一点都不陌生。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">GC_CONCURRENT</span> <span class="n">freed</span> <span class="mi">178</span><span class="n">K</span><span class="o">,</span> <span class="mi">41</span><span class="o">%</span> <span class="n">free</span> <span class="mi">3673</span><span class="n">K</span><span class="o">/</span><span class="mi">6151</span><span class="n">K</span><span class="o">,</span> <span class="n">external</span> <span class="mi">0</span><span class="n">K</span><span class="o">/</span><span class="mi">0</span><span class="n">K</span><span class="o">,</span> <span class="n">paused</span> <span class="mi">2</span><span class="n">ms</span><span class="o">+</span><span class="mi">2</span><span class="n">ms</span>
+</span><span class='line'><span class="n">GC_EXPLICIT</span> <span class="n">freed</span> <span class="mi">6</span><span class="n">K</span><span class="o">,</span> <span class="mi">41</span><span class="o">%</span> <span class="n">free</span> <span class="mi">3667</span><span class="n">K</span><span class="o">/</span><span class="mi">6151</span><span class="n">K</span><span class="o">,</span> <span class="n">external</span> <span class="mi">0</span><span class="n">K</span><span class="o">/</span><span class="mi">0</span><span class="n">K</span><span class="o">,</span> <span class="n">paused</span> <span class="mi">29</span><span class="n">ms</span>
+</span><span class='line'><span class="n">GC_CONCURRENT</span> <span class="n">freed</span> <span class="mi">379</span><span class="n">K</span><span class="o">,</span> <span class="mi">42</span><span class="o">%</span> <span class="n">free</span> <span class="mi">3856</span><span class="n">K</span><span class="o">/</span><span class="mi">6535</span><span class="n">K</span><span class="o">,</span> <span class="n">external</span> <span class="mi">0</span><span class="n">K</span><span class="o">/</span><span class="mi">0</span><span class="n">K</span><span class="o">,</span> <span class="n">paused</span> <span class="mi">2</span><span class="n">ms</span><span class="o">+</span><span class="mi">3</span><span class="n">ms</span>
+</span><span class='line'><span class="n">GC_EXPLICIT</span> <span class="n">freed</span> <span class="mi">144</span><span class="n">K</span><span class="o">,</span> <span class="mi">41</span><span class="o">%</span> <span class="n">free</span> <span class="mi">3898</span><span class="n">K</span><span class="o">/</span><span class="mi">6535</span><span class="n">K</span><span class="o">,</span> <span class="n">external</span> <span class="mi">0</span><span class="n">K</span><span class="o">/</span><span class="mi">0</span><span class="n">K</span><span class="o">,</span> <span class="n">paused</span> <span class="mi">32</span><span class="n">ms</span>
+</span><span class='line'><span class="n">GC_CONCURRENT</span> <span class="n">freed</span> <span class="mi">334</span><span class="n">K</span><span class="o">,</span> <span class="mi">40</span><span class="o">%</span> <span class="n">free</span> <span class="mi">4091</span><span class="n">K</span><span class="o">/</span><span class="mi">6727</span><span class="n">K</span><span class="o">,</span> <span class="n">external</span> <span class="mi">0</span><span class="n">K</span><span class="o">/</span><span class="mi">0</span><span class="n">K</span><span class="o">,</span> <span class="n">paused</span> <span class="mi">2</span><span class="n">ms</span><span class="o">+</span><span class="mi">3</span><span class="n">ms</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是这些到底是什么，又有什么含义呢？</p>
+
+<!--more-->
+
+
+<p>上面的这几行就是Android系统垃圾回收的部分输出信息。每当垃圾回收被触发的时候，你就可以通过logcat查看到这样的信息。这样短短的一行的日志有着很大的信息量。比如通过日志我们可以发现程序可能有内存（泄露）问题。本文将具体介绍这些日志信息的每一部分的含义来帮助帮助大家更好地了解垃圾回收的运行情况。</p>
+
+<h2>原因</h2>
+
+<p><font color="red">GC_CONCURRENT</font> freed 178K, 41% free 3673K/6151K, external 0K/0K, paused 2ms+2ms <br/>
+<font color="red">GC_EXPLICIT</font> freed 6K, 41% free 3667K/6151K, external 0K/0K, paused 29ms</p>
+
+<p>红颜色标出的部分就是垃圾回收触发的原因。在Android中有五种类型的垃圾回收触发原因。</p>
+
+<ul>
+<li><strong>GC_CONCURRENT</strong> 当堆内存增长到一定程度时会触发。此时触发可以对堆中的没有用的对象及时进行回收，腾出空间供新的对象申请，避免进行不必要的增大堆内存的操作。</li>
+<li><strong>GC_EXPLICIT</strong>   当程序中调用System.gc()方法触发。这个方法应避免出现在程序中调用。因为JVM有足够的能力来控制垃圾回收。</li>
+<li><strong>GC_EXTERNAL_MALLOC</strong> 当Bitmap和NIO Direct ByteBuffer对象分配外部存储（机器内存，非Dalvik堆内存）触发。这个日志只有在2.3之前存在，从2.3系统开始，垃圾回收进行了调整，前面的对象都会存储到Dalivik堆内存中。所以在2.3系统之后，你就再也不会看到这种信息了。</li>
+<li><strong>GC_FOR_MALLOC</strong> 当堆内存已满，系统需要更多内存的时候触发。这条日志出现后意味着JVM要暂停你的程序进行垃圾回收操作。</li>
+<li><strong>GC_HPROF_DUMP_HEAP</strong> 当创建一个内存分析文件HPROF时触发。</li>
+</ul>
+
+
+<h2>结果</h2>
+
+<p>GC_CONCURRENT <font color="red">freed 178K</font>, 41% free 3673K/6151K, external 0K/0K, paused 2ms+2ms <br/>
+GC_EXPLICIT <font color="red">freed 6K</font>, 41% free 3667K/6151K, external 0K/0K, paused 29ms</p>
+
+<p>这部分数据告诉我们JVM进行垃圾回收释放了多少空间。</p>
+
+<h2>堆内存数据</h2>
+
+<p>GC_CONCURRENT freed 178K, <font color="red">41% free 3673K/6151K</font>, external 0K/0K, paused 2ms+2ms <br/>
+GC_EXPLICIT freed 6K, <font color="red">41% free 3667K/6151K</font>, external 0K/0K, paused 29ms</p>
+
+<p>这部分告诉我们堆内存中可用内存占的比例，当前活跃的对象总的空间，以及当前堆的总大小。所以这里的数据就是41%的堆内存可用，已经使用了3673K，总的堆内存大小为6151K。</p>
+
+<h2>外部存储数据</h2>
+
+<p>GC_EXTERNAL_ALLOC freed 1125K, 47% free 6310K/11847K,  <font color="red">external 1051K/1103K</font>, paused 46ms<br/>
+GC_EXTERNAL_ALLOC freed 295K, 47% free 6335K/11847K,  <font color="red">external 1613K/1651K</font>, paused 41ms</p>
+
+<p>这部分数据告诉我们外部存储（位于机器内存）对象的数据。在2.3之前，bitmap对象存放在机器内存。因此在第一条数据中我们可以看到以有1051K使用，外部存储为1103K。</p>
+
+<p>上面两行数据相差100毫秒，我们可以看到第一条数据表明外部存储快满了，由于GC_EXTERNAL_ALLOC被触发，外部存储空间扩大到了1651K。</p>
+
+<h2>垃圾回收暂停时间</h2>
+
+<p>GC_CONCURRENT freed 178K, 41% free 3673K/6151K, external 0K/0K, <font color="red">paused 2ms+2ms</font> <br/>
+GC_EXPLICIT freed 6K, 41% free 3667K/6151K, external 0K/0K, <font color="red">paused 29ms</font></p>
+
+<p>这部分数据表明垃圾回收消耗的时间。在GC_CONCURRENT回收时，你会发现两个暂停时间。一个是在回收开始的暂停时间，另一个时在回收结束的暂停时间。GC_CONCURRENT从2.3开始引入，相比之前的程序全部暂停的垃圾回收机制，它的暂停时间要小的多。一般少于5毫秒。因为GC_CONCURRENT的绝大多数操作在一个单独的线程中进行。</p>
+
+<p>本文中内容摘自 Google I/O 2011: Memory management for Android Apps，如果感兴趣，请访问<a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">这里</a>了解更多。</p>
+
+<h2>原文地址</h2>
+
+<p><a href="https://sites.google.com/site/pyximanew/blog/androidunderstandingddmslogcatmemoryoutputmessages">https://sites.google.com/site/pyximanew/blog/androidunderstandingddmslogcatmemoryoutputmessages</a></p>
+</div>
+
+
+  
+  <hr>
+  
+  <ul>
+	<li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DXmDv21KQiAYcQipKwQzePDAVflQIoZepQih%2F7PxfOKS5VBFTL4hn2TVJL6dCd73rxF5AHBg6Tr7M3gYQjCL89qULerPwKfMIwRKDNIG1Ob5nW%2BJUaSJ3f2AVCEmOagNkIYULNg46oBA%3D">程序员如何着装才能提升逼格</a></li>
+	<li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DFoX2vdPjurgcQipKwQzePDAVflQIoZepQih%2F7PxfOKS5VBFTL4hn2YdmEHwS1WPLBuky%2F0Sep%2BHM3gYQjCL89qULerPwKfMIwRKDNIG1Ob5Hbunv6xALaS%2FgFAsaEiDtxgxdTc00KD8%3D">那些让程序员爱不释手的马克杯</a></li>
+	<li><a href="http://redirect.simba.taobao.com/rd?w=unionnojs&f=http%3A%2F%2Fai.taobao.com%2Fauction%2Fedetail.htm%3Fe%3DWm3dUKAJAAjebLdhAWchHOHvZmz8AZPhMfQZMlUm0uSLltG5xFicOdXrTUTgh9sMDPIwxrc30ri8nc0fL4TGokWbbNPSehpRHMUeRChy%252FdaFJWU9wpkoTW3abJM7sDg2L9VjXenLm1pcpAOKn1WcoQ%253D%253D%26ptype%3D100010%26from%3Dbasic&k=5ccfdb950740ca16&c=un&b=alimm_0&p=mm_58471937_7778121_26116191">程序员的数学【一本为程序员朋友们写的数学书】</a></li>
+</ul>
+
+ 
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_included -->
+<ins class="adsbygoogle"
+     style="display:inline-block;width:728px;height:90px"
+     data-ad-client="ca-pub-7565659593663612"
+     data-ad-slot="4976687343"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-08T18:16:00+08:00" pubdate data-updated="true">Nov 8<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/11/08/look-into-android-dot-os-dot-networkonmainthreadexception/" title="Previous Post: 啰嗦一下android中的NetworkOnMainThreadException">&laquo; 啰嗦一下android中的NetworkOnMainThreadException</a>
+      
+      
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2014/11/08/understanding-garbage-collection-output-messages-in-android" data-title="译文：理解Android中垃圾回收日志信息" data-url="http://droidyue.com/blog/2014/11/08/understanding-garbage-collection-output-messages-in-android/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/11/08/understanding-garbage-collection-output-messages-in-android/">译文：理解Android中垃圾回收日志信息</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/08/look-into-android-dot-os-dot-networkonmainthreadexception/">啰嗦一下android中的NetworkOnMainThreadException</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/08/bad-smell-of-asynctask-in-android/">译文：Android中糟糕的AsyncTask</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">Google IO：Android内存管理主题演讲记录</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/02/note-for-google-io-memory-management-for-android/">Note for Google IO Memory Management for Android</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="/links/">友情链接</a></li>
+    <li><a href="/donate/">捐赠 Donate!</a></li>
+    <li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DL%2BWMYPOnp6AcQipKwQzePCperVdZeJviEViQ0P1Vf2kguMN8XjClAuNqX9t6e8X3Be2lR3yO8PW3V2HVNDCdH26MJPhEQyRF%2BuYUFrxoM1fSVsR8keaxVudn1BbglxZYxUhy8exlzcq9AmARIwX9K%2BnbtOD3UdznPV1H2z0iQv9NkKVMHClW0QbMqOpFMIvnvjQXzzpXdTHGJe8N%2FwNpGw%3D%3D" target="_blank">超性价比服务器</a></li>
+    <li><a href="https://portal.qiniu.com/signup?code=3l8cqx1u74rbm" target="_blank">国内最好的免费CDN图床</a></li>
+</ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
