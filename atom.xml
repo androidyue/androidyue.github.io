@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-11-18T21:09:39+08:00</updated>
+  <updated>2014-11-18T21:26:26+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,254 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Ruby执行shell命令的六种方法]]></title>
+    <link href="http://droidyue.com/blog/2014/11/18/six-ways-to-run-shell-in-ruby/"/>
+    <updated>2014-11-18T21:17:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/11/18/six-ways-to-run-shell-in-ruby</id>
+    <content type="html"><![CDATA[<p>在Ruby中，执行shell命令是一件不奇怪的事情，Ruby提供了大概6种方法供开发者进行实现。这些方法都很简单，本文将具体介绍一下如何在Ruby脚本中进行调用终端命令。</p>
+
+<!--more-->
+
+
+<h2>exec</h2>
+
+<p>exec会将指定的命令替换掉当前进程中的操作,指定命令结束后，进程结束。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="nb">exec</span> <span class="s1">&#39;echo &quot;hello world&quot;&#39;</span>
+</span><span class='line'><span class="nb">print</span> <span class="s1">&#39;abc&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行上述的命令，结果如下，我们可以看到没有abc的输出，可以看出来，在执行<code>echo "hello world"</code>命令后进程就结束了。不会继续执行后面的<code>print 'abc'</code>。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">ruby</span> <span class="n">testCommand</span><span class="o">.</span><span class="n">rb</span>
+</span><span class='line'><span class="n">hello</span> <span class="n">world</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用exec一个头疼的事情就是没有办法知道shell命令执行成功还是失败。</p>
+
+<h2>system</h2>
+
+<p>system和exec相似，但是system执行的命令不会是在当前进程，而是在一个新创建的进程。system会返回布尔值来表明命令执行结果是成功还是失败。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="err">$</span> <span class="n">irb</span>
+</span><span class='line'><span class="o">&gt;</span> <span class="nb">system</span> <span class="s1">&#39;echo &quot;hello $HOSTNAME&quot;&#39;</span>
+</span><span class='line'><span class="n">hello</span> <span class="n">androidyue</span>
+</span><span class='line'> <span class="o">=&gt;</span> <span class="kp">true</span>
+</span><span class='line'><span class="o">&gt;</span> <span class="nb">puts</span> <span class="vg">$?</span>
+</span><span class='line'><span class="n">pid</span> <span class="mi">11845</span> <span class="nb">exit</span> <span class="mi">0</span>
+</span><span class='line'> <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span><span class='line'><span class="o">&gt;</span> <span class="nb">system</span> <span class="s1">&#39;false&#39;</span>
+</span><span class='line'> <span class="o">=&gt;</span> <span class="kp">false</span>
+</span><span class='line'><span class="o">&gt;</span> <span class="nb">puts</span> <span class="vg">$?</span>
+</span><span class='line'><span class="n">pid</span> <span class="mi">11858</span> <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'> <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span><span class='line'><span class="o">&gt;&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>system会将进程的退出的状态码赋值给$?，如果程序正常退出，$?的值为0，否则为非0。通过检测退出的状态码我们可以在ruby脚本中抛出异常或者进行重试操作。</p>
+
+<p>注：在Unix-like系统中进程的退出状态码以0和非0表示，0代表成功，非0代表失败。</p>
+
+<p>system可以告诉我们命令执行是成功还是失败，但是有些时候我们需要得到执行命令的输出，并在脚本中使用。显然system无法直接满足，需要我们使用反引号来实现。</p>
+
+<h2>反引号(`)</h2>
+
+<p>使用反引号是shell中常用的获取命令输出内容的方法，在ruby中也是可以，而且一点都需要做改变。使用反引号执行命令也会将命令在另一个进程中执行。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="mi">1</span><span class="o">.</span><span class="mi">9</span><span class="o">.</span><span class="mi">3</span><span class="n">p448</span> <span class="p">:</span><span class="mo">013</span> <span class="o">&gt;</span> <span class="n">today</span> <span class="o">=</span> <span class="sb">`date`</span>
+</span><span class='line'> <span class="o">=&gt;</span> <span class="s2">&quot;Sat Nov 15 19:28:55 CST 2014</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="mi">1</span><span class="o">.</span><span class="mi">9</span><span class="o">.</span><span class="mi">3</span><span class="n">p448</span> <span class="p">:</span><span class="mo">014</span> <span class="o">&gt;</span> <span class="vg">$?</span>
+</span><span class='line'> <span class="o">=&gt;</span> <span class="c1">#&lt;Process::Status: pid 11925 exit 0&gt; </span>
+</span><span class='line'><span class="mi">1</span><span class="o">.</span><span class="mi">9</span><span class="o">.</span><span class="mi">3</span><span class="n">p448</span> <span class="p">:</span><span class="mo">015</span> <span class="o">&gt;</span> <span class="vg">$?</span><span class="o">.</span><span class="n">to_i</span>
+</span><span class='line'> <span class="o">=&gt;</span> <span class="mi">0</span>
+</span><span class='line'><span class="mi">1</span><span class="o">.</span><span class="mi">9</span><span class="o">.</span><span class="mi">3</span><span class="n">p448</span> <span class="p">:</span><span class="mo">016</span> <span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的方法如此简单，我们可以直接对返回的字符串结果进行操作。</p>
+
+<p>注意，$?已经不再是上述的那样单纯的退出状态码了，它实际上是一个Process::Status对象。我们从中不仅可以知道进程的退出状态码也可以知道进程的ID。使用<code>$?.to_i</code>会得到退出的状态码，使用<code>$?.to_s</code>会得到包含了进程id，退出状态码等信息的字符串。</p>
+
+<p>使用反引号的一个结果就是我们只能得到标准的输出（stdout）而不能得到标准的错误信息(stderr),比如下面的例子，我们执行一个输出错误字符串的perl脚本。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="err">$</span> <span class="n">irb</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">warning</span> <span class="o">=</span> <span class="sb">`perl -e &quot;warn &#39;dust in the wind&#39;&quot;`</span>
+</span><span class='line'>  <span class="n">dust</span> <span class="k">in</span> <span class="n">the</span> <span class="n">wind</span> <span class="n">at</span> <span class="o">-</span><span class="n">e</span> <span class="n">line</span> <span class="mi">1</span><span class="o">.</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="s2">&quot;&quot;</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="nb">puts</span> <span class="n">warning</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以看出，warning并没有得到出错的信息，这就表明反引号无法得到标准错误的信息。</p>
+
+<h2>IO#popen</h2>
+
+<p>IO#popen也是一种执行命令的方法,其命令也是在另外的进程中执行。使用popen你可以像操作IO对象一样处理标准输入和输出。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="err">$</span> <span class="n">irb</span>
+</span><span class='line'><span class="o">&gt;&gt;</span> <span class="no">IO</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="s2">&quot;date&quot;</span><span class="p">)</span> <span class="p">{</span> <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="nb">puts</span> <span class="n">f</span><span class="o">.</span><span class="n">gets</span> <span class="p">}</span>
+</span><span class='line'><span class="no">Mon</span> <span class="no">Mar</span> <span class="mi">12</span> <span class="mi">18</span><span class="p">:</span><span class="mi">58</span><span class="p">:</span><span class="mi">56</span> <span class="no">PDT</span> <span class="mi">2007</span>
+</span><span class='line'><span class="o">=&gt;</span> <span class="kp">nil</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Open3#popen3</h2>
+
+<p>在标准的Ruby库中还提供了一个Open3。使用这个类我们可以很容易的对标准输入，输出，错误进行处理。这里我们使用一个可以交互的工具dc。dc是一种逆波兰表达式（又叫做后缀表达式，每一运算符都置于其运算对象之后）的计算器，支持从标准输入读取数学表达式。在这个例子中，我们将两个数值和一个操作符进行压栈处理。然后使用p来输出结果。比如我们输入5和10，然后输入+，然后会得到15\n的输出。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="err">$</span> <span class="n">irb</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="no">Open3</span><span class="o">.</span><span class="n">popen3</span><span class="p">(</span><span class="s1">&#39;dc&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="o">[</span><span class="c1">#&lt;IO:0x6e5474&gt;, #&lt;IO:0x6e5438&gt;, #&lt;IO:0x6e53d4&gt;]</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stdin</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stdin</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stdin</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stdin</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stdout</span><span class="o">.</span><span class="n">gets</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="s2">&quot;15</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用这个方法，我们不仅可以读取到命令的输出还可以对命令进行输入操作。这个方法对于进行交互操作很方便。通过popen3，我们还可以得到标准的错误信息。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="c1"># (irb continued...)</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stdin</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="s2">&quot;asdfasdfasdfasdf&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stderr</span><span class="o">.</span><span class="n">gets</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="s2">&quot;dc: stack empty</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是，在ruby 1.8.5中popen3有一个缺陷，进程的退出状态没有写入到$?中。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="err">$</span> <span class="n">irb</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="nb">require</span> <span class="s2">&quot;open3&quot;</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">true</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="no">Open3</span><span class="o">.</span><span class="n">popen3</span><span class="p">(</span><span class="s1">&#39;false&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="o">[</span><span class="c1">#&lt;IO:0x6f39c0&gt;, #&lt;IO:0x6f3984&gt;, #&lt;IO:0x6f3920&gt;]</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="vg">$?</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="c1">#&lt;Process::Status: pid=26285,exited(0)&gt;</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="vg">$?</span><span class="o">.</span><span class="n">to_i</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="mi">0</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>为什么是0，false命令执行后的退出状态应该是非0才对，由于这个缺陷，我们需要了解一下Open4</p>
+
+<h2>Open4#popen4</h2>
+
+<p>Open4#popen4使用起来和Open3#popen3差不多，而且我们也可以得到程序的退出状态。popen4还可以返回一个子进程ID。你也可以通过Process::waitpid2 加上对应的进程ID获得进程退出状态。但是前提是要安装open4的gem。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="err">$</span> <span class="n">irb</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="nb">require</span> <span class="s2">&quot;open4&quot;</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">true</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">pid</span><span class="p">,</span> <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="ss">Open4</span><span class="p">:</span><span class="ss">:popen4</span> <span class="s2">&quot;false&quot;</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="o">[</span><span class="mi">26327</span><span class="p">,</span> <span class="c1">#&lt;IO:0x6dff24&gt;, #&lt;IO:0x6dfee8&gt;, #&lt;IO:0x6dfe84&gt;]</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="vg">$?</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">pid</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="mi">26327</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">ignored</span><span class="p">,</span> <span class="n">status</span> <span class="o">=</span> <span class="ss">Process</span><span class="p">:</span><span class="ss">:waitpid2</span> <span class="n">pid</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="o">[</span><span class="mi">26327</span><span class="p">,</span> <span class="c1">#&lt;Process::Status: pid=26327,exited(1)&gt;]</span>
+</span><span class='line'>  <span class="o">&gt;&gt;</span> <span class="n">status</span><span class="o">.</span><span class="n">to_i</span>
+</span><span class='line'>  <span class="o">=&gt;</span> <span class="mi">256</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>原文</h2>
+
+<ul>
+<li><a href="http://tech.natemurray.com/2007/03/ruby-shell-commands.html">http://tech.natemurray.com/2007/03/ruby-shell-commands.html</a></li>
+<li>在原文基础上，进行了部分删减。</li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[译文：理解Android中垃圾回收日志信息]]></title>
@@ -2999,88 +3247,6 @@ this$0就是内部类持有的外部类引用，通过构造方法传递引用�
 <li><a href="http://www.amazon.cn/gp/product/B0084ASO7E/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0084ASO7E&linkCode=as2&tag=droidyue-23">数学之美</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0084ASO7E" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B00D36S64K/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D36S64K&linkCode=as2&tag=droidyue-23">像计算机科学家一样思考Java</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00D36S64K" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B00HQW9FMO/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00HQW9FMO&linkCode=as2&tag=droidyue-23">微信公众平台应用开发:方法、技巧与案例</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00HQW9FMO" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[每周一脚本：批量对多个文件增加前缀]]></title>
-    <link href="http://droidyue.com/blog/2014/09/22/weekly-script-add-prefix-to-mutiple-files-in-ruby/"/>
-    <updated>2014-09-22T17:03:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/09/22/weekly-script-add-prefix-to-mutiple-files-in-ruby</id>
-    <content type="html"><![CDATA[<p>最近从设计师那里get了超多的图，结果都是1.png，2.png这样的文件名，自己还需要将这些文件变成可读的文件名，不想一个一个得修改，于是就写了一个简单的脚本，实现批量对多个文件增加前缀的操作，后期修改了一下，分享一下。</p>
-
-<!--more-->
-
-
-<h2>代码</h2>
-
-<figure class='code'><figcaption><span>lineos:false  add_prefix_files.rb</span><a href='https://raw.githubusercontent.com/androidyue/weekly-scripts/master/ruby/add_prefix_files.rb'>link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
-</span><span class='line'><span class="c1"># encoding: utf-8</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">srcDir</span><span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
-</span><span class='line'><span class="n">prefix</span><span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span>
-</span><span class='line'><span class="n">pattern</span> <span class="o">=</span> <span class="s1">&#39;*&#39;</span>
-</span><span class='line'><span class="n">pattern</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">2</span><span class="o">]</span> <span class="k">if</span> <span class="no">ARGV</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">3</span>
-</span><span class='line'>
-</span><span class='line'><span class="no">Dir</span><span class="o">[</span><span class="n">srcDir</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">pattern</span> <span class="o">].</span><span class="n">each</span><span class="p">{</span><span class="o">|</span><span class="n">child</span><span class="o">|</span>
-</span><span class='line'>    <span class="n">childName</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">destChildName</span> <span class="o">=</span> <span class="n">prefix</span>  <span class="o">+</span> <span class="n">childName</span>
-</span><span class='line'>    <span class="n">destChild</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">gsub</span><span class="p">(</span><span class="n">childName</span><span class="p">,</span> <span class="n">destChildName</span><span class="p">)</span>
-</span><span class='line'>    <span class="nb">system</span> <span class="s1">&#39;mv %s %s&#39;</span><span class="sx">%[child, destChild]</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>如何使用</h2>
-
-<h3>使用的方法</h3>
-
-<ul>
-<li><strong>ruby add_prefix_files.rb dest_folder prefix pattern</strong></li>
-<li>dest_folder 必选 操作进行的基础目录，并不一定总是直接父目录</li>
-<li>prefix      必须 前缀名称  建议结尾以_结束</li>
-<li>pattern     可选，如不填写为dest_folder的直接子文件（含目录），否则应用提供的pattern匹配</li>
-</ul>
-
-
-<h3>使用示例</h3>
-
-<p>对当前目录下所有文件增加test_前缀。</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">~</span><span class="sr">/rubydir/</span><span class="n">tools</span><span class="o">/</span><span class="n">add_prefix_files</span><span class="o">.</span><span class="n">rb</span> <span class="o">.</span><span class="n">/</span> <span class="n">test_</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>对当前目录下res/drawable-hdpi/所有的png文件，增加test_前缀</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='ruby'><span class='line'> <span class="o">~</span><span class="sr">/rubydir/</span><span class="n">tools</span><span class="o">/</span><span class="n">add_prefix_files</span><span class="o">.</span><span class="n">rb</span> <span class="o">.</span><span class="n">/</span> <span class="n">test_</span>  <span class="s2">&quot;res/drawable-hdpi/*.png&quot;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/0596009658/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=0596009658&linkCode=as2&tag=droidyue-23">Learning the Bash Shell</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=0596009658" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0096EXMS8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0096EXMS8&linkCode=as2&tag=droidyue-23">Linux命令行与shell脚本编程大全</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0096EXMS8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00N75YP74/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00N75YP74&linkCode=as2&tag=droidyue-23">穿布鞋的马云:决定阿里巴巴生死的27个节点</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00N75YP74" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
