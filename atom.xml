@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-11-23T11:48:04+08:00</updated>
+  <updated>2014-11-23T16:11:41+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,128 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[点击网页链接调用Android程序]]></title>
+    <link href="http://droidyue.com/blog/2014/11/23/start-android-application-when-click-a-link/"/>
+    <updated>2014-11-23T15:58:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/11/23/start-android-application-when-click-a-link</id>
+    <content type="html"><![CDATA[<p>最近前端同事问了我一个问题，如何让网页链接实现启动Android的应用，网上有说重写WebView相关的shouldOverrideUrlLoading方法，但是这种理论上能实现，因为你的网页不是仅仅被你自己的webview来浏览，你需要做的是让市面上的浏览器支持才行。</p>
+
+<p>这里利用零碎的时间整理一下。主要涉及到的问题就是关于Intent在字符串形式和Intent对象之间的转换。如果你是一位前端工程师，请让你的Anroid开发小伙伴来看这篇文章，一同解决问题。</p>
+
+<!--more-->
+
+
+<h2>两种表现形式</h2>
+
+<p>Intent是Android开发中常见的API。在处理Android组件中，有着必不可少的作用。Intent可以以两种方式存在。</p>
+
+<ul>
+<li>Intent对象。用于在程序中处理，在处理Android组件时使用。</li>
+<li>字符串形式的URI。 用于在非程序代码中，如网页中进行使用等。</li>
+</ul>
+
+
+<p>而这里我们解决我们上面问题的就是后者，字符串形式的Intent。</p>
+
+<h2>Intent对象转成字符串URI</h2>
+
+<p>Intent提供了两种将对象转换成字符串URI，一个是推荐的<code>public String toUri (int flags)</code>，
+在API 4加入，将Intent对象转换成字符串形式的URI。字符串形式的URI可以包含Intent的data,action,categories, type, flags, package, component和extras。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Intent</span> <span class="n">intent</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="o">();</span>
+</span><span class='line'><span class="n">ComponentName</span> <span class="n">comp</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ComponentName</span><span class="o">(</span><span class="s">&quot;com.mx.app.mxhaha&quot;</span><span class="o">,</span> <span class="s">&quot;com.mx.app.MxMainActivity&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">intent</span><span class="o">.</span><span class="na">setComponent</span><span class="o">(</span><span class="n">comp</span><span class="o">);</span>
+</span><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;intent.uri=&quot;</span> <span class="o">+</span> <span class="n">intent</span><span class="o">.</span><span class="na">toUri</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">URI_INTENT_SCHEME</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>生成的字符串URI为</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nl">intent:</span><span class="err">#</span><span class="n">Intent</span><span class="o">;</span><span class="n">component</span><span class="o">=</span><span class="n">com</span><span class="o">.</span><span class="na">mx</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">mxhaha</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">mx</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">MxMainActivity</span><span class="o">;</span><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>另一个方法是<code>public String toURI ()</code>，
+这是一个弃用的方法，因为它生成的字符串以<strong>#</strong>开头，<strong>放在链接上会被当成锚点</strong>。不建议使用使用这个方法。</p>
+
+<p>上面的Intent对象使用toUri转换成</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="err">#</span><span class="n">Intent</span><span class="o">;</span><span class="n">component</span><span class="o">=</span><span class="n">com</span><span class="o">.</span><span class="na">mx</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">mxhaha</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">mx</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">MxMainActivity</span><span class="o">;</span><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>字符串URI转成Intent对象</h2>
+
+<h3>getIntent(String uri)</h3>
+
+<p>这个方法只适用于处理以#开头的URI，而且在其方法内部实际上是调用的<code>parseUri(uri, 0)</code>来实现的。这个方法已经被比较为弃用，不推荐使用。</p>
+
+<h3>getIntentOld(String uri)</h3>
+
+<p>getIntentOld既可以支持#开头的URI转换成Intent对象，如果uri不是Intent的字符串形式，那么也会返回一个Intent，只是其data部分为uri，action为android.intent.action.VIEW。</p>
+
+<h3>parseUri(String uri, int flags)</h3>
+
+<p>这个是最完整的转换方法。接收uri和flag作为参数。支持将字符串形式的URI转成Intent对象.</p>
+
+<p>以下为一个既可以解析<strong>intent:</strong>开头的URI也可以解析<strong>#Intent</strong>开头的URI的方法。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">Intent</span> <span class="nf">parseIntent</span><span class="o">(</span><span class="n">String</span> <span class="n">url</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Intent</span> <span class="n">intent</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>  <span class="c1">// Parse intent URI into Intent Object</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">flags</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>  <span class="kt">boolean</span> <span class="n">isIntentUri</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">url</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">&quot;intent:&quot;</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">isIntentUri</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">flags</span> <span class="o">=</span> <span class="n">Intent</span><span class="o">.</span><span class="na">URI_INTENT_SCHEME</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">url</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">&quot;#Intent;&quot;</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">isIntentUri</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">isIntentUri</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">intent</span> <span class="o">=</span> <span class="n">Intent</span><span class="o">.</span><span class="na">parseUri</span><span class="o">(</span><span class="n">url</span><span class="o">,</span> <span class="n">flags</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">URISyntaxException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">intent</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>多说一下</h2>
+
+<p>对于Intent字符串形式URI在网页链接中的应用，不同的浏览器实现程度不一致。目前<a href="http://www.maxthon.cn/">傲游浏览器Android版</a>由我已经完全实现这一功能。希望其他的浏览器也可以实现一下这个功能。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Atom订阅转成RSS2.0]]></title>
@@ -3139,133 +3261,6 @@ this$0就是内部类持有的外部类引用，通过构造方法传递引用�
 <li><a href="http://www.amazon.cn/gp/product/B0089TDFNS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0089TDFNS&linkCode=as2&tag=droidyue-23">锋利的jQuery</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0089TDFNS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B00BQ7RMW0/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00BQ7RMW0&linkCode=as2&tag=droidyue-23">编写可维护的JavaScript</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00BQ7RMW0" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B00B14IGUK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00B14IGUK&linkCode=as2&tag=droidyue-23">安全技术大系:Web前端黑客技术揭秘</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00B14IGUK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Refused to execute script from because its MIME type (text/plain) is not executable, and strict MIME type checking is enabled]]></title>
-    <link href="http://droidyue.com/blog/2014/09/27/refused-to-execute-script-from-because-its-mime-type-text-slash-plain-is-not-executable-and-strict-mime-type-checking-is-enabled/"/>
-    <updated>2014-09-27T17:08:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/09/27/refused-to-execute-script-from-because-its-mime-type-text-slash-plain-is-not-executable-and-strict-mime-type-checking-is-enabled</id>
-    <content type="html"><![CDATA[<p>今天又与这个问题相遇了,Orz,还是研究一下解决方法和出现原因吧。<br/>
-刚刚在github上传了一个js文件，想让这个文件被其他网页引用，于是贴出了这个文件的raw版本的地址。但是却就遇到了这样的问题。</p>
-
-<!--more-->
-
-
-<p>这就是出现错误的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;html&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;script </span><span class="na">src=</span><span class="s">&quot;http://droidyue-tools.qiniudn.com/jquery.min.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;script </span><span class="na">src=</span><span class="s">&quot;https://raw.githubusercontent.com/androidyue/weekly-scripts/master/javascript/target_blank_link.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;div&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">&quot;http://droidyue.com&quot;</span><span class="nt">&gt;</span>droidyue.com<span class="nt">&lt;/a&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/div&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>解决方法</h2>
-
-<p>将上面的链接中的<font color="red">raw.githubusercontent.com</font>换成<font color="red">rawgit.com</font>即可，此例中的网址最终为 <b><a href="https://rawgit.com/androidyue/weekly-scripts/master/javascript/target_blank_link.js">https://rawgit.com/androidyue/weekly-scripts/master/javascript/target_blank_link.js</a></b></p>
-
-<h2>原因</h2>
-
-<p>因为raw.githubusercontent.com在Response中设置了<strong>X-Content-Type-Options:nosniff</strong>，告诉浏览器强制检查资源的MIME，进行加载。</p>
-
-<p>下面就是未处理的HTTP Response</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>HTTP/1.1 200 OK
-</span><span class='line'>Date: Sat, 27 Sep 2014 09:27:12 GMT
-</span><span class='line'>Server: Apache
-</span><span class='line'>Access-Control-Allow-Origin: https://render.githubusercontent.com
-</span><span class='line'>Content-Security-Policy: default-src <span class="s1">&#39;none&#39;</span>
-</span><span class='line'>X-XSS-Protection: 1; <span class="nv">mode</span><span class="o">=</span>block
-</span><span class='line'>X-Frame-Options: deny
-</span><span class='line'>X-Content-Type-Options: nosniff
-</span><span class='line'>Strict-Transport-Security: max-age<span class="o">=</span>31536000
-</span><span class='line'>ETag: <span class="s2">&quot;4f10b14e4a81a195976ea05787287a019c8bcf6f&quot;</span>
-</span><span class='line'>Content-Type: text/plain; <span class="nv">charset</span><span class="o">=</span>utf-8
-</span><span class='line'>Cache-Control: max-age<span class="o">=</span>300
-</span><span class='line'>Content-Encoding: gzip
-</span><span class='line'>Content-Length: 204
-</span><span class='line'>Accept-Ranges: bytes
-</span><span class='line'>Via: 1.1 varnish
-</span><span class='line'>X-Served-By: cache-lax1426-LAX
-</span><span class='line'>X-Cache: HIT
-</span><span class='line'>X-Cache-Hits: 1
-</span><span class='line'>Vary: Authorization,Accept-Encoding
-</span><span class='line'>Expires: Sat, 27 Sep 2014 09:32:12 GMT
-</span><span class='line'>Source-Age: 44
-</span><span class='line'>Keep-Alive: <span class="nv">timeout</span><span class="o">=</span>10, <span class="nv">max</span><span class="o">=</span>50
-</span><span class='line'>Connection: Keep-Alive
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>X-Content-Type-Options:nosniff 是神马</h3>
-
-<p>  1 如果服务器发送响应头 &ldquo;X-Content-Type-Options: nosniff&#8221;，则 script 和 styleSheet 元素会拒绝包含错误的 MIME 类型的响应。这是一种安全功能，有助于防止基于 MIME类型混淆的攻击。</p>
-
-<p>  2 服务器发送含有 &ldquo;X-Content-Type-Options: nosniff&rdquo; 标头的响应时，此更改会影响浏览器的行为。</p>
-
-<p>  3 如果通过 styleSheet 参考检索到的响应中接收到 &ldquo;nosniff&rdquo; 指令，则 Windows Internet Explorer 不会加载“stylesheet”文件，除非 MIME 类型匹配 &ldquo;text/css&#8221;。</p>
-
-<p>  4 如果通过 script 参考检索到的响应中接收到 &ldquo;nosniff&rdquo; 指令，则 Internet Explorer 不会加载“script”文件，除非 MIME 类型匹配以下值之一：</p>
-
-<ul>
-<li>&ldquo;application/ecmascript&rdquo;</li>
-<li>&ldquo;application/javascript&rdquo;</li>
-<li>&ldquo;application/x-javascript&rdquo;</li>
-<li>&ldquo;text/ecmascript&rdquo;</li>
-<li>&ldquo;text/javascript&rdquo;</li>
-<li>&ldquo;text/jscript&rdquo;</li>
-<li>&ldquo;text/x-javascript&rdquo;</li>
-<li>&ldquo;text/vbs&rdquo;</li>
-<li>&ldquo;text/vbscript&rdquo;</li>
-</ul>
-
-
-<p>该部分参考<a href="http://msdn.microsoft.com/zh-cn/library/ie/gg622941(v=vs.85).aspx">减少 MIME 类型的安全风险</a></p>
-
-<h3>进阶书籍</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00GOM5IL4/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00GOM5IL4&linkCode=as2&tag=droidyue-23">深入浅出Node.js</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00GOM5IL4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0097CON2S/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0097CON2S&linkCode=as2&tag=droidyue-23">JavaScript语言精粹</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0097CON2S" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00BQ7RMW0/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00BQ7RMW0&linkCode=as2&tag=droidyue-23">编写可维护的JavaScript</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00BQ7RMW0" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
