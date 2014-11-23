@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-11-23T16:11:41+08:00</updated>
+  <updated>2014-11-23T22:04:51+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,88 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[WebView拦截替换URL请求]]></title>
+    <link href="http://droidyue.com/blog/2014/11/23/block-web-resource-in-webview/"/>
+    <updated>2014-11-23T21:54:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/11/23/block-web-resource-in-webview</id>
+    <content type="html"><![CDATA[<p>Android中处理网页时我们必然用到WebView,这里我们有这样一个需求，我们想让WebView在处理网络请求的时候将某些请求拦截替换成某些特殊的资源。具体一点儿说，在WebView加载 <code>http://m.sogou.com</code> 时，会加载一个logo图片，我们的需求就是将这个logo图片换成另一张图片。</p>
+
+<!--more-->
+
+
+<h3>shouldInterceptRequest</h3>
+
+<p>好在Android中的WebView比较强大，从API 11(Android 3.0)开始， shouldInterceptRequest被引入就是为了解决这一类的问题。</p>
+
+<p>shouldInterceptRequest这个回调可以通知主程序WebView处理的资源（css,js,image等）请求，并允许主程序进行处理后返回数据。如果主程序返回的数据为null，WebView会自行请求网络加载资源，否则使用主程序提供的数据。注意这个回调发生在非UI线程中,所以进行UI系统相关的操作是不可以的。</p>
+
+<p>shouldInterceptRequest有两种重载。</p>
+
+<ul>
+<li><strong>public WebResourceResponse shouldInterceptRequest (WebView view, String url)</strong> 从API 11开始引入，API 21弃用</li>
+<li><strong>public WebResourceResponse shouldInterceptRequest (WebView view, WebResourceRequest request)</strong> 从API 21开始引入</li>
+</ul>
+
+
+<p>本次例子暂时使用第一种，即shouldInterceptRequest (WebView view, String url)。</p>
+
+<h3>示例代码</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">WebView</span> <span class="n">webView</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WebView</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'><span class="n">webView</span><span class="o">.</span><span class="na">setWebViewClient</span><span class="o">(</span><span class="k">new</span> <span class="n">WebViewClient</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">WebResourceResponse</span> <span class="nf">shouldInterceptRequest</span><span class="o">(</span><span class="n">WebView</span> <span class="n">view</span><span class="o">,</span>  <span class="n">String</span> <span class="n">url</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;shouldInterceptRequest url=&quot;</span> <span class="o">+</span> <span class="n">url</span> <span class="o">+</span> <span class="s">&quot;;threadInfo&quot;</span> <span class="o">+</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">());</span>
+</span><span class='line'>      <span class="n">WebResourceResponse</span> <span class="n">response</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">url</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="s">&quot;logo&quot;</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>              <span class="n">InputStream</span> <span class="n">localCopy</span> <span class="o">=</span> <span class="n">getAssets</span><span class="o">().</span><span class="na">open</span><span class="o">(</span><span class="s">&quot;droidyue.png&quot;</span><span class="o">);</span>
+</span><span class='line'>              <span class="n">response</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WebResourceResponse</span><span class="o">(</span><span class="s">&quot;image/png&quot;</span><span class="o">,</span> <span class="s">&quot;UTF-8&quot;</span><span class="o">,</span> <span class="n">localCopy</span><span class="o">);</span>
+</span><span class='line'>          <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>              <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>          <span class="o">}</span>        
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">response</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>    
+</span><span class='line'><span class="o">});</span>
+</span><span class='line'><span class="n">setContentView</span><span class="o">(</span><span class="n">webView</span><span class="o">);</span>
+</span><span class='line'><span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">&quot;http://m.sogou.com&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中WebResourceResponse需要设定三个属性，MIME类型，数据编码，数据(InputStream流形式)。</p>
+
+<h3>示例下载</h3>
+
+<ul>
+<li><a href="http://pan.baidu.com/s/1ntOaHoH">百度云盘</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[点击网页链接调用Android程序]]></title>
@@ -3190,77 +3272,6 @@ this$0就是内部类持有的外部类引用，通过构造方法传递引用�
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">这样才可以精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B002JCU2TG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002JCU2TG&linkCode=as2&tag=droidyue-23">瞬间之美:Web界面设计如何让用户心动</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002JCU2TG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[每周一脚本：js设置链接为新标签打开]]></title>
-    <link href="http://droidyue.com/blog/2014/09/29/open-url-in-new-tab-using-javascript/"/>
-    <updated>2014-09-29T21:59:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/09/29/open-url-in-new-tab-using-javascript</id>
-    <content type="html"><![CDATA[<p>由于Markdown在编辑Octopress文章的链接时无法指定打开方式，所以很多时候需要使用html写。后来想了一下，为什么不通过javascript把超链接的打开方式默认成新标签实现呢。</p>
-
-<!--more-->
-
-
-<p>JQuery中提供了一个DOM元素插入事件 DOMNodeInserted ，我们可以通过监听这个事件，对没有target属性值的a标签设置其target为_blank。这样就实现了默认新标签打开了。</p>
-
-<h3>脚本代码</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="cm">/*To use the  DOMNodeInserted event listening, jquery is required*/</span>
-</span><span class='line'><span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">bind</span><span class="p">(</span><span class="s1">&#39;DOMNodeInserted&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;a[href^=&quot;http&quot;]&#39;</span><span class="p">).</span><span class="nx">each</span><span class="p">(</span>
-</span><span class='line'>        <span class="kd">function</span><span class="p">(){</span>
-</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;target&#39;</span><span class="p">))</span> <span class="p">{</span>
-</span><span class='line'>              <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;target&#39;</span><span class="p">,</span> <span class="s1">&#39;_blank&#39;</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">);</span>
-</span><span class='line'><span class="p">});</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>示例</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;html&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;//code.jquery.com/jquery-1.11.0.min.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;https://rawgit.com/androidyue/weekly-scripts/master/javascript/target_blank_link.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;body&gt;</span>
-</span><span class='line'>          <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">&quot;http://droidyue.com&quot;</span><span class="nt">&gt;</span>droidyue<span class="nt">&lt;/a&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/body&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上述示例在浏览器加载之后，就会对a标签添加target=&ldquo;_blank&#8221;属性。</p>
-
-<p><a href="https://github.com/androidyue/weekly-scripts/blob/master/javascript/target_blank_link.js">每周一脚本@Github</a></p>
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B0089TDFNS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0089TDFNS&linkCode=as2&tag=droidyue-23">锋利的jQuery</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0089TDFNS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00BQ7RMW0/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00BQ7RMW0&linkCode=as2&tag=droidyue-23">编写可维护的JavaScript</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00BQ7RMW0" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00B14IGUK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00B14IGUK&linkCode=as2&tag=droidyue-23">安全技术大系:Web前端黑客技术揭秘</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00B14IGUK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
