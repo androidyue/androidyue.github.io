@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-11-28T08:54:11+08:00</updated>
+  <updated>2014-11-29T16:43:15+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,163 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[偷懒的OnSharedPreferenceChangeListener]]></title>
+    <link href="http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/"/>
+    <updated>2014-11-29T16:41:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called</id>
+    <content type="html"><![CDATA[<p>之前使用OnSharedPreferenceChangeListener，遇到了点小问题，就是有些时候OnSharedPreferenceChangeListener没有被触发。最近花了点时间研究了一下，小做整理。本文将会介绍监听器不被触发的原因，解决方法，以及其中隐含的一些技术细节。</p>
+
+<!--more-->
+
+
+<h2>问题再现</h2>
+
+<p>OnSharedPreferenceChangeListener是Android中SharedPreference文件发生变化的监听器。通常我们想要进行监听，会实现如下的代码。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">())</span>
+</span><span class='line'>      <span class="o">.</span><span class="na">registerOnSharedPreferenceChangeListener</span><span class="o">(</span><span class="k">new</span> <span class="n">OnSharedPreferenceChangeListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="nd">@Override</span>
+</span><span class='line'>      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSharedPreferenceChanged</span><span class="o">(</span>
+</span><span class='line'>          <span class="n">SharedPreferences</span> <span class="n">sharedPreferences</span><span class="o">,</span> <span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testOnSharedPreferenceChangedWrong key =&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">});</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这种写法看上去没有什么问题，而且很多时候开始几次onSharedPreferenceChanged方法也可以被调用。但是过一段时间（简单demo不容易出现，但是使用DDMS中的gc会立刻导致接下来的问题），你会发现前面的方法突然不再被调用，进而影响到程序的处理。</p>
+
+<h2>原因剖析</h2>
+
+<p>简而言之，就是你注册的监听器被移除掉了。<br/>
+首先我们先了解一下registerOnSharedPreferenceChangeListener注册的实现。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">final</span> <span class="n">WeakHashMap</span><span class="o">&lt;</span><span class="n">OnSharedPreferenceChangeListener</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">mListeners</span> <span class="o">=</span>
+</span><span class='line'>            <span class="k">new</span> <span class="n">WeakHashMap</span><span class="o">&lt;</span><span class="n">OnSharedPreferenceChangeListener</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;();</span>
+</span><span class='line'><span class="c1">//some code goes here</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="n">More</span> <span class="o">...</span><span class="na">registerOnSharedPreferenceChangeListener</span><span class="o">(</span><span class="n">OnSharedPreferenceChangeListener</span> <span class="n">listener</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">synchronized</span><span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">mListeners</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">listener</span><span class="o">,</span> <span class="n">mContent</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>从上面的代码可以得知，一个OnSharedPreferenceChangeListener对象实际上是放到了一个WeakHashMap的容器中，执行完示例中的onCreate方法，这个监听器对象很快就会成为垃圾回收的目标，由于放在WeakHashMap中作为key不会阻止垃圾回收，所以当监听器对象被回收之后，这个监听器也会从mListeners中移除。所以就造成了onSharedPreferenceChanged不会被调用。</p>
+
+<p>关于WeakHashMap相关，请阅读<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">译文：理解Java中的弱引用</a>进而更多了解。</p>
+
+<h2>如何解决</h2>
+
+<h3>改为对象成员变量（推荐）</h3>
+
+<p>将监听器作为Activity的一个成员变量，在Activity的onResume进行注册，在onPause时进行注销。推荐在这两个Activity生命周期中进行处理，尤其是当SharedPreference值发生变化后，对Activity展示的UI进行处理操作的情况。这种方法是最推荐的解决方案。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">OnSharedPreferenceChangeListener</span> <span class="n">mListener</span> <span class="o">=</span> <span class="k">new</span> <span class="n">OnSharedPreferenceChangeListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSharedPreferenceChanged</span><span class="o">(</span>
+</span><span class='line'>      <span class="n">SharedPreferences</span> <span class="n">sharedPreferences</span><span class="o">,</span> <span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;instance variable key=&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@Override</span>
+</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onResume</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">()).</span><span class="na">registerOnSharedPreferenceChangeListener</span><span class="o">(</span><span class="n">mListener</span><span class="o">);</span>
+</span><span class='line'>  <span class="kd">super</span><span class="o">.</span><span class="na">onResume</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@Override</span>
+</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onPause</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">()).</span><span class="na">unregisterOnSharedPreferenceChangeListener</span><span class="o">(</span><span class="n">mListener</span><span class="o">);</span>
+</span><span class='line'>  <span class="kd">super</span><span class="o">.</span><span class="na">onPause</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>改为静态变量（不推荐）</h3>
+
+<p>如下，将一个指向匿名的内部类对象的变量sListener使用static修饰，这个内部类对象则不会持有外部类的引用。<br/>
+但是这种做法并不推荐，因为一个静态变量和与外部实例不相关，我们很难和外部实例进行一些操作。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="n">OnSharedPreferenceChangeListener</span> <span class="n">sListener</span> <span class="o">=</span> <span class="k">new</span> <span class="n">OnSharedPreferenceChangeListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSharedPreferenceChanged</span><span class="o">(</span>
+</span><span class='line'>      <span class="n">SharedPreferences</span> <span class="n">sharedPreferences</span><span class="o">,</span> <span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;static variable key=&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>为什么这样设计</h2>
+
+<p>可能会有人认为这是系统设计的猫腻或者bug，其实不然，这正是Android设计人员的高明之处。</p>
+
+<p>正如我们示例的代码一样，将一个（隐式的）局部变量添加到监听器容器中，如果该容器只是一个普通的HashMap，这样会导致内存泄露，因为该容器还有局部变量指向的对象，该对象又隐式持有外部Activity的对象，导致Activity无法被销毁。关于非静态内部类持有隐式持有外部类引用，请参考<a href="http://droidyue.com/blog/2014/10/02/the-private-modifier-in-java/">细话Java：&#8221;失效&#8221;的private修饰符</a></p>
+
+<p>除此之外，因为局部变量无法在其所在方法外部访问，这样就导致了我们只可以使用方法中使用局部变量就行注册，在合适的时机却无法使用局部变量进行注销。</p>
+
+<h2>三本帮助深入研究Java的书</h2>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=0137142528&amp;linkCode=as2&amp;tag=droidyue-23">Java Performance</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011F7WU4&amp;linkCode=as2&amp;tag=droidyue-23">Java编程思想(第4版)</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B001PTGR52/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B001PTGR52&amp;linkCode=as2&amp;tag=droidyue-23">Sun 公司核心技术丛书:Effective Java中文版(第2版)</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android中WebView拦截替换网络请求数据]]></title>
@@ -3098,180 +3255,6 @@ this$0就是内部类持有的外部类引用，通过构造方法传递引用�
 <li><a href="http://www.amazon.cn/gp/product/B0051EEQWS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0051EEQWS&linkCode=as2&tag=droidyue-23">别告诉我你会记笔记</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0051EEQWS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B006BPPKZ8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B006BPPKZ8&linkCode=as2&tag=droidyue-23">超级整理术:工作效率是整理出来的</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B006BPPKZ8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B004O9F71K/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004O9F71K&linkCode=as2&tag=droidyue-23">番茄工作法图解:简单易行的时间管理方法</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B004O9F71K" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[利用WebView实现网页的i18n]]></title>
-    <link href="http://droidyue.com/blog/2014/09/30/i18n-web-page-using-webview-in-android/"/>
-    <updated>2014-09-30T21:44:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/09/30/i18n-web-page-using-webview-in-android</id>
-    <content type="html"><![CDATA[<p>软件如果想在全球获得更多的用户，国际化与本地化（internationalization and localization 简称：i18n 和L10n）是非常必要的。本文将介绍一个很geeky的方法来利用webview实现html的i18n。</p>
-
-<!--more-->
-
-
-<h2>基本概念</h2>
-
-<p>国际化是指在设计软件，将软件与特定语言及地区脱钩的过程。当软件被移植到不同的语言及地区时，软件本身不用做内部工程上的改变或修正。本地化则是指当移植软件时，加上与特定区域设置有关的信息和翻译文件的过程。</p>
-
-<p>国际化和本地化之间的区别虽然微妙，但却很重要。国际化意味着产品有适用于任何地方的“潜力”；本地化则是为了更适合于“特定”地方的使用，而另外增添的特色。用一项产品来说，国际化只需做一次，但本地化则要针对不同的区域各做一次。 这两者之间是互补的，并且两者合起来才能让一个系统适用于各地。</p>
-
-<p>上述摘自<a href="http://zh.wikipedia.org/wiki/%E5%9B%BD%E9%99%85%E5%8C%96%E4%B8%8E%E6%9C%AC%E5%9C%B0%E5%8C%96">维基百科 国际化与本地化</a></p>
-
-<h2>问题</h2>
-
-<p>如何实现网页的国际化和本地化，支持更多的语言呢？最简单的逻辑可能类似如下伪代码实现</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nx">isChinese</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">lable</span><span class="p">.</span><span class="nx">innerText</span> <span class="o">=</span> <span class="s2">&quot;中文&quot;</span>
-</span><span class='line'><span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isEnglish</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">lable</span><span class="p">.</span><span class="nx">innerText</span> <span class="o">=</span> <span class="s2">&quot;English&quot;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>但是这样是很有问题的，如果增加了语言必然要修改代码代码，违背了对修改关闭的原则。所以上述并不是一种很好的方法</p>
-
-<h2>更Hacky的实现</h2>
-
-<p>实现思路主要是借助强大的Android系统的资源适配机制（基于设备设备的信息Locale等匹配最合适的资源）。貌似这个是Chrome中网页实现i18n的逻辑。实现步骤主要如下</p>
-
-<ul>
-<li>Android程序提供必要多个Locale的资源</li>
-<li>将网页需要的文字资源组成JSON交换格式</li>
-<li>WebView注入一个变量，变量内容为上一步的JSON数据</li>
-<li>网页实现读取资源，为元素设置内容</li>
-<li>加载网页</li>
-</ul>
-
-
-<h3>提供多个Locale文字资源</h3>
-
-<h4>values/strings.xml</h4>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;resources&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;city_beijing&quot;</span><span class="nt">&gt;</span>Beijing<span class="nt">&lt;/string&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;country_china&quot;</span><span class="nt">&gt;</span>China<span class="nt">&lt;/string&gt;</span>
-</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>values-zh-rCN/strings.xml</h4>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;resources&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;city_beijing&quot;</span><span class="nt">&gt;</span>北京<span class="nt">&lt;/string&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;country_china&quot;</span><span class="nt">&gt;</span>中国<span class="nt">&lt;/string&gt;</span>
-</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>接下来的代码</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">WebView</span> <span class="n">myWebView</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WebView</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'><span class="n">addContentView</span><span class="o">(</span><span class="n">myWebView</span><span class="o">,</span> <span class="k">new</span> <span class="n">LayoutParams</span><span class="o">(</span><span class="n">LayoutParams</span><span class="o">.</span><span class="na">MATCH_PARENT</span><span class="o">,</span> <span class="n">LayoutParams</span><span class="o">.</span><span class="na">MATCH_PARENT</span><span class="o">));</span>
-</span><span class='line'><span class="c1">//将网页需要的文字资源组成JSON交换格式</span>
-</span><span class='line'><span class="n">JSONObject</span> <span class="n">jsObj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JSONObject</span><span class="o">();</span>
-</span><span class='line'><span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">jsObj</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;country&quot;</span><span class="o">,</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">country_china</span><span class="o">));</span>
-</span><span class='line'>  <span class="n">jsObj</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;city&quot;</span><span class="o">,</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">city_beijing</span><span class="o">));</span>
-</span><span class='line'><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">JSONException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'><span class="c1">//WebView注入一个变量，变量内容为上一步的JSON数据</span>
-</span><span class='line'><span class="n">String</span> <span class="n">injectString</span> <span class="o">=</span> <span class="s">&quot;var textRes = &quot;</span> <span class="o">+</span> <span class="n">jsObj</span><span class="o">;</span>
-</span><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;injuectString = &quot;</span> <span class="o">+</span> <span class="n">injectString</span><span class="o">);</span>
-</span><span class='line'><span class="n">WebSettings</span> <span class="n">settings</span> <span class="o">=</span> <span class="n">myWebView</span><span class="o">.</span><span class="na">getSettings</span><span class="o">();</span>
-</span><span class='line'><span class="n">settings</span><span class="o">.</span><span class="na">setJavaScriptEnabled</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'><span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">&quot;javascript:&quot;</span> <span class="o">+</span> <span class="n">injectString</span><span class="o">);</span>
-</span><span class='line'><span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">&quot;file:///android_asset/location.html&quot;</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>网页实现</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;html&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;head&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;title&gt;</span>i18n Test<span class="nt">&lt;/title&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;/head&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;body&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;label</span> <span class="na">id=</span><span class="s">&quot;country&quot;</span><span class="nt">&gt;&lt;/label&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;lable</span> <span class="na">id=</span><span class="s">&quot;city&quot;</span><span class="nt">&gt;&lt;/lable&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;/body&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">).</span><span class="nx">innerText</span><span class="o">=</span> <span class="nx">textRes</span><span class="p">.</span><span class="nx">country</span>
-</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;city&#39;</span><span class="p">).</span><span class="nx">innerText</span> <span class="o">=</span> <span class="nx">textRes</span><span class="p">.</span><span class="nx">city</span>
-</span><span class='line'>  <span class="nt">&lt;/script&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>结果</h3>
-
-<ul>
-<li>当系统语言为中文简体环境下网页显示<strong>中国 北京</strong></li>
-<li>当系统语言为非中文简体环境下网页显示<strong>China Beijing</strong></li>
-</ul>
-
-
-<h3>Demo源码下载</h3>
-
-<p><a href="http://pan.baidu.com/s/1sjwNamL">@百度网盘</a></p>
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">这样才可以精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B002JCU2TG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002JCU2TG&linkCode=as2&tag=droidyue-23">瞬间之美:Web界面设计如何让用户心动</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002JCU2TG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
