@@ -1,0 +1,433 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>JVM运行时的数据区 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="JVM运行时的数据区 Dec 21st, 2014 理解JVM运行时的数据区是Java编程中的进阶部分。我们在开发中都遇到过一个很头疼的问题就是OutOfMemoryError（内存溢出错误），但是如果我们了解JVM的内部实现和其运行时的数据区的工作机制，那么前面的问题就会迎刃而解。在这片文章中 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2014/12/21/java-runtime-data-areas">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script type="text/javascript">
+      $(document).bind('DOMNodeInserted', function(event) {
+			$('a[href^="http"]').each(
+				function(){
+					if (!$(this).attr('target')) {
+						$(this).attr('target', '_blank')
+					}
+                
+				}
+			);
+		});
+  </script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>一个有态度的技术分享媒体</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">JVM运行时的数据区</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-12-21T18:59:00+08:00" pubdate data-updated="true">Dec 21<span>st</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>理解JVM运行时的数据区是Java编程中的进阶部分。我们在开发中都遇到过一个很头疼的问题就是OutOfMemoryError（内存溢出错误），但是如果我们了解JVM的内部实现和其运行时的数据区的工作机制，那么前面的问题就会迎刃而解。在这片文章中，我们将简单了解JVM中有哪些运行时数据区以及这些数据区的工作机制。</p>
+
+<!--more-->
+
+
+<h2>JVM运行时数据区分类</h2>
+
+<ul>
+<li>程序计数器 (Program Counter (PC) Register)</li>
+<li>JVM栈 (Java Virtual Machine Stacks)</li>
+<li>堆内存 (Heap Memory)</li>
+<li>方法区 (Method Area)</li>
+<li>运行时常量池 (Run-time Constant Pool)</li>
+<li>本地方法栈 (Native Method Stacks)</li>
+</ul>
+
+
+<h3>有图才能说</h3>
+
+<p><img src="http://droidyueimg.qiniudn.com/JVM_runtime_data_areas.png" title="jvm runtime data areas" ></p>
+
+<h3>按线程持有划分</h3>
+
+<p>查看上面的图，可以得知以上六个数据区其实线程私有还是共享，可以分为如下两种。</p>
+
+<ul>
+<li><strong>单个线程私有</strong>(Managed Per-Thread) 属于这一种的数据区包含 程序计数器， JVM栈还有本地方法栈。 每个线程都私有这三个数据区，这些数据区在其所属的线程创建时初始化，并随着所属线程结束被销毁。</li>
+<li><strong>多个线程共享</strong>  属于这一种的数据区包含 堆内存，方法区和运行时常量池。这些数据区可以被每一个线程访问，他们随着JVM启动而初始化，同时伴随JVM关闭而销毁。</li>
+</ul>
+
+
+<h2>程序计数器</h2>
+
+<p>在通用的计算机体系中，程序计数器用来记录当前正在执行的指令，在JVM中也是如此。程序计数器是线程私有，所以当一个新的线程创建时，程序计数器也会创建。由于Java是支持多线程，Java中的程序计数器用来记录当前线程中正在执行的指令。如果当前正在执行的方法是本地方法，那么此刻程序计数器的值为<strong>undefined</strong>。注意这个区域是唯一一个不抛出OutOfMemoryError的运行时数据区。</p>
+
+<h2>JVM栈</h2>
+
+<p>在介绍JVM栈之前，简单介绍一个概念，栈帧</p>
+
+<h3>栈帧</h3>
+
+<p>一个栈帧随着一个方法的调用开始而创建，这个方法调用完成而销毁。栈帧内存放者方法中的局部变量，操作数栈等数据。</p>
+
+<p>JVM栈只对栈帧进行存储，压栈和出栈操作。栈内存的大小可以有两种设置，固定值和根据线程需要动态增长。在JVM栈这个数据区可能会发生抛出两种错误。</p>
+
+<ul>
+<li>StackOverflowError 出现在栈内存设置成固定值的时候，当程序执行需要的栈内存超过设定的固定值会抛出这个错误。</li>
+<li>OutOfMemoryError   出现在栈内存设置成动态增长的时候，当JVM尝试申请的内存大小超过了其可用内存时会抛出这个错误。</li>
+</ul>
+
+
+<h2>堆数据区</h2>
+
+<p>堆数据区是用来存放对象和数组（特殊的对象）。堆内存由多个线程共享。堆内存随着JVM启动而创建。众所周知，Java中有一个很好的特性就是自动垃圾回收。垃圾回收就操作这个数据区来回收对象进而释放内存。如果堆内存剩余的内存不足以满足于对象创建，JVM会抛出OutOfMemoryError错误。</p>
+
+<h2>方法区</h2>
+
+<p>在JVM规范中，方法区被视为堆内存的一个逻辑部分。这一点可能由于具体的JVM实现而不同，甚至在方法区不实现垃圾回收处理也是可以的。方法区和堆内存一样被多个线程访问，方法区中存放类的信息，比如类加载器引用，属性，方法代码和构造方法和常量等。当方法区的可用内存无法满足内存分配需求时，JVM会抛出OutOfMemoryError错误。</p>
+
+<h2>运行时常量池</h2>
+
+<p>运行时常量池创建在方法区，当一个类或者一个接口被创建的时候，JVM会创建一个运行时常量池。一个运行时常量池实际上是一个类或者接口的class文件中常量池表（constant_pool table）的运行时展示形式。一个运行时常量池包含了多种类型的常量，从诸如运行时可以确定的数值型字面量到运行时才能决定的方法和属性引用。当运行时常量池无法满足于内存分配需求时，JVM会抛出OutOfMemoryError错误。</p>
+
+<h2>本地方法栈</h2>
+
+<p>一个支持native方法调用的JVM实现，需要有这样一个数据区，就是本地方法栈，Java官方对于本地方法的定义为<code>methods written in a language other than the Java programming language</code>，就是使用非Java语言实现的方法，但是通常我们指的一般为C或者C++，因此这个栈也有着<strong>C栈</strong>这一称号。一个不支持本地方法执行的JVM没有必要实现这个数据区域。本地方法栈基本和JVM栈一样，其大小也是可以设置为固定值或者动态增加，因此也会对应抛出StackOverflowError和OutOfMemoryError错误。</p>
+
+<h2>译文信息</h2>
+
+<ul>
+<li>原文出处<a href="http://javapapers.com/core-java/java-jvm-run-time-data-areas/">Java JVM Run-time Data Areas</a> 原文有些东西偏于隐晦，译文有这方面的修改。</li>
+<li>翻译文章参考<a href="https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-2.html">Chapter 2. The Structure of the Java Virtual Machine</a></li>
+</ul>
+
+
+<p>注：本文介绍JVM运行时数据相对比较概括，以后会有更加详细的针对单个数据区的介绍。</p>
+</div>
+
+
+  
+
+  <hr>
+  
+  
+<br/>
+<a href="http://droidyue.com/donate/">如果本文对你有帮助，可以考虑捐赠支持</a>
+<br/>
+<br/>
+<a href="http://www.amazon.cn/gp/product/B00D73BJWK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D73BJWK&linkCode=as2&tag=droidyue-23">浪潮之巅，一部剖析硅谷明星公司兴衰沉浮的经典之作</a>
+<br/>
+<br/>
+<hr/>
+<ul>
+	<li><a href="http://redirect.simba.taobao.com/rd?w=unionnojs&f=http%3A%2F%2Fai.taobao.com%2Fauction%2Fedetail.htm%3Fe%3D%252FJL7Jrm0aYq6k0Or%252B%252BH4tOJtmuy3Bv4glWsbAjdmP56LltG5xFicOdXrTUTgh9sMDPIwxrc30ri8nc0fL4TGokWbbNPSehpRHMUeRChy%252FdaFJWU9wpkoTW3abJM7sDg27%252BjP9R4ZJ6h1VBsMdi%252FpzQ%253D%253D%26ptype%3D100010%26from%3Dbasic&k=5ccfdb950740ca16&c=un&b=alimm_0&p=mm_58471937_7778121_26116191">是极客就要折腾树莓派</a></li>
+	<li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DXmDv21KQiAYcQipKwQzePDAVflQIoZepQih%2F7PxfOKS5VBFTL4hn2TVJL6dCd73rxF5AHBg6Tr7M3gYQjCL89qULerPwKfMIwRKDNIG1Ob5nW%2BJUaSJ3f2AVCEmOagNkIYULNg46oBA%3D">程序员如何着装才能提升逼格</a></li>
+	<li><a href="https://www.youmi.net/account/register?r=OTU2Ng==">找个空闲时间写个应用赚点外块花</a></li>
+</ul>
+
+ 
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_included -->
+<ins class="adsbygoogle"
+     style="display:inline-block;width:728px;height:90px"
+     data-ad-client="ca-pub-7565659593663612"
+     data-ad-slot="4976687343"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-12-21T18:59:00+08:00" pubdate data-updated="true">Dec 21<span>st</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/jvm/'>JVM</a>, <a class='category' href='/blog/categories/java/'>Java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/12/14/android-yingyong-renling/" title="Previous Post: 应用认领那些事">&laquo; 应用认领那些事</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/12/21/string-literal-pool-in-java/" title="Next Post: Java中的字符串常量池">Java中的字符串常量池 &raquo;</a>
+        
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2014/12/21/java-runtime-data-areas" data-title="JVM运行时的数据区" data-url="http://droidyue.com/blog/2014/12/21/java-runtime-data-areas/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/string-literal-pool-in-java/">Java中的字符串常量池</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/java-runtime-data-areas/">JVM运行时的数据区</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/14/android-yingyong-renling/">应用认领那些事</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/14/substring-memory-issue-in-java/">Java中的substring真的会引起内存泄露么？</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/07/differences-between-stack-and-heap-in-java/">Java中的堆和栈的区别</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/30/java-programmer-must-read-these-9-books/">9本Java程序员必读的书</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/29/a-super-tool-to-remove-files/">效率工具：强大的批量删除文件的脚本</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/29/custom-toast-like-tencent-news-app/">仿腾讯新闻样式的Toast</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/">Google为何这样设计OnSharedPreferenceChangeListener</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/23/block-web-resource-in-webview/">Android中WebView拦截替换网络请求数据</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="/links/">友情链接</a></li>
+    <li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0">室内健身利器:Kinect体感游戏机</a></li>
+</ul>
+</section>
+<section>
+<h1>经典好书</h1>
+<ul>
+	<li><a href="http://www.amazon.cn/gp/product/1430218339/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=1430218339&linkCode=as2&tag=droidyue-23">Pro Git</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00D73BJWK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D73BJWK&linkCode=as2&tag=droidyue-23">浪潮之巅</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0061XKRXA/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0061XKRXA&linkCode=as2&tag=droidyue-23">代码大全</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0011C2P7W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C2P7W&linkCode=as2&tag=droidyue-23">人月神话</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001NGO85I/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001NGO85I&linkCode=as2&tag=droidyue-23">编译原理</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B004ZWBW5G/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004ZWBW5G&linkCode=as2&tag=droidyue-23">编程珠玑</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00Q8BQ2IE/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00Q8BQ2IE&linkCode=as2&tag=droidyue-23">编程人生</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00P6OJ09C/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00P6OJ09C&linkCode=as2&tag=droidyue-23">数学之美</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0031M9GHC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0031M9GHC&linkCode=as2&tag=droidyue-23">代码整洁之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B008Z1IEQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008Z1IEQ8&linkCode=as2&tag=droidyue-23">Unix编程艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B004GV08CY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004GV08CY&linkCode=as2&tag=droidyue-23">程序员修炼之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00KMJ2Q1U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KMJ2Q1U&linkCode=as2&tag=droidyue-23">修改代码的艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=0137142528&linkCode=as2&tag=droidyue-23">Java Performance</a></li> 
+    <li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001N6R9JK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001N6R9JK&linkCode=as2&tag=droidyue-23">数据结构与算法分析</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B005KGBTQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005KGBTQ8&linkCode=as2&tag=droidyue-23">松本行弘的程序世界</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00ALPRKJ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ALPRKJ8&linkCode=as2&tag=droidyue-23">高效程序员的45个习惯</a></li>  
+    <li><a href="http://www.amazon.cn/gp/product/B003BY6PLK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B003BY6PLK&linkCode=as2&tag=droidyue-23">重构：改善既有代码的设计</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00H1FXTNM/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00H1FXTNM&linkCode=as2&tag=droidyue-23">Java虚拟机规范(Java SE 7版)</a></li>
+</ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>

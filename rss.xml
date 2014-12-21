@@ -6,11 +6,255 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Sat, 20 Dec 2014 14:40:16 GMT</pubDate>
+  <pubDate>Sun, 21 Dec 2014 11:21:27 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;p&gt;Java中字符串对象创建有两种形式，一种为字面量形式，如&lt;code&gt;String str = "droid";&lt;/code&gt;，另一种就是使用&lt;strong&gt;new&lt;/strong&gt;这种标准的构造对象的方法，如&lt;code&gt;String str = new String("droid");&lt;/code&gt;，这两种方式我们在代码编写时都经常使用，尤其是字面量的方式。然而这两种实现其实存在着一些性能和内存占用的差别。这一切都是源于JVM为了减少字符串对象的重复创建，其维护了一个特殊的内存，这段内存被成为字符串常量池或者字符串字面量池。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;工作原理&lt;/h2&gt;
+
+&lt;p&gt;当代码中出现字面量形式创建字符串对象时，JVM首先会对这个字面量进行检查，如果字符串常量池中存在相同内容的字符串对象的引用，则将这个引用返回，否则新的字符串对象被创建，然后将这个引用放入字符串常量池，并返回该引用。&lt;/p&gt;
+
+&lt;h2&gt;举例说明&lt;/h2&gt;
+
+&lt;h3&gt;字面量创建形式&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str1&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;droid&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;JVM检测这个字面量，这里我们认为没有内容为&lt;code&gt;droid&lt;/code&gt;的对象存在。JVM通过字符串常量池查找不到内容为&lt;code&gt;droid&lt;/code&gt;的字符串对象存在，那么会创建这个字符串对象，然后将刚创建的对象的引用放入到字符串常量池中,并且将引用返回给变量str1。&lt;/p&gt;
+
+&lt;p&gt;如果接下来有这样一段代码&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str2&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;droid&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;同样JVM还是要检测这个字面量，JVM通过查找字符串常量池，发现内容为&amp;#8221;droid&amp;#8221;字符串对象存在，于是将已经存在的字符串对象的引用返回给变量str2。注意这里不会重新创建新的字符串对象。&lt;/p&gt;
+
+&lt;p&gt;验证是否为str1和str2是否指向同一对象，我们可以通过这段代码&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;str1&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;str2&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;结果为&lt;code&gt;true&lt;/code&gt;。&lt;/p&gt;
+
+&lt;h3&gt;使用new创建&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str3&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;droid&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;当我们使用了new来构造字符串对象的时候，不管字符串常量池中有没有相同内容的对象的引用，新的字符串对象都会创建。因此我们使用下面代码测试一下，&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str3&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;droid&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;str1&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;str3&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;结果如我们所想，为&lt;code&gt;false&lt;/code&gt;，表明这两个变量指向的为不同的对象。&lt;/p&gt;
+
+&lt;h3&gt;intern&lt;/h3&gt;
+
+&lt;p&gt;对于上面使用new创建的字符串对象，如果想将这个对象的引用加入到字符串常量池，可以使用intern方法。&lt;/p&gt;
+
+&lt;p&gt;调用intern后，首先检查字符串常量池中是否有该对象的引用，如果存在，则将这个引用返回给变量，否则将引用加入并返回给变量。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str4&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;str3&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;intern&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;str4&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;str1&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;输出的结果为&lt;code&gt;true&lt;/code&gt;。&lt;/p&gt;
+
+&lt;h2&gt;疑难问题&lt;/h2&gt;
+
+&lt;h3&gt;前提条件？&lt;/h3&gt;
+
+&lt;p&gt;字符串常量池实现的前提条件就是Java中String对象是不可变的，这样可以安全保证多个变量共享同一个对象。如果Java中的String对象可变的话，一个引用操作改变了对象的值，那么其他的变量也会受到影响，显然这样是不合理的。&lt;/p&gt;
+
+&lt;h3&gt;引用 or 对象&lt;/h3&gt;
+
+&lt;p&gt;字符串常量池中存放的时引用还是对象，这个问题是最常见的。字符串常量池存放的是对象引用，不是对象。&lt;strong&gt;在Java中，对象都创建在堆内存中&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;h3&gt;优缺点&lt;/h3&gt;
+
+&lt;p&gt;字符串常量池的好处就是减少相同内容字符串的创建，节省内存空间。&lt;/p&gt;
+
+&lt;p&gt;如果硬要说弊端的话，就是牺牲了CPU计算时间来换空间。CPU计算时间主要用于在字符串常量池中查找是否有内容相同对象的引用。不过其内部实现为HashTable，所以计算成本较低。&lt;/p&gt;
+
+&lt;h3&gt;GC回收？&lt;/h3&gt;
+
+&lt;p&gt;因为字符串常量池中持有了共享的字符串对象的引用，这就是说是不是会导致这些对象无法回收？&lt;/p&gt;
+
+&lt;p&gt;首先问题中共享的对象一般情况下都比较小。据我查证了解，在早期的版本中确实存在这样的问题，但是随着&lt;a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/"&gt;弱引用&lt;/a&gt;的引入，目前这个问题应该没有了。&lt;/p&gt;
+
+&lt;p&gt;关于这个问题，可以具体了解这片文章&lt;a href="http://mindprod.com/jgloss/interned.html#GC"&gt;interned Strings : Java Glossary&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3&gt;intern使用？&lt;/h3&gt;
+
+&lt;p&gt;关于使用intern的前提就是你清楚自己确实需要使用。比如，我们这里有一份上百万的记录，其中记录的某个值多次为&lt;strong&gt;美国加利福尼亚州&lt;/strong&gt;，我们不想创建上百万条这样的字符串对象，我们可以使用intern只在内存中保留一份即可。关于intern更深入的了解请参考&lt;a href="http://tech.meituan.com/in_depth_understanding_string_intern.html"&gt;深入解析String#intern&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h3&gt;总有例外？&lt;/h3&gt;
+
+&lt;p&gt;你知道下面的代码，会创建几个字符串对象，在字符串常量池中保存几个引用么？&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;test&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;a&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;b&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;c&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;答案是只创建了一个对象，在常量池中也只保存一个引用。我们使用javap反编译看一下即可得知。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="mi"&gt;17&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;02&lt;/span&gt; &lt;span class="n"&gt;$&lt;/span&gt; &lt;span class="n"&gt;javap&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;c&lt;/span&gt; &lt;span class="n"&gt;TestInternedPoolGC&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;Compiled&lt;/span&gt; &lt;span class="n"&gt;from&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;TestInternedPoolGC.java&amp;quot;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;TestInternedPoolGC&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Object&lt;/span&gt;&lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="nf"&gt;TestInternedPoolGC&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="nl"&gt;Code:&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;   &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;  &lt;span class="n"&gt;aload_0&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;   &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;  &lt;span class="n"&gt;invokespecial&lt;/span&gt;    &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;//Method java/lang/Object.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;   &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;  &lt;span class="k"&gt;return&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[])&lt;/span&gt;   &lt;span class="kd"&gt;throws&lt;/span&gt; &lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Exception&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="nl"&gt;Code:&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;   &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;  &lt;span class="n"&gt;ldc&lt;/span&gt;  &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt; &lt;span class="c1"&gt;//String abc&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;   &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;  &lt;span class="n"&gt;astore_1&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;   &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;  &lt;span class="k"&gt;return&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;看到了么，实际上在编译期间，已经将这三个字面量合成了一个。这样做实际上是一种优化，避免了创建多余的字符串对象，也没有发生字符串拼接问题。关于字符串拼接，可以查看&lt;a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/"&gt;Java细节：字符串的拼接&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h2&gt;参考文章&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="http://blog.jamesdbloom.com/JVMInternals.html"&gt;JVMInternals&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://www.javaranch.com/journal/200409/ScjpTipLine-StringsLiterally.html"&gt;Strings, Literally&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://theopentutorials.com/tutorials/java/strings/string-literal-pool/"&gt;STRING LITERAL POOL&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://mindprod.com/jgloss/interned.html"&gt;interned Strings : Java Glossary&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+    <title>Java中的字符串常量池</title>
+    <link>http://droidyue.com/blog/2014/12/21/string-literal-pool-in-java/</link>
+    <pubDate>Sun, 21 Dec 2014 11:09:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2014/12/21/string-literal-pool-in-java</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
+  
+  <item><description>&lt;p&gt;理解JVM运行时的数据区是Java编程中的进阶部分。我们在开发中都遇到过一个很头疼的问题就是OutOfMemoryError（内存溢出错误），但是如果我们了解JVM的内部实现和其运行时的数据区的工作机制，那么前面的问题就会迎刃而解。在这片文章中，我们将简单了解JVM中有哪些运行时数据区以及这些数据区的工作机制。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;JVM运行时数据区分类&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;程序计数器 (Program Counter (PC) Register)&lt;/li&gt;
+&lt;li&gt;JVM栈 (Java Virtual Machine Stacks)&lt;/li&gt;
+&lt;li&gt;堆内存 (Heap Memory)&lt;/li&gt;
+&lt;li&gt;方法区 (Method Area)&lt;/li&gt;
+&lt;li&gt;运行时常量池 (Run-time Constant Pool)&lt;/li&gt;
+&lt;li&gt;本地方法栈 (Native Method Stacks)&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;有图才能说&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src="http://droidyueimg.qiniudn.com/JVM_runtime_data_areas.png" title="jvm runtime data areas" &gt;&lt;/p&gt;
+
+&lt;h3&gt;按线程持有划分&lt;/h3&gt;
+
+&lt;p&gt;查看上面的图，可以得知以上六个数据区其实线程私有还是共享，可以分为如下两种。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;单个线程私有&lt;/strong&gt;(Managed Per-Thread) 属于这一种的数据区包含 程序计数器， JVM栈还有本地方法栈。 每个线程都私有这三个数据区，这些数据区在其所属的线程创建时初始化，并随着所属线程结束被销毁。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;多个线程共享&lt;/strong&gt;  属于这一种的数据区包含 堆内存，方法区和运行时常量池。这些数据区可以被每一个线程访问，他们随着JVM启动而初始化，同时伴随JVM关闭而销毁。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;程序计数器&lt;/h2&gt;
+
+&lt;p&gt;在通用的计算机体系中，程序计数器用来记录当前正在执行的指令，在JVM中也是如此。程序计数器是线程私有，所以当一个新的线程创建时，程序计数器也会创建。由于Java是支持多线程，Java中的程序计数器用来记录当前线程中正在执行的指令。如果当前正在执行的方法是本地方法，那么此刻程序计数器的值为&lt;strong&gt;undefined&lt;/strong&gt;。注意这个区域是唯一一个不抛出OutOfMemoryError的运行时数据区。&lt;/p&gt;
+
+&lt;h2&gt;JVM栈&lt;/h2&gt;
+
+&lt;p&gt;在介绍JVM栈之前，简单介绍一个概念，栈帧&lt;/p&gt;
+
+&lt;h3&gt;栈帧&lt;/h3&gt;
+
+&lt;p&gt;一个栈帧随着一个方法的调用开始而创建，这个方法调用完成而销毁。栈帧内存放者方法中的局部变量，操作数栈等数据。&lt;/p&gt;
+
+&lt;p&gt;JVM栈只对栈帧进行存储，压栈和出栈操作。栈内存的大小可以有两种设置，固定值和根据线程需要动态增长。在JVM栈这个数据区可能会发生抛出两种错误。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;StackOverflowError 出现在栈内存设置成固定值的时候，当程序执行需要的栈内存超过设定的固定值会抛出这个错误。&lt;/li&gt;
+&lt;li&gt;OutOfMemoryError   出现在栈内存设置成动态增长的时候，当JVM尝试申请的内存大小超过了其可用内存时会抛出这个错误。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;堆数据区&lt;/h2&gt;
+
+&lt;p&gt;堆数据区是用来存放对象和数组（特殊的对象）。堆内存由多个线程共享。堆内存随着JVM启动而创建。众所周知，Java中有一个很好的特性就是自动垃圾回收。垃圾回收就操作这个数据区来回收对象进而释放内存。如果堆内存剩余的内存不足以满足于对象创建，JVM会抛出OutOfMemoryError错误。&lt;/p&gt;
+
+&lt;h2&gt;方法区&lt;/h2&gt;
+
+&lt;p&gt;在JVM规范中，方法区被视为堆内存的一个逻辑部分。这一点可能由于具体的JVM实现而不同，甚至在方法区不实现垃圾回收处理也是可以的。方法区和堆内存一样被多个线程访问，方法区中存放类的信息，比如类加载器引用，属性，方法代码和构造方法和常量等。当方法区的可用内存无法满足内存分配需求时，JVM会抛出OutOfMemoryError错误。&lt;/p&gt;
+
+&lt;h2&gt;运行时常量池&lt;/h2&gt;
+
+&lt;p&gt;运行时常量池创建在方法区，当一个类或者一个接口被创建的时候，JVM会创建一个运行时常量池。一个运行时常量池实际上是一个类或者接口的class文件中常量池表（constant_pool table）的运行时展示形式。一个运行时常量池包含了多种类型的常量，从诸如运行时可以确定的数值型字面量到运行时才能决定的方法和属性引用。当运行时常量池无法满足于内存分配需求时，JVM会抛出OutOfMemoryError错误。&lt;/p&gt;
+
+&lt;h2&gt;本地方法栈&lt;/h2&gt;
+
+&lt;p&gt;一个支持native方法调用的JVM实现，需要有这样一个数据区，就是本地方法栈，Java官方对于本地方法的定义为&lt;code&gt;methods written in a language other than the Java programming language&lt;/code&gt;，就是使用非Java语言实现的方法，但是通常我们指的一般为C或者C++，因此这个栈也有着&lt;strong&gt;C栈&lt;/strong&gt;这一称号。一个不支持本地方法执行的JVM没有必要实现这个数据区域。本地方法栈基本和JVM栈一样，其大小也是可以设置为固定值或者动态增加，因此也会对应抛出StackOverflowError和OutOfMemoryError错误。&lt;/p&gt;
+
+&lt;h2&gt;译文信息&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;原文出处&lt;a href="http://javapapers.com/core-java/java-jvm-run-time-data-areas/"&gt;Java JVM Run-time Data Areas&lt;/a&gt; 原文有些东西偏于隐晦，译文有这方面的修改。&lt;/li&gt;
+&lt;li&gt;翻译文章参考&lt;a href="https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-2.html"&gt;Chapter 2. The Structure of the Java Virtual Machine&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;注：本文介绍JVM运行时数据相对比较概括，以后会有更加详细的针对单个数据区的介绍。&lt;/p&gt;
+</description>
+    <title>JVM运行时的数据区</title>
+    <link>http://droidyue.com/blog/2014/12/21/java-runtime-data-areas/</link>
+    <pubDate>Sun, 21 Dec 2014 10:59:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2014/12/21/java-runtime-data-areas</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;最近公司的一款产品提交国内市场，发现有些国内市场提示需要进行应用认领。原因就是别人（或者市场抓取）已经在我们之前将这个应用提交到了该市场。认领成功后，这个应用就重回你的怀抱了，其实认领很简单，这里讲到的自然是对未签名的包进行签名。由于这样的操作细小琐屑，这样更需要记录一下，免得以后麻烦。&lt;/p&gt;
 
@@ -2864,170 +3108,6 @@ to SD card or something.&lt;/p&gt;
     <link>http://droidyue.com/blog/2014/10/15/speed-up-your-git/</link>
     <pubDate>Wed, 15 Oct 2014 13:37:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2014/10/15/speed-up-your-git</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;不久之前，我面试了一些求职Java高级开发工程师的应聘者。我常常会面试他们说，“你能给我介绍一些Java中得弱引用吗？”，如果面试者这样说，“嗯，是不是垃圾回收有关的？”，我就会基本满意了，我并不期待回答是一篇诘究本末的论文描述。&lt;/p&gt;
-
-&lt;p&gt;然而事与愿违，我很吃惊的发现，在将近20多个有着平均5年开发经验和高学历背景的应聘者中，居然只有两个人知道弱引用的存在，但是在这两个人之中只有一个人真正了解这方面的知识。在面试过程中，我还尝试提示一些东西，来看看有没有人突然说一声“原来是这个啊”，结果很是让我失望。我开始困惑，为什么这块的知识如此不被重视，毕竟弱引用是一个很有用途的特性，况且这个特性已经在7年前 Java 1.2发布时便引入了。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;p&gt;好吧，这里我不期待你看完本文之后成为一个弱引用方面的专家，但是我认为至少你应该了解什么是弱引用，如何使用它们，并且什么场景使用。既然它们是一些不知名的概念，我简单就着前面的三个问题来说明一下。&lt;/p&gt;
-
-&lt;h2&gt;强引用(Strong Reference)&lt;/h2&gt;
-
-&lt;p&gt;强引用就是我们经常使用的引用，其写法如下&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;StringBuffer&lt;/span&gt; &lt;span class="n"&gt;buffer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;StringBuffer&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;上面创建了一个StringBuffer对象，并将这个对象的（强）引用存到变量buffer中。是的，就是这个小儿科的操作（请原谅我这样的说法）。强引用最重要的就是它能够让引用变得强（Strong），这就决定了它和垃圾回收器的交互。具体来说，如果一个对象通过一串强引用链接可到达(Strongly reachable)，它是不会被回收的。如果你不想让你正在使用的对象被回收，这就正是你所需要的。&lt;/p&gt;
-
-&lt;h3&gt;但是强引用如此之强&lt;/h3&gt;
-
-&lt;p&gt;在一个程序里，将一个类设置成不可被扩展是有点不太常见的，当然这个完全可以通过类标记成final实现。或者也可以更加复杂一些，就是通过内部包含了未知数量具体实现的工厂方法返回一个接口(Interface)。举个例子，我们想要使用一个叫做Widget的类，但是这个类不能被继承，所以无法增加新的功能。&lt;/p&gt;
-
-&lt;p&gt;但是我们如果想追踪Widget对象的额外信息，我们该怎么办？ 假设我们需要记录每个对象的序列号，但是由于Widget类并不包含这个属性，而且也不能扩展导致我们也不能增加这个属性。其实一点问题也没有，HashMap完全可以解决上述的问题。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;serialNumberMap&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;put&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;widget&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;widgetSerialNumber&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;这表面看上去没有问题，但是widget对象的强引用很有可能会引发问题。我们可以确信当一个widget序列号不需要时，我们应该将这个条目从map中移除。如果我们没有移除的话，可能会导致内存泄露，亦或者我们手动移除时删除了我们正在使用的widgets，会导致有效数据的丢失。其实这些问题很类似，这就是没有垃圾回收机制的语言管理内存时常遇到的问题。但是我们不用去担心这个问题，因为我们使用的时具有垃圾回收机制的Java语言。&lt;/p&gt;
-
-&lt;p&gt;另一个强引用可能带来的问题就是缓存,尤其是像图片这样的大文件的缓存。假设你有一个程序需要处理用户提供的图片，通常的做法就是做图片数据缓存，因为从磁盘加载图片代价很大，并且同时我们也想避免在内存中同时存在两份一样的图片数据。&lt;/p&gt;
-
-&lt;p&gt;缓存被设计的目的就是避免我们去再次加载哪些不需要的文件。你会很快发现在缓存中会一直包含一个到已经指向内存中图片数据的引用。使用强引用会强制图片数据留在内存，这就需要你来决定什么时候图片数据不需要并且手动从缓存中移除，进而可以让垃圾回收器回收。因此你再一次被强制做垃圾回收器该做的工作，并且人为决定是该清理到哪一个对象。&lt;/p&gt;
-
-&lt;h2&gt;弱引用(Weak Reference)&lt;/h2&gt;
-
-&lt;p&gt;弱引用简单来说就是将对象留在内存的能力不是那么强的引用。使用WeakReference，垃圾回收器会帮你来决定引用的对象何时回收并且将对象从内存移除。创建弱引用如下&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;WeakReference&lt;/span&gt;&lt;span class="o"&gt;&amp;lt;&lt;/span&gt;&lt;span class="n"&gt;Widget&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;weakWidget&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;WeakReference&lt;/span&gt;&lt;span class="o"&gt;&amp;lt;&lt;/span&gt;&lt;span class="n"&gt;Widget&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;(&lt;/span&gt;&lt;span class="n"&gt;widget&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;使用weakWidget.get()就可以得到真实的Widget对象，因为弱引用不能阻挡垃圾回收器对其回收，你会发现（当没有任何强引用到widget对象时）使用get时突然返回null。&lt;/p&gt;
-
-&lt;p&gt;解决上述的widget序列数记录的问题，最简单的办法就是使用Java内置的WeakHashMap类。WeakHashMap和HashMap几乎一样，唯一的区别就是它的键（不是值!!!）使用WeakReference引用。当WeakHashMap的键标记为垃圾的时候，这个键对应的条目就会自动被移除。这就避免了上面不需要的Widget对象手动删除的问题。使用WeakHashMap可以很便捷地转为HashMap或者Map。&lt;/p&gt;
-
-&lt;h3&gt;引用队列(Reference Queue)&lt;/h3&gt;
-
-&lt;p&gt;一旦弱引用对象开始返回null，该弱引用指向的对象就被标记成了垃圾。而这个弱引用对象（非其指向的对象）就没有什么用了。通常这时候需要进行一些清理工作。比如WeakHashMap会在这时候移除没用的条目来避免保存无限制增长的没有意义的弱引用。&lt;/p&gt;
-
-&lt;p&gt;引用队列可以很容易地实现跟踪不需要的引用。当你在构造WeakReference时传入一个ReferenceQueue对象，当该引用指向的对象被标记为垃圾的时候，这个引用对象会自动地加入到引用队列里面。接下来，你就可以在固定的周期，处理传入的引用队列，比如做一些清理工作来处理这些没有用的引用对象。&lt;/p&gt;
-
-&lt;h2&gt;四种引用&lt;/h2&gt;
-
-&lt;p&gt;Java中实际上有四种强度不同的引用，从强到弱它们分别是，强引用，软引用，弱引用和虚引用。上面部分介绍了强引用和弱引用，下面介绍剩下的两个，软引用和虚引用。&lt;/p&gt;
-
-&lt;h2&gt;软引用（Soft Reference）&lt;/h2&gt;
-
-&lt;p&gt;软引用基本上和弱引用差不多，只是相比弱引用，它阻止垃圾回收期回收其指向的对象的能力强一些。如果一个对象是弱引用可到达，那么这个对象会被垃圾回收器接下来的回收周期销毁。但是如果是软引用可以到达，那么这个对象会停留在内存更时间上长一些。当内存不足时垃圾回收器才会回收这些软引用可到达的对象。&lt;/p&gt;
-
-&lt;p&gt;由于软引用可到达的对象比弱引用可达到的对象滞留内存时间会长一些，我们可以利用这个特性来做缓存。这样的话，你就可以节省了很多事情，垃圾回收器会关心当前哪种可到达类型以及内存的消耗程度来进行处理。&lt;/p&gt;
-
-&lt;h2&gt;虚引用 （Phantom Reference）&lt;/h2&gt;
-
-&lt;p&gt;与软引用，弱引用不同，虚引用指向的对象十分脆弱，我们不可以通过get方法来得到其指向的对象。它的唯一作用就是当其指向的对象被回收之后，自己被加入到引用队列，用作记录该引用指向的对象已被销毁。&lt;/p&gt;
-
-&lt;p&gt;当弱引用的指向对象变得弱引用可到达，该弱引用就会加入到引用队列。这一操作发生在对象析构或者垃圾回收真正发生之前。理论上，这个即将被回收的对象是可以在一个不符合规范的析构方法里面重新复活。但是这个弱引用会销毁。虚引用只有在其指向的对象从内存中移除掉之后才会加入到引用队列中。其get方法一直返回null就是为了阻止其指向的几乎被销毁的对象重新复活。&lt;/p&gt;
-
-&lt;p&gt;虚引用使用场景主要由两个。它允许你知道具体何时其引用的对象从内存中移除。而实际上这是Java中唯一的方式。这一点尤其表现在处理类似图片的大文件的情况。当你确定一个图片数据对象应该被回收，你可以利用虚引用来判断这个对象回收之后在继续加载下一张图片。这样可以尽可能地避免可怕的内存溢出错误。&lt;/p&gt;
-
-&lt;p&gt;第二点，虚引用可以避免很多析构时的问题。finalize方法可以通过创建强引用指向快被销毁的对象来让这些对象重新复活。然而，一个重写了finalize方法的对象如果想要被回收掉，需要经历两个单独的垃圾收集周期。在第一个周期中，某个对象被标记为可回收，进而才能进行析构。但是因为在析构过程中仍有微弱的可能这个对象会重新复活。这种情况下，在这个对象真实销毁之前，垃圾回收器需要再次运行。因为析构可能并不是很及时，所以在调用对象的析构之前，需要经历数量不确定的垃圾收集周期。这就意味着在真正清理掉这个对象的时候可能发生很大的延迟。这就是为什么当大部分堆被标记成垃圾时还是会出现烦人的内存溢出错误。&lt;/p&gt;
-
-&lt;p&gt;使用虚引用，上述情况将引刃而解，当一个虚引用加入到引用队列时，你绝对没有办法得到一个销毁了的对象。因为这时候，对象已经从内存中销毁了。因为虚引用不能被用作让其指向的对象重生，所以其对象会在垃圾回收的第一个周期就将被清理掉。&lt;/p&gt;
-
-&lt;p&gt;显而易见，finalize方法不建议被重写。因为虚引用明显地安全高效，去掉finalize方法可以虚拟机变得明显简单。当然你也可以去重写这个方法来实现更多。这完全看个人选择。&lt;/p&gt;
-
-&lt;h2&gt;总结&lt;/h2&gt;
-
-&lt;p&gt;我想看到这里，很多人开始发牢骚了，为什么你要讲一个过去十年的老古董API呢，好吧，以我的经验看，很多的Java程序员并不是很了解这个知识，我认为有一些深入的理解是很必要的，同时我希望大家能从本文中收获一些东西。&lt;/p&gt;
-
-&lt;h2&gt;原文信息&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;文章出自  &lt;a href="https://weblogs.java.net/blog/enicholas/archive/2006/05/understanding_w.html"&gt;Understanding Weak References&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;作者为&lt;a href="https://www.java.net/blogs/enicholas"&gt;Ethan Nicholas&lt;/a&gt;，Yahoo! Publishing Tools team Leader，Yahoo! SiteBuilder Web程序的早期作者。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h2&gt;附注信息&lt;/h2&gt;
-
-&lt;p&gt;本文涉及到很多概念对于初次接触的人相对比较难以理解，建议结合英文原文进行研究。&lt;/p&gt;
-
-&lt;h3&gt;Java高阶推荐&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00H1FXTNM/ref=as_li_qf_sp_asin_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00H1FXTNM&amp;linkCode=as2&amp;tag=droidyue-23"&gt;Java虚拟机规范(Java SE 7版)&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00H1FXTNM" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00IOB0K1Q/ref=as_li_qf_sp_asin_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00IOB0K1Q&amp;linkCode=as2&amp;tag=droidyue-23"&gt;图灵程序设计丛书:Java性能优化权威指南&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00IOB0K1Q" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00D2ID4PK&amp;linkCode=as2&amp;tag=droidyue-23"&gt;深入理解Java虚拟机:JVM高级特性与最佳实践(第2版)&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00D2ID4PK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-    <title>译文：理解Java中的弱引用</title>
-    <link>http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/</link>
-    <pubDate>Sun, 12 Oct 2014 01:56:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;今天使用腾讯云分析按照给出的文档开始集成，遇到了一个问题。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='bash'&gt;&lt;span class='line'&gt;E/AndroidRuntime&lt;span class="o"&gt;(&lt;/span&gt; 4606&lt;span class="o"&gt;)&lt;/span&gt;: FATAL EXCEPTION: pool-1-thread-1
-&lt;/span&gt;&lt;span class='line'&gt;E/AndroidRuntime&lt;span class="o"&gt;(&lt;/span&gt; 4606&lt;span class="o"&gt;)&lt;/span&gt;: java.lang.NoClassDefFoundError: com.tencent.mid.api.MidService
-&lt;/span&gt;&lt;span class='line'&gt;E/AndroidRuntime&lt;span class="o"&gt;(&lt;/span&gt; 4606&lt;span class="o"&gt;)&lt;/span&gt;:    at com.tencent.stat.j.run&lt;span class="o"&gt;(&lt;/span&gt;Unknown Source&lt;span class="o"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;E/AndroidRuntime&lt;span class="o"&gt;(&lt;/span&gt; 4606&lt;span class="o"&gt;)&lt;/span&gt;:    at java.util.concurrent.ThreadPoolExecutor.runWorker&lt;span class="o"&gt;(&lt;/span&gt;ThreadPoolExecutor.java:1076&lt;span class="o"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;E/AndroidRuntime&lt;span class="o"&gt;(&lt;/span&gt; 4606&lt;span class="o"&gt;)&lt;/span&gt;:    at java.util.concurrent.ThreadPoolExecutor&lt;span class="nv"&gt;$Worker&lt;/span&gt;.run&lt;span class="o"&gt;(&lt;/span&gt;ThreadPoolExecutor.java:569&lt;span class="o"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;E/AndroidRuntime&lt;span class="o"&gt;(&lt;/span&gt; 4606&lt;span class="o"&gt;)&lt;/span&gt;:    at java.lang.Thread.run&lt;span class="o"&gt;(&lt;/span&gt;Thread.java:864&lt;span class="o"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;!--more--&gt;
-
-
-&lt;h2&gt;原因&lt;/h2&gt;
-
-&lt;p&gt;其实原因就是腾讯云分析的文档严重过时了，解决方法就是&lt;strong&gt;在Build Path 除了加入mta-sdk-x.x.x.jar,还要加入mid-sdk-x.x.jar&lt;/strong&gt;。&lt;/p&gt;
-
-&lt;p&gt;但是腾讯的文档只介绍说集成mta-sdk-x.x.x.jar，我想可能那是大概0.x版本SDK的教程吧。&lt;/p&gt;
-
-&lt;h2&gt;吐个槽吧&lt;/h2&gt;
-
-&lt;h3&gt;霸王条款&lt;/h3&gt;
-
-&lt;p&gt;据说想要知道应用宝的下载数据（下载次数）必须集成腾讯云分析。这是在扛KPI，还是一贯的本性呢？&lt;/p&gt;
-
-&lt;h3&gt;过时冗余的文档&lt;/h3&gt;
-
-&lt;p&gt;前面提到了文档的严重过时失效，而且其文档存在严重的冗余，据我所知有三处文档，SDK下载包中一份，帮助中心一份，应用管理页面一份。如此这样，一旦修改，成本还是比较大的。&lt;/p&gt;
-
-&lt;h3&gt;其他&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00BSXRLR8/ref=as_li_qf_sp_asin_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00BSXRLR8&amp;linkCode=as2&amp;tag=droidyue-23"&gt;Android讲义哪家强&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00BSXRLR8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00LVHTI9U/ref=as_li_qf_sp_asin_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00LVHTI9U&amp;linkCode=as2&amp;tag=droidyue-23"&gt;每个人的第一行代码&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00LVHTI9U" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B0052VL2WC/ref=as_li_qf_sp_asin_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0052VL2WC&amp;linkCode=as2&amp;tag=droidyue-23"&gt;谁说菜鸟不会数据分析&lt;/a&gt;&lt;img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B0052VL2WC" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-    <title>腾讯云分析问题</title>
-    <link>http://droidyue.com/blog/2014/10/12/tencent-analytics-issues/</link>
-    <pubDate>Sun, 12 Oct 2014 01:47:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2014/10/12/tencent-analytics-issues</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   

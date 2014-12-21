@@ -1,0 +1,507 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Java中的字符串常量池 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Java中的字符串常量池 Dec 21st, 2014 Java中字符串对象创建有两种形式，一种为字面量形式，如String str = "droid";，另一种就是使用new这种标准的构造对象的方法，如String str = new String("droid");， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2014/12/21/string-literal-pool-in-java">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script type="text/javascript">
+      $(document).bind('DOMNodeInserted', function(event) {
+			$('a[href^="http"]').each(
+				function(){
+					if (!$(this).attr('target')) {
+						$(this).attr('target', '_blank')
+					}
+                
+				}
+			);
+		});
+  </script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>一个有态度的技术分享媒体</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Java中的字符串常量池</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-12-21T19:09:00+08:00" pubdate data-updated="true">Dec 21<span>st</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Java中字符串对象创建有两种形式，一种为字面量形式，如<code>String str = "droid";</code>，另一种就是使用<strong>new</strong>这种标准的构造对象的方法，如<code>String str = new String("droid");</code>，这两种方式我们在代码编写时都经常使用，尤其是字面量的方式。然而这两种实现其实存在着一些性能和内存占用的差别。这一切都是源于JVM为了减少字符串对象的重复创建，其维护了一个特殊的内存，这段内存被成为字符串常量池或者字符串字面量池。</p>
+
+<!--more-->
+
+
+<h2>工作原理</h2>
+
+<p>当代码中出现字面量形式创建字符串对象时，JVM首先会对这个字面量进行检查，如果字符串常量池中存在相同内容的字符串对象的引用，则将这个引用返回，否则新的字符串对象被创建，然后将这个引用放入字符串常量池，并返回该引用。</p>
+
+<h2>举例说明</h2>
+
+<h3>字面量创建形式</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str1</span> <span class="o">=</span> <span class="s">&quot;droid&quot;</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>JVM检测这个字面量，这里我们认为没有内容为<code>droid</code>的对象存在。JVM通过字符串常量池查找不到内容为<code>droid</code>的字符串对象存在，那么会创建这个字符串对象，然后将刚创建的对象的引用放入到字符串常量池中,并且将引用返回给变量str1。</p>
+
+<p>如果接下来有这样一段代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str2</span> <span class="o">=</span> <span class="s">&quot;droid&quot;</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>同样JVM还是要检测这个字面量，JVM通过查找字符串常量池，发现内容为&#8221;droid&#8221;字符串对象存在，于是将已经存在的字符串对象的引用返回给变量str2。注意这里不会重新创建新的字符串对象。</p>
+
+<p>验证是否为str1和str2是否指向同一对象，我们可以通过这段代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str1</span> <span class="o">==</span> <span class="n">str2</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>结果为<code>true</code>。</p>
+
+<h3>使用new创建</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str3</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="s">&quot;droid&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当我们使用了new来构造字符串对象的时候，不管字符串常量池中有没有相同内容的对象的引用，新的字符串对象都会创建。因此我们使用下面代码测试一下，</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str3</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="s">&quot;droid&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str1</span> <span class="o">==</span> <span class="n">str3</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>结果如我们所想，为<code>false</code>，表明这两个变量指向的为不同的对象。</p>
+
+<h3>intern</h3>
+
+<p>对于上面使用new创建的字符串对象，如果想将这个对象的引用加入到字符串常量池，可以使用intern方法。</p>
+
+<p>调用intern后，首先检查字符串常量池中是否有该对象的引用，如果存在，则将这个引用返回给变量，否则将引用加入并返回给变量。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str4</span> <span class="o">=</span> <span class="n">str3</span><span class="o">.</span><span class="na">intern</span><span class="o">();</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str4</span> <span class="o">==</span> <span class="n">str1</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>输出的结果为<code>true</code>。</p>
+
+<h2>疑难问题</h2>
+
+<h3>前提条件？</h3>
+
+<p>字符串常量池实现的前提条件就是Java中String对象是不可变的，这样可以安全保证多个变量共享同一个对象。如果Java中的String对象可变的话，一个引用操作改变了对象的值，那么其他的变量也会受到影响，显然这样是不合理的。</p>
+
+<h3>引用 or 对象</h3>
+
+<p>字符串常量池中存放的时引用还是对象，这个问题是最常见的。字符串常量池存放的是对象引用，不是对象。<strong>在Java中，对象都创建在堆内存中</strong>。</p>
+
+<h3>优缺点</h3>
+
+<p>字符串常量池的好处就是减少相同内容字符串的创建，节省内存空间。</p>
+
+<p>如果硬要说弊端的话，就是牺牲了CPU计算时间来换空间。CPU计算时间主要用于在字符串常量池中查找是否有内容相同对象的引用。不过其内部实现为HashTable，所以计算成本较低。</p>
+
+<h3>GC回收？</h3>
+
+<p>因为字符串常量池中持有了共享的字符串对象的引用，这就是说是不是会导致这些对象无法回收？</p>
+
+<p>首先问题中共享的对象一般情况下都比较小。据我查证了解，在早期的版本中确实存在这样的问题，但是随着<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">弱引用</a>的引入，目前这个问题应该没有了。</p>
+
+<p>关于这个问题，可以具体了解这片文章<a href="http://mindprod.com/jgloss/interned.html#GC">interned Strings : Java Glossary</a></p>
+
+<h3>intern使用？</h3>
+
+<p>关于使用intern的前提就是你清楚自己确实需要使用。比如，我们这里有一份上百万的记录，其中记录的某个值多次为<strong>美国加利福尼亚州</strong>，我们不想创建上百万条这样的字符串对象，我们可以使用intern只在内存中保留一份即可。关于intern更深入的了解请参考<a href="http://tech.meituan.com/in_depth_understanding_string_intern.html">深入解析String#intern</a>。</p>
+
+<h3>总有例外？</h3>
+
+<p>你知道下面的代码，会创建几个字符串对象，在字符串常量池中保存几个引用么？</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">test</span> <span class="o">=</span> <span class="s">&quot;a&quot;</span> <span class="o">+</span> <span class="s">&quot;b&quot;</span> <span class="o">+</span> <span class="s">&quot;c&quot;</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>答案是只创建了一个对象，在常量池中也只保存一个引用。我们使用javap反编译看一下即可得知。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">17</span><span class="o">:</span><span class="mi">02</span> <span class="n">$</span> <span class="n">javap</span> <span class="o">-</span><span class="n">c</span> <span class="n">TestInternedPoolGC</span>
+</span><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;TestInternedPoolGC.java&quot;</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestInternedPoolGC</span> <span class="kd">extends</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">{</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">TestInternedPoolGC</span><span class="o">();</span>
+</span><span class='line'>  <span class="nl">Code:</span>
+</span><span class='line'>   <span class="mi">0</span><span class="o">:</span>  <span class="n">aload_0</span>
+</span><span class='line'>   <span class="mi">1</span><span class="o">:</span>  <span class="n">invokespecial</span>    <span class="err">#</span><span class="mi">1</span><span class="o">;</span> <span class="c1">//Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>   <span class="mi">4</span><span class="o">:</span>  <span class="k">return</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[])</span>   <span class="kd">throws</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Exception</span><span class="o">;</span>
+</span><span class='line'>  <span class="nl">Code:</span>
+</span><span class='line'>   <span class="mi">0</span><span class="o">:</span>  <span class="n">ldc</span>  <span class="err">#</span><span class="mi">2</span><span class="o">;</span> <span class="c1">//String abc</span>
+</span><span class='line'>   <span class="mi">2</span><span class="o">:</span>  <span class="n">astore_1</span>
+</span><span class='line'>   <span class="mi">3</span><span class="o">:</span>  <span class="k">return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>看到了么，实际上在编译期间，已经将这三个字面量合成了一个。这样做实际上是一种优化，避免了创建多余的字符串对象，也没有发生字符串拼接问题。关于字符串拼接，可以查看<a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a>。</p>
+
+<h2>参考文章</h2>
+
+<ul>
+<li><a href="http://blog.jamesdbloom.com/JVMInternals.html">JVMInternals</a></li>
+<li><a href="http://www.javaranch.com/journal/200409/ScjpTipLine-StringsLiterally.html">Strings, Literally</a></li>
+<li><a href="http://theopentutorials.com/tutorials/java/strings/string-literal-pool/">STRING LITERAL POOL</a></li>
+<li><a href="http://mindprod.com/jgloss/interned.html">interned Strings : Java Glossary</a></li>
+</ul>
+
+</div>
+
+
+  
+
+  <hr>
+  
+  
+<br/>
+<a href="http://droidyue.com/donate/">如果本文对你有帮助，可以考虑捐赠支持</a>
+<br/>
+<br/>
+<a href="http://www.amazon.cn/gp/product/B00D73BJWK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D73BJWK&linkCode=as2&tag=droidyue-23">浪潮之巅，一部剖析硅谷明星公司兴衰沉浮的经典之作</a>
+<br/>
+<br/>
+<hr/>
+<ul>
+	<li><a href="http://redirect.simba.taobao.com/rd?w=unionnojs&f=http%3A%2F%2Fai.taobao.com%2Fauction%2Fedetail.htm%3Fe%3D%252FJL7Jrm0aYq6k0Or%252B%252BH4tOJtmuy3Bv4glWsbAjdmP56LltG5xFicOdXrTUTgh9sMDPIwxrc30ri8nc0fL4TGokWbbNPSehpRHMUeRChy%252FdaFJWU9wpkoTW3abJM7sDg27%252BjP9R4ZJ6h1VBsMdi%252FpzQ%253D%253D%26ptype%3D100010%26from%3Dbasic&k=5ccfdb950740ca16&c=un&b=alimm_0&p=mm_58471937_7778121_26116191">是极客就要折腾树莓派</a></li>
+	<li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DXmDv21KQiAYcQipKwQzePDAVflQIoZepQih%2F7PxfOKS5VBFTL4hn2TVJL6dCd73rxF5AHBg6Tr7M3gYQjCL89qULerPwKfMIwRKDNIG1Ob5nW%2BJUaSJ3f2AVCEmOagNkIYULNg46oBA%3D">程序员如何着装才能提升逼格</a></li>
+	<li><a href="https://www.youmi.net/account/register?r=OTU2Ng==">找个空闲时间写个应用赚点外块花</a></li>
+</ul>
+
+ 
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_included -->
+<ins class="adsbygoogle"
+     style="display:inline-block;width:728px;height:90px"
+     data-ad-client="ca-pub-7565659593663612"
+     data-ad-slot="4976687343"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-12-21T19:09:00+08:00" pubdate data-updated="true">Dec 21<span>st</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/jvm/'>JVM</a>, <a class='category' href='/blog/categories/java/'>Java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/12/21/java-runtime-data-areas/" title="Previous Post: JVM运行时的数据区">&laquo; JVM运行时的数据区</a>
+      
+      
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2014/12/21/string-literal-pool-in-java" data-title="Java中的字符串常量池" data-url="http://droidyue.com/blog/2014/12/21/string-literal-pool-in-java/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/string-literal-pool-in-java/">Java中的字符串常量池</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/java-runtime-data-areas/">JVM运行时的数据区</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/14/android-yingyong-renling/">应用认领那些事</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/14/substring-memory-issue-in-java/">Java中的substring真的会引起内存泄露么？</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/07/differences-between-stack-and-heap-in-java/">Java中的堆和栈的区别</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/30/java-programmer-must-read-these-9-books/">9本Java程序员必读的书</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/29/a-super-tool-to-remove-files/">效率工具：强大的批量删除文件的脚本</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/29/custom-toast-like-tencent-news-app/">仿腾讯新闻样式的Toast</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/">Google为何这样设计OnSharedPreferenceChangeListener</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/23/block-web-resource-in-webview/">Android中WebView拦截替换网络请求数据</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="/links/">友情链接</a></li>
+    <li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0">室内健身利器:Kinect体感游戏机</a></li>
+</ul>
+</section>
+<section>
+<h1>经典好书</h1>
+<ul>
+	<li><a href="http://www.amazon.cn/gp/product/1430218339/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=1430218339&linkCode=as2&tag=droidyue-23">Pro Git</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00D73BJWK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D73BJWK&linkCode=as2&tag=droidyue-23">浪潮之巅</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0061XKRXA/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0061XKRXA&linkCode=as2&tag=droidyue-23">代码大全</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0011C2P7W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C2P7W&linkCode=as2&tag=droidyue-23">人月神话</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001NGO85I/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001NGO85I&linkCode=as2&tag=droidyue-23">编译原理</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B004ZWBW5G/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004ZWBW5G&linkCode=as2&tag=droidyue-23">编程珠玑</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00Q8BQ2IE/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00Q8BQ2IE&linkCode=as2&tag=droidyue-23">编程人生</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00P6OJ09C/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00P6OJ09C&linkCode=as2&tag=droidyue-23">数学之美</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0031M9GHC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0031M9GHC&linkCode=as2&tag=droidyue-23">代码整洁之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B008Z1IEQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008Z1IEQ8&linkCode=as2&tag=droidyue-23">Unix编程艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B004GV08CY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004GV08CY&linkCode=as2&tag=droidyue-23">程序员修炼之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00KMJ2Q1U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KMJ2Q1U&linkCode=as2&tag=droidyue-23">修改代码的艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=0137142528&linkCode=as2&tag=droidyue-23">Java Performance</a></li> 
+    <li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001N6R9JK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001N6R9JK&linkCode=as2&tag=droidyue-23">数据结构与算法分析</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B005KGBTQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005KGBTQ8&linkCode=as2&tag=droidyue-23">松本行弘的程序世界</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00ALPRKJ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ALPRKJ8&linkCode=as2&tag=droidyue-23">高效程序员的45个习惯</a></li>  
+    <li><a href="http://www.amazon.cn/gp/product/B003BY6PLK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B003BY6PLK&linkCode=as2&tag=droidyue-23">重构：改善既有代码的设计</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00H1FXTNM/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00H1FXTNM&linkCode=as2&tag=droidyue-23">Java虚拟机规范(Java SE 7版)</a></li>
+</ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: JVM | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/jvm/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2014-12-20T22:40:16+08:00</updated>
+  <updated>2014-12-21T19:21:27+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,213 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Java中的字符串常量池]]></title>
+    <link href="http://droidyue.com/blog/2014/12/21/string-literal-pool-in-java/"/>
+    <updated>2014-12-21T19:09:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/12/21/string-literal-pool-in-java</id>
+    <content type="html"><![CDATA[<p>Java中字符串对象创建有两种形式，一种为字面量形式，如<code>String str = "droid";</code>，另一种就是使用<strong>new</strong>这种标准的构造对象的方法，如<code>String str = new String("droid");</code>，这两种方式我们在代码编写时都经常使用，尤其是字面量的方式。然而这两种实现其实存在着一些性能和内存占用的差别。这一切都是源于JVM为了减少字符串对象的重复创建，其维护了一个特殊的内存，这段内存被成为字符串常量池或者字符串字面量池。</p>
+
+<!--more-->
+
+
+<h2>工作原理</h2>
+
+<p>当代码中出现字面量形式创建字符串对象时，JVM首先会对这个字面量进行检查，如果字符串常量池中存在相同内容的字符串对象的引用，则将这个引用返回，否则新的字符串对象被创建，然后将这个引用放入字符串常量池，并返回该引用。</p>
+
+<h2>举例说明</h2>
+
+<h3>字面量创建形式</h3>
+
+<p><code>java
+String str1 = "droid";
+</code>
+JVM检测这个字面量，这里我们认为没有内容为<code>droid</code>的对象存在。JVM通过字符串常量池查找不到内容为<code>droid</code>的字符串对象存在，那么会创建这个字符串对象，然后将刚创建的对象的引用放入到字符串常量池中,并且将引用返回给变量str1。</p>
+
+<p>如果接下来有这样一段代码
+<code>java
+String str2 = "droid";
+</code>
+同样JVM还是要检测这个字面量，JVM通过查找字符串常量池，发现内容为"droid"字符串对象存在，于是将已经存在的字符串对象的引用返回给变量str2。注意这里不会重新创建新的字符串对象。</p>
+
+<p>验证是否为str1和str2是否指向同一对象，我们可以通过这段代码
+<code>java
+System.out.println(str1 == str2);
+</code>
+结果为<code>true</code>。</p>
+
+<h3>使用new创建</h3>
+
+<p><code>java
+String str3 = new String("droid");
+</code>
+当我们使用了new来构造字符串对象的时候，不管字符串常量池中有没有相同内容的对象的引用，新的字符串对象都会创建。因此我们使用下面代码测试一下，
+<code>java
+String str3 = new String("droid");
+System.out.println(str1 == str3);
+</code>
+结果如我们所想，为<code>false</code>，表明这两个变量指向的为不同的对象。</p>
+
+<h3>intern</h3>
+
+<p>对于上面使用new创建的字符串对象，如果想将这个对象的引用加入到字符串常量池，可以使用intern方法。</p>
+
+<p>调用intern后，首先检查字符串常量池中是否有该对象的引用，如果存在，则将这个引用返回给变量，否则将引用加入并返回给变量。
+<code>java
+String str4 = str3.intern();
+System.out.println(str4 == str1);
+</code>
+输出的结果为<code>true</code>。</p>
+
+<h2>疑难问题</h2>
+
+<h3>前提条件？</h3>
+
+<p>字符串常量池实现的前提条件就是Java中String对象是不可变的，这样可以安全保证多个变量共享同一个对象。如果Java中的String对象可变的话，一个引用操作改变了对象的值，那么其他的变量也会受到影响，显然这样是不合理的。</p>
+
+<h3>引用 or 对象</h3>
+
+<p>字符串常量池中存放的时引用还是对象，这个问题是最常见的。字符串常量池存放的是对象引用，不是对象。<strong>在Java中，对象都创建在堆内存中</strong>。</p>
+
+<h3>优缺点</h3>
+
+<p>字符串常量池的好处就是减少相同内容字符串的创建，节省内存空间。</p>
+
+<p>如果硬要说弊端的话，就是牺牲了CPU计算时间来换空间。CPU计算时间主要用于在字符串常量池中查找是否有内容相同对象的引用。不过其内部实现为HashTable，所以计算成本较低。</p>
+
+<h3>GC回收？</h3>
+
+<p>因为字符串常量池中持有了共享的字符串对象的引用，这就是说是不是会导致这些对象无法回收？</p>
+
+<p>首先问题中共享的对象一般情况下都比较小。据我查证了解，在早期的版本中确实存在这样的问题，但是随着<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">弱引用</a>的引入，目前这个问题应该没有了。</p>
+
+<p>关于这个问题，可以具体了解这片文章<a href="http://mindprod.com/jgloss/interned.html#GC">interned Strings : Java Glossary</a></p>
+
+<h3>intern使用？</h3>
+
+<p>关于使用intern的前提就是你清楚自己确实需要使用。比如，我们这里有一份上百万的记录，其中记录的某个值多次为<strong>美国加利福尼亚州</strong>，我们不想创建上百万条这样的字符串对象，我们可以使用intern只在内存中保留一份即可。关于intern更深入的了解请参考<a href="http://tech.meituan.com/in_depth_understanding_string_intern.html">深入解析String#intern</a>。</p>
+
+<h3>总有例外？</h3>
+
+<p>你知道下面的代码，会创建几个字符串对象，在字符串常量池中保存几个引用么？
+<code>java
+String test = "a" + "b" + "c";
+</code>
+答案是只创建了一个对象，在常量池中也只保存一个引用。我们使用javap反编译看一下即可得知。
+```java
+17:02 $ javap -c TestInternedPoolGC
+Compiled from &ldquo;TestInternedPoolGC.java&rdquo;
+public class TestInternedPoolGC extends java.lang.Object{
+public TestInternedPoolGC();
+  Code:
+   0:   aload_0
+   1:   invokespecial   #1; //Method java/lang/Object.&ldquo;<init>&rdquo;:()V
+   4:   return</p>
+
+<p>public static void main(java.lang.String[])   throws java.lang.Exception;
+  Code:
+   0:   ldc #2; //String abc
+   2:   astore_1
+   3:   return
+```
+看到了么，实际上在编译期间，已经将这三个字面量合成了一个。这样做实际上是一种优化，避免了创建多余的字符串对象，也没有发生字符串拼接问题。关于字符串拼接，可以查看<a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a>。</p>
+
+<h2>参考文章</h2>
+
+<ul>
+<li><a href="http://blog.jamesdbloom.com/JVMInternals.html">JVMInternals</a></li>
+<li><a href="http://www.javaranch.com/journal/200409/ScjpTipLine-StringsLiterally.html">Strings, Literally</a></li>
+<li><a href="http://theopentutorials.com/tutorials/java/strings/string-literal-pool/">STRING LITERAL POOL</a></li>
+<li><a href="http://mindprod.com/jgloss/interned.html">interned Strings : Java Glossary</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[JVM运行时的数据区]]></title>
+    <link href="http://droidyue.com/blog/2014/12/21/java-runtime-data-areas/"/>
+    <updated>2014-12-21T18:59:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/12/21/java-runtime-data-areas</id>
+    <content type="html"><![CDATA[<p>理解JVM运行时的数据区是Java编程中的进阶部分。我们在开发中都遇到过一个很头疼的问题就是OutOfMemoryError（内存溢出错误），但是如果我们了解JVM的内部实现和其运行时的数据区的工作机制，那么前面的问题就会迎刃而解。在这片文章中，我们将简单了解JVM中有哪些运行时数据区以及这些数据区的工作机制。</p>
+
+<!--more-->
+
+
+<h2>JVM运行时数据区分类</h2>
+
+<ul>
+<li>程序计数器 (Program Counter (PC) Register)</li>
+<li>JVM栈 (Java Virtual Machine Stacks)</li>
+<li>堆内存 (Heap Memory)</li>
+<li>方法区 (Method Area)</li>
+<li>运行时常量池 (Run-time Constant Pool)</li>
+<li>本地方法栈 (Native Method Stacks)</li>
+</ul>
+
+
+<h3>有图才能说</h3>
+
+<p><img class="<a" src="href="http://droidyueimg.qiniudn.com/JVM_runtime_data_areas.png">http://droidyueimg.qiniudn.com/JVM_runtime_data_areas.png</a>" title="jvm runtime data areas" ></p>
+
+<h3>按线程持有划分</h3>
+
+<p>查看上面的图，可以得知以上六个数据区其实线程私有还是共享，可以分为如下两种。</p>
+
+<ul>
+<li><strong>单个线程私有</strong>(Managed Per-Thread) 属于这一种的数据区包含 程序计数器， JVM栈还有本地方法栈。 每个线程都私有这三个数据区，这些数据区在其所属的线程创建时初始化，并随着所属线程结束被销毁。</li>
+<li><strong>多个线程共享</strong>  属于这一种的数据区包含 堆内存，方法区和运行时常量池。这些数据区可以被每一个线程访问，他们随着JVM启动而初始化，同时伴随JVM关闭而销毁。</li>
+</ul>
+
+
+<h2>程序计数器</h2>
+
+<p>在通用的计算机体系中，程序计数器用来记录当前正在执行的指令，在JVM中也是如此。程序计数器是线程私有，所以当一个新的线程创建时，程序计数器也会创建。由于Java是支持多线程，Java中的程序计数器用来记录当前线程中正在执行的指令。如果当前正在执行的方法是本地方法，那么此刻程序计数器的值为<strong>undefined</strong>。注意这个区域是唯一一个不抛出OutOfMemoryError的运行时数据区。</p>
+
+<h2>JVM栈</h2>
+
+<p>在介绍JVM栈之前，简单介绍一个概念，栈帧</p>
+
+<h3>栈帧</h3>
+
+<p>一个栈帧随着一个方法的调用开始而创建，这个方法调用完成而销毁。栈帧内存放者方法中的局部变量，操作数栈等数据。</p>
+
+<p>JVM栈只对栈帧进行存储，压栈和出栈操作。栈内存的大小可以有两种设置，固定值和根据线程需要动态增长。在JVM栈这个数据区可能会发生抛出两种错误。</p>
+
+<ul>
+<li>StackOverflowError 出现在栈内存设置成固定值的时候，当程序执行需要的栈内存超过设定的固定值会抛出这个错误。</li>
+<li>OutOfMemoryError   出现在栈内存设置成动态增长的时候，当JVM尝试申请的内存大小超过了其可用内存时会抛出这个错误。</li>
+</ul>
+
+
+<h2>堆数据区</h2>
+
+<p>堆数据区是用来存放对象和数组（特殊的对象）。堆内存由多个线程共享。堆内存随着JVM启动而创建。众所周知，Java中有一个很好的特性就是自动垃圾回收。垃圾回收就操作这个数据区来回收对象进而释放内存。如果堆内存剩余的内存不足以满足于对象创建，JVM会抛出OutOfMemoryError错误。</p>
+
+<h2>方法区</h2>
+
+<p>在JVM规范中，方法区被视为堆内存的一个逻辑部分。这一点可能由于具体的JVM实现而不同，甚至在方法区不实现垃圾回收处理也是可以的。方法区和堆内存一样被多个线程访问，方法区中存放类的信息，比如类加载器引用，属性，方法代码和构造方法和常量等。当方法区的可用内存无法满足内存分配需求时，JVM会抛出OutOfMemoryError错误。</p>
+
+<h2>运行时常量池</h2>
+
+<p>运行时常量池创建在方法区，当一个类或者一个接口被创建的时候，JVM会创建一个运行时常量池。一个运行时常量池实际上是一个类或者接口的class文件中常量池表（constant_pool table）的运行时展示形式。一个运行时常量池包含了多种类型的常量，从诸如运行时可以确定的数值型字面量到运行时才能决定的方法和属性引用。当运行时常量池无法满足于内存分配需求时，JVM会抛出OutOfMemoryError错误。</p>
+
+<h2>本地方法栈</h2>
+
+<p>一个支持native方法调用的JVM实现，需要有这样一个数据区，就是本地方法栈，Java官方对于本地方法的定义为<code>methods written in a language other than the Java programming language</code>，就是使用非Java语言实现的方法，但是通常我们指的一般为C或者C++，因此这个栈也有着<strong>C栈</strong>这一称号。一个不支持本地方法执行的JVM没有必要实现这个数据区域。本地方法栈基本和JVM栈一样，其大小也是可以设置为固定值或者动态增加，因此也会对应抛出StackOverflowError和OutOfMemoryError错误。</p>
+
+<h2>译文信息</h2>
+
+<ul>
+<li>原文出处<a href="http://javapapers.com/core-java/java-jvm-run-time-data-areas/">Java JVM Run-time Data Areas</a> 原文有些东西偏于隐晦，译文有这方面的修改。</li>
+<li>翻译文章参考<a href="https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-2.html">Chapter 2. The Structure of the Java Virtual Machine</a></li>
+</ul>
+
+
+<p>注：本文介绍JVM运行时数据相对比较概括，以后会有更加详细的针对单个数据区的介绍。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Java中的堆和栈的区别]]></title>
