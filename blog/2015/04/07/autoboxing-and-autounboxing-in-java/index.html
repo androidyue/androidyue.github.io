@@ -1,0 +1,679 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Java中的自动装箱与拆箱 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Java中的自动装箱与拆箱 Apr 7th, 2015 自动装箱和拆箱从Java 1.5开始引入，目的是将原始类型值转自动地转换成对应的对象。自动装箱与拆箱的机制可以让我们在Java的变量赋值或者是方法调用等情况下使用原始类型或者对象类型更加简单直接。 如果你在Java1.5下进行过编程的话， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2015/04/07/autoboxing-and-autounboxing-in-java">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script type="text/javascript">
+      $(document).bind('DOMNodeInserted', function(event) {
+			$('a[href^="http"]').each(
+				function(){
+					if (!$(this).attr('target')) {
+						$(this).attr('target', '_blank')
+					}
+                
+				}
+			);
+		});
+  </script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>东半球有态度的技术分享媒体</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Java中的自动装箱与拆箱</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-07T07:31:00+08:00" pubdate data-updated="true">Apr 7<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>自动装箱和拆箱从Java 1.5开始引入，目的是将原始类型值转自动地转换成对应的对象。自动装箱与拆箱的机制可以让我们在Java的变量赋值或者是方法调用等情况下使用原始类型或者对象类型更加简单直接。</p>
+
+<p>如果你在Java1.5下进行过编程的话，你一定不会陌生这一点，你不能直接地向集合(Collections)中放入原始类型值，因为集合只接收对象。通常这种情况下你的做法是，将这些原始类型的值转换成对象，然后将这些转换的对象放入集合中。使用Integer,Double,Boolean等这些类我们可以将原始类型值转换成对应的对象，但是从某些程度可能使得代码不是那么简洁精炼。为了让代码简练，Java 1.5引入了具有在原始类型和对象类型自动转换的装箱和拆箱机制。但是自动装箱和拆箱并非完美，在使用时需要有一些注意事项，如果没有搞明白自动装箱和拆箱，可能会引起难以察觉的bug。</p>
+
+<p>本文将介绍，什么是自动装箱和拆箱，自动装箱和拆箱发生在什么时候，以及要注意的事项。</p>
+
+<!--more-->
+
+
+<h2>什么是自动装箱和拆箱</h2>
+
+<p>自动装箱就是Java自动将原始类型值转换成对应的对象，比如将int的变量转换成Integer对象，这个过程叫做装箱，反之将Integer对象转换成int类型值，这个过程叫做拆箱。因为这里的装箱和拆箱是自动进行的非人为转换，所以就称作为自动装箱和拆箱。原始类型byte,short,char,int,long,float,double和boolean对应的封装类为Byte,Short,Character,Integer,Long,Float,Double,Boolean。</p>
+
+<h2>自动装箱拆箱要点</h2>
+
+<ul>
+<li>自动装箱时编译器调用valueOf将原始类型值转换成对象，同时自动拆箱时，编译器通过调用类似intValue(),doubleValue()这类的方法将对象转换成原始类型值。</li>
+<li>自动装箱是将boolean值转换成Boolean对象，byte值转换成Byte对象，char转换成Character对象，float值转换成Float对象，int转换成Integer，long转换成Long，short转换成Short，自动拆箱则是相反的操作。</li>
+</ul>
+
+
+<h2>何时发生自动装箱和拆箱</h2>
+
+<p>自动装箱和拆箱在Java中很常见，比如我们有一个方法，接受一个对象类型的参数，如果我们传递一个原始类型值，那么Java会自动讲这个原始类型值转换成与之对应的对象。最经典的一个场景就是当我们向ArrayList这样的容器中增加原始类型数据时或者是创建一个参数化的类，比如下面的ThreadLocal。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;</span> <span class="n">intList</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;();</span>
+</span><span class='line'><span class="n">intList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span> <span class="c1">//autoboxing - primitive to object</span>
+</span><span class='line'><span class="n">intList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="mi">2</span><span class="o">);</span> <span class="c1">//autoboxing</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;</span> <span class="n">intLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;();</span>
+</span><span class='line'><span class="n">intLocal</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="mi">4</span><span class="o">);</span> <span class="c1">//autoboxing</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="n">number</span> <span class="o">=</span> <span class="n">intList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span> <span class="c1">// unboxing</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">local</span> <span class="o">=</span> <span class="n">intLocal</span><span class="o">.</span><span class="na">get</span><span class="o">();</span> <span class="c1">// unboxing in Java</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>举例说明</h2>
+
+<p>上面的部分我们介绍了自动装箱和拆箱以及它们何时发生，我们知道了自动装箱主要发生在两种情况，一种是赋值时，另一种是在方法调用的时候。为了更好地理解这两种情况，我们举例进行说明。</p>
+
+<h3>赋值时</h3>
+
+<p>这是最常见的一种情况，在Java 1.5以前我们需要手动地进行转换才行，而现在所有的转换都是由编译器来完成。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//before autoboxing</span>
+</span><span class='line'><span class="n">Integer</span> <span class="n">iObject</span> <span class="o">=</span> <span class="n">Integer</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="mi">3</span><span class="o">);</span>
+</span><span class='line'><span class="n">Int</span> <span class="n">iPrimitive</span> <span class="o">=</span> <span class="n">iObject</span><span class="o">.</span><span class="na">intValue</span><span class="o">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//after java5</span>
+</span><span class='line'><span class="n">Integer</span> <span class="n">iObject</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span> <span class="c1">//autobxing - primitive to wrapper conversion</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">iPrimitive</span> <span class="o">=</span> <span class="n">iObject</span><span class="o">;</span> <span class="c1">//unboxing - object to primitive conversion</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>方法调用时</h3>
+
+<p>这是另一个常用的情况，当我们在方法调用时，我们可以传入原始数据值或者对象，同样编译器会帮我们进行转换。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">Integer</span> <span class="nf">show</span><span class="o">(</span><span class="n">Integer</span> <span class="n">iParam</span><span class="o">){</span>
+</span><span class='line'>   <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;autoboxing example - method invocation i: &quot;</span> <span class="o">+</span> <span class="n">iParam</span><span class="o">);</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">iParam</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//autoboxing and unboxing in method invocation</span>
+</span><span class='line'><span class="n">show</span><span class="o">(</span><span class="mi">3</span><span class="o">);</span> <span class="c1">//autoboxing</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">show</span><span class="o">(</span><span class="mi">3</span><span class="o">);</span> <span class="c1">//unboxing because return type of method is Integer</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>show方法接受Integer对象作为参数，当调用<code>show(3)</code>时，会将int值转换成对应的Integer对象，这就是所谓的自动装箱，show方法返回Integer对象，而<code>int result = show(3);</code>中result为int类型，所以这时候发生自动拆箱操作，将show方法的返回的Integer对象转换成int值。</p>
+
+<h2>自动装箱的弊端</h2>
+
+<p>自动装箱有一个问题，那就是在一个循环中进行自动装箱操作的情况，如下面的例子就会创建多余的对象，影响程序的性能。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Integer</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'> <span class="k">for</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">1000</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">5000</span><span class="o">;</span> <span class="n">i</span><span class="o">++){</span>
+</span><span class='line'>   <span class="n">sum</span><span class="o">+=</span><span class="n">i</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码<code>sum+=i</code>可以看成<code>sum = sum + i</code>，但是<code>+</code>这个操作符不适用于Integer对象，首先sum进行自动拆箱操作，进行数值相加操作，最后发生自动装箱操作转换成Integer对象。其内部变化如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">sum</span> <span class="o">=</span> <span class="n">sum</span><span class="o">.</span><span class="na">intValue</span><span class="o">()</span> <span class="o">+</span> <span class="n">i</span><span class="o">;</span>
+</span><span class='line'><span class="n">Integer</span> <span class="n">sum</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Integer</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>由于我们这里声明的sum为Integer类型，在上面的循环中会创建将近4000个无用的Integer对象，在这样庞大的循环中，会降低程序的性能并且加重了垃圾回收的工作量。因此在我们编程时，需要注意到这一点，正确地声明变量类型，避免因为自动装箱引起的性能问题。</p>
+
+<h2>重载与自动装箱</h2>
+
+<p>当重载遇上自动装箱时，情况会比较有些复杂，可能会让人产生有些困惑。在1.5之前，value(int)和value(Integer)是完全不相同的方法，开发者不会因为传入是int还是Integer调用哪个方法困惑，但是由于自动装箱和拆箱的引入，处理重载方法时稍微有点复杂。一个典型的例子就是ArrayList的remove方法，它有<code>remove(index)</code>和<code>remove(Object)</code>两种重载，我们可能会有一点小小的困惑，其实这种困惑是可以验证并解开的，通过下面的例子我们可以看到，当出现这种情况时，不会发生自动装箱操作。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">(</span><span class="kt">int</span> <span class="n">num</span><span class="o">){</span>
+</span><span class='line'>    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;method with primitive argument&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">(</span><span class="n">Integer</span> <span class="n">num</span><span class="o">){</span>
+</span><span class='line'>    <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;method with wrapper argument&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//calling overloaded method</span>
+</span><span class='line'><span class="n">AutoboxingTest</span> <span class="n">autoTest</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AutoboxingTest</span><span class="o">();</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span>
+</span><span class='line'><span class="n">autoTest</span><span class="o">.</span><span class="na">test</span><span class="o">(</span><span class="n">value</span><span class="o">);</span> <span class="c1">//no autoboxing </span>
+</span><span class='line'><span class="n">Integer</span> <span class="n">iValue</span> <span class="o">=</span> <span class="n">value</span><span class="o">;</span>
+</span><span class='line'><span class="n">autoTest</span><span class="o">.</span><span class="na">test</span><span class="o">(</span><span class="n">iValue</span><span class="o">);</span> <span class="c1">//no autoboxing</span>
+</span><span class='line'>
+</span><span class='line'><span class="nl">Output:</span>
+</span><span class='line'><span class="n">method</span> <span class="n">with</span> <span class="n">primitive</span> <span class="n">argument</span>
+</span><span class='line'><span class="n">method</span> <span class="n">with</span> <span class="n">wrapper</span> <span class="n">argument</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>要注意的事项</h2>
+
+<p>自动装箱和拆箱可以使代码变得简洁,但是其也存在一些问题和极端情况下的问题，以下几点需要我们加强注意。</p>
+
+<h3>对象相等比较</h3>
+
+<p>这是一个比较容易出错的地方，&#8221;==&ldquo;可以用于原始值进行比较，也可以用于对象进行比较，当用于对象与对象之间比较时，比较的不是对象代表的值，而不是检查两个对象是否是同一个对象，这个比较过程中没有自动装箱发生。进行对象值比较不应该使用&rdquo;==&ldquo;，而应该使用对象对应的equals方法。看一个能说明问题的例子。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">AutoboxingTest</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span> <span class="n">args</span><span class="o">[])</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Example 1: == comparison pure primitive – no autoboxing</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">i1</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">i2</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;i1==i2 : &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">i1</span> <span class="o">==</span> <span class="n">i2</span><span class="o">));</span> <span class="c1">// true</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Example 2: equality operator mixing object and primitive</span>
+</span><span class='line'>        <span class="n">Integer</span> <span class="n">num1</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span> <span class="c1">// autoboxing</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">num2</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;num1 == num2 : &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">num1</span> <span class="o">==</span> <span class="n">num2</span><span class="o">));</span> <span class="c1">// true</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Example 3: special case - arises due to autoboxing in Java</span>
+</span><span class='line'>        <span class="n">Integer</span> <span class="n">obj1</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span> <span class="c1">// autoboxing will call Integer.valueOf()</span>
+</span><span class='line'>        <span class="n">Integer</span> <span class="n">obj2</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span> <span class="c1">// same call to Integer.valueOf() will return same</span>
+</span><span class='line'>                            <span class="c1">// cached Object</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;obj1 == obj2 : &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">obj1</span> <span class="o">==</span> <span class="n">obj2</span><span class="o">));</span> <span class="c1">// true</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Example 4: equality operator - pure object comparison</span>
+</span><span class='line'>        <span class="n">Integer</span> <span class="n">one</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Integer</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span> <span class="c1">// no autoboxing</span>
+</span><span class='line'>        <span class="n">Integer</span> <span class="n">anotherOne</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Integer</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;one == anotherOne : &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">one</span> <span class="o">==</span> <span class="n">anotherOne</span><span class="o">));</span> <span class="c1">// false</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nl">Output:</span>
+</span><span class='line'><span class="n">i1</span><span class="o">==</span><span class="n">i2</span> <span class="o">:</span> <span class="kc">true</span>
+</span><span class='line'><span class="n">num1</span> <span class="o">==</span> <span class="n">num2</span> <span class="o">:</span> <span class="kc">true</span>
+</span><span class='line'><span class="n">obj1</span> <span class="o">==</span> <span class="n">obj2</span> <span class="o">:</span> <span class="kc">true</span>
+</span><span class='line'><span class="n">one</span> <span class="o">==</span> <span class="n">anotherOne</span> <span class="o">:</span> <span class="kc">false</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>值得注意的是第三个小例子，这是一种极端情况。obj1和obj2的初始化都发生了自动装箱操作。但是处于节省内存的考虑，JVM会缓存-128到127的Integer对象。因为obj1和obj2实际上是同一个对象。所以使用&#8221;==&ldquo;比较返回true。</p>
+
+<h3>容易混乱的对象和原始数据值</h3>
+
+<p>另一个需要避免的问题就是混乱使用对象和原始数据值，一个具体的例子就是当我们在一个原始数据值与一个对象进行比较时，如果这个对象没有进行初始化或者为Null，在自动拆箱过程中obj.xxxValue，会抛出NullPointerException,如下面的代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="n">Integer</span> <span class="n">count</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//NullPointerException on unboxing</span>
+</span><span class='line'><span class="k">if</span><span class="o">(</span> <span class="n">count</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">){</span>
+</span><span class='line'>  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Count is not started yet&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>缓存的对象</h3>
+
+<p>这个问题就是我们上面提到的极端情况，在Java中，会对-128到127的Integer对象进行缓存，当创建新的Integer对象时，如果符合这个这个范围，并且已有存在的相同值的对象，则返回这个对象，否则创建新的Integer对象。</p>
+
+<p>在Java中另一个节省内存的例子就是<a href="http://droidyue.com/blog/2014/12/21/string-literal-pool-in-java/">字符串常量池</a>,感兴趣的同学可以了解一下。</p>
+
+<h3>生成无用对象增加GC压力</h3>
+
+<p>因为自动装箱会隐式地创建对象，像前面提到的那样，如果在一个循环体中，会创建无用的中间对象，这样会增加GC压力，拉低程序的性能。所以在写循环时一定要注意代码，避免引入不必要的自动装箱操作。</p>
+
+<p>如想了解垃圾回收和内存优化，可以查看本文<a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">Google IO：Android内存管理主题演讲记录</a></p>
+
+<p>总的来说，自动装箱和拆箱着实为开发者带来了很大的方便，但是在使用时也是需要格外留意，避免引起出现文章提到的问题。</p>
+
+<h2>原文信息</h2>
+
+<ul>
+<li><a href="http://javarevisited.blogspot.com/2012/07/auto-boxing-and-unboxing-in-java-be.html">What is Autoboxing and Unboxing in Java – Example Tutorial and Corner cases</a></li>
+</ul>
+
+
+<h2>好书推荐</h2>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011F7WU4&amp;linkCode=as2&amp;tag=droidyue-23">Java编程思想(第4版) </a></li>
+<li><a href="http://www.amazon.cn/gp/product/B00G9KF4JC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00G9KF4JC&amp;linkCode=as2&amp;tag=droidyue-23">Java核心技术(卷1):基础知识</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00D2ID4PK&amp;linkCode=as2&amp;tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践</a></li>
+</ul>
+
+</div>
+
+
+  
+
+  <hr>
+  <ul>
+	<li><a href="https://www.youmi.net/account/register?r=OTU2Ng==">抽空写个应用赚够房租费</a></li>
+	<li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DXmDv21KQiAYcQipKwQzePDAVflQIoZepQih%2F7PxfOKS5VBFTL4hn2TVJL6dCd73rxF5AHBg6Tr7M3gYQjCL89qULerPwKfMIwRKDNIG1Ob5nW%2BJUaSJ3f2AVCEmOagNkIYULNg46oBA%3D">程序员如何着装才能提升逼格</a></li>
+	<li><a href="/blog/2015/02/28/my-android-work-akoi/">士别三年，我的最新个人作品</a></li>
+	<li><a href="http://www.100offer.com/i/7zg8F1ex">我勒个去，程序员都可以拍卖自己了</a></li>
+</ul>
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-07T07:31:00+08:00" pubdate data-updated="true">Apr 7<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/java/'>Java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/03/08/sockets-programming-in-java/" title="Previous Post: 读懂Java中的Socket编程">&laquo; 读懂Java中的Socket编程</a>
+      
+      
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2015/04/07/autoboxing-and-autounboxing-in-java" data-title="Java中的自动装箱与拆箱" data-url="http://droidyue.com/blog/2015/04/07/autoboxing-and-autounboxing-in-java/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/04/07/autoboxing-and-autounboxing-in-java/">Java中的自动装箱与拆箱</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/08/sockets-programming-in-java/">读懂Java中的Socket编程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/28/my-android-work-akoi/">士别三年，我的最新个人作品</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/18/deal-with-touch-icon-in-android/">Android中处理Touch Icon的方案</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/looking-into-singleton/">单例这种设计模式</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/10/plan-for-the-first-half-of-2015/">2015上半年</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/28/static-biding-and-dynamic-binding-in-java/">Java中的静态绑定和动态绑定</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/string-literal-pool-in-java/">Java中的字符串常量池</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/java-runtime-data-areas/">JVM运行时的数据区</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/14/android-yingyong-renling/">应用认领那些事</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/14/substring-memory-issue-in-java/">Java中的substring真的会引起内存泄露么？</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/07/differences-between-stack-and-heap-in-java/">Java中的堆和栈的区别</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/30/java-programmer-must-read-these-9-books/">9本Java程序员必读的书</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/29/a-super-tool-to-remove-files/">效率工具：强大的批量删除文件的脚本</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="/links/">友情链接</a></li>
+    <li><a href="http://passport.fanli.com/come?id=82332239&t=4">购物拿返利</a></li>
+    <li><a href="http://1.baidu.com/?invite_code=U9C2TG2M">百度钱包：一分钱超值商品</a></li>
+    <li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0">室内健身利器:Kinect体感游戏机</a></li>
+</ul>
+</section>
+<section>
+<h1>经典书籍</h1>
+<ul>
+	<li><a href="http://www.amazon.cn/gp/product/B00MO7R1SG/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00MO7R1SG&linkCode=as2&tag=droidyue-23">人件</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00OB3SNMY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00OB3SNMY&linkCode=as2&tag=droidyue-23">三体</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B004Y4QWMS/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004Y4QWMS&linkCode=as2&tag=droidyue-23">启示录</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00KFM43CO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KFM43CO&linkCode=as2&tag=droidyue-23">算法帝国</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00R0YTB9A/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00R0YTB9A&linkCode=as2&tag=droidyue-23">读懂财富</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B0052IGZFO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0052IGZFO&linkCode=as2&tag=droidyue-23">百年孤独</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00D73BJWK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D73BJWK&linkCode=as2&tag=droidyue-23">浪潮之巅</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00P6OJ09C/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00P6OJ09C&linkCode=as2&tag=droidyue-23">数学之美</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00JZ96ZI8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00JZ96ZI8&linkCode=as2&tag=droidyue-23">解忧杂货店</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00DFYLXN6/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00DFYLXN6&linkCode=as2&tag=droidyue-23">追风筝的人</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00KQDTZ4S/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KQDTZ4S&linkCode=as2&tag=droidyue-23">大教堂与集市</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00FXONTU6/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00FXONTU6&linkCode=as2&tag=droidyue-23">从你的全世界路过</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B008KVZOFW/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008KVZOFW&linkCode=as2&tag=droidyue-23">中国历代政治得失</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00JR07034/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00JR07034&linkCode=as2&tag=droidyue-23">"新政"能否改变中国</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00JR07034" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00OY6NGDY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00OY6NGDY&linkCode=as2&tag=droidyue-23">不敢止步:一个软件工匠的12年</a></li>
+</ul>
+</section>
+<section>
+<h1>编程经典</h1>
+<ul>
+	<li><a href="http://www.amazon.cn/gp/product/1430218339/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=1430218339&linkCode=as2&tag=droidyue-23">Pro Git</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0061XKRXA/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0061XKRXA&linkCode=as2&tag=droidyue-23">代码大全</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0011C2P7W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C2P7W&linkCode=as2&tag=droidyue-23">人月神话</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001NGO85I/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001NGO85I&linkCode=as2&tag=droidyue-23">编译原理</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B004ZWBW5G/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004ZWBW5G&linkCode=as2&tag=droidyue-23">编程珠玑</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00Q8BQ2IE/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00Q8BQ2IE&linkCode=as2&tag=droidyue-23">编程人生</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00G1ZT2C0/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00G1ZT2C0&linkCode=as2&tag=droidyue-23">黑客与画家</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0031M9GHC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0031M9GHC&linkCode=as2&tag=droidyue-23">代码整洁之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B008Z1IEQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008Z1IEQ8&linkCode=as2&tag=droidyue-23">Unix编程艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011F7WU4&linkCode=as2&tag=droidyue-23">Java编程思想</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B004GV08CY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004GV08CY&linkCode=as2&tag=droidyue-23">程序员修炼之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00KMJ2Q1U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KMJ2Q1U&linkCode=as2&tag=droidyue-23">修改代码的艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=0137142528&linkCode=as2&tag=droidyue-23">Java Performance</a></li> 
+    <li><a href="http://www.amazon.cn/gp/product/B00G9KF4JC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00G9KF4JC&linkCode=as2&tag=droidyue-23">Java核心技术卷一</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00IK7SM6O/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00IK7SM6O&linkCode=as2&tag=droidyue-23">Java核心技术卷二</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001N6R9JK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001N6R9JK&linkCode=as2&tag=droidyue-23">数据结构与算法分析</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B005KGBTQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005KGBTQ8&linkCode=as2&tag=droidyue-23">松本行弘的程序世界</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00ALPRKJ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ALPRKJ8&linkCode=as2&tag=droidyue-23">高效程序员的45个习惯</a></li>  
+    <li><a href="http://www.amazon.cn/gp/product/B003BY6PLK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B003BY6PLK&linkCode=as2&tag=droidyue-23">重构：改善既有代码的设计</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00H1FXTNM/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00H1FXTNM&linkCode=as2&tag=droidyue-23">Java虚拟机规范(Java SE 7版)</a></li>
+</ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> && <a href="https://portal.qiniu.com/signup?code=3l8cqx1u74rbm">七牛云存储</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
