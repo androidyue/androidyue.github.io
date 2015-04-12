@@ -6,11 +6,190 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Sat, 11 Apr 2015 06:26:02 GMT</pubDate>
+  <pubDate>Sun, 12 Apr 2015 13:37:51 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;p&gt;Context是我们在编写Android程序经常使用到的对象，意思为上下文对象。 常用的有Activity的Context还是有Application的Context。Activity用来展示活动界面，包含了很多的视图，而视图又含有图片，文字等资源。在Android中内存泄露很容易出现，而持有很多对象内存占用的Activity更加容易出现内存泄露，开发者需要特别注意这个问题。&lt;/p&gt;
+
+&lt;p&gt;本文讲介绍Android中Context，更具体的说是Activity内存泄露的情况，以及如何避免Activity内存泄露，加速应用性能。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;Drawable引起的内存泄露&lt;/h2&gt;
+
+&lt;p&gt;Drawable引起内存泄露这个问题是比较隐晦，难以察觉的。在阅读了Romain Guy的&lt;a href="http://android-developers.blogspot.com.tr/2009/01/avoiding-memory-leaks.html"&gt;Avoiding memory leaks&lt;/a&gt;，结合grepcode查看源码才明白了。&lt;/p&gt;
+
+&lt;p&gt;在Android系统中，当我们进行了屏幕旋转，默认情况下，会销毁掉当前的Activity，并创建一个新的Activity并保持之前的状态。在这个过程中，Android系统会重新加载程序的UI视图和资源。假设我们有一个程序用到了一个很大的Bitmap图像，我们不想每次屏幕旋转时都重新加载这个Bitmap对象，最简单的办法就是将这个Bitmap对象使用static修饰。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;span class='line-number'&gt;15&lt;/span&gt;
+&lt;span class='line-number'&gt;16&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="n"&gt;Drawable&lt;/span&gt; &lt;span class="n"&gt;sBackground&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="nd"&gt;@Override&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;protected&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onCreate&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Bundle&lt;/span&gt; &lt;span class="n"&gt;state&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;super&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;onCreate&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;state&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;TextView&lt;/span&gt; &lt;span class="n"&gt;label&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;TextView&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;label&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;setText&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Leaks are bad&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sBackground&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="kc"&gt;null&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;sBackground&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;getDrawable&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;R&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;drawable&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;large_bitmap&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;label&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;setBackgroundDrawable&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sBackground&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;setContentView&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;label&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;但是上面的方法在屏幕旋转时有可能引起内存泄露，无论是咋一看还是仔细看这段代码，都很难发现哪里引起了内存泄露。&lt;/p&gt;
+
+&lt;p&gt;当一个Drawable绑定到了View上，实际上这个View对象就会成为这个Drawable的一个callback成员变量，上面的例子中静态的sBackground持有TextView对象lable的引用，而lable只有Activity的引用，而Activity会持有其他更多对象的引用。sBackground生命周期要长于Activity。当屏幕旋转时，Activity无法被销毁，这样就产生了内存泄露问题。&lt;/p&gt;
+
+&lt;p&gt;2.3.7及以下版本Drawable的setCallback方法的实现&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;setCallback&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Callback&lt;/span&gt; &lt;span class="n"&gt;cb&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;mCallback&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;cb&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;好在从4.0.1开始，引入了&lt;a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/"&gt;弱引用&lt;/a&gt;处理这个问题，弱引用在GC回收时，不会阻止GC回收其指向的对象，避免了内存泄露问题。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;setCallback&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Callback&lt;/span&gt; &lt;span class="n"&gt;cb&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;mCallback&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;WeakReference&lt;/span&gt;&lt;span class="o"&gt;&amp;lt;&lt;/span&gt;&lt;span class="n"&gt;Callback&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;(&lt;/span&gt;&lt;span class="n"&gt;cb&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h2&gt;单例引起的内存泄露&lt;/h2&gt;
+
+&lt;p&gt;单例是我们比较简单常用的一种设计模式,然而如果单例使用不当也会导致内存泄露。
+比如这样一个例子,我们使用饿汉式初始化单例，AppSettings我们需要持有一个Context作为成员变量，如果我们按照下面的实现其实是有问题。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;AppSettings&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;    
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="n"&gt;Context&lt;/span&gt; &lt;span class="n"&gt;mAppContext&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="n"&gt;AppSettings&lt;/span&gt; &lt;span class="n"&gt;sInstance&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;AppSettings&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="c1"&gt;//some other codes&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="n"&gt;AppSettings&lt;/span&gt; &lt;span class="nf"&gt;getInstance&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;sInstance&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;setup&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Context&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;mAppContext&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;sInstance作为静态对象，其生命周期要长于普通的对象，其中也包含Activity，当我们进行屏幕旋转，默认情况下，系统会销毁当前Activity，然后当前的Activity被一个单例持有，导致垃圾回收器无法进行回收，进而产生了内存泄露。&lt;/p&gt;
+
+&lt;p&gt;解决的方法就是不持有Activity的引用，而是持有Application的Context引用。代码如下修改&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;setup&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Context&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;mAppContext&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getApplicationContext&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt; 
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;访问这里了解更多关于&lt;a href="http://droidyue.com/blog/2015/01/11/looking-into-singleton/"&gt;单例模式的问题&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2&gt;条条方法返回Context&lt;/h2&gt;
+
+&lt;p&gt;通常我们想要获取Context对象，主要有以下四种方法&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;View.getContext,返回当前View对象的Context对象，通常是当前正在展示的Activity对象。&lt;/li&gt;
+&lt;li&gt;Activity.getApplicationContext,获取当前Activity所在的(应用)进程的Context对象，通常我们使用Context对象时，要优先考虑这个全局的进程Context。&lt;/li&gt;
+&lt;li&gt;ContextWrapper.getBaseContext():用来获取一个ContextWrapper进行装饰之前的Context，可以使用这个方法，这个方法在实际开发中使用并不多，也不建议使用。&lt;/li&gt;
+&lt;li&gt;Activity.this 返回当前的Activity实例，如果是UI控件需要使用Activity作为Context对象，但是默认的Toast实际上使用ApplicationContext也可以。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;其他内存泄露问题&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/"&gt;Android中糟糕的AsyncTask&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/"&gt;Android中Handler引起的内存泄露&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/"&gt;Google为何这样设计OnSharedPreferenceChangeListener&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;避免内存泄露须谨记&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;不要让生命周期长于Activity的对象持有到Activity的引用&lt;/li&gt;
+&lt;li&gt;尽量使用Application的Context而不是Activity的Context&lt;/li&gt;
+&lt;li&gt;尽量不要在Activity中使用非静态内部类，因为非静态内部类会隐式持有外部类实例的引用（具体可以查看&lt;a href="http://droidyue.com/blog/2014/10/02/the-private-modifier-in-java/"&gt;细话Java：&amp;#8221;失效&amp;#8221;的private修饰符&lt;/a&gt;了解）。如果使用静态内部类，将外部实例引用作为&lt;a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/"&gt;弱引用&lt;/a&gt;持有。&lt;/li&gt;
+&lt;li&gt;垃圾回收不能解决内存泄露，了解&lt;a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/"&gt;Android中垃圾回收机制&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;参考文章&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="http://android-developers.blogspot.com.tr/2009/01/avoiding-memory-leaks.html"&gt;Avoiding memory leaks&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://stackoverflow.com/questions/10641144/difference-between-getcontext-getapplicationcontext-getbasecontext-and"&gt;Difference between getContext() , getApplicationContext() , getBaseContext() and “this”&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://stackoverflow.com/questions/1026973/android-whats-the-difference-between-the-various-methods-to-get-a-context"&gt;Android &amp;ndash; what&amp;rsquo;s the difference between the various methods to get a Context?&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;好书推荐&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B009VV6EG8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B009VV6EG8&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;Android应用性能优化&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00IOB0K1Q/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B00IOB0K1Q&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;图灵程序设计丛书:Java性能优化权威指南&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B009GT0H4U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B009GT0H4U&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;Java程序性能优化:让你的Java程序更快、更稳定&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+    <title>避免Android中Context引起的内存泄露</title>
+    <link>http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/</link>
+    <pubDate>Sun, 12 Apr 2015 13:28:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;自动装箱和拆箱从Java 1.5开始引入，目的是将原始类型值转自动地转换成对应的对象。自动装箱与拆箱的机制可以让我们在Java的变量赋值或者是方法调用等情况下使用原始类型或者对象类型更加简单直接。&lt;/p&gt;
 
@@ -3925,82 +4104,6 @@ Thinking in Java book应该是Java中文界最有名的书籍了，中文又名 
     <link>http://droidyue.com/blog/2014/11/23/start-android-application-when-click-a-link/</link>
     <pubDate>Sun, 23 Nov 2014 07:58:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2014/11/23/start-android-application-when-click-a-link</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;Octopress博客自带的只Atom协议的订阅，但是最近提交收录网站时，需要使用RSS协议。于是利用周末简单实现了一下。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;h2&gt;Atom和RSS&lt;/h2&gt;
-
-&lt;p&gt;以下为维基百科对Atom和RSS的解释。&lt;/p&gt;
-
-&lt;blockquote&gt;&lt;p&gt;RSS（简易信息聚合）是一种消息来源格式规范，用以聚合经常发布更新数据的网站，例如博客文章、新闻、音频或视频的网摘。RSS文件（或称做摘要、网络摘要、或频更新，提供到频道）包含了全文或是节录的文字，再加上发用者所订阅之网摘布数据和授权的元数据。&lt;/p&gt;
-
-&lt;p&gt;Atom是一對彼此相關的標準。Atom供稿格式（Atom Syndication Format）是用於網站消息來源，基于XML的文档格式；而Atom出版協定（Atom Publishing Protocol，簡稱AtomPub或APP）是用於新增及修改網路資源，基于HTTP的协议。&lt;/p&gt;
-
-&lt;p&gt;Atom借鉴了各种版本RSS的使用经验，被許多的聚合工具广泛使用在发布和使用上。Atom供稿格式設計作為RSS的替代品；而Atom出版協定用來取代現有的多種發布方式（如Blogger API和LiveJournal XML-RPC Client/Server Protocol）。而值得一提的是Google提供的多種服务正在使用Atom。Google Data API（GData）亦基於Atom。&lt;/p&gt;&lt;/blockquote&gt;
-
-&lt;p&gt;可以访问&lt;a href="http://zh.wikipedia.org/zh/Atom_(%E6%A8%99%E6%BA%96)#Atom.E8.88.87RSS_2.0.E7.9A.84.E6.AF.94.E8.BC.83" target="_blank"&gt;Atom與RSS 2.0的比較&lt;/a&gt;，了解更详细的内容。&lt;/p&gt;
-
-&lt;p&gt;由此可知，Atom是现在和未来的主要供稿格式，而RSS是一个已经声明被冻结的格式。&lt;/p&gt;
-
-&lt;h2&gt;Atom转换成RSS&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;clone下这个工程&lt;a href="https://github.com/androidyue/atom2rss"&gt;https://github.com/androidyue/atom2rss&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;使用&lt;code&gt;php atom2rss.php input_file output_file&lt;/code&gt;即可完成转换。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;atom2rss.php&lt;/h3&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='php'&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;&amp;lt;?&lt;/span&gt;&lt;span class="nx"&gt;php&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$source&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$argv&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;];&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$toFile&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$argv&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;];&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$atom2rssXsl&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;dirname&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="k"&gt;__FILE__&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;/atom2rss.xsl&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$chan&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nx"&gt;DOMDocument&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$chan&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;load&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$source&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$sheet&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nx"&gt;DOMDocument&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$sheet&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;load&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$atom2rssXsl&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$processor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nx"&gt;XSLTProcessor&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$processor&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;registerPHPFunctions&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$processor&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;importStylesheet&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$sheet&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nb"&gt;date_default_timezone_set&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;Asia/Shanghai&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nv"&gt;$result&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;$processor&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="na"&gt;transformToXML&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$chan&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;strlen&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$result&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="nb"&gt;file_put_contents&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;$toFile&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nv"&gt;$result&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="p"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="cp"&gt;?&amp;gt;&lt;/span&gt;&lt;span class="x"&gt;&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;主要依赖的就是进行转换的atom2rss.xml规则。
-上述代码可以根据自己的需要设置时区。&lt;/p&gt;
-</description>
-    <title>Atom订阅转成RSS2.0</title>
-    <link>http://droidyue.com/blog/2014/11/18/convert-atom-to-rss/</link>
-    <pubDate>Tue, 18 Nov 2014 13:33:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2014/11/18/convert-atom-to-rss</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
