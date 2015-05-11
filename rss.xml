@@ -6,11 +6,176 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Tue, 05 May 2015 14:46:16 GMT</pubDate>
+  <pubDate>Mon, 11 May 2015 14:10:13 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;p&gt;Play商店是Android的官方商店，虽然在大陆无法访问，但是这里依旧是重要的版本发布市场，尤其是对于那些国际化的产品。对于拓宽海外市场，付费推广就是一部分不可忽视的措施。而Android付费推广必然就是Play商店推广。本文主要从技术方面讲解，如何统计推广数据，以及在开发过程中遇到的一些疑问和困惑。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;生成推广链接&lt;/h2&gt;
+
+&lt;p&gt;想要进行推广，必须有推广链接。Google提供了生成推广链接的地址&lt;a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#google-play-url-builder"&gt;Google Play URL Builder&lt;/a&gt;,遗憾的是这个地址被墙了，不过可以使用&lt;a href="http://www.digitangle.co.uk/toolsandresources/google-play-url-builder/#sthash.HLdt4vXJ.dpbs"&gt;这个地址&lt;/a&gt;，可能稍微慢一点。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://droidyueimg.qiniudn.com/play_url_builder.png"&gt;&lt;/p&gt;
+
+&lt;h3&gt;简单描述&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Package Name 必填  应用的包名，如com.example.application&lt;/li&gt;
+&lt;li&gt;Campaign Source 必填 推广的来源，比如google, citysearch, newsletter4&lt;/li&gt;
+&lt;li&gt;Campaign Medium 选填  推广的媒介，比如cpc, banner, email&lt;/li&gt;
+&lt;li&gt;Campaign Term   选填 推广的关键字 比如 running+shoes&lt;/li&gt;
+&lt;li&gt;Campaign Content 选填 推广内容描述&lt;/li&gt;
+&lt;li&gt;Campaign Name  选填 可以填写 产品名，推广代号或者是推广口号&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;生成的推广地址就是&lt;a href="https://play.google.com/store/apps/details?id=com.mx.browser&amp;amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dadlink%26utm_term%3Dandroid%252Bbrowser%26utm_content%3DBest%2520and%2520Fast%2520Browser%26utm_campaign%3Dandroidyue_123"&gt;https://play.google.com/store/apps/details?id=com.mx.browser&amp;amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dadlink%26utm_term%3Dandroid%252Bbrowser%26utm_content%3DBest%2520and%2520Fast%2520Browser%26utm_campaign%3Dandroidyue_123&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2&gt;推广如何工作的&lt;/h2&gt;
+
+&lt;p&gt;有了上面的推广链接，我们有必要了解一下Play商店的推广是如何工作的。&lt;/p&gt;
+
+&lt;p&gt;  1.用户从网页或者应用中点击Play商店推广链接跳转到Play商店应用的页面下载。&lt;br/&gt;
+  2.应用下载完成并安装后，Google Play商店会发送一个&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;的Intent广播，该Intent中包含了推广链接中的参数。&lt;br/&gt;
+  3.应用收到&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播之后，从Intent中读取参数，上报推广数据。&lt;/p&gt;
+
+&lt;h2&gt;统计推广数据&lt;/h2&gt;
+
+&lt;h3&gt;1.manifest声明receiver，接收&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='xml'&gt;&lt;span class='line'&gt;&lt;span class="nt"&gt;&amp;lt;receiver&lt;/span&gt; &lt;span class="na"&gt;android:name=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;.PlayCampaignReceiver&amp;quot;&lt;/span&gt; &lt;span class="na"&gt;android:exported=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;true&amp;quot;&lt;/span&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="nt"&gt;&amp;lt;intent-filter&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;              &lt;span class="nt"&gt;&amp;lt;action&lt;/span&gt; &lt;span class="na"&gt;android:name=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;com.android.vending.INSTALL_REFERRER&amp;quot;&lt;/span&gt; &lt;span class="nt"&gt;/&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="nt"&gt;&amp;lt;/intent-filter&amp;gt;&lt;/span&gt;  
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="nt"&gt;&amp;lt;/receiver&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h3&gt;2.实现PlayCampaignReceiver，处理&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;span class='line-number'&gt;15&lt;/span&gt;
+&lt;span class='line-number'&gt;16&lt;/span&gt;
+&lt;span class='line-number'&gt;17&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;package&lt;/span&gt; &lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;droidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;playstorereferrertester&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;android.content.BroadcastReceiver&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;android.content.Context&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;android.content.Intent&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;android.util.Log&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;PlayCampaignReceiver&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;BroadcastReceiver&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;LOGTAG&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;PlayCampaignReceiver&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="nd"&gt;@Override&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onReceive&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Context&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;onReceive intent=&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="c1"&gt;//处理referrer参数&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;referrer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getStringExtra&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;referrer&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="c1"&gt;//some other code&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h2&gt;多个Receiver&lt;/h2&gt;
+
+&lt;p&gt;有些时候我们可能有这样的需求，我们需要多个Receiver监听&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播，其实是可以的。&lt;/p&gt;
+
+&lt;h3&gt;代码调用&lt;/h3&gt;
+
+&lt;p&gt;这一种是比较推荐的实现方式，比较简单，就是在一个Receiver的onReceive中，实例化另一个Receiver并调用其onReceive方法。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;PlayCampaignReceiver&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;BroadcastReceiver&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;LOGTAG&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;PlayCampaignReceiver&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="nd"&gt;@Override&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onReceive&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Context&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;onReceive intent=&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="c1"&gt;//调用另一个Receiver实例的onReceive方法&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nf"&gt;AnotherPlayCampaignReceiver&lt;/span&gt;&lt;span class="o"&gt;().&lt;/span&gt;&lt;span class="na"&gt;onReceive&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h3&gt;manifest声明&lt;/h3&gt;
+
+&lt;p&gt;通过manifest的增加另一个监听&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播的Receiver的形式理论上也可以，但是之前的Google文档中说这种方式有问题，不建议使用。之前Google统计关于市场推广的描述为&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;Note: Only one BroadcastReceiver class can be specified per application. Should you need to incorporate two or more BroadcastReceivers from different SDKs, you will need to create your own BroadcastReceiver class that will receive all broadcasts and call the appropriate BroadcastReceivers for each type of Broadcast.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;h2&gt;何时收到推广数据&lt;/h2&gt;
+
+&lt;p&gt;关于何时收到推广数据的问题争论颇多，基本上又两个答案：安装完成之后和打一次打开程序时。这两个答案可以说是都对或者都错。&lt;/p&gt;
+
+&lt;p&gt;在3.1之前，&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播 确实是在程序安装之后发送的。 &lt;br/&gt;
+在3.1之后，&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播 就变成了在程序第一次启动的时候进行的。&lt;/p&gt;
+
+&lt;p&gt;那么这又是作何原因呢，其真实的原因就是在3.1 API 12之后，Android系统引入了停止状态，也就是说一个刚下载的程序，在用户手动点击图标启动之前，是收不到正常的广播的。只有当处于非停止状态的应用才能收到&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播。所以广播的发送就选择在程序第一次启动时。  更多关于&lt;a href="http://droidyue.com/blog/2014/07/14/look-inside-android-package-stop-state-since-honeycomb-mr1/"&gt;Android中的停止状态&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;为了进一步验证这个发送广播实际，我在Play Store上传了一个测试程序，可以使用这个地址&lt;a href="https://play.google.com/store/apps/details?id=com.droidyue.playstorereferrertester&amp;amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dblog%26utm_term%3Dtest%252Bapp%26utm_content%3Dtest%252Bapp%26utm_campaign%3Dandroidyue_123456"&gt;https://play.google.com/store/apps/details?id=com.droidyue.playstorereferrertester&amp;amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dblog%26utm_term%3Dtest%252Bapp%26utm_content%3Dtest%252Bapp%26utm_campaign%3Dandroidyue_123456&lt;/a&gt;从Play Store下载测试一下，过滤日志&lt;code&gt;adb logcat | grep PlayCampaignReceiver&lt;/code&gt;测试。&lt;/p&gt;
+
+&lt;p&gt;注意：这里的第一次安装可以是从Play Store 应用中点打开按钮，也可以是从Launcher中点击应用图标。前面两种情况都是可以接收到广播的。&lt;/p&gt;
+
+&lt;h2&gt;别的包也会收到么&lt;/h2&gt;
+
+&lt;p&gt;这也是一个被争论的问题，当然我也是通过上面的包验证了，答案就是不会的。&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;只会发给那个推广安装的程序。&lt;/p&gt;
+
+&lt;h2&gt;例外情况&lt;/h2&gt;
+
+&lt;p&gt;从网页到客户端的安装是无法发送&lt;strong&gt;INSTALL_REFERRER&lt;/strong&gt;广播的。&lt;/p&gt;
+
+&lt;h2&gt;奇怪问题&lt;/h2&gt;
+
+&lt;h3&gt;协议为哪个&lt;/h3&gt;
+
+&lt;p&gt;其实有人会奇怪，究竟推广链接是market还是https协议，答案是都可以，但是推荐使用https协议的链接，首先的既定事实是Google Play URL Builder默认生成的就是https协议链接，另外https是一个被广泛采用的协议，设想如果一个market协议链接在PC浏览器上被点击是怎样的一种体验呢？答案不言自明。&lt;/p&gt;
+
+&lt;h2&gt;参考文章&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#overview"&gt;Campaign Measurement &lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+    <title>Google Play商店推广那些事</title>
+    <link>http://droidyue.com/blog/2015/05/11/google-play-tuiguang/</link>
+    <pubDate>Mon, 11 May 2015 13:43:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2015/05/11/google-play-tuiguang</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;前段时间看到QQ提示更新，于是手贱了一次升级到了QQ for Mac V4.0.1,最不爽的一件事在屏幕的右上角多出来了一个横幅，内容就是别人发给你的消息的内容。&lt;/p&gt;
 
@@ -3938,88 +4103,6 @@ Thinking in Java book应该是Java中文界最有名的书籍了，中文又名 
     <link>http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/</link>
     <pubDate>Sat, 29 Nov 2014 08:41:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;Android中处理网页时我们必然用到WebView,这里我们有这样一个需求，我们想让WebView在处理网络请求的时候将某些请求拦截替换成某些特殊的资源。具体一点儿说，在WebView加载 &lt;code&gt;http://m.sogou.com&lt;/code&gt; 时，会加载一个logo图片，我们的需求就是将这个logo图片换成另一张图片。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;h3&gt;shouldInterceptRequest&lt;/h3&gt;
-
-&lt;p&gt;好在Android中的WebView比较强大，从API 11(Android 3.0)开始， shouldInterceptRequest被引入就是为了解决这一类的问题。&lt;/p&gt;
-
-&lt;p&gt;shouldInterceptRequest这个回调可以通知主程序WebView处理的资源（css,js,image等）请求，并允许主程序进行处理后返回数据。如果主程序返回的数据为null，WebView会自行请求网络加载资源，否则使用主程序提供的数据。注意这个回调发生在非UI线程中,所以进行UI系统相关的操作是不可以的。&lt;/p&gt;
-
-&lt;p&gt;shouldInterceptRequest有两种重载。&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;public WebResourceResponse shouldInterceptRequest (WebView view, String url)&lt;/strong&gt; 从API 11开始引入，API 21弃用&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;public WebResourceResponse shouldInterceptRequest (WebView view, WebResourceRequest request)&lt;/strong&gt; 从API 21开始引入&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;本次例子暂时使用第一种，即shouldInterceptRequest (WebView view, String url)。&lt;/p&gt;
-
-&lt;h3&gt;示例代码&lt;/h3&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;WebView&lt;/span&gt; &lt;span class="n"&gt;webView&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;WebView&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;webView&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;setWebViewClient&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;WebViewClient&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="n"&gt;WebResourceResponse&lt;/span&gt; &lt;span class="nf"&gt;shouldInterceptRequest&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;WebView&lt;/span&gt; &lt;span class="n"&gt;view&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;  &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;url&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;shouldInterceptRequest url=&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;url&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;;threadInfo&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;Thread&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;currentThread&lt;/span&gt;&lt;span class="o"&gt;());&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;WebResourceResponse&lt;/span&gt; &lt;span class="n"&gt;response&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kc"&gt;null&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;url&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;contains&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;logo&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="k"&gt;try&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;              &lt;span class="n"&gt;InputStream&lt;/span&gt; &lt;span class="n"&gt;localCopy&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;getAssets&lt;/span&gt;&lt;span class="o"&gt;().&lt;/span&gt;&lt;span class="na"&gt;open&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;droidyue.png&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;              &lt;span class="n"&gt;response&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;WebResourceResponse&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;image/png&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;UTF-8&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;localCopy&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="o"&gt;}&lt;/span&gt; &lt;span class="k"&gt;catch&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;IOException&lt;/span&gt; &lt;span class="n"&gt;e&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;              &lt;span class="n"&gt;e&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;printStackTrace&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="o"&gt;}&lt;/span&gt;        
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;response&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;    
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;});&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;setContentView&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;webView&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;webView&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;loadUrl&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;http://m.sogou.com&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;其中WebResourceResponse需要设定三个属性，MIME类型，数据编码，数据(InputStream流形式)。&lt;/p&gt;
-
-&lt;h3&gt;示例下载&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://pan.baidu.com/s/1ntOaHoH"&gt;百度云盘&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-    <title>Android中WebView拦截替换网络请求数据</title>
-    <link>http://droidyue.com/blog/2014/11/23/block-web-resource-in-webview/</link>
-    <pubDate>Sun, 23 Nov 2014 13:54:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2014/11/23/block-web-resource-in-webview</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
