@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-05-11T22:10:13+08:00</updated>
+  <updated>2015-05-11T22:13:43+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,149 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Google Play商店推广那些事]]></title>
+    <link href="http://droidyue.com/blog/2015/05/11/google-play-tuiguang/"/>
+    <updated>2015-05-11T21:43:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/05/11/google-play-tuiguang</id>
+    <content type="html"><![CDATA[<p>Play商店是Android的官方商店，虽然在大陆无法访问，但是这里依旧是重要的版本发布市场，尤其是对于那些国际化的产品。对于拓宽海外市场，付费推广就是一部分不可忽视的措施。而Android付费推广必然就是Play商店推广。本文主要从技术方面讲解，如何统计推广数据，以及在开发过程中遇到的一些疑问和困惑。</p>
+
+<!--more-->
+
+
+<h2>生成推广链接</h2>
+
+<p>想要进行推广，必须有推广链接。Google提供了生成推广链接的地址<a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#google-play-url-builder">Google Play URL Builder</a>,遗憾的是这个地址被墙了，不过可以使用<a href="http://www.digitangle.co.uk/toolsandresources/google-play-url-builder/#sthash.HLdt4vXJ.dpbs">这个地址</a>，可能稍微慢一点。</p>
+
+<p>{%img <a href="http://droidyueimg.qiniudn.com/play_url_builder.png">http://droidyueimg.qiniudn.com/play_url_builder.png</a> %}</p>
+
+<h3>简单描述</h3>
+
+<ul>
+<li>Package Name 必填  应用的包名，如com.example.application</li>
+<li>Campaign Source 必填 推广的来源，比如google, citysearch, newsletter4</li>
+<li>Campaign Medium 选填  推广的媒介，比如cpc, banner, email</li>
+<li>Campaign Term   选填 推广的关键字 比如 running+shoes</li>
+<li>Campaign Content 选填 推广内容描述</li>
+<li>Campaign Name  选填 可以填写 产品名，推广代号或者是推广口号</li>
+</ul>
+
+
+<p>生成的推广地址就是<a href="https://play.google.com/store/apps/details?id=com.mx.browser&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dadlink%26utm_term%3Dandroid%252Bbrowser%26utm_content%3DBest%2520and%2520Fast%2520Browser%26utm_campaign%3Dandroidyue_123">https://play.google.com/store/apps/details?id=com.mx.browser&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dadlink%26utm_term%3Dandroid%252Bbrowser%26utm_content%3DBest%2520and%2520Fast%2520Browser%26utm_campaign%3Dandroidyue_123</a></p>
+
+<h2>推广如何工作的</h2>
+
+<p>有了上面的推广链接，我们有必要了解一下Play商店的推广是如何工作的。</p>
+
+<p>  1.用户从网页或者应用中点击Play商店推广链接跳转到Play商店应用的页面下载。<br/>
+  2.应用下载完成并安装后，Google Play商店会发送一个<strong>INSTALL_REFERRER</strong>的Intent广播，该Intent中包含了推广链接中的参数。<br/>
+  3.应用收到<strong>INSTALL_REFERRER</strong>广播之后，从Intent中读取参数，上报推广数据。</p>
+
+<h2>统计推广数据</h2>
+
+<h3>1.manifest声明receiver，接收<strong>INSTALL_REFERRER</strong>广播</h3>
+
+<p>```xml
+<receiver android:name=".PlayCampaignReceiver" android:exported="true"></p>
+
+<pre><code>&lt;intent-filter&gt;
+            &lt;action android:name="com.android.vending.INSTALL_REFERRER" /&gt;
+        &lt;/intent-filter&gt;       
+</code></pre>
+
+<p></receiver>
+```</p>
+
+<h3>2.实现PlayCampaignReceiver，处理<strong>INSTALL_REFERRER</strong>广播</h3>
+
+<p>```java
+package com.droidyue.playstorereferrertester;</p>
+
+<p>import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.util.Log;</p>
+
+<p>public class PlayCampaignReceiver extends BroadcastReceiver {</p>
+
+<pre><code>private static final String LOGTAG = "PlayCampaignReceiver";
+@Override
+public void onReceive(Context context, Intent intent) {
+    Log.i(LOGTAG, "onReceive intent=" + intent);
+    //处理referrer参数
+    String referrer = intent.getStringExtra("referrer");
+    //some other code
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h2>多个Receiver</h2>
+
+<p>有些时候我们可能有这样的需求，我们需要多个Receiver监听<strong>INSTALL_REFERRER</strong>广播，其实是可以的。</p>
+
+<h3>代码调用</h3>
+
+<p>这一种是比较推荐的实现方式，比较简单，就是在一个Receiver的onReceive中，实例化另一个Receiver并调用其onReceive方法。
+```java</p>
+
+<p>public class PlayCampaignReceiver extends BroadcastReceiver {</p>
+
+<pre><code>private static final String LOGTAG = "PlayCampaignReceiver";
+@Override
+public void onReceive(Context context, Intent intent) {
+    Log.i(LOGTAG, "onReceive intent=" + intent);
+    //调用另一个Receiver实例的onReceive方法
+    new AnotherPlayCampaignReceiver().onReceive(context, intent);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>manifest声明</h3>
+
+<p>通过manifest的增加另一个监听<strong>INSTALL_REFERRER</strong>广播的Receiver的形式理论上也可以，但是之前的Google文档中说这种方式有问题，不建议使用。之前Google统计关于市场推广的描述为</p>
+
+<blockquote><p>Note: Only one BroadcastReceiver class can be specified per application. Should you need to incorporate two or more BroadcastReceivers from different SDKs, you will need to create your own BroadcastReceiver class that will receive all broadcasts and call the appropriate BroadcastReceivers for each type of Broadcast.</p></blockquote>
+
+<h2>何时收到推广数据</h2>
+
+<p>关于何时收到推广数据的问题争论颇多，基本上又两个答案：安装完成之后和打一次打开程序时。这两个答案可以说是都对或者都错。</p>
+
+<p>在3.1之前，<strong>INSTALL_REFERRER</strong>广播 确实是在程序安装之后发送的。 <br/>
+在3.1之后，<strong>INSTALL_REFERRER</strong>广播 就变成了在程序第一次启动的时候进行的。</p>
+
+<p>那么这又是作何原因呢，其真实的原因就是在3.1 API 12之后，Android系统引入了停止状态，也就是说一个刚下载的程序，在用户手动点击图标启动之前，是收不到正常的广播的。只有当处于非停止状态的应用才能收到<strong>INSTALL_REFERRER</strong>广播。所以广播的发送就选择在程序第一次启动时。  更多关于<a href="http://droidyue.com/blog/2014/07/14/look-inside-android-package-stop-state-since-honeycomb-mr1/">Android中的停止状态</a></p>
+
+<p>为了进一步验证这个发送广播实际，我在Play Store上传了一个测试程序，可以使用这个地址<a href="https://play.google.com/store/apps/details?id=com.droidyue.playstorereferrertester&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dblog%26utm_term%3Dtest%252Bapp%26utm_content%3Dtest%252Bapp%26utm_campaign%3Dandroidyue_123456">https://play.google.com/store/apps/details?id=com.droidyue.playstorereferrertester&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dblog%26utm_term%3Dtest%252Bapp%26utm_content%3Dtest%252Bapp%26utm_campaign%3Dandroidyue_123456</a>从Play Store下载测试一下，过滤日志<code>adb logcat | grep PlayCampaignReceiver</code>测试。</p>
+
+<p>注意：这里的第一次安装可以是从Play Store 应用中点打开按钮，也可以是从Launcher中点击应用图标。前面两种情况都是可以接收到广播的。</p>
+
+<h2>别的包也会收到么</h2>
+
+<p>这也是一个被争论的问题，当然我也是通过上面的包验证了，答案就是不会的。<strong>INSTALL_REFERRER</strong>只会发给那个推广安装的程序。</p>
+
+<h2>例外情况</h2>
+
+<p>从网页到客户端的安装是无法发送<strong>INSTALL_REFERRER</strong>广播的。</p>
+
+<h2>奇怪问题</h2>
+
+<h3>协议为哪个</h3>
+
+<p>其实有人会奇怪，究竟推广链接是market还是https协议，答案是都可以，但是推荐使用https协议的链接，首先的既定事实是Google Play URL Builder默认生成的就是https协议链接，另外https是一个被广泛采用的协议，设想如果一个market协议链接在PC浏览器上被点击是怎样的一种体验呢？答案不言自明。</p>
+
+<h2>参考文章</h2>
+
+<ul>
+<li><a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#overview">Campaign Measurement </a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[避免Android中Context引起的内存泄露]]></title>
@@ -176,9 +319,9 @@ public final void setup(Context context) {</p>
 
 <h2>高清无码大图</h2>
 
-<p><img class="<a" src="href="http://droidyueimg.qiniudn.com/akoi_ui.png">http://droidyueimg.qiniudn.com/akoi_ui.png</a>">
-<img class="<a" src="href="http://droidyueimg.qiniudn.com/akoi_target_language.png">http://droidyueimg.qiniudn.com/akoi_target_language.png</a>">
-<img class="<a" src="href="http://droidyueimg.qiniudn.com/akoi_result_new.png">http://droidyueimg.qiniudn.com/akoi_result_new.png</a>"></p>
+<p>{% img <a href="http://droidyueimg.qiniudn.com/akoi_ui.png">http://droidyueimg.qiniudn.com/akoi_ui.png</a> %}
+{% img <a href="http://droidyueimg.qiniudn.com/akoi_target_language.png">http://droidyueimg.qiniudn.com/akoi_target_language.png</a> %}
+{% img <a href="http://droidyueimg.qiniudn.com/akoi_result_new.png">http://droidyueimg.qiniudn.com/akoi_result_new.png</a> %}</p>
 
 <h2>等饭时的脑洞</h2>
 
@@ -205,7 +348,7 @@ public final void setup(Context context) {</p>
 
 <h2>下载地址</h2>
 
-<p><img class="<a" src="href="http://droidyueimg.qiniudn.com/akoi_qrcode_download.png">http://droidyueimg.qiniudn.com/akoi_qrcode_download.png</a>"></p>
+<p>{% img <a href="http://droidyueimg.qiniudn.com/akoi_qrcode_download.png">http://droidyueimg.qiniudn.com/akoi_qrcode_download.png</a> %}</p>
 
 <h2>特别感谢</h2>
 
@@ -657,87 +800,6 @@ finish();
 <li><a href="http://www.androiddesignpatterns.com/2013/01/inner-class-handler-memory-leak.html">How to Leak a Context: Handlers &amp; Inner Classes</a></li>
 </ul>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[应用认领那些事]]></title>
-    <link href="http://droidyue.com/blog/2014/12/14/android-yingyong-renling/"/>
-    <updated>2014-12-14T19:35:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/12/14/android-yingyong-renling</id>
-    <content type="html"><![CDATA[<p>最近公司的一款产品提交国内市场，发现有些国内市场提示需要进行应用认领。原因就是别人（或者市场抓取）已经在我们之前将这个应用提交到了该市场。认领成功后，这个应用就重回你的怀抱了，其实认领很简单，这里讲到的自然是对未签名的包进行签名。由于这样的操作细小琐屑，这样更需要记录一下，免得以后麻烦。</p>
-
-<!--more-->
-
-
-<h2>如何认领</h2>
-
-<ul>
-<li>一般的就是市场提供一个未签名的apk包，认领方进行签名后，上传即可认领成功。</li>
-<li>另一种就是提供公司证明，这个我们不讲，也没什么可以讲。</li>
-</ul>
-
-
-<p>通常情况下认领都会有对一个未签名的apk包签名认证这种方式，因为签名是软件发布商所独有的，通过对比测试需认领的包的签名和刚签过名的apk包是否一致，如果一致就认领成功，否则失败。</p>
-
-<h2>对未签名包签名</h2>
-
-<p><code>bash
-jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore your_keystore  -storepass your_storepass -keypass your_keypass -signedjar path_of_signed_apk  path_of_unsigned_apk your_alias
-</code></p>
-
-<h3>需要替换的值</h3>
-
-<ul>
-<li>your_key_store keystore文件路径</li>
-<li>your_storepass   store密码</li>
-<li>your_keypass    key密码</li>
-<li>path_of_signed_apk 签名后apk保存的目录</li>
-<li>path_of_unsigned_apk 待签名的apk包</li>
-<li>your_alias keystore中的别名</li>
-</ul>
-
-
-<p>注意上面的签名算法sigalg 使用SHA1withRSA或者MD5withRSA都可以。</p>
-
-<h2>验证签名</h2>
-
-<p><code>bash
-jarsigner -verify -certs -verbose your_app.apk
-</code>
-比如我们验证百度金融的apk，会得到类似这样的结果
-```bash
-19:23 $ jarsigner -verify -certs -verbose BaiduFinance.apk | more</p>
-
-<p>s      61679 Fri Nov 14 19:50:16 CST 2014 META-INF/MANIFEST.MF</p>
-
-<pre><code>  X.509, CN=Baidu, OU=Baidu Inc., O=Baidu Inc., L=Beijing, ST=Beijing, C=CN
-  [certificate is valid from 12/6/13 10:19 AM to 11/24/63 10:19 AM]
-  [CertPath not validated: Path does not chain with any of the trust anchors]
-
-   61800 Fri Nov 14 19:50:16 CST 2014 META-INF/MCO_BAID.SF
-     936 Fri Nov 14 19:50:16 CST 2014 META-INF/MCO_BAID.RSA
-</code></pre>
-
-<p>sm      2304 Fri Nov 14 19:49:32 CST 2014 assets/mean/data_mean_24_bank_card
-```</p>
-
-<h2>疑难问题</h2>
-
-<h3>No -tsa or -tsacert is provided and this jar is not timestamped</h3>
-
-<p>在签名时加入下面的选项
-<code>bash
-jarsigner -tsa http://timestamp.digicert.com
-</code></p>
-
-<h3>Windows无法打开文件</h3>
-
-<p>有些Windows工具无法打开签名后的apk，如果你的签名没有错误，并且验证过，这种情况请忽略。</p>
-
-<h3>签名认领失败</h3>
-
-<p>如果签名认领失败的话，请检查目前线上的包是否进行了二次打包被别人篡改了签名，如果是的话，需要进行商务上的沟通来解决了。</p>
 ]]></content>
   </entry>
   
