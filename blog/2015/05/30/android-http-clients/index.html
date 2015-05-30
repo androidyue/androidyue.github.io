@@ -1,0 +1,479 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Android中HTTP相关的API - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Android中HTTP相关的API May 30th, 2015 Android中大多数应用都会发送和接受HTTP请求，在Android API中主要由两个HTTP请求的相关类，一个是HttpURLConnection，另一个是Apache HTTP Client。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2015/05/30/android-http-clients">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script type="text/javascript">
+      $(document).bind('DOMNodeInserted', function(event) {
+			$('a[href^="http"]').each(
+				function(){
+					if (!$(this).attr('target')) {
+						$(this).attr('target', '_blank')
+					}
+                
+				}
+			);
+		});
+  </script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>东半球有态度的技术分享媒体</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Android中HTTP相关的API</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-05-30T23:09:00+08:00" pubdate data-updated="true">May 30<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Android中大多数应用都会发送和接受HTTP请求，在Android API中主要由两个HTTP请求的相关类，一个是HttpURLConnection，另一个是Apache HTTP Client。这两个类实现的HTTP请求都支持HTTPS协议，基于流的上传和下载，可配置超时时间，IPv6和连接池。</p>
+
+<!--more-->
+
+
+<h2>Apache HTTP Client</h2>
+
+<p>DefaultHttpClient和同类的AndroidHttpClient都是可扩展的类。它们有大量且灵活的API，适用于网页浏览器开发。同时它们比较稳定并且bug较少。但是繁多的API的现实下，对其改善与保持兼容性不可得兼，明显Android团队的精力已然不在Apache HTTP Client。</p>
+
+<h2>HttpURLConnection</h2>
+
+<p>HttpURLConnection是一个通用，轻量的实现，可以满足大多数的程序进行HTTP请求。这个类虽然一开始比较简陋，但是其主要的几个API使得我们更容易进行稳定改善。</p>
+
+<h3>连接池污染</h3>
+
+<p>在冻酸奶（Android 2.2）之前，HttpURLConnection有着一些烦人的bug。最烦人的就是调用一个可读的InputStream的close方法会污染连接池。我们需要禁用连接池绕开这个问题，如下代码可以禁用连接池。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">disableConnectionReuseIfNecessary</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c1">// HTTP connection reuse which was buggy pre-froyo</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">Integer</span><span class="o">.</span><span class="na">parseInt</span><span class="o">(</span><span class="n">Build</span><span class="o">.</span><span class="na">VERSION</span><span class="o">.</span><span class="na">SDK</span><span class="o">)</span> <span class="o">&lt;</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION_CODES</span><span class="o">.</span><span class="na">FROYO</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">setProperty</span><span class="o">(</span><span class="s">&quot;http.keepAlive&quot;</span><span class="o">,</span> <span class="s">&quot;false&quot;</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>压缩数据与大小</h3>
+
+<p>从2.3开始，我们默认对返回的响应进行了压缩，HttpURLConnection会自动为发出去的请求加上<code>Accept-Encoding: gzip</code>这个头信息。如果gzip压缩的响应有问题，可以通过下面代码禁用gzip。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">urlConnection</span><span class="o">.</span><span class="na">setRequestProperty</span><span class="o">(</span><span class="s">&quot;Accept-Encoding&quot;</span><span class="o">,</span> <span class="s">&quot;identity&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>由于HTTP中的Content-Length头信息返回的是压缩后的大小，所以我们不能使用getContentLength()来计算未压缩数据的大小。正确的做法应该是读取HTTP响应中的字节，直到InputStream.read()方法返回为-1.</p>
+
+<h3>HTTPs改进</h3>
+
+<p>从Gingerbread开始，增加了对HTTPs链接的优化。在进行HTTPs请求之前，HttpsURLConnection会尝试使用服务器名字指示(Server Name Indication)，这种技术可以让多个HTTPs主机共享一个IP地址。在HTTPs请求中，HttpsURLConnection也支持压缩和会话标签（Session Tickets）。一旦连接失败，HttpsURLConnection会不使用上面的三个特性进行重试。这样即可以保证在连接时高效率地连接到最新的服务器，也可以在不破坏兼容性的同时连接到旧服务器。</p>
+
+<h3>响应缓存</h3>
+
+<p>从4.0开始，HttpURLConnection引入了响应缓存机制。一旦缓存创建，后续的HTTP请求会按照下面情况处理</p>
+
+<ul>
+<li>完全缓存的响应会直接从本地存储中读取，响应很快，不需要网络连接。</li>
+<li>有条件的缓存必须由服务端进行freshness验证，比如client发出一个请求，如&#8221;Give me /foo.png if it changed since yesterday&#8221;，然后服务器端要么返回最新的内容，要么返回304未修改的状态。如果内容不变，则不下载。</li>
+<li>没有缓存的响应需要服务器处理，然后这些请求被缓存下来。</li>
+</ul>
+
+
+<p>对于低于4.0的版本，我们可以使用反射开启响应的缓存机制</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">enableHttpResponseCache</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">long</span> <span class="n">httpCacheSize</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">;</span> <span class="c1">// 10 MiB</span>
+</span><span class='line'>        <span class="n">File</span> <span class="n">httpCacheDir</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="n">getCacheDir</span><span class="o">(),</span> <span class="s">&quot;http&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="s">&quot;android.net.http.HttpResponseCache&quot;</span><span class="o">)</span>
+</span><span class='line'>            <span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="s">&quot;install&quot;</span><span class="o">,</span> <span class="n">File</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="kt">long</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+</span><span class='line'>            <span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">httpCacheDir</span><span class="o">,</span> <span class="n">httpCacheSize</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">httpResponseCacheNotAvailable</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当然，这里还需要服务器端设置HTTP缓存相关的头信息。</p>
+
+<h2>哪家强</h2>
+
+<p>在2.3之前的版本，Apache的HTTP请求响应实现比较稳定，bug也少，所以在那些版本上它的最好。</p>
+
+<p>但是在2.3之后，毫无疑问，HttpURLConnection是最好的。它API精简实用，默认支持压缩，响应缓存等。最重要的这是Android团队重点投入的，而Apache的版本已经被抛弃了。所以还是使用HttpURLConnection吧。</p>
+
+<h2>原文信息</h2>
+
+<ul>
+<li><a href="http://android-developers.blogspot.com/2011/09/androids-http-clients.html">Android’s HTTP Clients</a></li>
+</ul>
+
+</div>
+
+
+  <a href="http://droidyue.com/donate/"><img src="http://droidyueimg.qiniudn.com/support_droidyue.gif" class="no_boarder_class"></a>
+
+  <hr>
+  <ul>
+	<li><a href="http://droidyue.com/blog/2014/11/30/java-programmer-must-read-these-9-books/">Java程序员必读的几本书</a></li>
+	<li><a href="https://www.youmi.net/account/register?r=OTU2Ng==">抽空写个应用赚够房租费</a></li>
+	<li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DVl2ocTpH0WwcQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2dQBlzdZ0rk2P5bxJy%2F%2Fu7jM3gYQjCL89qULerPwKfMIwRKDNIG1Ob78gzOkuNPsG%2B%2BfxGyA7kO2HcXyKGoE7hfBA6L871fwHMYl7w3%2FA2kb">那天下午阳光很好，你穿了一件Github T恤</a></li>
+	
+</ul>
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-05-30T23:09:00+08:00" pubdate data-updated="true">May 30<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/05/22/gmail-535-5-dot-7-8-error-authentication-failed/" title="Previous Post: Gmail托管邮箱发邮件认证失败">&laquo; Gmail托管邮箱发邮件认证失败</a>
+      
+      
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2015/05/30/android-http-clients" data-title="Android中HTTP相关的API" data-url="http://droidyue.com/blog/2015/05/30/android-http-clients/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/05/30/android-http-clients/">Android中HTTP相关的API</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/22/gmail-535-5-dot-7-8-error-authentication-failed/">Gmail托管邮箱发邮件认证失败</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/15/jar-not-in-apk/">JAR包未加入APK程序</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/11/google-play-tuiguang/">Google Play商店推广那些事</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/26/guanbi-mac-qq-tishi/">关闭Mac屏幕右上角QQ通知</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/07/autoboxing-and-autounboxing-in-java/">Java中的自动装箱与拆箱</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/08/sockets-programming-in-java/">读懂Java中的Socket编程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/28/my-android-work-akoi/">士别三年，我的最新个人作品</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/18/deal-with-touch-icon-in-android/">Android中处理Touch Icon的方案</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/looking-into-singleton/">单例这种设计模式</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/10/plan-for-the-first-half-of-2015/">2015上半年</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/28/static-biding-and-dynamic-binding-in-java/">Java中的静态绑定和动态绑定</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/21/string-literal-pool-in-java/">Java中的字符串常量池</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="/links/">友情链接</a></li>
+    <li><a href="http://passport.fanli.com/come?id=82332239&t=4">购物拿返利</a></li>
+    <li><a href="http://1.baidu.com/?invite_code=U9C2TG2M">百度钱包：一分钱超值商品</a></li>
+    <li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0">室内健身利器:Kinect体感游戏机</a></li>
+    <li><a href="zh.airbnb.com/c/awallace36?s=8">说走就走的Airbnb旅行基金</a></li>
+</ul>
+</section>
+<section>
+<h1>经典书籍</h1>
+<ul>
+	<li><a href="http://www.amazon.cn/gp/product/B00MO7R1SG/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00MO7R1SG&linkCode=as2&tag=droidyue-23">人件</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00OB3SNMY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00OB3SNMY&linkCode=as2&tag=droidyue-23">三体</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B004Y4QWMS/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004Y4QWMS&linkCode=as2&tag=droidyue-23">启示录</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00KFM43CO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KFM43CO&linkCode=as2&tag=droidyue-23">算法帝国</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00R0YTB9A/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00R0YTB9A&linkCode=as2&tag=droidyue-23">读懂财富</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B0052IGZFO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0052IGZFO&linkCode=as2&tag=droidyue-23">百年孤独</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00D73BJWK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D73BJWK&linkCode=as2&tag=droidyue-23">浪潮之巅</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00P6OJ09C/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00P6OJ09C&linkCode=as2&tag=droidyue-23">数学之美</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00JZ96ZI8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00JZ96ZI8&linkCode=as2&tag=droidyue-23">解忧杂货店</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00DFYLXN6/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00DFYLXN6&linkCode=as2&tag=droidyue-23">追风筝的人</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00KQDTZ4S/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KQDTZ4S&linkCode=as2&tag=droidyue-23">大教堂与集市</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00FXONTU6/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00FXONTU6&linkCode=as2&tag=droidyue-23">从你的全世界路过</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B008KVZOFW/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008KVZOFW&linkCode=as2&tag=droidyue-23">中国历代政治得失</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00JR07034/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00JR07034&linkCode=as2&tag=droidyue-23">"新政"能否改变中国</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00JR07034" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00OY6NGDY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00OY6NGDY&linkCode=as2&tag=droidyue-23">不敢止步:一个软件工匠的12年</a></li>
+</ul>
+</section>
+<section>
+<h1>编程经典</h1>
+<ul>
+	<li><a href="http://www.amazon.cn/gp/product/1430218339/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=1430218339&linkCode=as2&tag=droidyue-23">Pro Git</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0061XKRXA/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0061XKRXA&linkCode=as2&tag=droidyue-23">代码大全</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0011C2P7W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C2P7W&linkCode=as2&tag=droidyue-23">人月神话</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001NGO85I/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001NGO85I&linkCode=as2&tag=droidyue-23">编译原理</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B004ZWBW5G/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004ZWBW5G&linkCode=as2&tag=droidyue-23">编程珠玑</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00Q8BQ2IE/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00Q8BQ2IE&linkCode=as2&tag=droidyue-23">编程人生</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00G1ZT2C0/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00G1ZT2C0&linkCode=as2&tag=droidyue-23">黑客与画家</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0031M9GHC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0031M9GHC&linkCode=as2&tag=droidyue-23">代码整洁之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B008Z1IEQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008Z1IEQ8&linkCode=as2&tag=droidyue-23">Unix编程艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011F7WU4&linkCode=as2&tag=droidyue-23">Java编程思想</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B004GV08CY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004GV08CY&linkCode=as2&tag=droidyue-23">程序员修炼之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00KMJ2Q1U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KMJ2Q1U&linkCode=as2&tag=droidyue-23">修改代码的艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=0137142528&linkCode=as2&tag=droidyue-23">Java Performance</a></li> 
+    <li><a href="http://www.amazon.cn/gp/product/B00G9KF4JC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00G9KF4JC&linkCode=as2&tag=droidyue-23">Java核心技术卷一</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00IK7SM6O/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00IK7SM6O&linkCode=as2&tag=droidyue-23">Java核心技术卷二</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00E0D2OX4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00E0D2OX4&linkCode=as2&tag=droidyue-23">Java程序员修炼之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001N6R9JK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001N6R9JK&linkCode=as2&tag=droidyue-23">数据结构与算法分析</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B005KGBTQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005KGBTQ8&linkCode=as2&tag=droidyue-23">松本行弘的程序世界</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00ALPRKJ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ALPRKJ8&linkCode=as2&tag=droidyue-23">高效程序员的45个习惯</a></li>  
+    <li><a href="http://www.amazon.cn/gp/product/B003BY6PLK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B003BY6PLK&linkCode=as2&tag=droidyue-23">重构：改善既有代码的设计</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00H1FXTNM/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00H1FXTNM&linkCode=as2&tag=droidyue-23">Java虚拟机规范(Java SE 7版)</a></li>
+    
+</ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> && <a href="https://portal.qiniu.com/signup?code=3l8cqx1u74rbm">七牛云存储</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
