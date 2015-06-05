@@ -1,0 +1,465 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>垃圾回收器如何处理循环引用 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="垃圾回收器如何处理循环引用 Jun 5th, 2015 垃圾回收是一门编程语言中必不可少的一部分，不论是手动释放内存的C和C++，还是自动回收垃圾的Java和C#等语言。对于Java这样的语言，一般的开发者不强求关心对象回收和内存释放，但是理解垃圾回收对开发工作还是大有裨益的。 在编程语言中， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2015/06/05/how-garbage-collector-handles-circular-references">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script type="text/javascript">
+      $(document).bind('DOMNodeInserted', function(event) {
+			$('a[href^="http"]').each(
+				function(){
+					if (!$(this).attr('target')) {
+						$(this).attr('target', '_blank')
+					}
+                
+				}
+			);
+		});
+  </script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>东半球有态度的技术分享媒体</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">垃圾回收器如何处理循环引用</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-05T23:24:00+08:00" pubdate data-updated="true">Jun 5<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>垃圾回收是一门编程语言中必不可少的一部分，不论是手动释放内存的C和C++，还是自动回收垃圾的Java和C#等语言。对于Java这样的语言，一般的开发者不强求关心对象回收和内存释放，但是理解垃圾回收对开发工作还是大有裨益的。</p>
+
+<!--more-->
+
+
+<p>在编程语言中，普遍存在着循环引用这样的问题，垃圾回收器是如何处理循环引用呢，常用的垃圾回收有引用计数和引用对象遍历两种实现，它们各自又是如何处理循环引用呢？本文讲以JVM中的GC为例逐一回答这些问题。</p>
+
+<h2>何为循环引用</h2>
+
+<p>如果有两个或者以上的对象，它们彼此引用，就会造成循环引用。如下面的例子</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">Node</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Node</span> <span class="n">next</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Node</span> <span class="n">a</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Node</span><span class="o">();</span>
+</span><span class='line'><span class="n">Node</span> <span class="n">b</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Node</span><span class="o">();</span>
+</span><span class='line'><span class="n">a</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">b</span><span class="o">;</span>
+</span><span class='line'><span class="n">b</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">a</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中，a对象引用了b对象，b对象也引用了a对象，这种情况下a对象和b对象就形成了循环引用。</p>
+
+<h2>引用计数GC处理</h2>
+
+<h3>什么是引用计数</h3>
+
+<p>引用计数是一种垃圾回收的形式，每一个对象都会有一个计数来记录有多少指向它的引用。其引用计数会变换如下面的场景</p>
+
+<ul>
+<li>当对象增加一个引用，比如赋值给变量，属性或者传入一个方法，引用计数执行加1运算。</li>
+<li>当对象减少一个引用，比如变量离开作用域，属性被赋值为另一个对象引用，属性所在的对象被回收或者之前传入参数的方法返回，引用计数执行减1操作。</li>
+<li>当引用计数变为0，代表该对象不被引用，可以标记成垃圾进行回收。</li>
+</ul>
+
+
+<h3>如何处理</h3>
+
+<p>实际上单纯的基于引用计数实现的计数器无法处理循环引用带来的问题。</p>
+
+<p>CPython的垃圾回收就是采用引用计数,采用引用计数的主垃圾回收器会清理垃圾，对于那些因为循环引用无法清理的对象，CPython会不时启动一个辅助的基于引用遍历的垃圾回收器来清理它们。</p>
+
+<h2>引用遍历GC处理</h2>
+
+<h3>什么是引用对象遍历</h3>
+
+<p>垃圾回收器从被称为GC Roots的点开始遍历遍历对象，凡是可以达到的点都会标记为存活，堆中不可到达的对象都会标记成垃圾，然后被清理掉。
+GC Roots有哪些</p>
+
+<ul>
+<li>类，由系统类加载器加载的类。这些类从不会被卸载，它们可以通过静态属性的方式持有对象的引用。注意，一般情况下由自定义的类加载器加载的类不能成为GC Roots</li>
+<li>线程，存活的线程</li>
+<li>Java方法<a href="http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/">栈</a>中的局部变量或者参数</li>
+<li><a href="http://droidyue.com/blog/2014/12/21/java-runtime-data-areas/">JNI方法栈</a>中的局部变量或者参数</li>
+<li>JNI全局引用</li>
+<li>用做同步监控的对象</li>
+<li>被JVM持有的对象，这些对象由于特殊的目的不被GC回收。这些对象可能是系统的类加载器，一些重要的异常处理类，一些为处理异常预留的对象，以及一些正在执行类加载的自定义的类加载器。但是具体有哪些前面提到的对象依赖于具体的JVM实现。</li>
+</ul>
+
+
+<h3>如何处理</h3>
+
+<p>基于引用对象遍历的垃圾回收器可以处理循环引用，只要是涉及到的对象不能从GC Roots<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">强引用</a>可到达，垃圾回收器都会进行清理来释放内存。</p>
+
+<h2>总结</h2>
+
+<p>基于引用计数的垃圾回收器无法处理循环引用导致的内存泄露问题，但是其在主流的JVM中很少，几乎所有的JVM都是采用引用对象遍历的方法，垃圾回收器都会处理循环引用潜在的问题。</p>
+
+<h2>一本书</h2>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00D2ID4PK&amp;linkCode=as2&amp;tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践(第2版)</a></li>
+</ul>
+
+</div>
+
+
+  <a href="http://droidyue.com/donate/"><img src="http://droidyueimg.qiniudn.com/support_droidyue.gif" class="no_boarder_class"></a>
+
+  <hr>
+  <ul>
+	<li><a href="http://droidyue.com/blog/2014/11/30/java-programmer-must-read-these-9-books/">Java程序员必读的几本书</a></li>
+	<li><a href="https://www.youmi.net/account/register?r=OTU2Ng==">抽空写个应用赚够房租费</a></li>
+	<li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DVl2ocTpH0WwcQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2dQBlzdZ0rk2P5bxJy%2F%2Fu7jM3gYQjCL89qULerPwKfMIwRKDNIG1Ob78gzOkuNPsG%2B%2BfxGyA7kO2HcXyKGoE7hfBA6L871fwHMYl7w3%2FA2kb">那天下午阳光很好，你穿了一件Github T恤</a></li>
+	
+</ul>
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-05T23:24:00+08:00" pubdate data-updated="true">Jun 5<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/gc/'>GC</a>, <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/la-ji-hui-shou/'>垃圾回收</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/05/30/android-http-clients/" title="Previous Post: Android中HTTP相关的API">&laquo; Android中HTTP相关的API</a>
+      
+      
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2015/06/05/how-garbage-collector-handles-circular-references" data-title="垃圾回收器如何处理循环引用" data-url="http://droidyue.com/blog/2015/06/05/how-garbage-collector-handles-circular-references/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/06/05/how-garbage-collector-handles-circular-references/">垃圾回收器如何处理循环引用</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/30/android-http-clients/">Android中HTTP相关的API</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/22/gmail-535-5-dot-7-8-error-authentication-failed/">Gmail托管邮箱发邮件认证失败</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/15/jar-not-in-apk/">JAR包未加入APK程序</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/11/google-play-tuiguang/">Google Play商店推广那些事</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/26/guanbi-mac-qq-tishi/">关闭Mac屏幕右上角QQ通知</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/07/autoboxing-and-autounboxing-in-java/">Java中的自动装箱与拆箱</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/08/sockets-programming-in-java/">读懂Java中的Socket编程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/28/my-android-work-akoi/">士别三年，我的最新个人作品</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/18/deal-with-touch-icon-in-android/">Android中处理Touch Icon的方案</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/looking-into-singleton/">单例这种设计模式</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/10/plan-for-the-first-half-of-2015/">2015上半年</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/28/static-biding-and-dynamic-binding-in-java/">Java中的静态绑定和动态绑定</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<section>
+<h1>Blogrolls</h1>
+<ul>
+    <li><a href="/links/">友情链接</a></li>
+    <li><a href="http://passport.fanli.com/come?id=82332239&t=4">购物拿返利</a></li>
+    <li><a href="http://1.baidu.com/?invite_code=U9C2TG2M">百度钱包：一分钱超值商品</a></li>
+    <li><a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0">室内健身利器:Kinect体感游戏机</a></li>
+    <li><a href="zh.airbnb.com/c/awallace36?s=8">说走就走的Airbnb旅行基金</a></li>
+</ul>
+</section>
+<section>
+<h1>经典书籍</h1>
+<ul>
+	<li><a href="http://www.amazon.cn/gp/product/B00MO7R1SG/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00MO7R1SG&linkCode=as2&tag=droidyue-23">人件</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00OB3SNMY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00OB3SNMY&linkCode=as2&tag=droidyue-23">三体</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B004Y4QWMS/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004Y4QWMS&linkCode=as2&tag=droidyue-23">启示录</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00KFM43CO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KFM43CO&linkCode=as2&tag=droidyue-23">算法帝国</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00R0YTB9A/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00R0YTB9A&linkCode=as2&tag=droidyue-23">读懂财富</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B0052IGZFO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0052IGZFO&linkCode=as2&tag=droidyue-23">百年孤独</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00D73BJWK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D73BJWK&linkCode=as2&tag=droidyue-23">浪潮之巅</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00P6OJ09C/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00P6OJ09C&linkCode=as2&tag=droidyue-23">数学之美</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00JZ96ZI8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00JZ96ZI8&linkCode=as2&tag=droidyue-23">解忧杂货店</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00DFYLXN6/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00DFYLXN6&linkCode=as2&tag=droidyue-23">追风筝的人</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00KQDTZ4S/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KQDTZ4S&linkCode=as2&tag=droidyue-23">大教堂与集市</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00FXONTU6/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00FXONTU6&linkCode=as2&tag=droidyue-23">从你的全世界路过</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B008KVZOFW/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008KVZOFW&linkCode=as2&tag=droidyue-23">中国历代政治得失</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00JR07034/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00JR07034&linkCode=as2&tag=droidyue-23">"新政"能否改变中国</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00JR07034" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+	<li><a href="http://www.amazon.cn/gp/product/B00OY6NGDY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00OY6NGDY&linkCode=as2&tag=droidyue-23">不敢止步:一个软件工匠的12年</a></li>
+</ul>
+</section>
+<section>
+<h1>编程经典</h1>
+<ul>
+	<li><a href="http://www.amazon.cn/gp/product/1430218339/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=1430218339&linkCode=as2&tag=droidyue-23">Pro Git</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0061XKRXA/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0061XKRXA&linkCode=as2&tag=droidyue-23">代码大全</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0011C2P7W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C2P7W&linkCode=as2&tag=droidyue-23">人月神话</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001NGO85I/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001NGO85I&linkCode=as2&tag=droidyue-23">编译原理</a></li>
+	<li><a href="http://www.amazon.cn/gp/product/B004ZWBW5G/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004ZWBW5G&linkCode=as2&tag=droidyue-23">编程珠玑</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00Q8BQ2IE/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00Q8BQ2IE&linkCode=as2&tag=droidyue-23">编程人生</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00G1ZT2C0/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00G1ZT2C0&linkCode=as2&tag=droidyue-23">黑客与画家</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0031M9GHC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0031M9GHC&linkCode=as2&tag=droidyue-23">代码整洁之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B008Z1IEQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B008Z1IEQ8&linkCode=as2&tag=droidyue-23">Unix编程艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011F7WU4&linkCode=as2&tag=droidyue-23">Java编程思想</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B004GV08CY/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B004GV08CY&linkCode=as2&tag=droidyue-23">程序员修炼之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00KMJ2Q1U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KMJ2Q1U&linkCode=as2&tag=droidyue-23">修改代码的艺术</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=0137142528&linkCode=as2&tag=droidyue-23">Java Performance</a></li> 
+    <li><a href="http://www.amazon.cn/gp/product/B00G9KF4JC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00G9KF4JC&linkCode=as2&tag=droidyue-23">Java核心技术卷一</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00IK7SM6O/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00IK7SM6O&linkCode=as2&tag=droidyue-23">Java核心技术卷二</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00E0D2OX4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00E0D2OX4&linkCode=as2&tag=droidyue-23">Java程序员修炼之道</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B001N6R9JK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001N6R9JK&linkCode=as2&tag=droidyue-23">数据结构与算法分析</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B005KGBTQ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005KGBTQ8&linkCode=as2&tag=droidyue-23">松本行弘的程序世界</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00ALPRKJ8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ALPRKJ8&linkCode=as2&tag=droidyue-23">高效程序员的45个习惯</a></li>  
+    <li><a href="http://www.amazon.cn/gp/product/B003BY6PLK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B003BY6PLK&linkCode=as2&tag=droidyue-23">重构：改善既有代码的设计</a></li>
+    <li><a href="http://www.amazon.cn/gp/product/B00H1FXTNM/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00H1FXTNM&linkCode=as2&tag=droidyue-23">Java虚拟机规范(Java SE 7版)</a></li>
+    
+</ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> && <a href="http://droidredirect.sinaapp.com/qiniu_redirect.php">七牛云存储</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
