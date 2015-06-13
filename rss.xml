@@ -6,11 +6,162 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Fri, 05 Jun 2015 15:41:59 GMT</pubDate>
+  <pubDate>Sat, 13 Jun 2015 15:23:43 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;p&gt;在面向对象编程中，我们经常处理处理的问题就是解耦，程序的耦合性越低表明这个程序的可读性以及可维护性越高。控制反转(Inversion of Control或IoC)就是常用的面向对象编程的设计原则，使用这个原则我们可以降低耦合性。其中依赖注入是控制反转最常用的实现。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;什么是依赖&lt;/h2&gt;
+
+&lt;p&gt;依赖是程序中常见的现象，比如类Car中用到了GasEnergy类的实例energy，通常的做法就是在Car类中显式地创建GasEnergy类的实例，并赋值给energy。如下面的代码&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;interface&lt;/span&gt; &lt;span class="nc"&gt;Energy&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;GasEnergy&lt;/span&gt; &lt;span class="kd"&gt;implements&lt;/span&gt; &lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Car&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="n"&gt;energy&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;GasEnergy&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h2&gt;存在问题&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;类Car承担了多余的责任，负责energy对象的创建，这必然存在了严重的耦合性。举一个现实中的例子，一辆汽车使用哪种能源不是由汽车来决定，而是由汽车制造商（CarMaker）来决定，这是汽车制造商的责任。&lt;/li&gt;
+&lt;li&gt;可扩展性，假设我们想修改能源为电动力，那么我们必然要修改Car这个类，明显不符合开放闭合原则。&lt;/li&gt;
+&lt;li&gt;不利于单元测试。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;依赖注入&lt;/h2&gt;
+
+&lt;p&gt;依赖注入是这样的一种行为，在类Car中不主动创建GasEnergy的对象，而是通过外部传入GasEnergy对象形式来设置依赖。
+常用的依赖注入有如下三种方式&lt;/p&gt;
+
+&lt;h3&gt;构造器注入&lt;/h3&gt;
+
+&lt;p&gt;将需要的依赖作为构造方法的参数传递完成依赖注入。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Car&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="n"&gt;mEnergy&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="nf"&gt;Car&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="n"&gt;energy&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;mEnergy&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;energy&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h3&gt;Setter方法注入&lt;/h3&gt;
+
+&lt;p&gt;增加setter方法，参数为需要注入的依赖亦可完成依赖注入。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Car&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="n"&gt;mEnergy&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;setEnergy&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="n"&gt;energy&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;mEnergy&lt;/span&gt;  &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;energy&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h3&gt;接口注入&lt;/h3&gt;
+
+&lt;p&gt;接口注入，闻其名不言而喻，就是为依赖注入创建一套接口，依赖作为参数传入，通过调用统一的接口完成对具体实现的依赖注入。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;interface&lt;/span&gt; &lt;span class="nc"&gt;EnergyConsumerInterface&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;setEnergy&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="n"&gt;energy&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Car&lt;/span&gt; &lt;span class="kd"&gt;implements&lt;/span&gt; &lt;span class="n"&gt;EnergyConsumerInterface&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="n"&gt;mEnergy&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;setEnergy&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Energy&lt;/span&gt; &lt;span class="n"&gt;energy&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;mEnergy&lt;/span&gt;  &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;energy&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;接口注入和setter方法注入类似，不同的是接口注入使用了统一的方法来完成注入，而setter方法注入的方法名称相对比较随意。&lt;/p&gt;
+
+&lt;h2&gt;框架取舍&lt;/h2&gt;
+
+&lt;p&gt;依赖注入有很多框架，最有名的就是Guice，当然Spring也支持依赖注入。Guice采用的是运行时读取注解，通过反射的形式生成依赖并进行注入。这种形式不太适合Android移动设备，毕竟这些操作都在运行时处理，对性能要求较高。&lt;/p&gt;
+
+&lt;p&gt;Dagger则是Android开发适合的依赖注入库，其同样采用类注解的形式，不同的是它是在编译时生成辅助类，等到在运行时使用生成的辅助类完成依赖注入。&lt;/p&gt;
+
+&lt;h3&gt;用还是不用&lt;/h3&gt;
+
+&lt;p&gt;其实注入框架用还是不用，是一个问题，如若使用框架，则要求团队每一个人都要遵守说明来编写代码解决依赖注入。而这些框架其实也并非很容易就能上手，学习系数相对复杂，难以掌握，这也是需要考虑的问题。&lt;/p&gt;
+
+&lt;p&gt;个人观点为不推荐也不反对使用这些框架，但是觉得有些时候我们寄希望于一个框架，不如平时注意这些问题，人为避免何尝不是对自己的一种基本要求呢？&lt;/p&gt;
+
+&lt;h2&gt;依赖查找&lt;/h2&gt;
+
+&lt;p&gt;依赖查找和依赖注入一样属于控制反转原则的具体实现，不同于依赖注入的被动接受，依赖查找这是主动请求，在需要的时候通过调用框架提供的方法来获取对象，获取时需要提供相关的配置文件路径、key等信息来确定获取对象的状态。&lt;/p&gt;
+
+&lt;h2&gt;书籍推荐&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B004G8P90S/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B004G8P90S&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;研磨设计模式&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00INI842W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B00INI842W&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;设计模式之禅&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B0011FBU34/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B0011FBU34&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;Head First设计模式&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+    <title>说说依赖注入</title>
+    <link>http://droidyue.com/blog/2015/06/13/talk-show-about-dependency-injection/</link>
+    <pubDate>Sat, 13 Jun 2015 14:59:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2015/06/13/talk-show-about-dependency-injection</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;垃圾回收是一门编程语言中必不可少的一部分，不论是手动释放内存的C和C++，还是自动回收垃圾的Java和C#等语言。对于Java这样的语言，一般的开发者不强求关心对象回收和内存释放，但是理解垃圾回收对开发工作还是大有裨益的。&lt;/p&gt;
 
@@ -3880,98 +4031,6 @@ synchronized修饰的方法后，当某个线程进入调用这个方法，该�
     <link>http://droidyue.com/blog/2014/12/14/substring-memory-issue-in-java/</link>
     <pubDate>Sun, 14 Dec 2014 04:02:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2014/12/14/substring-memory-issue-in-java</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;当一个人开始学习Java或者其他编程语言的时候，会接触到堆和栈，由于一开始没有明确清晰的说明解释，很多人会产生很多疑问，什么是堆，什么是栈，堆和栈有什么区别？更糟糕的是，Java中存在栈这样一个后进先出（Last In First Out）的顺序的数据结构，这就是java.util.Stack。这种情况下，不免让很多人更加费解前面的问题。事实上，堆和栈都是内存中的一部分，有着不同的作用，而且一个程序需要在这片区域上分配内存。众所周知，所有的Java程序都运行在JVM虚拟机内部，我们这里介绍的自然是JVM（虚拟）内存中的堆和栈。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;h2&gt;区别&lt;/h2&gt;
-
-&lt;p&gt;java中堆和栈的区别自然是面试中的常见问题，下面几点就是其具体的区别&lt;/p&gt;
-
-&lt;h3&gt;各司其职&lt;/h3&gt;
-
-&lt;p&gt;最主要的区别就是栈内存用来存储局部变量和方法调用。&lt;br/&gt;
-而堆内存用来存储Java中的对象。无论是成员变量，局部变量，还是类变量，它们指向的对象都存储在堆内存中。&lt;/p&gt;
-
-&lt;h3&gt;独有还是共享&lt;/h3&gt;
-
-&lt;p&gt;栈内存归属于单个线程，每个线程都会有一个栈内存，其存储的变量只能在其所属线程中可见，即栈内存可以理解成线程的私有内存。&lt;br/&gt;
-而堆内存中的对象对所有线程可见。堆内存中的对象可以被所有线程访问。&lt;/p&gt;
-
-&lt;h3&gt;异常错误&lt;/h3&gt;
-
-&lt;p&gt;如果栈内存没有可用的空间存储方法调用和局部变量，JVM会抛出java.lang.StackOverFlowError。&lt;br/&gt;
-而如果是堆内存没有可用的空间存储生成的对象，JVM会抛出java.lang.OutOfMemoryError。&lt;/p&gt;
-
-&lt;h3&gt;空间大小&lt;/h3&gt;
-
-&lt;p&gt;栈的内存要远远小于堆内存，如果你使用递归的话，那么你的栈很快就会充满。如果递归没有及时跳出，很可能发生StackOverFlowError问题。&lt;br/&gt;
-你可以通过-Xss选项设置栈内存的大小。-Xms选项可以设置堆的开始时的大小，-Xmx选项可以设置堆的最大值。&lt;/p&gt;
-
-&lt;p&gt;这就是Java中堆和栈的区别。理解好这个问题的话，可以对你解决开发中的问题，分析堆内存和栈内存使用，甚至性能调优都有帮助。&lt;/p&gt;
-
-&lt;h4&gt;查看默认值(Updated)&lt;/h4&gt;
-
-&lt;p&gt;查看堆的默认值，使用下面的代码，其中InitialHeapSize为最开始的堆的大小，MaxHeapSize为堆的最大值。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='bash'&gt;&lt;span class='line'&gt;13:17 &lt;span class="nv"&gt;$ &lt;/span&gt;java -XX:+PrintFlagsFinal -version | grep HeapSize
-&lt;/span&gt;&lt;span class='line'&gt;    uintx &lt;span class="nv"&gt;ErgoHeapSizeLimit&lt;/span&gt;                         &lt;span class="o"&gt;=&lt;/span&gt; 0                                   &lt;span class="o"&gt;{&lt;/span&gt;product&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    uintx &lt;span class="nv"&gt;HeapSizePerGCThread&lt;/span&gt;                       &lt;span class="o"&gt;=&lt;/span&gt; 87241520                            &lt;span class="o"&gt;{&lt;/span&gt;product&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    uintx InitialHeapSize                          :&lt;span class="o"&gt;=&lt;/span&gt; 134217728                           &lt;span class="o"&gt;{&lt;/span&gt;product&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    uintx &lt;span class="nv"&gt;LargePageHeapSizeThreshold&lt;/span&gt;                &lt;span class="o"&gt;=&lt;/span&gt; 134217728                           &lt;span class="o"&gt;{&lt;/span&gt;product&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    uintx MaxHeapSize                              :&lt;span class="o"&gt;=&lt;/span&gt; 2147483648                          &lt;span class="o"&gt;{&lt;/span&gt;product&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;java version &lt;span class="s2"&gt;&amp;quot;1.8.0_25&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;Java&lt;span class="o"&gt;(&lt;/span&gt;TM&lt;span class="o"&gt;)&lt;/span&gt; SE Runtime Environment &lt;span class="o"&gt;(&lt;/span&gt;build 1.8.0_25-b17&lt;span class="o"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;Java HotSpot&lt;span class="o"&gt;(&lt;/span&gt;TM&lt;span class="o"&gt;)&lt;/span&gt; 64-Bit Server VM &lt;span class="o"&gt;(&lt;/span&gt;build 25.25-b02, mixed mode&lt;span class="o"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;查看栈的默认值,其中ThreadStackSize为栈内存的大小。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='bash'&gt;&lt;span class='line'&gt;13:21 &lt;span class="nv"&gt;$ &lt;/span&gt;java -XX:+PrintFlagsFinal -version | grep ThreadStackSize
-&lt;/span&gt;&lt;span class='line'&gt;     intx &lt;span class="nv"&gt;CompilerThreadStackSize&lt;/span&gt;                   &lt;span class="o"&gt;=&lt;/span&gt; 0                                   &lt;span class="o"&gt;{&lt;/span&gt;pd product&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;     intx &lt;span class="nv"&gt;ThreadStackSize&lt;/span&gt;                           &lt;span class="o"&gt;=&lt;/span&gt; 1024                                &lt;span class="o"&gt;{&lt;/span&gt;pd product&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;     intx &lt;span class="nv"&gt;VMThreadStackSize&lt;/span&gt;                         &lt;span class="o"&gt;=&lt;/span&gt; 1024                                &lt;span class="o"&gt;{&lt;/span&gt;pd product&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;java version &lt;span class="s2"&gt;&amp;quot;1.8.0_25&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;Java&lt;span class="o"&gt;(&lt;/span&gt;TM&lt;span class="o"&gt;)&lt;/span&gt; SE Runtime Environment &lt;span class="o"&gt;(&lt;/span&gt;build 1.8.0_25-b17&lt;span class="o"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;Java HotSpot&lt;span class="o"&gt;(&lt;/span&gt;TM&lt;span class="o"&gt;)&lt;/span&gt; 64-Bit Server VM &lt;span class="o"&gt;(&lt;/span&gt;build 25.25-b02, mixed mode&lt;span class="o"&gt;)&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;h2&gt;译文信息&lt;/h2&gt;
-
-&lt;p&gt;原汁原味的英文原文：&lt;a href="http://javarevisited.blogspot.com.au/2013/01/difference-between-stack-and-heap-java.html"&gt;http://javarevisited.blogspot.com.au/2013/01/difference-between-stack-and-heap-java.html&lt;/a&gt;.&lt;/p&gt;
-
-&lt;p&gt;译文在原文基础上进行了修改，整理，删减。如有兴趣可以访问原文。P.S.地址已被墙。&lt;/p&gt;
-
-&lt;h3&gt;一本书&lt;/h3&gt;
-
-&lt;p&gt;&lt;a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=0137142528&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;Java Performance&lt;/a&gt;这本书会帮你深入JVM，垃圾回收，内存监视和性能调优这些方面。&lt;/p&gt;
-</description>
-    <title>Java中的堆和栈的区别</title>
-    <link>http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/</link>
-    <pubDate>Sun, 07 Dec 2014 08:08:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   

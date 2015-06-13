@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-06-05T23:41:59+08:00</updated>
+  <updated>2015-06-13T23:23:43+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,157 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[说说依赖注入]]></title>
+    <link href="http://droidyue.com/blog/2015/06/13/talk-show-about-dependency-injection/"/>
+    <updated>2015-06-13T22:59:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/06/13/talk-show-about-dependency-injection</id>
+    <content type="html"><![CDATA[<p>在面向对象编程中，我们经常处理处理的问题就是解耦，程序的耦合性越低表明这个程序的可读性以及可维护性越高。控制反转(Inversion of Control或IoC)就是常用的面向对象编程的设计原则，使用这个原则我们可以降低耦合性。其中依赖注入是控制反转最常用的实现。</p>
+
+<!--more-->
+
+
+<h2>什么是依赖</h2>
+
+<p>依赖是程序中常见的现象，比如类Car中用到了GasEnergy类的实例energy，通常的做法就是在Car类中显式地创建GasEnergy类的实例，并赋值给energy。如下面的代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">interface</span> <span class="nc">Energy</span> <span class="o">{</span>
+</span><span class='line'>      
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>  
+</span><span class='line'><span class="kd">class</span> <span class="nc">GasEnergy</span> <span class="kd">implements</span> <span class="n">Energy</span> <span class="o">{</span>
+</span><span class='line'>      
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>  
+</span><span class='line'><span class="kd">class</span> <span class="nc">Car</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Energy</span> <span class="n">energy</span> <span class="o">=</span> <span class="k">new</span> <span class="n">GasEnergy</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>存在问题</h2>
+
+<ul>
+<li>类Car承担了多余的责任，负责energy对象的创建，这必然存在了严重的耦合性。举一个现实中的例子，一辆汽车使用哪种能源不是由汽车来决定，而是由汽车制造商（CarMaker）来决定，这是汽车制造商的责任。</li>
+<li>可扩展性，假设我们想修改能源为电动力，那么我们必然要修改Car这个类，明显不符合开放闭合原则。</li>
+<li>不利于单元测试。</li>
+</ul>
+
+
+<h2>依赖注入</h2>
+
+<p>依赖注入是这样的一种行为，在类Car中不主动创建GasEnergy的对象，而是通过外部传入GasEnergy对象形式来设置依赖。
+常用的依赖注入有如下三种方式</p>
+
+<h3>构造器注入</h3>
+
+<p>将需要的依赖作为构造方法的参数传递完成依赖注入。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">Car</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Energy</span> <span class="n">mEnergy</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="nf">Car</span><span class="o">(</span><span class="n">Energy</span> <span class="n">energy</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">mEnergy</span> <span class="o">=</span> <span class="n">energy</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Setter方法注入</h3>
+
+<p>增加setter方法，参数为需要注入的依赖亦可完成依赖注入。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">Car</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Energy</span> <span class="n">mEnergy</span><span class="o">;</span>
+</span><span class='line'>      
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setEnergy</span><span class="o">(</span><span class="n">Energy</span> <span class="n">energy</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">mEnergy</span>  <span class="o">=</span> <span class="n">energy</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>接口注入</h3>
+
+<p>接口注入，闻其名不言而喻，就是为依赖注入创建一套接口，依赖作为参数传入，通过调用统一的接口完成对具体实现的依赖注入。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">interface</span> <span class="nc">EnergyConsumerInterface</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setEnergy</span><span class="o">(</span><span class="n">Energy</span> <span class="n">energy</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>  
+</span><span class='line'><span class="kd">class</span> <span class="nc">Car</span> <span class="kd">implements</span> <span class="n">EnergyConsumerInterface</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Energy</span> <span class="n">mEnergy</span><span class="o">;</span>
+</span><span class='line'>      
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setEnergy</span><span class="o">(</span><span class="n">Energy</span> <span class="n">energy</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">mEnergy</span>  <span class="o">=</span> <span class="n">energy</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接口注入和setter方法注入类似，不同的是接口注入使用了统一的方法来完成注入，而setter方法注入的方法名称相对比较随意。</p>
+
+<h2>框架取舍</h2>
+
+<p>依赖注入有很多框架，最有名的就是Guice，当然Spring也支持依赖注入。Guice采用的是运行时读取注解，通过反射的形式生成依赖并进行注入。这种形式不太适合Android移动设备，毕竟这些操作都在运行时处理，对性能要求较高。</p>
+
+<p>Dagger则是Android开发适合的依赖注入库，其同样采用类注解的形式，不同的是它是在编译时生成辅助类，等到在运行时使用生成的辅助类完成依赖注入。</p>
+
+<h3>用还是不用</h3>
+
+<p>其实注入框架用还是不用，是一个问题，如若使用框架，则要求团队每一个人都要遵守说明来编写代码解决依赖注入。而这些框架其实也并非很容易就能上手，学习系数相对复杂，难以掌握，这也是需要考虑的问题。</p>
+
+<p>个人观点为不推荐也不反对使用这些框架，但是觉得有些时候我们寄希望于一个框架，不如平时注意这些问题，人为避免何尝不是对自己的一种基本要求呢？</p>
+
+<h2>依赖查找</h2>
+
+<p>依赖查找和依赖注入一样属于控制反转原则的具体实现，不同于依赖注入的被动接受，依赖查找这是主动请求，在需要的时候通过调用框架提供的方法来获取对象，获取时需要提供相关的配置文件路径、key等信息来确定获取对象的状态。</p>
+
+<h2>书籍推荐</h2>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B004G8P90S/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B004G8P90S&amp;linkCode=as2&amp;tag=droidyue-23">研磨设计模式</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B00INI842W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00INI842W&amp;linkCode=as2&amp;tag=droidyue-23">设计模式之禅</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B0011FBU34/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011FBU34&amp;linkCode=as2&amp;tag=droidyue-23">Head First设计模式</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[垃圾回收器如何处理循环引用]]></title>
@@ -3881,98 +4032,6 @@ synchronized修饰的方法后，当某个线程进入调用这个方法，该�
 
 <p>如果你对本文这样的内容感兴趣，可以阅读以下Joshua Bloch大神写得书，虽然有点贵，还是英文的。
 <a href="http://www.amazon.cn/gp/product/032133678X/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=032133678X&amp;linkCode=as2&amp;tag=droidyue-23">Java Puzzlers</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Java中的堆和栈的区别]]></title>
-    <link href="http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/"/>
-    <updated>2014-12-07T16:08:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java</id>
-    <content type="html"><![CDATA[<p>当一个人开始学习Java或者其他编程语言的时候，会接触到堆和栈，由于一开始没有明确清晰的说明解释，很多人会产生很多疑问，什么是堆，什么是栈，堆和栈有什么区别？更糟糕的是，Java中存在栈这样一个后进先出（Last In First Out）的顺序的数据结构，这就是java.util.Stack。这种情况下，不免让很多人更加费解前面的问题。事实上，堆和栈都是内存中的一部分，有着不同的作用，而且一个程序需要在这片区域上分配内存。众所周知，所有的Java程序都运行在JVM虚拟机内部，我们这里介绍的自然是JVM（虚拟）内存中的堆和栈。</p>
-
-<!--more-->
-
-
-<h2>区别</h2>
-
-<p>java中堆和栈的区别自然是面试中的常见问题，下面几点就是其具体的区别</p>
-
-<h3>各司其职</h3>
-
-<p>最主要的区别就是栈内存用来存储局部变量和方法调用。<br/>
-而堆内存用来存储Java中的对象。无论是成员变量，局部变量，还是类变量，它们指向的对象都存储在堆内存中。</p>
-
-<h3>独有还是共享</h3>
-
-<p>栈内存归属于单个线程，每个线程都会有一个栈内存，其存储的变量只能在其所属线程中可见，即栈内存可以理解成线程的私有内存。<br/>
-而堆内存中的对象对所有线程可见。堆内存中的对象可以被所有线程访问。</p>
-
-<h3>异常错误</h3>
-
-<p>如果栈内存没有可用的空间存储方法调用和局部变量，JVM会抛出java.lang.StackOverFlowError。<br/>
-而如果是堆内存没有可用的空间存储生成的对象，JVM会抛出java.lang.OutOfMemoryError。</p>
-
-<h3>空间大小</h3>
-
-<p>栈的内存要远远小于堆内存，如果你使用递归的话，那么你的栈很快就会充满。如果递归没有及时跳出，很可能发生StackOverFlowError问题。<br/>
-你可以通过-Xss选项设置栈内存的大小。-Xms选项可以设置堆的开始时的大小，-Xmx选项可以设置堆的最大值。</p>
-
-<p>这就是Java中堆和栈的区别。理解好这个问题的话，可以对你解决开发中的问题，分析堆内存和栈内存使用，甚至性能调优都有帮助。</p>
-
-<h4>查看默认值(Updated)</h4>
-
-<p>查看堆的默认值，使用下面的代码，其中InitialHeapSize为最开始的堆的大小，MaxHeapSize为堆的最大值。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>13:17 <span class="nv">$ </span>java -XX:+PrintFlagsFinal -version | grep HeapSize
-</span><span class='line'>    uintx <span class="nv">ErgoHeapSizeLimit</span>                         <span class="o">=</span> 0                                   <span class="o">{</span>product<span class="o">}</span>
-</span><span class='line'>    uintx <span class="nv">HeapSizePerGCThread</span>                       <span class="o">=</span> 87241520                            <span class="o">{</span>product<span class="o">}</span>
-</span><span class='line'>    uintx InitialHeapSize                          :<span class="o">=</span> 134217728                           <span class="o">{</span>product<span class="o">}</span>
-</span><span class='line'>    uintx <span class="nv">LargePageHeapSizeThreshold</span>                <span class="o">=</span> 134217728                           <span class="o">{</span>product<span class="o">}</span>
-</span><span class='line'>    uintx MaxHeapSize                              :<span class="o">=</span> 2147483648                          <span class="o">{</span>product<span class="o">}</span>
-</span><span class='line'>java version <span class="s2">&quot;1.8.0_25&quot;</span>
-</span><span class='line'>Java<span class="o">(</span>TM<span class="o">)</span> SE Runtime Environment <span class="o">(</span>build 1.8.0_25-b17<span class="o">)</span>
-</span><span class='line'>Java HotSpot<span class="o">(</span>TM<span class="o">)</span> 64-Bit Server VM <span class="o">(</span>build 25.25-b02, mixed mode<span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>查看栈的默认值,其中ThreadStackSize为栈内存的大小。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>13:21 <span class="nv">$ </span>java -XX:+PrintFlagsFinal -version | grep ThreadStackSize
-</span><span class='line'>     intx <span class="nv">CompilerThreadStackSize</span>                   <span class="o">=</span> 0                                   <span class="o">{</span>pd product<span class="o">}</span>
-</span><span class='line'>     intx <span class="nv">ThreadStackSize</span>                           <span class="o">=</span> 1024                                <span class="o">{</span>pd product<span class="o">}</span>
-</span><span class='line'>     intx <span class="nv">VMThreadStackSize</span>                         <span class="o">=</span> 1024                                <span class="o">{</span>pd product<span class="o">}</span>
-</span><span class='line'>java version <span class="s2">&quot;1.8.0_25&quot;</span>
-</span><span class='line'>Java<span class="o">(</span>TM<span class="o">)</span> SE Runtime Environment <span class="o">(</span>build 1.8.0_25-b17<span class="o">)</span>
-</span><span class='line'>Java HotSpot<span class="o">(</span>TM<span class="o">)</span> 64-Bit Server VM <span class="o">(</span>build 25.25-b02, mixed mode<span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>译文信息</h2>
-
-<p>原汁原味的英文原文：<a href="http://javarevisited.blogspot.com.au/2013/01/difference-between-stack-and-heap-java.html">http://javarevisited.blogspot.com.au/2013/01/difference-between-stack-and-heap-java.html</a>.</p>
-
-<p>译文在原文基础上进行了修改，整理，删减。如有兴趣可以访问原文。P.S.地址已被墙。</p>
-
-<h3>一本书</h3>
-
-<p><a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=0137142528&amp;linkCode=as2&amp;tag=droidyue-23">Java Performance</a>这本书会帮你深入JVM，垃圾回收，内存监视和性能调优这些方面。</p>
 ]]></content>
   </entry>
   
