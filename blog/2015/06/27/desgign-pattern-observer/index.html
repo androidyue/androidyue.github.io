@@ -1,0 +1,596 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>这就是观察者模式 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="这就是观察者模式 Jun 27th, 2015 观察者模式是软件设计模式中的一种，使用也比较普遍，尤其是在GUI编程中。关于设计模式的文章，网络上写的都比较多，而且很多文章写的也不错，虽然说有一种重复早轮子的嫌疑，但此轮子非彼轮子，侧重点不同，思路也不同，讲述方式也不近相同。 定义 关于定义， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://droidyueimg.qiniudn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2015/06/27/desgign-pattern-observer">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//droidyue-tools.qiniudn.com/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script type="text/javascript">
+      $(document).bind('DOMNodeInserted', function(event) {
+			$('a[href^="http"]').each(
+				function(){
+					if (!$(this).attr('target')) {
+						$(this).attr('target', '_blank')
+					}
+                
+				}
+			);
+		});
+  </script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.useso.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.useso.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://stats.g.doubleclick.net/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/section_maker.js" charset="utf-8"></script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+    <h2>东半球有态度的技术分享媒体</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">这就是观察者模式</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-27T10:40:00+08:00" pubdate data-updated="true">Jun 27<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>观察者模式是软件设计模式中的一种，使用也比较普遍，尤其是在GUI编程中。关于设计模式的文章，网络上写的都比较多，而且很多文章写的也不错，虽然说有一种重复早轮子的嫌疑，但此轮子非彼轮子，侧重点不同，思路也不同，讲述方式也不近相同。</p>
+
+<!--more-->
+
+
+<h2>定义</h2>
+
+<p>关于定义，最准确的莫过于<a href="http://www.amazon.cn/gp/product/B0011FBU34/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011FBU34&amp;linkCode=as2&amp;tag=droidyue-23">Head First设计模式</a>中写到的。</p>
+
+<blockquote><p>观察者模式定义了一个一对多的依赖关系，让一个或多个观察者对象监听一个主题对象。这样一来，当被观察者状态发生改变时，需要通知相应的观察者，使这些观察者对象能够自动更新。</p></blockquote>
+
+<h2>关键要素</h2>
+
+<h3>主题</h3>
+
+<p>主题是观察者观察的对象，一个主题必须具备下面三个特征。</p>
+
+<ul>
+<li>持有监听的观察者的引用</li>
+<li>支持增加和删除观察者</li>
+<li>主题状态改变，通知观察者</li>
+</ul>
+
+
+<h3>观察者</h3>
+
+<p>当主题发生变化，收到通知进行具体的处理是观察者必须具备的特征。</p>
+
+<h2>为什么要用这种模式</h2>
+
+<p>这里举一个例子来说明，牛奶送奶站就是主题，订奶客户为监听者，客户从送奶站订阅牛奶后，会每天收到牛奶。如果客户不想订阅了，可以取消，以后就不会收到牛奶。</p>
+
+<h3>松耦合</h3>
+
+<ul>
+<li>观察者增加或删除无需修改主题的代码，只需调用主题对应的增加或者删除的方法即可。</li>
+<li>主题只负责通知观察者，但无需了解观察者如何处理通知。举个例子，送奶站只负责送递牛奶，不关心客户是喝掉还是洗脸。</li>
+<li>观察者只需等待主题通知，无需观察主题相关的细节。还是那个例子，客户只需关心送奶站送到牛奶，不关心牛奶由哪个快递人员，使用何种交通工具送达。</li>
+</ul>
+
+
+<h3>通知不错过</h3>
+
+<p>由于被动接受，正常情况下不会错过主题的改变通知。而主动获取的话，由于时机选取问题，可能导致错过某些状态。</p>
+
+<h2>Java实现</h2>
+
+<p>Java中有观察者模式使用的API</p>
+
+<ul>
+<li>java.util.Observable 这是一个类，而非接口，主题需要继承这个类。</li>
+<li>java.util.Observer   这是一个接口，监听者需要实现这个接口。</li>
+</ul>
+
+
+<h3>示例代码</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">import</span> <span class="nn">java.util.Observable</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">java.util.Observer</span><span class="o">;</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainRoot</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Observer</span> <span class="n">consumer</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Consumer</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">MilkProvider</span> <span class="n">provider</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MilkProvider</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">provider</span><span class="o">.</span><span class="na">addObserver</span><span class="o">(</span><span class="n">consumer</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">provider</span><span class="o">.</span><span class="na">milkProduced</span><span class="o">();</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="kd">static</span> <span class="kd">class</span> <span class="nc">MilkProvider</span> <span class="kd">extends</span> <span class="n">Observable</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">milkProduced</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">setChanged</span><span class="o">();</span><span class="c1">//状态改变，必须调用</span>
+</span><span class='line'>          <span class="n">notifyObservers</span><span class="o">();</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Consumer</span> <span class="kd">implements</span> <span class="n">Observer</span> <span class="o">{</span>
+</span><span class='line'>      <span class="nd">@Override</span>
+</span><span class='line'>      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">update</span><span class="o">(</span><span class="n">Observable</span> <span class="n">arg0</span><span class="o">,</span> <span class="n">Object</span> <span class="n">arg1</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Consumer update...&quot;</span> <span class="o">+</span> <span class="n">arg0</span> <span class="o">+</span> <span class="s">&quot;;arg1=&quot;</span> <span class="o">+</span> <span class="n">arg1</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上述代码完成了</p>
+
+<ul>
+<li>将consumer加入主题provider的观察者行列</li>
+<li>provider设置状态变化，通知持有的观察者</li>
+<li>观察者consumer收到通知，打印日志处理</li>
+</ul>
+
+
+<h3>setChanged为何物</h3>
+
+<p>其实上述代码中存在这样一处代码<code>setChanged();</code>，如果在通知之前没有调用这个方法，观察者是收不到通知的，这是为什么呢</p>
+
+<p>这里我们看一下setChanged的源码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">protected</span> <span class="kd">synchronized</span> <span class="kt">void</span> <span class="nf">setChanged</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">changed</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>很简单，然后找一下谁使用changed这个值</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">synchronized</span> <span class="kt">boolean</span> <span class="nf">hasChanged</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">changed</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>notifyObservers的代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">notifyObservers</span><span class="o">(</span><span class="n">Object</span> <span class="n">data</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">Observer</span><span class="o">[]</span> <span class="n">arrays</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">hasChanged</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">clearChanged</span><span class="o">();</span>
+</span><span class='line'>          <span class="n">size</span> <span class="o">=</span> <span class="n">observers</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
+</span><span class='line'>          <span class="n">arrays</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Observer</span><span class="o">[</span><span class="n">size</span><span class="o">];</span>
+</span><span class='line'>          <span class="n">observers</span><span class="o">.</span><span class="na">toArray</span><span class="o">(</span><span class="n">arrays</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">arrays</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="o">(</span><span class="n">Observer</span> <span class="n">observer</span> <span class="o">:</span> <span class="n">arrays</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">observer</span><span class="o">.</span><span class="na">update</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">data</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是为什么要加入这样一个开关呢？可能原因大致有三点</p>
+
+<p>  1.筛选有效通知，只有有效通知可以调用setChanged。比如，我的微信朋友圈一条状态，好友A点赞，后续该状态的点赞和评论并不是每条都通知A，只有A的好友触发的操作才会通知A。</p>
+
+<p>  2.便于撤销通知操作，在主题中，我们可以设置很多次setChanged，但是在最后由于某种原因需要取消通知，我们可以使用clearChanged轻松解决问题。</p>
+
+<p>  3.主动权控制，由于setChanged为protected,而notifyObservers方法为public，这就导致存在外部随意调用notifyObservers的可能，但是外部无法调用setChanged，因此真正的控制权应该在主题这里。</p>
+
+<h3>主动获取</h3>
+
+<p>观察者模式即所谓的推送方式，然而推送并非完美无缺。比如主题变化会推送大量的数据，而其中的一些观察者只需要某项数据，此时观察者就需要在具体实现中花费时间筛选数据。</p>
+
+<p>这确实是个问题，想要解决也不难，需要主题为某些数据提供getter方法，观察者只需调用getter取数据处理即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>  <span class="kd">static</span> <span class="kd">class</span> <span class="nc">MilkProvider</span> <span class="kd">extends</span> <span class="n">Observable</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">milkProduced</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">setChanged</span><span class="o">();</span><span class="c1">//状态改变，必须调用</span>
+</span><span class='line'>      <span class="n">notifyObservers</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">float</span> <span class="nf">getPrice</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="mf">2.5f</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Consumer</span> <span class="kd">implements</span> <span class="n">Observer</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">update</span><span class="o">(</span><span class="n">Observable</span> <span class="n">arg0</span><span class="o">,</span> <span class="n">Object</span> <span class="n">arg1</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">MilkProvider</span> <span class="n">provider</span> <span class="o">=</span> <span class="o">(</span><span class="n">MilkProvider</span><span class="o">)</span><span class="n">arg0</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;milk price =&quot;</span> <span class="o">+</span> <span class="n">provider</span><span class="o">.</span><span class="na">getPrice</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>不足与隐患</h2>
+
+<p>主要的问题表现在内存管理上，主要由以下两点</p>
+
+<ul>
+<li>主题持有观察者的引用，如果未正常处理从主题中删除观察者，会导致观察者无法被回收。</li>
+<li>如果观察者具体实现代码有问题，会导致主题和观察者对象形成循环引用，在某些采用引用计数的垃圾回收器可能导致无法回收。</li>
+</ul>
+
+
+<h2>书山有路</h2>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00INI842W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00INI842W&amp;linkCode=as2&amp;tag=droidyue-23">设计模式之禅</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B0011FBU34/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011FBU34&amp;linkCode=as2&amp;tag=droidyue-23">Head First设计模式</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B001130JN8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B001130JN8&amp;linkCode=as2&amp;tag=droidyue-23">设计模式 可复用面向对象软件的基础 </a></li>
+</ul>
+
+</div>
+
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/html/vote_tips.js" charset="utf-8"></script>
+
+  <br/>
+  <br/>
+  <script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/post_bannder.js"></script>
+  <hr>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/section_maker.js" charset="utf-8"></script>
+    
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blog_ads_data_source.js" charset="utf-8"></script>
+    
+<script type="text/javascript">
+    	displaySection(shouldDisplayBlogAds(), isBlogAdsInDebug(), makeBlogAdsDataSource(), makeBlogAdsPrefix(), makeBlogAdsSuffix());
+</script>
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-27T10:40:00+08:00" pubdate data-updated="true">Jun 27<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/she-ji-mo-shi/'>设计模式</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="bdsharebuttonbox"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a><a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a><a href="#" class="bds_mshare" data-cmd="mshare" title="分享到一键分享"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"1","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32"},"share":{},"image":{"viewList":["fbook","twi","douban","tsina","qzone","weixin","mshare"],"viewText":"分享到：","viewSize":"32"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["fbook","twi","douban","tsina","qzone","weixin","mshare"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/06/23/google-play-services-7-dot-5-adds-new-capabilities/" title="Previous Post: Google Play Services 7.5新增API及多项特性">&laquo; Google Play Services 7.5新增API及多项特性</a>
+      
+      
+        <!-- UJian Button BEGIN -->
+<div class="ujian-hook"></div>
+<script type="text/javascript">var ujian_config = {num:8,showType:3};</script>
+<script type="text/javascript" src="http://v1.ujian.cc/code/ujian.js?uid=1728662"></script>
+<a href="http://www.ujian.cc" style="border:0;"><img src="http://img.ujian.cc/pixel.png" alt="友荐云推荐" style="border:0;padding:0;margin:0;" /></a>
+<!-- UJian Button END -->
+
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!-- 多说评论框 start -->
+<div class="ds-thread" data-thread-key="/blog/2015/06/27/desgign-pattern-observer" data-title="这就是观察者模式" data-url="http://droidyue.com/blog/2015/06/27/desgign-pattern-observer/"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    var duoshuoQuery = {short_name:"droidyue"};
+    (function() {
+
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+     })();
+ </script>
+ <!-- 多说公共JS代码 end -->
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <a href="http://stackoverflow.com/users/749727/androidyue">
+<img src="http://stackoverflow.com/users/flair/749727.png" width="270" height="58" alt="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for androidyue at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/06/27/desgign-pattern-observer/">这就是观察者模式</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/23/google-play-services-7-dot-5-adds-new-capabilities/">Google Play Services 7.5新增API及多项特性</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/13/talk-show-about-dependency-injection/">说说依赖注入</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/05/how-garbage-collector-handles-circular-references/">垃圾回收器如何处理循环引用</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/30/android-http-clients/">Android中HTTP相关的API</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/22/gmail-535-5-dot-7-8-error-authentication-failed/">Gmail托管邮箱发邮件认证失败</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/15/jar-not-in-apk/">JAR包未加入APK程序</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/11/google-play-tuiguang/">Google Play商店推广那些事</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/26/guanbi-mac-qq-tishi/">关闭Mac屏幕右上角QQ通知</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/07/autoboxing-and-autounboxing-in-java/">Java中的自动装箱与拆箱</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/03/08/sockets-programming-in-java/">读懂Java中的Socket编程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/02/28/my-android-work-akoi/">士别三年，我的最新个人作品</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/18/deal-with-touch-icon-in-android/">Android中处理Touch Icon的方案</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/11/looking-into-singleton/">单例这种设计模式</a>
+      </li>
+    
+  </ul>
+</section>
+<!-- 将此标记放置在你希望显示+1 按钮的位置。 -->
+<div class="g-plusone" data-size="tall" data-annotation="inline" data-width="300" data-href="http://droidyue.com/"></div>
+<!-- 将此标记放置在最后一个 +1 按钮 标记之后。 -->
+<script type="text/javascript">
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = 'https://apis.google.com/js/platform.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
+</script>
+<a href="https://plus.google.com/105362551238192049560?rel=author">Google+</a>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blogroll_data_source.js" charset="utf-8"></script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix());
+</script>
+<script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/common_book_data_source.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix());
+</script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/section_maker.js" charset="utf-8"></script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/program_book_data_source.js" charset="utf-8"></script>
+        
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix());
+</script>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> && <a href="http://droidredirect.sinaapp.com/qiniu_redirect.php">七牛云存储</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://droidyue-tools.qiniudn.com/arrow37.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
