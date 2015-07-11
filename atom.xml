@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-07-09T06:17:57+08:00</updated>
+  <updated>2015-07-11T17:48:21+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,107 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[在Mac上为其他设备开启代理]]></title>
+    <link href="http://droidyue.com/blog/2015/07/11/start-proxy-server-on-mac/"/>
+    <updated>2015-07-11T17:36:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/07/11/start-proxy-server-on-mac</id>
+    <content type="html"><![CDATA[<p>前些日子，想要查看一个Release版本的HTTP请求，由于已经是发布版本，日志已然关闭，遂开始从HTTP代理的思路着手。</p>
+
+<p>本文是偏于操作的总结，行文目的是快速解决诸如上面的问题，不是为了深入了解squidman。如需深入俩接，请参考文章尾部的进阶推荐内容。</p>
+
+<!--more-->
+
+
+<h3>Fiddler铩羽而归</h3>
+
+<p>首先尝试了鼎鼎有名的Fiddler，Fiddler是一款基于.NET的应用，天然运行在Windows系统上。但是想要安装到Mac上则需要安装.NET运行时，可是一旦启动Fiddler代理就无缘无故崩溃，最后不得不铩羽而归，另谋他路。</p>
+
+<h3>SquidMan</h3>
+
+<p>SquidMan是一款Mac上的图形化的squid代理服务器的安装管理工具。使用squid服务器软件可以帮助我们实现如下功能</p>
+
+<ul>
+<li>缓存下载内容，减少网络带宽，加速网页浏览。</li>
+<li>作为代理服务器，供其他设备使用。</li>
+</ul>
+
+
+<p>这里我们用到的是其代理功能。</p>
+
+<p>巧妇难为无米之炊，首先要做的就是安装squidman，从<a href="http://squidman.net/squidman/">这里</a>下载对应的版本并安装，然后进行启动即可。</p>
+
+<h3>客户端配置</h3>
+
+<p>以下操作的WIFI热点应该为Mac设备与客户端设备同时连接的热点，以确保在同一局域网中。
+代理服务器的IP地址使用<code>ifconfig</code>查看，端口默认为8087。
+以Android设备为例</p>
+
+<p>设置&mdash;>WLAN&mdash;>长按目标WIFI热点&mdash;>修改网络&mdash;>勾选显示高级选项&mdash;>修改代理为手动，填出代理服务器的地址和端口，保存即可。</p>
+
+<h3>查看日志</h3>
+
+<h4>终端查看</h4>
+
+<p>个人喜欢使用终端查看，使用tail命令查看访问日志一目了然。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">tail</span> <span class="o">-</span><span class="mi">200</span><span class="n">f</span> <span class="o">~/</span><span class="n">Library</span><span class="o">/</span><span class="n">Logs</span><span class="o">/</span><span class="n">squid</span><span class="o">/</span><span class="n">squid</span><span class="o">-</span><span class="n">access</span><span class="o">.</span><span class="na">log</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>客户端查看</h4>
+
+<p>使用SquidMan客户端查看也是一种选择，选择Window&mdash;>Tools即可看到如下的界面</p>
+
+<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/squidman_tools.png"></p>
+
+<p>Access Log不会自动追加最新的请求日志，需要再次点击Access Log按钮才可以。</p>
+
+<h3>问题解决</h3>
+
+<h4>无法访问网络 403</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mf">1434336922.275</span>   <span class="mi">1140</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.100</span> <span class="n">TCP_DENIED</span><span class="o">/</span><span class="mi">403</span> <span class="mi">4286</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//m.baidu.com/? - HIER_NONE/- text/html</span>
+</span><span class='line'><span class="mf">1434336922.594</span>     <span class="mi">71</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.100</span> <span class="n">TCP_DENIED</span><span class="o">/</span><span class="mi">403</span> <span class="mi">3979</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//www.squid-cache.org/Artwork/SN.png - HIER_NONE/- text/html</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>日志全部显示为TCP_DENIED/403，表明Squidman拒绝了来自客户端的请求</p>
+
+<p>解决方法，在配置文件中找到如下代码</p>
+
+<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/squidman_403.png" title="" ></p>
+
+<p>替换为<code>http_access allow all</code>，即允许所有的HTTP访问，停止Squiman，然后重新启动，如果失败，再次点击重新启动即可。</p>
+
+<h4>无法查看GET参数</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mf">1434340562.396</span>    <span class="mi">339</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.100</span> <span class="n">TCP_MISS</span><span class="o">/</span><span class="mi">200</span> <span class="mi">82471</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//m.baidu.com/s? - HIER_DIRECT/115.239.210.14 text/html</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>默认情况下，从日志中是无法看到GET查询参数的，因为在写入日志前，程序已经过滤掉了这些数据。通过在配置中加入<code>strip_query_terms off</code>保存，重新启动，再次查看日志，就可以看到查询参数了。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mf">1434340777.200</span>    <span class="mi">287</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">1.100</span> <span class="n">TCP_MISS</span><span class="o">/</span><span class="mi">200</span> <span class="mi">82272</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//m.baidu.com/s?from=1097d&amp;word=%E6%8A%80%E6%9C%AF%E5%B0%8F%E9%BB%91%E5%B1%8B - HIER_DIRECT/115.239.210.14 text/html</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>进阶推荐</h3>
+
+<ul>
+<li><a href="http://wiki.squid-cache.org/ConfigExamples">Squid Config Examples</a></li>
+<li><a href="http://www.squid-cache.org/Doc/config/">Squid configuration References</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B008AEI8A2/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B008AEI8A2&amp;linkCode=as2&amp;tag=droidyue-23">鸟哥的Linux私房菜:服务器架设篇</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[为什么高端人才会使用拍卖选工作]]></title>
@@ -3397,209 +3498,6 @@ synchronized修饰的方法后，当某个线程进入调用这个方法，该�
 
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B00G9KF4JC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00G9KF4JC&amp;linkCode=as2&amp;tag=droidyue-23">Java核心技术</a>，Java领域最有影响力和价值的著作之一，拥有20多年教学与研究经验的资深Java技术专家撰写（获Jolt大奖），与<a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011F7WU4&amp;linkCode=as2&amp;tag=droidyue-23">《Java编程思想》</a>齐名，10余年全球畅销不衰，广受好评。</li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android中Handler引起的内存泄露]]></title>
-    <link href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/"/>
-    <updated>2014-12-28T11:24:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur</id>
-    <content type="html"><![CDATA[<p>在Android常用编程中，Handler在进行异步操作并处理返回结果时经常被使用。通常我们的代码会这样实现。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SampleActivity</span> <span class="kd">extends</span> <span class="n">Activity</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">final</span> <span class="n">Handler</span> <span class="n">mLeakyHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="c1">// ... </span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<!--more-->
-
-
-<p>但是，其实上面的代码可能导致内存泄露，当你使用Android lint工具的话，会得到这样的警告</p>
-
-<blockquote><p>In Android, Handler classes should be static or leaks might occur, Messages enqueued on the application thread&rsquo;s MessageQueue also retain their target Handler. If the Handler is an inner class, its outer class will be retained as well. To avoid leaking the outer class, declare the Handler as a static nested class with a WeakReference to its outer class</p></blockquote>
-
-<p>看到这里，可能还是有一些搞不清楚，代码中哪里可能导致内存泄露，又是如何导致内存泄露的呢？那我们就慢慢分析一下。</p>
-
-<p>1.当一个Android应用启动的时候，会自动创建一个供应用主线程使用的Looper实例。Looper的主要工作就是一个一个处理消息队列中的消息对象。在Android中，所有Android框架的事件（比如Activity的生命周期方法调用和按钮点击等）都是放入到消息中，然后加入到Looper要处理的消息队列中，由Looper负责一条一条地进行处理。主线程中的Looper生命周期和当前应用一样长。</p>
-
-<p>2.当一个Handler在主线程进行了初始化之后，我们发送一个target为这个Handler的消息到Looper处理的消息队列时，实际上已经发送的消息已经包含了一个Handler实例的引用，只有这样Looper在处理到这条消息时才可以调用Handler#handleMessage(Message)完成消息的正确处理。</p>
-
-<p>3.在Java中，非静态的内部类和匿名内部类都会隐式地持有其外部类的引用。静态的内部类不会持有外部类的引用。关于这一内容可以查看<a href="http://droidyue.com/blog/2014/10/02/the-private-modifier-in-java/">细话Java：&#8221;失效&#8221;的private修饰符</a></p>
-
-<p>确实上面的代码示例有点难以察觉内存泄露，那么下面的例子就非常明显了</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SampleActivity</span> <span class="kd">extends</span> <span class="n">Activity</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">final</span> <span class="n">Handler</span> <span class="n">mLeakyHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="c1">// ...</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// Post a message and delay its execution for 10 minutes.</span>
-</span><span class='line'>    <span class="n">mLeakyHandler</span><span class="o">.</span><span class="na">postDelayed</span><span class="o">(</span><span class="k">new</span> <span class="n">Runnable</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="nd">@Override</span>
-</span><span class='line'>      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span> <span class="cm">/* ... */</span> <span class="o">}</span>
-</span><span class='line'>    <span class="o">},</span> <span class="mi">1000</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">10</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// Go back to the previous Activity.</span>
-</span><span class='line'>    <span class="n">finish</span><span class="o">();</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>分析一下上面的代码，当我们执行了Activity的finish方法，被延迟的消息会在被处理之前存在于主线程消息队列中10分钟，而这个消息中又包含了Handler的引用，而Handler是一个匿名内部类的实例，其持有外面的SampleActivity的引用，所以这导致了SampleActivity无法回收，进行导致SampleActivity持有的很多资源都无法回收，这就是我们常说的内存泄露。</p>
-
-<p>注意上面的new Runnable这里也是匿名内部类实现的，同样也会持有SampleActivity的引用，也会阻止SampleActivity被回收。</p>
-
-<p>要解决这种问题，思路就是不适用非静态内部类，继承Handler时，要么是放在单独的类文件中，要么就是使用静态内部类。因为静态的内部类不会持有外部类的引用，所以不会导致外部类实例的内存泄露。当你需要在静态内部类中调用外部的Activity时，我们可以使用<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">弱引用</a>来处理。另外关于同样也需要将Runnable设置为静态的成员属性。注意：一个静态的匿名内部类实例不会持有外部类的引用。
-修改后不会导致内存泄露的代码如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SampleActivity</span> <span class="kd">extends</span> <span class="n">Activity</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="cm">/**</span>
-</span><span class='line'><span class="cm">   * Instances of static inner classes do not hold an implicit</span>
-</span><span class='line'><span class="cm">   * reference to their outer class.</span>
-</span><span class='line'><span class="cm">   */</span>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">MyHandler</span> <span class="kd">extends</span> <span class="n">Handler</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">SampleActivity</span><span class="o">&gt;</span> <span class="n">mActivity</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="nf">MyHandler</span><span class="o">(</span><span class="n">SampleActivity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">mActivity</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">SampleActivity</span><span class="o">&gt;(</span><span class="n">activity</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">SampleActivity</span> <span class="n">activity</span> <span class="o">=</span> <span class="n">mActivity</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">activity</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="c1">// ...</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">final</span> <span class="n">MyHandler</span> <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MyHandler</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="cm">/**</span>
-</span><span class='line'><span class="cm">   * Instances of anonymous classes do not hold an implicit</span>
-</span><span class='line'><span class="cm">   * reference to their outer class when they are &quot;static&quot;.</span>
-</span><span class='line'><span class="cm">   */</span>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">Runnable</span> <span class="n">sRunnable</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Runnable</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="nd">@Override</span>
-</span><span class='line'>      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span> <span class="cm">/* ... */</span> <span class="o">}</span>
-</span><span class='line'>  <span class="o">};</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// Post a message and delay its execution for 10 minutes.</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postDelayed</span><span class="o">(</span><span class="n">sRunnable</span><span class="o">,</span> <span class="mi">1000</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">10</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// Go back to the previous Activity.</span>
-</span><span class='line'>    <span class="n">finish</span><span class="o">();</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其实在Android中很多的内存泄露都是由于在Activity中使用了非静态内部类导致的，就像本文提到的一样，所以当我们使用时要非静态内部类时要格外注意，如果其实例的持有对象的生命周期大于其外部类对象，那么就有可能导致内存泄露。个人倾向于使用文章的静态类和弱引用的方法解决这种问题。</p>
-
-<h3>译文信息</h3>
-
-<ul>
-<li><a href="http://www.androiddesignpatterns.com/2013/01/inner-class-handler-memory-leak.html">How to Leak a Context: Handlers &amp; Inner Classes</a></li>
 </ul>
 
 ]]></content>
