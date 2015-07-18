@@ -6,11 +6,217 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Sat, 18 Jul 2015 09:38:35 GMT</pubDate>
+  <pubDate>Sat, 18 Jul 2015 10:01:47 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;p&gt;有过Android开发经历的人都不会对ANR陌生，它和崩溃一样是程序设计的问题。本文将以较为深入的视角来介绍什么是ANR，出现场景，如何避免以及如何定位分析ANR,希望可以帮助大家在编写程序时有所帮助。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;什么是ANR&lt;/h2&gt;
+
+&lt;p&gt;ANR全称&lt;code&gt;Application Not Responding&lt;/code&gt;，意思就是程序未响应。如果一个应用无法响应用户的输入，系统就会弹出一个ANR对话框，如下图所示,用户可以自行选择继续等待亦或者是停止当前程序。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://droidyueimg.qiniudn.com/android_anr.png"&gt;&lt;/p&gt;
+
+&lt;h2&gt;出现场景&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;主线程被IO操作（从4.0之后网络IO不允许在主线程中）阻塞。&lt;/li&gt;
+&lt;li&gt;主线程中存在耗时的计算&lt;/li&gt;
+&lt;li&gt;主线程中错误的操作，比如Thread.wait或者Thread.sleep等&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;Android系统会监控程序的响应状况，一旦出现下面两种情况，则弹出ANR对话框&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;应用在&lt;strong&gt;5秒&lt;/strong&gt;内未响应用户的输入事件（如按键或者触摸）&lt;/li&gt;
+&lt;li&gt;BroadcastReceiver未在&lt;strong&gt;10秒&lt;/strong&gt;内完成相关的处理&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;如何避免&lt;/h2&gt;
+
+&lt;p&gt;基本的思路就是将IO操作在工作线程来处理，减少其他耗时操作和错误操作&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;使用&lt;a href="http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/"&gt;AsyncTask&lt;/a&gt;处理耗时IO操作。&lt;/li&gt;
+&lt;li&gt;使用Thread或者HandlerThread时，调用Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)设置优先级，否则仍然会降低程序响应，因为默认Thread的优先级和主线程相同。&lt;/li&gt;
+&lt;li&gt;使用&lt;a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/"&gt;Handler&lt;/a&gt;处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。&lt;/li&gt;
+&lt;li&gt;Activity的onCreate和onResume回调中尽量避免耗时的代码&lt;/li&gt;
+&lt;li&gt;BroadcastReceiver中onReceive代码也要尽量减少耗时，建议使用IntentService处理。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;画龙点睛&lt;/h2&gt;
+
+&lt;p&gt;通常100到200毫秒就会让人察觉程序反应慢，为了更加提升响应，可以使用下面的几种方法&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;如果程序正在后台处理用户的输入，建议使用让用户得知进度，比如使用ProgressBar控件。&lt;/li&gt;
+&lt;li&gt;程序启动时可以选择加上欢迎界面，避免让用户察觉卡顿。&lt;/li&gt;
+&lt;li&gt;使用Systrace和TraceView找出影响响应的问题。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;如何定位&lt;/h2&gt;
+
+&lt;p&gt;如果开发机器上出现问题，我们可以通过查看&lt;code&gt;/data/anr/traces.txt&lt;/code&gt;即可，最新的ANR信息在最开始部分。我们从stacktrace中即可找到出问题的具体行数。本例中问题出现在MainActivity.java 27行，因为这里调用了Thread.sleep方法。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;span class='line-number'&gt;15&lt;/span&gt;
+&lt;span class='line-number'&gt;16&lt;/span&gt;
+&lt;span class='line-number'&gt;17&lt;/span&gt;
+&lt;span class='line-number'&gt;18&lt;/span&gt;
+&lt;span class='line-number'&gt;19&lt;/span&gt;
+&lt;span class='line-number'&gt;20&lt;/span&gt;
+&lt;span class='line-number'&gt;21&lt;/span&gt;
+&lt;span class='line-number'&gt;22&lt;/span&gt;
+&lt;span class='line-number'&gt;23&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;root&lt;/span&gt;&lt;span class="nd"&gt;@htc_m8tl&lt;/span&gt;&lt;span class="o"&gt;:/&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt; &lt;span class="n"&gt;cat&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;anr&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;traces&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;txt&lt;/span&gt; &lt;span class="o"&gt;|&lt;/span&gt; &lt;span class="n"&gt;more&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;-----&lt;/span&gt; &lt;span class="n"&gt;pid&lt;/span&gt; &lt;span class="mi"&gt;30307&lt;/span&gt; &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="mi"&gt;2015&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;05&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;30&lt;/span&gt; &lt;span class="mi"&gt;14&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;51&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;14&lt;/span&gt; &lt;span class="o"&gt;-----&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;Cmd&lt;/span&gt; &lt;span class="nl"&gt;line:&lt;/span&gt; &lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="nl"&gt;JNI:&lt;/span&gt; &lt;span class="n"&gt;CheckJNI&lt;/span&gt; &lt;span class="n"&gt;is&lt;/span&gt; &lt;span class="n"&gt;off&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt; &lt;span class="n"&gt;workarounds&lt;/span&gt; &lt;span class="n"&gt;are&lt;/span&gt; &lt;span class="n"&gt;off&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt; &lt;span class="n"&gt;pins&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt; &lt;span class="n"&gt;globals&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;272&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;DALVIK&lt;/span&gt; &lt;span class="nl"&gt;THREADS:&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nl"&gt;mutexes:&lt;/span&gt; &lt;span class="n"&gt;tll&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="n"&gt;tsl&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="n"&gt;tscl&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="n"&gt;ghl&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="s"&gt;&amp;quot;main&amp;quot;&lt;/span&gt; &lt;span class="n"&gt;prio&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt; &lt;span class="n"&gt;tid&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt; &lt;span class="n"&gt;TIMED_WAIT&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;|&lt;/span&gt; &lt;span class="n"&gt;group&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;main&amp;quot;&lt;/span&gt; &lt;span class="n"&gt;sCount&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt; &lt;span class="n"&gt;dsCount&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mh"&gt;0x416eaf18&lt;/span&gt; &lt;span class="n"&gt;self&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mh"&gt;0x416d8650&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;|&lt;/span&gt; &lt;span class="n"&gt;sysTid&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;30307&lt;/span&gt; &lt;span class="n"&gt;nice&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="n"&gt;sched&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="n"&gt;cgrp&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;apps&lt;/span&gt; &lt;span class="n"&gt;handle&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1074565528&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;|&lt;/span&gt; &lt;span class="n"&gt;state&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;S&lt;/span&gt; &lt;span class="n"&gt;schedstat&lt;/span&gt;&lt;span class="o"&gt;=(&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="n"&gt;utm&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt; &lt;span class="n"&gt;stm&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt; &lt;span class="n"&gt;core&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;VMThread&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;sleep&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Native&lt;/span&gt; &lt;span class="n"&gt;Method&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Thread&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;sleep&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Thread&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;java&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;1044&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Thread&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;sleep&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Thread&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;java&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;1026&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;MainActivity&lt;/span&gt;&lt;span class="n"&gt;$1&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;run&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;MainActivity&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;java&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;27&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="n"&gt;android&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Activity&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;runOnUiThread&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Activity&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;java&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;4794&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;MainActivity&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;onResume&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;MainActivity&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;java&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;33&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="n"&gt;android&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Instrumentation&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;callActivityOnResume&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Instrumentation&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;java&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;1282&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;at&lt;/span&gt; &lt;span class="n"&gt;android&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Activity&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;performResume&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Activity&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;java&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;5405&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;如果是线上版本引起的，Google Play后台有相关的数据可以帮助查看分析并解决问题。&lt;/p&gt;
+
+&lt;h2&gt;细致分析&lt;/h2&gt;
+
+&lt;p&gt;  &lt;strong&gt;提问&lt;/strong&gt;: BroadcastReceiver过了60秒居然没有ANR？ 现场代码如下&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;NetworkReceiver&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;BroadcastReceiver&lt;/span&gt;&lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;LOGTAG&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;NetworkReceiver&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nd"&gt;@Override&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onReceive&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Context&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;onReceive intent=&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="k"&gt;try&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;            &lt;span class="n"&gt;Thread&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;sleep&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;60000&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;}&lt;/span&gt; &lt;span class="k"&gt;catch&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;InterruptedException&lt;/span&gt; &lt;span class="n"&gt;e&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;            &lt;span class="n"&gt;e&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;printStackTrace&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;onReceive end&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;
+  &lt;strong&gt;回答&lt;/strong&gt;：实际上已经发生了ANR，只是没有进行对话框弹出而已。这种ANR就是background ANR，即后台程序的ANR，我们可以通过过滤日志验证&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;span class='line-number'&gt;15&lt;/span&gt;
+&lt;span class='line-number'&gt;16&lt;/span&gt;
+&lt;span class='line-number'&gt;17&lt;/span&gt;
+&lt;span class='line-number'&gt;18&lt;/span&gt;
+&lt;span class='line-number'&gt;19&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;adb&lt;/span&gt; &lt;span class="n"&gt;logcat&lt;/span&gt; &lt;span class="o"&gt;|&lt;/span&gt; &lt;span class="n"&gt;grep&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;NetworkReceiver|ActivityManager|WindowManager&amp;quot;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;I&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;NetworkReceiver&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt; &lt;span class="mi"&gt;4109&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;onReceive&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="n"&gt;act&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;android&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;net&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;conn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;CONNECTIVITY_CHANGE&lt;/span&gt; &lt;span class="n"&gt;flg&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mh"&gt;0x8000010&lt;/span&gt; &lt;span class="n"&gt;cmp&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;&lt;span class="o"&gt;/.&lt;/span&gt;&lt;span class="na"&gt;NetworkReceiver&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;has&lt;/span&gt; &lt;span class="n"&gt;extras&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;I&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;No&lt;/span&gt; &lt;span class="n"&gt;longer&lt;/span&gt; &lt;span class="n"&gt;want&lt;/span&gt; &lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;android&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;exchange&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;pid&lt;/span&gt; &lt;span class="mi"&gt;1054&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;empty&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;17&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;I&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;NetworkReceiver&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt; &lt;span class="mi"&gt;4109&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;onReceive&lt;/span&gt; &lt;span class="n"&gt;end&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;W&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;BroadcastQueue&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Receiver&lt;/span&gt; &lt;span class="n"&gt;during&lt;/span&gt; &lt;span class="nl"&gt;timeout:&lt;/span&gt; &lt;span class="n"&gt;ResolveInfo&lt;/span&gt;&lt;span class="o"&gt;{&lt;/span&gt;&lt;span class="mi"&gt;5342&lt;/span&gt;&lt;span class="n"&gt;dde4&lt;/span&gt; &lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;NetworkReceiver&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="n"&gt;o&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mh"&gt;0x108000&lt;/span&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;ANR&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="nl"&gt;Reason:&lt;/span&gt; &lt;span class="n"&gt;Broadcast&lt;/span&gt; &lt;span class="n"&gt;of&lt;/span&gt; &lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="n"&gt;act&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;android&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;net&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;conn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;CONNECTIVITY_CHANGE&lt;/span&gt; &lt;span class="n"&gt;flg&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mh"&gt;0x8000010&lt;/span&gt; &lt;span class="n"&gt;cmp&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;&lt;span class="o"&gt;/.&lt;/span&gt;&lt;span class="na"&gt;NetworkReceiver&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;has&lt;/span&gt; &lt;span class="n"&gt;extras&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="nl"&gt;Load:&lt;/span&gt; &lt;span class="mf"&gt;0.37&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="mf"&gt;0.2&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="mf"&gt;0.14&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;CPU&lt;/span&gt; &lt;span class="n"&gt;usage&lt;/span&gt; &lt;span class="n"&gt;from&lt;/span&gt; &lt;span class="mi"&gt;26047&lt;/span&gt;&lt;span class="n"&gt;ms&lt;/span&gt; &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="n"&gt;ms&lt;/span&gt; &lt;span class="nl"&gt;ago:&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt;   &lt;span class="mf"&gt;0.4&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="mi"&gt;58&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nl"&gt;adbd:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mf"&gt;0.4&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;kernel&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="nl"&gt;faults:&lt;/span&gt; &lt;span class="mi"&gt;1501&lt;/span&gt; &lt;span class="n"&gt;minor&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt;   &lt;span class="mf"&gt;0.3&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nl"&gt;system_server:&lt;/span&gt; &lt;span class="mf"&gt;0.1&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mf"&gt;0.1&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;kernel&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt;   &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="mi"&gt;4109&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;kernel&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="nl"&gt;faults:&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt; &lt;span class="n"&gt;minor&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="mf"&gt;1.5&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="nl"&gt;TOTAL:&lt;/span&gt; &lt;span class="mf"&gt;0.5&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mf"&gt;0.9&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;kernel&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;softirq&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;CPU&lt;/span&gt; &lt;span class="n"&gt;usage&lt;/span&gt; &lt;span class="n"&gt;from&lt;/span&gt; &lt;span class="mi"&gt;87&lt;/span&gt;&lt;span class="n"&gt;ms&lt;/span&gt; &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="mi"&gt;589&lt;/span&gt;&lt;span class="n"&gt;ms&lt;/span&gt; &lt;span class="nl"&gt;later:&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt;   &lt;span class="mf"&gt;1.8&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="mi"&gt;58&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nl"&gt;adbd:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mf"&gt;1.8&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;kernel&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="nl"&gt;faults:&lt;/span&gt; &lt;span class="mi"&gt;30&lt;/span&gt; &lt;span class="n"&gt;minor&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt;     &lt;span class="mf"&gt;1.8&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="mi"&gt;58&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nl"&gt;adbd:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mf"&gt;1.8&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;kernel&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;E&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="nl"&gt;TOTAL:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;user&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;kernel&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;W&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Killing&lt;/span&gt; &lt;span class="n"&gt;ProcessRecord&lt;/span&gt;&lt;span class="o"&gt;{&lt;/span&gt;&lt;span class="mi"&gt;5326&lt;/span&gt;&lt;span class="n"&gt;d418&lt;/span&gt; &lt;span class="mi"&gt;4109&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;u0a10063&lt;/span&gt;&lt;span class="o"&gt;}:&lt;/span&gt; &lt;span class="n"&gt;background&lt;/span&gt; &lt;span class="n"&gt;ANR&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;I&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;  &lt;span class="mi"&gt;462&lt;/span&gt;&lt;span class="o"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Process&lt;/span&gt; &lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;example&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;androidyue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;bitmapdemo&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;pid&lt;/span&gt; &lt;span class="mi"&gt;4109&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="n"&gt;has&lt;/span&gt; &lt;span class="n"&gt;died&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;除了日志，我们还可以根据前面提到的查看traces.txt文件。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;提问&lt;/strong&gt;:可以更容易了解background ANR么？&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;回答&lt;/strong&gt;:当然可以，在Android开发者选项&amp;mdash;&gt;高级&amp;mdash;&gt;显示所有”应用程序无响应“勾选即可对后台ANR也进行弹窗显示，方便查看了解程序运行情况。&lt;/p&gt;
+
+&lt;h2&gt;参考文章&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="http://developer.android.com/intl/zh-cn/training/articles/perf-anr.html"&gt;Keeping Your App Responsive&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+    <title>说说Android中的ANR</title>
+    <link>http://droidyue.com/blog/2015/07/18/anr-in-android/</link>
+    <pubDate>Sat, 18 Jul 2015 09:53:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2015/07/18/anr-in-android</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;前些日子，想要查看一个Release版本的HTTP请求，由于已经是发布版本，日志已然关闭，遂开始从HTTP代理的思路着手。&lt;/p&gt;
 
@@ -2980,525 +3186,6 @@ synchronized修饰的方法后，当某个线程进入调用这个方法，该�
     <link>http://droidyue.com/blog/2015/01/10/plan-for-the-first-half-of-2015/</link>
     <pubDate>Sat, 10 Jan 2015 14:41:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2015/01/10/plan-for-the-first-half-of-2015</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;一个Java程序的执行要经过编译和执行（解释）这两个步骤，同时Java又是面向对象的编程语言。当子类和父类存在同一个方法，子类重写了父类的方法，程序在运行时调用方法是调用父类的方法还是子类的重写方法呢，这应该是我们在初学Java时遇到的问题。这里首先我们将确定这种调用何种方法实现或者变量的操作叫做绑定。&lt;/p&gt;
-
-&lt;p&gt;在Java中存在两种绑定方式，一种为静态绑定，又称作早期绑定。另一种就是动态绑定，亦称为后期绑定。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;h2&gt;区别对比&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;静态绑定发生在编译时期，动态绑定发生在运行时&lt;/li&gt;
-&lt;li&gt;使用private或static或final修饰的变量或者方法，使用静态绑定。而虚方法（可以被子类重写的方法）则会根据运行时的对象进行动态绑定。&lt;/li&gt;
-&lt;li&gt;静态绑定使用类信息来完成，而动态绑定则需要使用对象信息来完成。&lt;/li&gt;
-&lt;li&gt;重载(Overload)的方法使用静态绑定完成，而重写(Override)的方法则使用动态绑定完成。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h2&gt;重载方法的示例&lt;/h2&gt;
-
-&lt;p&gt;这里展示一个重载方法的示例。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;TestMain&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Caller&lt;/span&gt; &lt;span class="n"&gt;caller&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;Caller&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;caller&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Caller&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;an Object instance in Caller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;a String instance in in Caller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;执行的结果为&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="mi"&gt;22&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;19&lt;/span&gt; &lt;span class="n"&gt;$&lt;/span&gt; &lt;span class="n"&gt;java&lt;/span&gt; &lt;span class="n"&gt;TestMain&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;instance&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="n"&gt;Caller&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;在上面的代码中，call方法存在两个重载的实现，一个是接收Object类型的对象作为参数，另一个则是接收String类型的对象作为参数。str是一个String对象，所有接收String类型参数的call方法会被调用。而这里的绑定就是在编译时期根据参数类型进行的静态绑定。&lt;/p&gt;
-
-&lt;h3&gt;验证&lt;/h3&gt;
-
-&lt;p&gt;光看表象无法证明是进行了静态绑定，使用javap发编译一下即可验证。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;span class='line-number'&gt;21&lt;/span&gt;
-&lt;span class='line-number'&gt;22&lt;/span&gt;
-&lt;span class='line-number'&gt;23&lt;/span&gt;
-&lt;span class='line-number'&gt;24&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="mi"&gt;22&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;19&lt;/span&gt; &lt;span class="n"&gt;$&lt;/span&gt; &lt;span class="n"&gt;javap&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;c&lt;/span&gt; &lt;span class="n"&gt;TestMain&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;Compiled&lt;/span&gt; &lt;span class="n"&gt;from&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;TestMain.java&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;TestMain&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="nf"&gt;TestMain&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nl"&gt;Code:&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_0&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;                  &lt;span class="c1"&gt;// Method java/lang/Object.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;return&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nl"&gt;Code:&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt;           &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;                  &lt;span class="c1"&gt;// class java/lang/String&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;dup&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;                  &lt;span class="c1"&gt;// Method java/lang/String.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;7&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;astore_1&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt;           &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;                  &lt;span class="c1"&gt;// class TestMain$Caller&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;11&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;dup&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;12&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;                  &lt;span class="c1"&gt;// Method TestMain$Caller.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;15&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;astore_2&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;16&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_2&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;17&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_1&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;18&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokevirtual&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;                  &lt;span class="c1"&gt;// Method TestMain$Caller.call:(Ljava/lang/String;)V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;21&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;return&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;看到了这一行&lt;code&gt;18: invokevirtual #6                  // Method TestMain$Caller.call:(Ljava/lang/String;)V&lt;/code&gt;确实是发生了静态绑定，确定了调用了接收String对象作为参数的caller方法。&lt;/p&gt;
-
-&lt;h2&gt;重写方法的示例&lt;/h2&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;TestMain&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Caller&lt;/span&gt; &lt;span class="n"&gt;caller&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;SubCaller&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;caller&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Caller&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;a String instance in Caller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SubCaller&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;Caller&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;a String instance in SubCaller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;执行的结果为&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="mi"&gt;22&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;27&lt;/span&gt; &lt;span class="n"&gt;$&lt;/span&gt; &lt;span class="n"&gt;java&lt;/span&gt; &lt;span class="n"&gt;TestMain&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;instance&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="n"&gt;SubCaller&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;上面的代码，Caller中有一个call方法的实现，SubCaller继承Caller，并且重写了call方法的实现。我们声明了一个Caller类型的变量callerSub，但是这个变量指向的时一个SubCaller的对象。根据结果可以看出，其调用了SubCaller的call方法实现，而非Caller的call方法。这一结果的产生的原因是因为在运行时发生了动态绑定，在绑定过程中需要确定调用哪个版本的call方法实现。&lt;/p&gt;
-
-&lt;h3&gt;验证&lt;/h3&gt;
-
-&lt;p&gt;使用javap不能直接验证动态绑定，然后如果证明没有进行静态绑定，那么就说明进行了动态绑定。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;span class='line-number'&gt;21&lt;/span&gt;
-&lt;span class='line-number'&gt;22&lt;/span&gt;
-&lt;span class='line-number'&gt;23&lt;/span&gt;
-&lt;span class='line-number'&gt;24&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="mi"&gt;22&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;27&lt;/span&gt; &lt;span class="n"&gt;$&lt;/span&gt; &lt;span class="n"&gt;javap&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;c&lt;/span&gt; &lt;span class="n"&gt;TestMain&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;Compiled&lt;/span&gt; &lt;span class="n"&gt;from&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;TestMain.java&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;TestMain&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="nf"&gt;TestMain&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nl"&gt;Code:&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_0&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;                  &lt;span class="c1"&gt;// Method java/lang/Object.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;return&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nl"&gt;Code:&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt;           &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;                  &lt;span class="c1"&gt;// class java/lang/String&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;dup&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;                  &lt;span class="c1"&gt;// Method java/lang/String.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;7&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;astore_1&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt;           &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;                  &lt;span class="c1"&gt;// class TestMain$SubCaller&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;11&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;dup&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;12&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;                  &lt;span class="c1"&gt;// Method TestMain$SubCaller.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;15&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;astore_2&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;16&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_2&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;17&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_1&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;18&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokevirtual&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;                  &lt;span class="c1"&gt;// Method TestMain$Caller.call:(Ljava/lang/String;)V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;21&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;return&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;正如上面的结果，&lt;code&gt;18: invokevirtual #6                  // Method TestMain$Caller.call:(Ljava/lang/String;)V&lt;/code&gt;这里是&lt;code&gt;TestMain$Caller.call&lt;/code&gt;而非&lt;code&gt;TestMain$SubCaller.call&lt;/code&gt;，因为编译期无法确定调用子类还是父类的实现，所以只能丢给运行时的动态绑定来处理。&lt;/p&gt;
-
-&lt;h2&gt;当重载遇上重写&lt;/h2&gt;
-
-&lt;p&gt;下面的例子有点变态哈，Caller类中存在call方法的两种重载，更复杂的是SubCaller集成Caller并且重写了这两个方法。其实这种情况是上面两种情况的复合情况。&lt;/p&gt;
-
-&lt;p&gt;下面的代码首先会发生静态绑定，确定调用参数为String对象的call方法，然后在运行时进行动态绑定确定执行子类还是父类的call实现。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;span class='line-number'&gt;21&lt;/span&gt;
-&lt;span class='line-number'&gt;22&lt;/span&gt;
-&lt;span class='line-number'&gt;23&lt;/span&gt;
-&lt;span class='line-number'&gt;24&lt;/span&gt;
-&lt;span class='line-number'&gt;25&lt;/span&gt;
-&lt;span class='line-number'&gt;26&lt;/span&gt;
-&lt;span class='line-number'&gt;27&lt;/span&gt;
-&lt;span class='line-number'&gt;28&lt;/span&gt;
-&lt;span class='line-number'&gt;29&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;TestMain&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Caller&lt;/span&gt; &lt;span class="n"&gt;callerSub&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;SubCaller&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;callerSub&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Caller&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;an Object instance in Caller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;a String instance in in Caller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SubCaller&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;Caller&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;an Object instance in SubCaller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;a String instance in in SubCaller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;执行结果为&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="mi"&gt;22&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;30&lt;/span&gt; &lt;span class="n"&gt;$&lt;/span&gt; &lt;span class="n"&gt;java&lt;/span&gt; &lt;span class="n"&gt;TestMain&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;instance&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="n"&gt;SubCaller&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;h3&gt;验证&lt;/h3&gt;
-
-&lt;p&gt;由于上面已经介绍，这里只贴一下反编译结果啦&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;span class='line-number'&gt;21&lt;/span&gt;
-&lt;span class='line-number'&gt;22&lt;/span&gt;
-&lt;span class='line-number'&gt;23&lt;/span&gt;
-&lt;span class='line-number'&gt;24&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="mi"&gt;22&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;30&lt;/span&gt; &lt;span class="n"&gt;$&lt;/span&gt; &lt;span class="n"&gt;javap&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;c&lt;/span&gt; &lt;span class="n"&gt;TestMain&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;Compiled&lt;/span&gt; &lt;span class="n"&gt;from&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;TestMain.java&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;TestMain&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="nf"&gt;TestMain&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nl"&gt;Code:&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_0&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;                  &lt;span class="c1"&gt;// Method java/lang/Object.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;return&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;java&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;lang&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nl"&gt;Code:&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt;           &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;                  &lt;span class="c1"&gt;// class java/lang/String&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;dup&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;                  &lt;span class="c1"&gt;// Method java/lang/String.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;7&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;astore_1&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;       &lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt;           &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;                  &lt;span class="c1"&gt;// class TestMain$SubCaller&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;11&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;dup&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;12&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokespecial&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;                  &lt;span class="c1"&gt;// Method TestMain$SubCaller.&amp;quot;&amp;lt;init&amp;gt;&amp;quot;:()V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;15&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;astore_2&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;16&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_2&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;17&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;aload_1&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;18&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;invokevirtual&lt;/span&gt; &lt;span class="err"&gt;#&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;                  &lt;span class="c1"&gt;// Method TestMain$Caller.call:(Ljava/lang/String;)V&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="mi"&gt;21&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="k"&gt;return&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;h2&gt;好奇问题&lt;/h2&gt;
-
-&lt;h3&gt;非动态绑定不可么？&lt;/h3&gt;
-
-&lt;p&gt;其实理论上，某些方法的绑定也可以由静态绑定实现。比如&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="n"&gt;Caller&lt;/span&gt; &lt;span class="n"&gt;callerSub&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;SubCaller&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;callerSub&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;比如这里callerSub持有subCaller的对象并且callerSub变量为final，立即执行了call方法，编译器理论上通过足够的分析代码，是可以知道应该调用SubCaller的call方法。&lt;/p&gt;
-
-&lt;p&gt;但是为什么没有进行静态绑定呢？&lt;br/&gt;
-假设我们的Caller继承自某一个框架的BaseCaller类，其实现了call方法，而BaseCaller继承自SuperCaller。SuperCaller中对call方法也进行了实现。&lt;/p&gt;
-
-&lt;p&gt;假设某框架1.0中的BaseCaller和SuperCaller&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SuperCaller&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;an Object instance in SuperCaller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;BaseCaller&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;SuperCaller&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;an Object instance in BaseCaller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;而我们使用框架1.0进行了这样的实现。Caller继承自BaseCaller，并且调用了super.call方法。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;span class='line-number'&gt;21&lt;/span&gt;
-&lt;span class='line-number'&gt;22&lt;/span&gt;
-&lt;span class='line-number'&gt;23&lt;/span&gt;
-&lt;span class='line-number'&gt;24&lt;/span&gt;
-&lt;span class='line-number'&gt;25&lt;/span&gt;
-&lt;span class='line-number'&gt;26&lt;/span&gt;
-&lt;span class='line-number'&gt;27&lt;/span&gt;
-&lt;span class='line-number'&gt;28&lt;/span&gt;
-&lt;span class='line-number'&gt;29&lt;/span&gt;
-&lt;span class='line-number'&gt;30&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;TestMain&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;Object&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;SuperCaller&lt;/span&gt; &lt;span class="n"&gt;callerSub&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;SubCaller&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;callerSub&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Caller&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;BaseCaller&lt;/span&gt;&lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;an Object instance in Caller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="kd"&gt;super&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;a String instance in in Caller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SubCaller&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;Caller&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;an Object instance in SubCaller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;a String instance in in SubCaller&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;然后我们基于这个框架的1.0版编译出来了class文件，假设静态绑定可以确定上面Caller的super.call为BaseCaller.call实现。&lt;/p&gt;
-
-&lt;p&gt;然后我们再次假设这个框架1.1版本中BaseCaller不重写SuperCaller的call方法，那么上面的假设可以静态绑定的call实现在1.1版本就会出现问题，因为在1.1版本上super.call应该是使用SuperCall的call方法实现，而非假设使用静态绑定确定的BaseCaller的call方法实现。&lt;/p&gt;
-
-&lt;p&gt;所以，有些实际可以静态绑定的，考虑到安全和一致性，就索性都进行了动态绑定。&lt;/p&gt;
-
-&lt;h3&gt;得到的优化启示？&lt;/h3&gt;
-
-&lt;p&gt;由于动态绑定需要在运行时确定执行哪个版本的方法实现或者变量，比起静态绑定起来要耗时。&lt;/p&gt;
-
-&lt;p&gt;所以&lt;strong&gt;在不影响整体设计&lt;/strong&gt;，我们可以考虑将方法或者变量使用private，static或者final进行修饰。&lt;/p&gt;
-
-&lt;h3&gt;参考文章&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://javarevisited.blogspot.com/2012/03/what-is-static-and-dynamic-binding-in.html"&gt;What is Static and Dynamic binding in Java with Example&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;一本书&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00G9KF4JC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B00G9KF4JC&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;Java核心技术&lt;/a&gt;，Java领域最有影响力和价值的著作之一，拥有20多年教学与研究经验的资深Java技术专家撰写（获Jolt大奖），与&lt;a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B0011F7WU4&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;《Java编程思想》&lt;/a&gt;齐名，10余年全球畅销不衰，广受好评。&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-    <title>Java中的静态绑定和动态绑定</title>
-    <link>http://droidyue.com/blog/2014/12/28/static-biding-and-dynamic-binding-in-java/</link>
-    <pubDate>Sun, 28 Dec 2014 03:32:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2014/12/28/static-biding-and-dynamic-binding-in-java</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
