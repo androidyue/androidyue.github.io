@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-07-18T18:01:47+08:00</updated>
+  <updated>2015-07-18T18:05:11+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,153 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[说说Android中的ANR]]></title>
+    <link href="http://droidyue.com/blog/2015/07/18/anr-in-android/"/>
+    <updated>2015-07-18T17:53:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/07/18/anr-in-android</id>
+    <content type="html"><![CDATA[<p>有过Android开发经历的人都不会对ANR陌生，它和崩溃一样是程序设计的问题。本文将以较为深入的视角来介绍什么是ANR，出现场景，如何避免以及如何定位分析ANR,希望可以帮助大家在编写程序时有所帮助。</p>
+
+<!--more-->
+
+
+<h2>什么是ANR</h2>
+
+<p>ANR全称<code>Application Not Responding</code>，意思就是程序未响应。如果一个应用无法响应用户的输入，系统就会弹出一个ANR对话框，如下图所示,用户可以自行选择继续等待亦或者是停止当前程序。</p>
+
+<p>{%img <a href="http://droidyueimg.qiniudn.com/android_anr.png">http://droidyueimg.qiniudn.com/android_anr.png</a> %}</p>
+
+<h2>出现场景</h2>
+
+<ul>
+<li>主线程被IO操作（从4.0之后网络IO不允许在主线程中）阻塞。</li>
+<li>主线程中存在耗时的计算</li>
+<li>主线程中错误的操作，比如Thread.wait或者Thread.sleep等</li>
+</ul>
+
+
+<p>Android系统会监控程序的响应状况，一旦出现下面两种情况，则弹出ANR对话框</p>
+
+<ul>
+<li>应用在<strong>5秒</strong>内未响应用户的输入事件（如按键或者触摸）</li>
+<li>BroadcastReceiver未在<strong>10秒</strong>内完成相关的处理</li>
+</ul>
+
+
+<h2>如何避免</h2>
+
+<p>基本的思路就是将IO操作在工作线程来处理，减少其他耗时操作和错误操作</p>
+
+<ul>
+<li>使用<a href="http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/">AsyncTask</a>处理耗时IO操作。</li>
+<li>使用Thread或者HandlerThread时，调用Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)设置优先级，否则仍然会降低程序响应，因为默认Thread的优先级和主线程相同。</li>
+<li>使用<a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Handler</a>处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。</li>
+<li>Activity的onCreate和onResume回调中尽量避免耗时的代码</li>
+<li>BroadcastReceiver中onReceive代码也要尽量减少耗时，建议使用IntentService处理。</li>
+</ul>
+
+
+<h2>画龙点睛</h2>
+
+<p>通常100到200毫秒就会让人察觉程序反应慢，为了更加提升响应，可以使用下面的几种方法</p>
+
+<ul>
+<li>如果程序正在后台处理用户的输入，建议使用让用户得知进度，比如使用ProgressBar控件。</li>
+<li>程序启动时可以选择加上欢迎界面，避免让用户察觉卡顿。</li>
+<li>使用Systrace和TraceView找出影响响应的问题。</li>
+</ul>
+
+
+<h2>如何定位</h2>
+
+<p>如果开发机器上出现问题，我们可以通过查看<code>/data/anr/traces.txt</code>即可，最新的ANR信息在最开始部分。我们从stacktrace中即可找到出问题的具体行数。本例中问题出现在MainActivity.java 27行，因为这里调用了Thread.sleep方法。
+```java
+root@htc_m8tl:/ # cat /data/anr/traces.txt | more</p>
+
+<p>&mdash;&mdash;&ndash; pid 30307 at 2015-05-30 14:51:14 &mdash;&mdash;&ndash;
+Cmd line: com.example.androidyue.bitmapdemo</p>
+
+<p>JNI: CheckJNI is off; workarounds are off; pins=0; globals=272</p>
+
+<p>DALVIK THREADS:
+(mutexes: tll=0 tsl=0 tscl=0 ghl=0)</p>
+
+<p>&ldquo;main&rdquo; prio=5 tid=1 TIMED_WAIT
+  | group=&ldquo;main&rdquo; sCount=1 dsCount=0 obj=0x416eaf18 self=0x416d8650
+  | sysTid=30307 nice=0 sched=0/0 cgrp=apps handle=1074565528
+  | state=S schedstat=( 0 0 0 ) utm=5 stm=4 core=3
+  at java.lang.VMThread.sleep(Native Method)
+  at java.lang.Thread.sleep(Thread.java:1044)
+  at java.lang.Thread.sleep(Thread.java:1026)
+  at com.example.androidyue.bitmapdemo.MainActivity$1.run(MainActivity.java:27)
+  at android.app.Activity.runOnUiThread(Activity.java:4794)
+  at com.example.androidyue.bitmapdemo.MainActivity.onResume(MainActivity.java:33)
+  at android.app.Instrumentation.callActivityOnResume(Instrumentation.java:1282)
+  at android.app.Activity.performResume(Activity.java:5405)
+```</p>
+
+<p>如果是线上版本引起的，Google Play后台有相关的数据可以帮助查看分析并解决问题。</p>
+
+<h2>细致分析</h2>
+
+<p>  <strong>提问</strong>: BroadcastReceiver过了60秒居然没有ANR？ 现场代码如下
+```java
+public class NetworkReceiver extends BroadcastReceiver{</p>
+
+<pre><code>private static final String LOGTAG = "NetworkReceiver";
+
+@Override
+public void onReceive(Context context, Intent intent) {
+    Log.i(LOGTAG, "onReceive intent=" + intent);
+    try {
+        Thread.sleep(60000);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    Log.i(LOGTAG, "onReceive end");
+}
+</code></pre>
+
+<p>}
+```
+  <strong>回答</strong>：实际上已经发生了ANR，只是没有进行对话框弹出而已。这种ANR就是background ANR，即后台程序的ANR，我们可以通过过滤日志验证</p>
+
+<p><code>java
+adb logcat | grep "NetworkReceiver|ActivityManager|WindowManager"
+I/NetworkReceiver( 4109): onReceive intent=Intent { act=android.net.conn.CONNECTIVITY_CHANGE flg=0x8000010 cmp=com.example.androidyue.bitmapdemo/.NetworkReceiver (has extras) }
+I/ActivityManager(  462): No longer want com.android.exchange (pid 1054): empty #17
+I/NetworkReceiver( 4109): onReceive end
+W/BroadcastQueue(  462): Receiver during timeout: ResolveInfo{5342dde4 com.example.androidyue.bitmapdemo.NetworkReceiver p=0 o=0 m=0x108000}
+E/ActivityManager(  462): ANR in com.example.androidyue.bitmapdemo
+E/ActivityManager(  462): Reason: Broadcast of Intent { act=android.net.conn.CONNECTIVITY_CHANGE flg=0x8000010 cmp=com.example.androidyue.bitmapdemo/.NetworkReceiver (has extras) }
+E/ActivityManager(  462): Load: 0.37 / 0.2 / 0.14
+E/ActivityManager(  462): CPU usage from 26047ms to 0ms ago:
+E/ActivityManager(  462):   0.4% 58/adbd: 0% user + 0.4% kernel / faults: 1501 minor
+E/ActivityManager(  462):   0.3% 462/system_server: 0.1% user + 0.1% kernel
+E/ActivityManager(  462):   0% 4109/com.example.androidyue.bitmapdemo: 0% user + 0% kernel / faults: 6 minor
+E/ActivityManager(  462): 1.5% TOTAL: 0.5% user + 0.9% kernel + 0% softirq
+E/ActivityManager(  462): CPU usage from 87ms to 589ms later:
+E/ActivityManager(  462):   1.8% 58/adbd: 0% user + 1.8% kernel / faults: 30 minor
+E/ActivityManager(  462):     1.8% 58/adbd: 0% user + 1.8% kernel
+E/ActivityManager(  462): 4% TOTAL: 0% user + 4% kernel
+W/ActivityManager(  462): Killing ProcessRecord{5326d418 4109:com.example.androidyue.bitmapdemo/u0a10063}: background ANR
+I/ActivityManager(  462): Process com.example.androidyue.bitmapdemo (pid 4109) has died.
+</code>
+除了日志，我们还可以根据前面提到的查看traces.txt文件。</p>
+
+<p><strong>提问</strong>:可以更容易了解background ANR么？</p>
+
+<p><strong>回答</strong>:当然可以，在Android开发者选项&mdash;>高级&mdash;>显示所有”应用程序无响应“勾选即可对后台ANR也进行弹窗显示，方便查看了解程序运行情况。</p>
+
+<h2>参考文章</h2>
+
+<ul>
+<li><a href="http://developer.android.com/intl/zh-cn/training/articles/perf-anr.html">Keeping Your App Responsive</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Google Play Services 7.5新增API及多项特性]]></title>
@@ -256,7 +403,7 @@ android/support/v4/net/ConnectivityManagerCompat.class: compiled Java class data
 
 <p>想要进行推广，必须有推广链接。Google提供了生成推广链接的地址<a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#google-play-url-builder">Google Play URL Builder</a>,遗憾的是这个地址被墙了，不过可以使用<a href="http://www.digitangle.co.uk/toolsandresources/google-play-url-builder/#sthash.HLdt4vXJ.dpbs">这个地址</a>，可能稍微慢一点。</p>
 
-<p><img class="<a" src="href="http://droidyueimg.qiniudn.com/play_url_builder.png">http://droidyueimg.qiniudn.com/play_url_builder.png</a>"></p>
+<p>{%img <a href="http://droidyueimg.qiniudn.com/play_url_builder.png">http://droidyueimg.qiniudn.com/play_url_builder.png</a> %}</p>
 
 <h3>简单描述</h3>
 
@@ -380,153 +527,6 @@ public void onReceive(Context context, Intent intent) {
 
 <ul>
 <li><a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#overview">Campaign Measurement </a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[避免Android中Context引起的内存泄露]]></title>
-    <link href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/"/>
-    <updated>2015-04-12T21:28:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android</id>
-    <content type="html"><![CDATA[<p>Context是我们在编写Android程序经常使用到的对象，意思为上下文对象。 常用的有Activity的Context还是有Application的Context。Activity用来展示活动界面，包含了很多的视图，而视图又含有图片，文字等资源。在Android中内存泄露很容易出现，而持有很多对象内存占用的Activity更加容易出现内存泄露，开发者需要特别注意这个问题。</p>
-
-<p>本文讲介绍Android中Context，更具体的说是Activity内存泄露的情况，以及如何避免Activity内存泄露，加速应用性能。</p>
-
-<!--more-->
-
-
-<h2>Drawable引起的内存泄露</h2>
-
-<p>Drawable引起内存泄露这个问题是比较隐晦，难以察觉的。在阅读了Romain Guy的<a href="http://android-developers.blogspot.com.tr/2009/01/avoiding-memory-leaks.html">Avoiding memory leaks</a>，结合grepcode查看源码才明白了。</p>
-
-<p>在Android系统中，当我们进行了屏幕旋转，默认情况下，会销毁掉当前的Activity，并创建一个新的Activity并保持之前的状态。在这个过程中，Android系统会重新加载程序的UI视图和资源。假设我们有一个程序用到了一个很大的Bitmap图像，我们不想每次屏幕旋转时都重新加载这个Bitmap对象，最简单的办法就是将这个Bitmap对象使用static修饰。
-```java
-private static Drawable sBackground;</p>
-
-<p>@Override
-protected void onCreate(Bundle state) {
-  super.onCreate(state);</p>
-
-<p>  TextView label = new TextView(this);
-  label.setText(&ldquo;Leaks are bad&rdquo;);</p>
-
-<p>  if (sBackground == null) {</p>
-
-<pre><code>sBackground = getDrawable(R.drawable.large_bitmap);
-</code></pre>
-
-<p>  }
-  label.setBackgroundDrawable(sBackground);</p>
-
-<p>  setContentView(label);
-}
-```
-但是上面的方法在屏幕旋转时有可能引起内存泄露，无论是咋一看还是仔细看这段代码，都很难发现哪里引起了内存泄露。</p>
-
-<p>当一个Drawable绑定到了View上，实际上这个View对象就会成为这个Drawable的一个callback成员变量，上面的例子中静态的sBackground持有TextView对象lable的引用，而lable只有Activity的引用，而Activity会持有其他更多对象的引用。sBackground生命周期要长于Activity。当屏幕旋转时，Activity无法被销毁，这样就产生了内存泄露问题。</p>
-
-<p>2.3.7及以下版本Drawable的setCallback方法的实现
-```java
-public final void setCallback(Callback cb) {</p>
-
-<pre><code>mCallback = cb;
-</code></pre>
-
-<p>}
-<code>
-好在从4.0.1开始，引入了[弱引用](http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/)处理这个问题，弱引用在GC回收时，不会阻止GC回收其指向的对象，避免了内存泄露问题。
-</code>java
-public final void setCallback(Callback cb) {</p>
-
-<pre><code>mCallback = new WeakReference&lt;Callback&gt;(cb);
-</code></pre>
-
-<p>}
-```</p>
-
-<h2>单例引起的内存泄露</h2>
-
-<p>单例是我们比较简单常用的一种设计模式,然而如果单例使用不当也会导致内存泄露。
-比如这样一个例子,我们使用饿汉式初始化单例，AppSettings我们需要持有一个Context作为成员变量，如果我们按照下面的实现其实是有问题。
-```java
-public class AppSettings {</p>
-
-<pre><code>private Context mAppContext;
-private static AppSettings sInstance = new AppSettings();
-
-//some other codes
-public static AppSettings getInstance() {
-    return sInstance;
-}
-
-public final void setup(Context context) {
-    mAppContext = context;
-}
-</code></pre>
-
-<p>}
-```
-sInstance作为静态对象，其生命周期要长于普通的对象，其中也包含Activity，当我们进行屏幕旋转，默认情况下，系统会销毁当前Activity，然后当前的Activity被一个单例持有，导致垃圾回收器无法进行回收，进而产生了内存泄露。</p>
-
-<p>解决的方法就是不持有Activity的引用，而是持有Application的Context引用。代码如下修改
-```java
-public final void setup(Context context) {</p>
-
-<pre><code>mAppContext = context.getApplicationContext();  
-</code></pre>
-
-<p>}
-```
-访问这里了解更多关于<a href="http://droidyue.com/blog/2015/01/11/looking-into-singleton/">单例模式的问题</a></p>
-
-<h2>条条方法返回Context</h2>
-
-<p>通常我们想要获取Context对象，主要有以下四种方法</p>
-
-<ul>
-<li>View.getContext,返回当前View对象的Context对象，通常是当前正在展示的Activity对象。</li>
-<li>Activity.getApplicationContext,获取当前Activity所在的(应用)进程的Context对象，通常我们使用Context对象时，要优先考虑这个全局的进程Context。</li>
-<li>ContextWrapper.getBaseContext():用来获取一个ContextWrapper进行装饰之前的Context，可以使用这个方法，这个方法在实际开发中使用并不多，也不建议使用。</li>
-<li>Activity.this 返回当前的Activity实例，如果是UI控件需要使用Activity作为Context对象，但是默认的Toast实际上使用ApplicationContext也可以。</li>
-</ul>
-
-
-<h2>其他内存泄露问题</h2>
-
-<ul>
-<li><a href="http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/">Android中糟糕的AsyncTask</a></li>
-<li><a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a></li>
-<li><a href="http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/">Google为何这样设计OnSharedPreferenceChangeListener</a></li>
-</ul>
-
-
-<h2>避免内存泄露须谨记</h2>
-
-<ul>
-<li>不要让生命周期长于Activity的对象持有到Activity的引用</li>
-<li>尽量使用Application的Context而不是Activity的Context</li>
-<li>尽量不要在Activity中使用非静态内部类，因为非静态内部类会隐式持有外部类实例的引用（具体可以查看<a href="http://droidyue.com/blog/2014/10/02/the-private-modifier-in-java/">细话Java："失效"的private修饰符</a>了解）。如果使用静态内部类，将外部实例引用作为<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">弱引用</a>持有。</li>
-<li>垃圾回收不能解决内存泄露，了解<a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">Android中垃圾回收机制</a></li>
-</ul>
-
-
-<h2>参考文章</h2>
-
-<ul>
-<li><a href="http://android-developers.blogspot.com.tr/2009/01/avoiding-memory-leaks.html">Avoiding memory leaks</a></li>
-<li><a href="http://stackoverflow.com/questions/10641144/difference-between-getcontext-getapplicationcontext-getbasecontext-and">Difference between getContext() , getApplicationContext() , getBaseContext() and “this”</a></li>
-<li><a href="http://stackoverflow.com/questions/1026973/android-whats-the-difference-between-the-various-methods-to-get-a-context">Android &ndash; what&rsquo;s the difference between the various methods to get a Context?</a></li>
-</ul>
-
-
-<h2>好书推荐</h2>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B009VV6EG8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B009VV6EG8&amp;linkCode=as2&amp;tag=droidyue-23">Android应用性能优化</a></li>
-<li><a href="http://www.amazon.cn/gp/product/B00IOB0K1Q/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00IOB0K1Q&amp;linkCode=as2&amp;tag=droidyue-23">图灵程序设计丛书:Java性能优化权威指南</a></li>
-<li><a href="http://www.amazon.cn/gp/product/B009GT0H4U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B009GT0H4U&amp;linkCode=as2&amp;tag=droidyue-23">Java程序性能优化:让你的Java程序更快、更稳定</a></li>
 </ul>
 
 ]]></content>
