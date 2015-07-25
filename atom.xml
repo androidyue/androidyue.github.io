@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-07-25T12:43:12+08:00</updated>
+  <updated>2015-07-25T17:10:50+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,254 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用Android lint发现并解决高版本API问题]]></title>
+    <link href="http://droidyue.com/blog/2015/07/25/use-android-lint-to-find-higher-api-usage/"/>
+    <updated>2015-07-25T16:51:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/07/25/use-android-lint-to-find-higher-api-usage</id>
+    <content type="html"><![CDATA[<p>在编写代码时，为了实现一些功能，我们需要使用高版本的API，比如SharedPreference的Editor中的apply方法为API 9开始引入，在API 9 以上的机器使用没有问题，但是在API 8上，如果运行时执行了这段代码，就会崩溃，问题相当严重。尤其是该问题出现在正式版中，后果不堪设想。本文将介绍如何使用lint发现并解决这些问题。</p>
+
+<!--more-->
+
+
+<h2>lint是什么</h2>
+
+<p>lint是Android提供的一个静态代码分析的工具，使用这个工具可以帮助我们找出Android项目中潜在的bug，安全，性能，可用性，辅助性和国际化等问题，同时还可以查找出错误拼写，提示开发者更正。</p>
+
+<h3>lint的工作流程</h3>
+
+<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/lint_workflow.png"></p>
+
+<p>上图为lint的工作流程图，下面为一些元素的简短说明。</p>
+
+<p><strong>程序源文件</strong></p>
+
+<p>程序源文件就是Android工程的组成部分，包括Java和xml文件，图标以及混淆配置文件</p>
+
+<p><strong>lint.xml文件</strong></p>
+
+<p>lint配置文件，用来排除某些检查或者自定义检测问题的严重程度。</p>
+
+<p><strong>lint工具</strong></p>
+
+<p>一个静态代码扫描工具，对Android工程进行扫描分析，可以从终端执行命令，也可以从Android Studio等IDE中使用。lint工具可以帮助我们找到Android应用性能和代码质量问题。在正式发布应用之前，强烈建议使用lint检查并修复发现的问题。</p>
+
+<p><strong>lint检查结果</strong></p>
+
+<p>lint的检查结果可以从终端，Android Studio等IDE工具，或者生成结果文件查看。每一个问题都会标明在文件中的位置行数，以及关于该问题的说明等信息。</p>
+
+<h2>查找问题</h2>
+
+<p>知道了lint如何工作，就只需执行lint查找问题，有了明确的问题，才能有的放矢地解决。</p>
+
+<h3>Android Sutdio</h3>
+
+<p>选择菜单Analyze&mdash;>Configure Current File Analysis&mdash;>Configure Inspections 清空所有的检查项，然后如下图勾选<strong>Calling new methods on older versions</strong> 和 <strong>Using inlined constants on older versions</strong></p>
+
+<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/android_studio_lint_custom.png"></p>
+
+<p>然后执行Analyze&mdash;> Inspect Code，然后查看底部的Inspection即可</p>
+
+<h3>command line</h3>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">cd </span>project_root_dir
+</span><span class='line'>lint --check NewApi,InlinedApi --html /tmp/api_check.html ./
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>无需多时，结果就会以html形式写入/tmp/api_check.html文件</p>
+
+<h3>Gradle Command Line</h3>
+
+<p>配置build.gradle</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">android</span><span class="o">{</span>
+</span><span class='line'>    <span class="c1">//some other config</span>
+</span><span class='line'>    <span class="n">lintOptions</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">abortOnError</span> <span class="kc">false</span>
+</span><span class='line'>        <span class="n">xmlReport</span> <span class="kc">false</span>
+</span><span class='line'>        <span class="n">check</span> <span class="err">&#39;</span><span class="n">NewApi</span><span class="err">&#39;</span><span class="o">,</span> <span class="err">&#39;</span><span class="n">InlinedApi</span><span class="err">&#39;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后执行下面的命令</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">cd </span>project_root_dir
+</span><span class='line'>./gradlew lint
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>结果会输出到工程目录build/outputs/lint-results.html。</p>
+
+<h2>如何解决</h2>
+
+<p>结合上面的输出结果，我们接下来要做的就是如何解决，如下为一些解决思路。</p>
+
+<h3>必然执行高版本API</h3>
+
+<ul>
+<li>如果是NewApi警告，考虑其他方法代替。比如String.isEmpty自API 9才引入，但是使用TextUtils.isEmpty替换。</li>
+<li>如果是InlinedApi警告，可以自定义与常量同值的另一个常量。</li>
+<li>使用反射，对于不太重要的方法，我们可以使用反射来解决问题。</li>
+</ul>
+
+
+<h3>或然执行高版本API</h3>
+
+<p>如果该段代码进行了API Level限制，确保高版本API不会在低版本设置执行，只需对这个警告设置为忽略即可。</p>
+
+<h2>实战解决</h2>
+
+<p>以下代码所属工程最低支持2.2系统，即API 8。</p>
+
+<h3>NewApi有警报代码</h3>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testNewApi</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">()).</span><span class="na">edit</span><span class="o">().</span><span class="na">putBoolean</span><span class="o">(</span><span class="s">&quot;first_use&quot;</span><span class="o">,</span> <span class="kc">false</span><span class="o">).</span><span class="na">apply</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面代码中的apply方法为Android API 9引入，使用lint检查会提示警告。</p>
+
+<h3>方案一</h3>
+
+<p>按照API Level不同，选择不同的方法,对于API 9以下使用commit，API 9及其以上使用apply</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testNewApi</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">SharedPreferences</span><span class="o">.</span><span class="na">Editor</span> <span class="n">editor</span> <span class="o">=</span> <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="k">this</span><span class="o">).</span><span class="na">edit</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">editor</span><span class="o">.</span><span class="na">putBoolean</span><span class="o">(</span><span class="s">&quot;first_launch&quot;</span><span class="o">,</span> <span class="kc">false</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">Build</span><span class="o">.</span><span class="na">VERSION</span><span class="o">.</span><span class="na">SDK_INT</span> <span class="o">&gt;=</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION_CODES</span><span class="o">.</span><span class="na">GINGERBREAD</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">editor</span><span class="o">.</span><span class="na">apply</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">editor</span><span class="o">.</span><span class="na">commit</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>方案二</h3>
+
+<p>对于确定不会在低版本运行的情况，我们可以增加@TargetApi加上对应的API引入的版本即可。</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@TargetApi</span><span class="o">(</span><span class="n">Build</span><span class="o">.</span><span class="na">VERSION_CODES</span><span class="o">.</span><span class="na">GINGERBREAD</span><span class="o">)</span>
+</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testNewApi</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">SharedPreferences</span><span class="o">.</span><span class="na">Editor</span> <span class="n">editor</span> <span class="o">=</span> <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="k">this</span><span class="o">).</span><span class="na">edit</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">editor</span><span class="o">.</span><span class="na">putBoolean</span><span class="o">(</span><span class="s">&quot;first_launch&quot;</span><span class="o">,</span> <span class="kc">false</span><span class="o">).</span><span class="na">apply</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>方案三</h3>
+
+<p>同样确保新API不会在低版本运行，也可以忽略警报。</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@SuppressLint</span><span class="o">(</span><span class="s">&quot;NewApi&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testNewApi</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">SharedPreferences</span><span class="o">.</span><span class="na">Editor</span> <span class="n">editor</span> <span class="o">=</span> <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="k">this</span><span class="o">).</span><span class="na">edit</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">editor</span><span class="o">.</span><span class="na">putBoolean</span><span class="o">(</span><span class="s">&quot;first_launch&quot;</span><span class="o">,</span> <span class="kc">false</span><span class="o">).</span><span class="na">apply</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>但是这种方案不推荐</strong>，是直接对方法的警告忽略，如果继续在方法中增加代码，则不利于发现问题，比如</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@SuppressLint</span><span class="o">(</span><span class="s">&quot;NewApi&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testNewApi</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">SharedPreferences</span><span class="o">.</span><span class="na">Editor</span> <span class="n">editor</span> <span class="o">=</span> <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="k">this</span><span class="o">).</span><span class="na">edit</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">editor</span><span class="o">.</span><span class="na">putBoolean</span><span class="o">(</span><span class="s">&quot;first_launch&quot;</span><span class="o">,</span> <span class="kc">false</span><span class="o">).</span><span class="na">apply</span><span class="o">();</span>
+</span><span class='line'>    <span class="s">&quot;&quot;</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">();</span> <span class="c1">//新增加代码，不容易发现问题</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>含有InlinedApi警告的代码</h3>
+
+<p>下面代码过于简单，只是为了打印一个API 19引入的int常量值。</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testInlinedApi</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;MainActivity&quot;</span><span class="o">,</span> <span class="s">&quot;inlinedValue=&quot;</span> <span class="o">+</span> <span class="n">View</span><span class="o">.</span><span class="na">ACCESSIBILITY_LIVE_REGION_ASSERTIVE</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对于这个问题的方案很简答，就是自己定义一个常量，其值与高版本的API常量相同，然后使用这个自定义常量即可。如下代码</p>
+
+<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testInlinedApi</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="kt">int</span> <span class="n">VIEW_ACCESSIBILITY_LIVE_REGION_ASSERTIVE</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;MainActivity&quot;</span><span class="o">,</span> <span class="s">&quot;inlinedValue=&quot;</span> <span class="o">+</span> <span class="n">VIEW_ACCESSIBILITY_LIVE_REGION_ASSERTIVE</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>小问题</h2>
+
+<ul>
+<li>如果没有lint命令，需要将Android中的sdk/tools/目录加入PATH即可。</li>
+</ul>
+
+
+<script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
+
+
+<script type="text/javascript">
+    showBookCopyright();
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[说说Android中的ANR]]></title>
@@ -3124,75 +3372,6 @@ synchronized修饰的方法后，当某个线程进入调用这个方法，该�
 <h2>一本书</h2>
 
 <p><a href="http://www.amazon.cn/gp/product/B0011FBU34/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011FBU34&amp;linkCode=as2&amp;tag=droidyue-23">Head First设计模式</a>,本书荣获2005年第十五届Jolt通用类图书震撼大奖。本书英文影印版被《程序员》等机构评选为2006年最受读者喜爱的十大IT图书之一 。本书趋近完美，因为它在提供专业知识的同时，仍然具有相当高的可读性。叙述权威、文笔优美。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[2015上半年]]></title>
-    <link href="http://droidyue.com/blog/2015/01/10/plan-for-the-first-half-of-2015/"/>
-    <updated>2015-01-10T22:41:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/01/10/plan-for-the-first-half-of-2015</id>
-    <content type="html"><![CDATA[<p>时光荏苒，自上次的<a href="http://droidyue.com/blog/2014/07/06/my-plan-for-the-left-half-of-2014/">2014年下半年计划</a>已经过去半年了，又到了展望一下开始的这半年的时刻了。</p>
-
-<!--more-->
-
-
-<h2>过去半年的收获</h2>
-
-<ul>
-<li>日语四级考试通过</li>
-<li>开始把Java中的一些东西研究透了</li>
-<li>技术小黑屋的日均IP过百，并且超额完成</li>
-<li>每天早上玩<a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0">体感游戏机</a>，身体素质明显增强</li>
-<li>学会了在爱情中付出，全心去爱女友，并且女友也一直深爱我</li>
-</ul>
-
-
-<h2>过去半年的教训</h2>
-
-<ul>
-<li>制定的目标过多，精力有限。需根据自身实际情况制定，不能过于主观。</li>
-<li>有些事情没有坚持做下去，很多想法尚未实现。需要更加高效的执行力。</li>
-</ul>
-
-
-<h2>15上半年的预期</h2>
-
-<h3>编程</h3>
-
-<ul>
-<li>继续读完<a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011F7WU4&amp;linkCode=as2&amp;tag=droidyue-23">Thinking In Java</a></li>
-<li>继续研究东西要彻底嚼烂的风格</li>
-<li>在码农周刊,infoq各发布5篇以上文章</li>
-<li>尝试以新的展现形式分享我的研究</li>
-</ul>
-
-
-<h3>爱情</h3>
-
-<ul>
-<li>陪女友吃遍帝都的小吃，逛街，一起去大阪。</li>
-<li>爱她，宠她，帮助她改变，努力赚钱养她。</li>
-</ul>
-
-
-<h3>外语</h3>
-
-<ul>
-<li>12月参加N3考试（较之前有推迟）准备</li>
-<li>第三季度去日本旅行日常会话练习</li>
-<li>通过通勤路上听英文演讲重拾英语</li>
-</ul>
-
-
-<h3>其他</h3>
-
-<ul>
-<li>利用好<a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0">体感游戏机</a>，体检时彻底没有轻度脂肪肝症状。</li>
-<li>常回家看看，毕竟大家都羡慕保定距离北京这么近。</li>
-<li>技术小黑屋网站的Alexa排名到30万，目前为40万</li>
-</ul>
-
 ]]></content>
   </entry>
   

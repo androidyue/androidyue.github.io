@@ -6,11 +6,259 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Sat, 25 Jul 2015 04:43:12 GMT</pubDate>
+  <pubDate>Sat, 25 Jul 2015 09:10:50 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;p&gt;在编写代码时，为了实现一些功能，我们需要使用高版本的API，比如SharedPreference的Editor中的apply方法为API 9开始引入，在API 9 以上的机器使用没有问题，但是在API 8上，如果运行时执行了这段代码，就会崩溃，问题相当严重。尤其是该问题出现在正式版中，后果不堪设想。本文将介绍如何使用lint发现并解决这些问题。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;lint是什么&lt;/h2&gt;
+
+&lt;p&gt;lint是Android提供的一个静态代码分析的工具，使用这个工具可以帮助我们找出Android项目中潜在的bug，安全，性能，可用性，辅助性和国际化等问题，同时还可以查找出错误拼写，提示开发者更正。&lt;/p&gt;
+
+&lt;h3&gt;lint的工作流程&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src="http://7jpolu.com1.z0.glb.clouddn.com/lint_workflow.png"&gt;&lt;/p&gt;
+
+&lt;p&gt;上图为lint的工作流程图，下面为一些元素的简短说明。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;程序源文件&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;程序源文件就是Android工程的组成部分，包括Java和xml文件，图标以及混淆配置文件&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;lint.xml文件&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;lint配置文件，用来排除某些检查或者自定义检测问题的严重程度。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;lint工具&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;一个静态代码扫描工具，对Android工程进行扫描分析，可以从终端执行命令，也可以从Android Studio等IDE中使用。lint工具可以帮助我们找到Android应用性能和代码质量问题。在正式发布应用之前，强烈建议使用lint检查并修复发现的问题。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;lint检查结果&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;lint的检查结果可以从终端，Android Studio等IDE工具，或者生成结果文件查看。每一个问题都会标明在文件中的位置行数，以及关于该问题的说明等信息。&lt;/p&gt;
+
+&lt;h2&gt;查找问题&lt;/h2&gt;
+
+&lt;p&gt;知道了lint如何工作，就只需执行lint查找问题，有了明确的问题，才能有的放矢地解决。&lt;/p&gt;
+
+&lt;h3&gt;Android Sutdio&lt;/h3&gt;
+
+&lt;p&gt;选择菜单Analyze&amp;mdash;&gt;Configure Current File Analysis&amp;mdash;&gt;Configure Inspections 清空所有的检查项，然后如下图勾选&lt;strong&gt;Calling new methods on older versions&lt;/strong&gt; 和 &lt;strong&gt;Using inlined constants on older versions&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://7jpolu.com1.z0.glb.clouddn.com/android_studio_lint_custom.png"&gt;&lt;/p&gt;
+
+&lt;p&gt;然后执行Analyze&amp;mdash;&gt; Inspect Code，然后查看底部的Inspection即可&lt;/p&gt;
+
+&lt;h3&gt;command line&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='bash'&gt;&lt;span class='line'&gt;&lt;span class="nb"&gt;cd &lt;/span&gt;project_root_dir
+&lt;/span&gt;&lt;span class='line'&gt;lint --check NewApi,InlinedApi --html /tmp/api_check.html ./
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;无需多时，结果就会以html形式写入/tmp/api_check.html文件&lt;/p&gt;
+
+&lt;h3&gt;Gradle Command Line&lt;/h3&gt;
+
+&lt;p&gt;配置build.gradle&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;android&lt;/span&gt;&lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="c1"&gt;//some other config&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;lintOptions&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;abortOnError&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;xmlReport&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;check&lt;/span&gt; &lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="n"&gt;NewApi&lt;/span&gt;&lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="n"&gt;InlinedApi&lt;/span&gt;&lt;span class="err"&gt;&amp;#39;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;然后执行下面的命令&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='bash'&gt;&lt;span class='line'&gt;&lt;span class="nb"&gt;cd &lt;/span&gt;project_root_dir
+&lt;/span&gt;&lt;span class='line'&gt;./gradlew lint
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;结果会输出到工程目录build/outputs/lint-results.html。&lt;/p&gt;
+
+&lt;h2&gt;如何解决&lt;/h2&gt;
+
+&lt;p&gt;结合上面的输出结果，我们接下来要做的就是如何解决，如下为一些解决思路。&lt;/p&gt;
+
+&lt;h3&gt;必然执行高版本API&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;如果是NewApi警告，考虑其他方法代替。比如String.isEmpty自API 9才引入，但是使用TextUtils.isEmpty替换。&lt;/li&gt;
+&lt;li&gt;如果是InlinedApi警告，可以自定义与常量同值的另一个常量。&lt;/li&gt;
+&lt;li&gt;使用反射，对于不太重要的方法，我们可以使用反射来解决问题。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;或然执行高版本API&lt;/h3&gt;
+
+&lt;p&gt;如果该段代码进行了API Level限制，确保高版本API不会在低版本设置执行，只需对这个警告设置为忽略即可。&lt;/p&gt;
+
+&lt;h2&gt;实战解决&lt;/h2&gt;
+
+&lt;p&gt;以下代码所属工程最低支持2.2系统，即API 8。&lt;/p&gt;
+
+&lt;h3&gt;NewApi有警报代码&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;testNewApi&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;PreferenceManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getDefaultSharedPreferences&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;getApplicationContext&lt;/span&gt;&lt;span class="o"&gt;()).&lt;/span&gt;&lt;span class="na"&gt;edit&lt;/span&gt;&lt;span class="o"&gt;().&lt;/span&gt;&lt;span class="na"&gt;putBoolean&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;first_use&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上面代码中的apply方法为Android API 9引入，使用lint检查会提示警告。&lt;/p&gt;
+
+&lt;h3&gt;方案一&lt;/h3&gt;
+
+&lt;p&gt;按照API Level不同，选择不同的方法,对于API 9以下使用commit，API 9及其以上使用apply&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;testNewApi&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;SharedPreferences&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Editor&lt;/span&gt; &lt;span class="n"&gt;editor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;PreferenceManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getDefaultSharedPreferences&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;edit&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;editor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;putBoolean&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;first_launch&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Build&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;VERSION&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;SDK_INT&lt;/span&gt; &lt;span class="o"&gt;&amp;gt;=&lt;/span&gt; &lt;span class="n"&gt;Build&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;VERSION_CODES&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;GINGERBREAD&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;editor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt; &lt;span class="k"&gt;else&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;editor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;commit&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h3&gt;方案二&lt;/h3&gt;
+
+&lt;p&gt;对于确定不会在低版本运行的情况，我们可以增加@TargetApi加上对应的API引入的版本即可。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="nd"&gt;@TargetApi&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Build&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;VERSION_CODES&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;GINGERBREAD&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;testNewApi&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;SharedPreferences&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Editor&lt;/span&gt; &lt;span class="n"&gt;editor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;PreferenceManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getDefaultSharedPreferences&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;edit&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;editor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;putBoolean&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;first_launch&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h3&gt;方案三&lt;/h3&gt;
+
+&lt;p&gt;同样确保新API不会在低版本运行，也可以忽略警报。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="nd"&gt;@SuppressLint&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;NewApi&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;testNewApi&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;SharedPreferences&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Editor&lt;/span&gt; &lt;span class="n"&gt;editor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;PreferenceManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getDefaultSharedPreferences&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;edit&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;editor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;putBoolean&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;first_launch&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;&lt;strong&gt;但是这种方案不推荐&lt;/strong&gt;，是直接对方法的警告忽略，如果继续在方法中增加代码，则不利于发现问题，比如&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="nd"&gt;@SuppressLint&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;NewApi&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;testNewApi&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;SharedPreferences&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;Editor&lt;/span&gt; &lt;span class="n"&gt;editor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;PreferenceManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getDefaultSharedPreferences&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;edit&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;editor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;putBoolean&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;first_launch&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="s"&gt;&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;isEmpty&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt; &lt;span class="c1"&gt;//新增加代码，不容易发现问题&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h3&gt;含有InlinedApi警告的代码&lt;/h3&gt;
+
+&lt;p&gt;下面代码过于简单，只是为了打印一个API 19引入的int常量值。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;testInlinedApi&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;MainActivity&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;inlinedValue=&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;View&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;ACCESSIBILITY_LIVE_REGION_ASSERTIVE&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;对于这个问题的方案很简答，就是自己定义一个常量，其值与高版本的API常量相同，然后使用这个自定义常量即可。如下代码&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;lineos:false&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;testInlinedApi&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;VIEW_ACCESSIBILITY_LIVE_REGION_ASSERTIVE&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;MainActivity&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;inlinedValue=&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;VIEW_ACCESSIBILITY_LIVE_REGION_ASSERTIVE&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h2&gt;小问题&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;如果没有lint命令，需要将Android中的sdk/tools/目录加入PATH即可。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"&gt;&lt;/script&gt;
+
+
+&lt;script type="text/javascript"&gt;
+    showBookCopyright();
+&lt;/script&gt;
+
+
+
+</description>
+    <title>使用Android lint发现并解决高版本API问题</title>
+    <link>http://droidyue.com/blog/2015/07/25/use-android-lint-to-find-higher-api-usage/</link>
+    <pubDate>Sat, 25 Jul 2015 08:51:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2015/07/25/use-android-lint-to-find-higher-api-usage</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;有过Android开发经历的人都不会对ANR陌生，它和崩溃一样是程序设计的问题。本文将以较为深入的视角来介绍什么是ANR，出现场景，如何避免以及如何定位分析ANR,希望可以帮助大家在编写程序时有所帮助。&lt;/p&gt;
 
@@ -3123,75 +3371,6 @@ synchronized修饰的方法后，当某个线程进入调用这个方法，该�
     <link>http://droidyue.com/blog/2015/01/11/looking-into-singleton/</link>
     <pubDate>Sun, 11 Jan 2015 14:15:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2015/01/11/looking-into-singleton</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;时光荏苒，自上次的&lt;a href="http://droidyue.com/blog/2014/07/06/my-plan-for-the-left-half-of-2014/"&gt;2014年下半年计划&lt;/a&gt;已经过去半年了，又到了展望一下开始的这半年的时刻了。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;h2&gt;过去半年的收获&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;日语四级考试通过&lt;/li&gt;
-&lt;li&gt;开始把Java中的一些东西研究透了&lt;/li&gt;
-&lt;li&gt;技术小黑屋的日均IP过百，并且超额完成&lt;/li&gt;
-&lt;li&gt;每天早上玩&lt;a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0"&gt;体感游戏机&lt;/a&gt;，身体素质明显增强&lt;/li&gt;
-&lt;li&gt;学会了在爱情中付出，全心去爱女友，并且女友也一直深爱我&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h2&gt;过去半年的教训&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;制定的目标过多，精力有限。需根据自身实际情况制定，不能过于主观。&lt;/li&gt;
-&lt;li&gt;有些事情没有坚持做下去，很多想法尚未实现。需要更加高效的执行力。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h2&gt;15上半年的预期&lt;/h2&gt;
-
-&lt;h3&gt;编程&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;继续读完&lt;a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B0011F7WU4&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;Thinking In Java&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;继续研究东西要彻底嚼烂的风格&lt;/li&gt;
-&lt;li&gt;在码农周刊,infoq各发布5篇以上文章&lt;/li&gt;
-&lt;li&gt;尝试以新的展现形式分享我的研究&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;爱情&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;陪女友吃遍帝都的小吃，逛街，一起去大阪。&lt;/li&gt;
-&lt;li&gt;爱她，宠她，帮助她改变，努力赚钱养她。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;外语&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;12月参加N3考试（较之前有推迟）准备&lt;/li&gt;
-&lt;li&gt;第三季度去日本旅行日常会话练习&lt;/li&gt;
-&lt;li&gt;通过通勤路上听英文演讲重拾英语&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;其他&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;利用好&lt;a href="http://s.click.taobao.com/t?e=m%3D2%26s%3DYqRO1Rfaov0cQipKwQzePOeEDrYVVa64Qih%2F7PxfOKS5VBFTL4hn2X7BOnX0umzUYFMBzHxYoCPM3gYQjCL89qULerPwKfMIwRKDNIG1Ob7cAkcj9pZG3swMHV%2FCenxVQc4fM4SkruX%2BecaeU0a94sYOae24fhW0"&gt;体感游戏机&lt;/a&gt;，体检时彻底没有轻度脂肪肝症状。&lt;/li&gt;
-&lt;li&gt;常回家看看，毕竟大家都羡慕保定距离北京这么近。&lt;/li&gt;
-&lt;li&gt;技术小黑屋网站的Alexa排名到30万，目前为40万&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-    <title>2015上半年</title>
-    <link>http://droidyue.com/blog/2015/01/10/plan-for-the-first-half-of-2015/</link>
-    <pubDate>Sat, 10 Jan 2015 14:41:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2015/01/10/plan-for-the-first-half-of-2015</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-07-25T12:43:12+08:00</updated>
+  <updated>2015-07-25T17:10:50+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,213 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用Android lint发现并解决高版本API问题]]></title>
+    <link href="http://droidyue.com/blog/2015/07/25/use-android-lint-to-find-higher-api-usage/"/>
+    <updated>2015-07-25T16:51:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/07/25/use-android-lint-to-find-higher-api-usage</id>
+    <content type="html"><![CDATA[<p>在编写代码时，为了实现一些功能，我们需要使用高版本的API，比如SharedPreference的Editor中的apply方法为API 9开始引入，在API 9 以上的机器使用没有问题，但是在API 8上，如果运行时执行了这段代码，就会崩溃，问题相当严重。尤其是该问题出现在正式版中，后果不堪设想。本文将介绍如何使用lint发现并解决这些问题。</p>
+
+<!--more-->
+
+
+<h2>lint是什么</h2>
+
+<p>lint是Android提供的一个静态代码分析的工具，使用这个工具可以帮助我们找出Android项目中潜在的bug，安全，性能，可用性，辅助性和国际化等问题，同时还可以查找出错误拼写，提示开发者更正。</p>
+
+<h3>lint的工作流程</h3>
+
+<p><img class="<a" src="href="http://7jpolu.com1.z0.glb.clouddn.com/lint_workflow.png">http://7jpolu.com1.z0.glb.clouddn.com/lint_workflow.png</a>"></p>
+
+<p>上图为lint的工作流程图，下面为一些元素的简短说明。</p>
+
+<p><strong>程序源文件</strong></p>
+
+<p>程序源文件就是Android工程的组成部分，包括Java和xml文件，图标以及混淆配置文件</p>
+
+<p><strong>lint.xml文件</strong></p>
+
+<p>lint配置文件，用来排除某些检查或者自定义检测问题的严重程度。</p>
+
+<p><strong>lint工具</strong></p>
+
+<p>一个静态代码扫描工具，对Android工程进行扫描分析，可以从终端执行命令，也可以从Android Studio等IDE中使用。lint工具可以帮助我们找到Android应用性能和代码质量问题。在正式发布应用之前，强烈建议使用lint检查并修复发现的问题。</p>
+
+<p><strong>lint检查结果</strong></p>
+
+<p>lint的检查结果可以从终端，Android Studio等IDE工具，或者生成结果文件查看。每一个问题都会标明在文件中的位置行数，以及关于该问题的说明等信息。</p>
+
+<h2>查找问题</h2>
+
+<p>知道了lint如何工作，就只需执行lint查找问题，有了明确的问题，才能有的放矢地解决。</p>
+
+<h3>Android Sutdio</h3>
+
+<p>选择菜单Analyze&mdash;>Configure Current File Analysis&mdash;>Configure Inspections 清空所有的检查项，然后如下图勾选<strong>Calling new methods on older versions</strong> 和 <strong>Using inlined constants on older versions</strong></p>
+
+<p><img class="<a" src="href="http://7jpolu.com1.z0.glb.clouddn.com/android_studio_lint_custom.png">http://7jpolu.com1.z0.glb.clouddn.com/android_studio_lint_custom.png</a>"></p>
+
+<p>然后执行Analyze&mdash;> Inspect Code，然后查看底部的Inspection即可</p>
+
+<h3>command line</h3>
+
+<p><code>bash lineos:false
+cd project_root_dir
+lint --check NewApi,InlinedApi --html /tmp/api_check.html ./
+</code>
+无需多时，结果就会以html形式写入/tmp/api_check.html文件</p>
+
+<h3>Gradle Command Line</h3>
+
+<p>配置build.gradle
+```java lineos:false
+android{</p>
+
+<pre><code>//some other config
+lintOptions {
+    abortOnError false
+    xmlReport false
+    check 'NewApi', 'InlinedApi'
+}
+</code></pre>
+
+<p>}
+<code>
+然后执行下面的命令
+</code>bash lineos:false
+cd project_root_dir
+./gradlew lint
+```
+结果会输出到工程目录build/outputs/lint-results.html。</p>
+
+<h2>如何解决</h2>
+
+<p>结合上面的输出结果，我们接下来要做的就是如何解决，如下为一些解决思路。</p>
+
+<h3>必然执行高版本API</h3>
+
+<ul>
+<li>如果是NewApi警告，考虑其他方法代替。比如String.isEmpty自API 9才引入，但是使用TextUtils.isEmpty替换。</li>
+<li>如果是InlinedApi警告，可以自定义与常量同值的另一个常量。</li>
+<li>使用反射，对于不太重要的方法，我们可以使用反射来解决问题。</li>
+</ul>
+
+
+<h3>或然执行高版本API</h3>
+
+<p>如果该段代码进行了API Level限制，确保高版本API不会在低版本设置执行，只需对这个警告设置为忽略即可。</p>
+
+<h2>实战解决</h2>
+
+<p>以下代码所属工程最低支持2.2系统，即API 8。</p>
+
+<h3>NewApi有警报代码</h3>
+
+<p>```java lineos:false
+private void testNewApi() {</p>
+
+<pre><code>PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putBoolean("first_use", false).apply();
+</code></pre>
+
+<p>}
+```
+上面代码中的apply方法为Android API 9引入，使用lint检查会提示警告。</p>
+
+<h3>方案一</h3>
+
+<p>按照API Level不同，选择不同的方法,对于API 9以下使用commit，API 9及其以上使用apply
+```java lineos:false
+private void testNewApi() {</p>
+
+<pre><code>SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
+editor.putBoolean("first_launch", false);
+if (Build.VERSION.SDK_INT &gt;= Build.VERSION_CODES.GINGERBREAD) {
+  editor.apply();
+} else {
+  editor.commit();
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>方案二</h3>
+
+<p>对于确定不会在低版本运行的情况，我们可以增加@TargetApi加上对应的API引入的版本即可。
+```java lineos:false
+@TargetApi(Build.VERSION_CODES.GINGERBREAD)
+private void testNewApi() {</p>
+
+<pre><code>SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
+editor.putBoolean("first_launch", false).apply();
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>方案三</h3>
+
+<p>同样确保新API不会在低版本运行，也可以忽略警报。
+```java lineos:false
+@SuppressLint(&ldquo;NewApi&rdquo;)
+private void testNewApi() {</p>
+
+<pre><code>SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
+editor.putBoolean("first_launch", false).apply();
+</code></pre>
+
+<p>}
+<code>
+**但是这种方案不推荐**，是直接对方法的警告忽略，如果继续在方法中增加代码，则不利于发现问题，比如
+</code>java lineos:false
+@SuppressLint(&ldquo;NewApi&rdquo;)
+private void testNewApi() {</p>
+
+<pre><code>SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
+editor.putBoolean("first_launch", false).apply();
+"".isEmpty(); //新增加代码，不容易发现问题
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>含有InlinedApi警告的代码</h3>
+
+<p>下面代码过于简单，只是为了打印一个API 19引入的int常量值。
+```java lineos:false
+private void testInlinedApi() {</p>
+
+<pre><code>Log.i("MainActivity", "inlinedValue=" + View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE);
+</code></pre>
+
+<p>}
+<code>
+对于这个问题的方案很简答，就是自己定义一个常量，其值与高版本的API常量相同，然后使用这个自定义常量即可。如下代码
+</code>java lineos:false
+private void testInlinedApi() {</p>
+
+<pre><code>final int VIEW_ACCESSIBILITY_LIVE_REGION_ASSERTIVE = 2;
+Log.i("MainActivity", "inlinedValue=" + VIEW_ACCESSIBILITY_LIVE_REGION_ASSERTIVE);
+</code></pre>
+
+<p>}
+```</p>
+
+<h2>小问题</h2>
+
+<ul>
+<li>如果没有lint命令，需要将Android中的sdk/tools/目录加入PATH即可。</li>
+</ul>
+
+
+<p><script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
+<script type="text/javascript">
+	showBookCopyright();
+</script>
+</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[说说Android中的ANR]]></title>
@@ -390,149 +597,6 @@ android/support/v4/net/ConnectivityManagerCompat.class: compiled Java class data
 
 <ul>
 <li><a href="http://stackoverflow.com/questions/3313532/what-version-of-javac-built-my-jar">What version of javac built my jar?</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Google Play商店推广那些事]]></title>
-    <link href="http://droidyue.com/blog/2015/05/11/google-play-tuiguang/"/>
-    <updated>2015-05-11T21:43:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/05/11/google-play-tuiguang</id>
-    <content type="html"><![CDATA[<p>Play商店是Android的官方商店，虽然在大陆无法访问，但是这里依旧是重要的版本发布市场，尤其是对于那些国际化的产品。对于拓宽海外市场，付费推广就是一部分不可忽视的措施。而Android付费推广必然就是Play商店推广。本文主要从技术方面讲解，如何统计推广数据，以及在开发过程中遇到的一些疑问和困惑。</p>
-
-<!--more-->
-
-
-<h2>生成推广链接</h2>
-
-<p>想要进行推广，必须有推广链接。Google提供了生成推广链接的地址<a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#google-play-url-builder">Google Play URL Builder</a>,遗憾的是这个地址被墙了，不过可以使用<a href="http://www.digitangle.co.uk/toolsandresources/google-play-url-builder/#sthash.HLdt4vXJ.dpbs">这个地址</a>，可能稍微慢一点。</p>
-
-<p><img class="<a" src="href="http://droidyueimg.qiniudn.com/play_url_builder.png">http://droidyueimg.qiniudn.com/play_url_builder.png</a>"></p>
-
-<h3>简单描述</h3>
-
-<ul>
-<li>Package Name 必填  应用的包名，如com.example.application</li>
-<li>Campaign Source 必填 推广的来源，比如google, citysearch, newsletter4</li>
-<li>Campaign Medium 选填  推广的媒介，比如cpc, banner, email</li>
-<li>Campaign Term   选填 推广的关键字 比如 running+shoes</li>
-<li>Campaign Content 选填 推广内容描述</li>
-<li>Campaign Name  选填 可以填写 产品名，推广代号或者是推广口号</li>
-</ul>
-
-
-<p>生成的推广地址就是<a href="https://play.google.com/store/apps/details?id=com.mx.browser&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dadlink%26utm_term%3Dandroid%252Bbrowser%26utm_content%3DBest%2520and%2520Fast%2520Browser%26utm_campaign%3Dandroidyue_123">https://play.google.com/store/apps/details?id=com.mx.browser&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dadlink%26utm_term%3Dandroid%252Bbrowser%26utm_content%3DBest%2520and%2520Fast%2520Browser%26utm_campaign%3Dandroidyue_123</a></p>
-
-<h2>推广如何工作的</h2>
-
-<p>有了上面的推广链接，我们有必要了解一下Play商店的推广是如何工作的。</p>
-
-<p>  1.用户从网页或者应用中点击Play商店推广链接跳转到Play商店应用的页面下载。<br/>
-  2.应用下载完成并安装后，Google Play商店会发送一个<strong>INSTALL_REFERRER</strong>的Intent广播，该Intent中包含了推广链接中的参数。<br/>
-  3.应用收到<strong>INSTALL_REFERRER</strong>广播之后，从Intent中读取参数，上报推广数据。</p>
-
-<h2>统计推广数据</h2>
-
-<h3>1.manifest声明receiver，接收<strong>INSTALL_REFERRER</strong>广播</h3>
-
-<p>```xml
-<receiver android:name=".PlayCampaignReceiver" android:exported="true"></p>
-
-<pre><code>&lt;intent-filter&gt;
-            &lt;action android:name="com.android.vending.INSTALL_REFERRER" /&gt;
-        &lt;/intent-filter&gt;       
-</code></pre>
-
-<p></receiver>
-```</p>
-
-<h3>2.实现PlayCampaignReceiver，处理<strong>INSTALL_REFERRER</strong>广播</h3>
-
-<p>```java
-package com.droidyue.playstorereferrertester;</p>
-
-<p>import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.util.Log;</p>
-
-<p>public class PlayCampaignReceiver extends BroadcastReceiver {</p>
-
-<pre><code>private static final String LOGTAG = "PlayCampaignReceiver";
-@Override
-public void onReceive(Context context, Intent intent) {
-    Log.i(LOGTAG, "onReceive intent=" + intent);
-    //处理referrer参数
-    String referrer = intent.getStringExtra("referrer");
-    //some other code
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<h2>多个Receiver</h2>
-
-<p>有些时候我们可能有这样的需求，我们需要多个Receiver监听<strong>INSTALL_REFERRER</strong>广播，其实是可以的。</p>
-
-<h3>代码调用</h3>
-
-<p>这一种是比较推荐的实现方式，比较简单，就是在一个Receiver的onReceive中，实例化另一个Receiver并调用其onReceive方法。
-```java</p>
-
-<p>public class PlayCampaignReceiver extends BroadcastReceiver {</p>
-
-<pre><code>private static final String LOGTAG = "PlayCampaignReceiver";
-@Override
-public void onReceive(Context context, Intent intent) {
-    Log.i(LOGTAG, "onReceive intent=" + intent);
-    //调用另一个Receiver实例的onReceive方法
-    new AnotherPlayCampaignReceiver().onReceive(context, intent);
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<h3>manifest声明</h3>
-
-<p>通过manifest的增加另一个监听<strong>INSTALL_REFERRER</strong>广播的Receiver的形式理论上也可以，但是之前的Google文档中说这种方式有问题，不建议使用。之前Google统计关于市场推广的描述为</p>
-
-<blockquote><p>Note: Only one BroadcastReceiver class can be specified per application. Should you need to incorporate two or more BroadcastReceivers from different SDKs, you will need to create your own BroadcastReceiver class that will receive all broadcasts and call the appropriate BroadcastReceivers for each type of Broadcast.</p></blockquote>
-
-<h2>何时收到推广数据</h2>
-
-<p>关于何时收到推广数据的问题争论颇多，基本上又两个答案：安装完成之后和打一次打开程序时。这两个答案可以说是都对或者都错。</p>
-
-<p>在3.1之前，<strong>INSTALL_REFERRER</strong>广播 确实是在程序安装之后发送的。 <br/>
-在3.1之后，<strong>INSTALL_REFERRER</strong>广播 就变成了在程序第一次启动的时候进行的。</p>
-
-<p>那么这又是作何原因呢，其真实的原因就是在3.1 API 12之后，Android系统引入了停止状态，也就是说一个刚下载的程序，在用户手动点击图标启动之前，是收不到正常的广播的。只有当处于非停止状态的应用才能收到<strong>INSTALL_REFERRER</strong>广播。所以广播的发送就选择在程序第一次启动时。  更多关于<a href="http://droidyue.com/blog/2014/07/14/look-inside-android-package-stop-state-since-honeycomb-mr1/">Android中的停止状态</a></p>
-
-<p>为了进一步验证这个发送广播实际，我在Play Store上传了一个测试程序，可以使用这个地址<a href="https://play.google.com/store/apps/details?id=com.droidyue.playstorereferrertester&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dblog%26utm_term%3Dtest%252Bapp%26utm_content%3Dtest%252Bapp%26utm_campaign%3Dandroidyue_123456">https://play.google.com/store/apps/details?id=com.droidyue.playstorereferrertester&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dblog%26utm_term%3Dtest%252Bapp%26utm_content%3Dtest%252Bapp%26utm_campaign%3Dandroidyue_123456</a>从Play Store下载测试一下，过滤日志<code>adb logcat | grep PlayCampaignReceiver</code>测试。</p>
-
-<p>注意：这里的第一次安装可以是从Play Store 应用中点打开按钮，也可以是从Launcher中点击应用图标。前面两种情况都是可以接收到广播的。</p>
-
-<h2>别的包也会收到么</h2>
-
-<p>这也是一个被争论的问题，当然我也是通过上面的包验证了，答案就是不会的。<strong>INSTALL_REFERRER</strong>只会发给那个推广安装的程序。</p>
-
-<h2>例外情况</h2>
-
-<p>从网页到客户端的安装是无法发送<strong>INSTALL_REFERRER</strong>广播的。</p>
-
-<h2>奇怪问题</h2>
-
-<h3>协议为哪个</h3>
-
-<p>其实有人会奇怪，究竟推广链接是market还是https协议，答案是都可以，但是推荐使用https协议的链接，首先的既定事实是Google Play URL Builder默认生成的就是https协议链接，另外https是一个被广泛采用的协议，设想如果一个market协议链接在PC浏览器上被点击是怎样的一种体验呢？答案不言自明。</p>
-
-<h2>参考文章</h2>
-
-<ul>
-<li><a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#overview">Campaign Measurement </a></li>
 </ul>
 
 ]]></content>
