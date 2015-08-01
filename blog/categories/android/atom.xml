@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-08-01T16:19:52+08:00</updated>
+  <updated>2015-08-01T17:30:14+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,133 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[探究android:largeHeap]]></title>
+    <link href="http://droidyue.com/blog/2015/08/01/dive-into-android-large-heap/"/>
+    <updated>2015-08-01T17:10:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/08/01/dive-into-android-large-heap</id>
+    <content type="html"><![CDATA[<p>在日常的Android开发中，我们必然遇到过OutOfMemoryError这样的崩溃，产生的原因无外乎两点，一是内存过小不够用，二是程序设计有误，导致不能释放内存，其中后者情况较多。在解决这个问题时，我们亦或多或少听到android:largeHeap，然而这个概念又是什么呢，它该如何使用，存在哪些问题呢。本文讲比较全面介绍Android中的largeHeap帮助各位全面深入了解这个概念。</p>
+
+<!--more-->
+
+
+<h2>磨刀不误砍柴工</h2>
+
+<p>为了便于理解，先简单介绍一些和文章相关的基础概念。</p>
+
+<ul>
+<li>通常，一个Android程序在运行时会启动一个Dalvik虚拟机（暂不讨论ART模式）</li>
+<li>虚拟机的运行时内存一般由堆和栈两大部分构成。</li>
+<li>栈是存储方法调用的一片内存数据区。</li>
+<li>堆内存占据了虚拟机的大部分内存空间，程序执行时产生的对象就分配在堆内存上。</li>
+<li>如果是堆内存没有可用的空间存储生成的对象，JVM会抛出java.lang.OutOfMemoryError。</li>
+</ul>
+
+
+<p>如若具体了解堆和栈，请参考文章<a href="http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/">Java中的堆和栈的区别</a>和<a href="http://droidyue.com/blog/2014/12/21/java-runtime-data-areas/">JVM运行时的数据区</a></p>
+
+<h2>largeHeap介绍</h2>
+
+<p>一个应用如果使用了largeHeap，会请求系统为Dalvik虚拟机分配更大的内存空间。使用起来也很方便，只需在manifest文件application节点加入<strong>android:largeHeap=&ldquo;true&rdquo;</strong>即可。
+```xml
+&lt;application android:icon=&ldquo;@drawable/icon&rdquo;</p>
+
+<pre><code>android:allowBackup="false"
+android:label="@string/app_name" 
+android:debuggable="true" 
+android:theme="@android:style/Theme.Black"
+android:largeHeap="true"
+</code></pre>
+
+<blockquote><p>```</p></blockquote>
+
+<h2>largeHeap有多大</h2>
+
+<p>在Android中，有如下两个方法可以帮助我们查看当前内存大小</p>
+
+<ul>
+<li>ActivityManager.getMemoryClass()获得内用正常情况下内存的大小</li>
+<li>ActivityManager.getLargeMemoryClass()可以获得开启largeHeap最大的内存大小</li>
+</ul>
+
+
+<p>然而largeHeap这个最大值是如何决定的呢？想要了解这个问题，我们就需要看一下Android系统中的一个文件。</p>
+
+<p>这个文件路径是<code>/system/build.prop</code>，由于文件比较大，这里我们只截取关于dalvik内存的配置信息，如下。
+<code>java
+dalvik.vm.heapstartsize=8m
+dalvik.vm.heapgrowthlimit=192m
+dalvik.vm.heapsize=512m
+dalvik.vm.heaptargetutilization=0.75
+dalvik.vm.heapminfree=2m
+dalvik.vm.heapmaxfree=8m
+</code></p>
+
+<p>上面有诸多配置，但从字面意思也不难理解，为了正确理解，有必要逐一解释一下。</p>
+
+<p><strong>dalvik.vm.heapstartsize=8m</strong></p>
+
+<p>相当于虚拟机的 -Xms配置，该项用来设置堆内存的初始大小。</p>
+
+<p><strong>dalvik.vm.heapgrowthlimit=192m</strong></p>
+
+<p>相当于虚拟机的 -XX:HeapGrowthLimit配置，该项用来设置一个标准的应用的最大堆内存大小。一个标准的应用就是没有使用android:largeHeap的应用。</p>
+
+<p><strong>dalvik.vm.heapsize=512m</strong></p>
+
+<p>相当于虚拟机的 -Xmx配置，该项设置了使用android:largeHeap的应用的最大堆内存大小。</p>
+
+<p><strong>dalvik.vm.heaptargetutilization=0.75</strong></p>
+
+<p>相当于虚拟机的 -XX:HeapTargetUtilization,该项用来设置当前理想的堆内存利用率。其取值位于0与1之间。当GC进行完垃圾回收之后，Dalvik的堆内存会进行相应的调整，通常结果是当前存活的对象的大小与堆内存大小做除法，得到的值为这个选项的设置，即这里的0.75。注意，这只是一个参考值，<a href="http://grepcode.com/file/repo1.maven.org/maven2/org.robovm/robovm-rt/1.0.0/dalvik/system/VMRuntime.java#VMRuntime.setTargetHeapUtilization%28float%29">Dalvik虚拟机也可以忽略此设置</a>。</p>
+
+<p><strong>dalvik.vm.heapminfree=2m</strong>与<strong>dalvik.vm.heapmaxfree=8m</strong></p>
+
+<p>dalvik.vm.heapminfree对应的是-XX:HeapMinFree配置，用来设置单次堆内存调整的最小值。<strong>dalvik.vm.heapmaxfree</strong>对应的是-XX:HeapMaxFree配置，用来设置单次堆内存调整的最大值。通常情况下，还需要结合上面的 -XX:HeapTargetUtilization的值，才能确定内存调整时，需要调整的大小。</p>
+
+<h2>largeHeap需要权限么</h2>
+
+<p>为何有此疑问呢？ 原因是这样的。 首先一个设备的内存是固定的，当我们使用了largeHeap之后就可以使我们的程序内存增加，但这部分增加的内存有可能是源自被系统杀掉的后台程序。所以，使用largeHeap理论上是有可能杀掉其他的程序的。</p>
+
+<p>然而，结果就是不需要权限，Google在一开始就是这样，只需要简单在Application元素上加入android:largeHeap=&ldquo;true"就能正常使用。</p>
+
+<h2>largeHeap对GC的影响</h2>
+
+<p>拥有了更多的内存，是不是就意味着要花更多的时间遍历对象垃圾回收呢？其实不然。</p>
+
+<p>首先largeHeap自Android 4.0开始支持，而并发的垃圾回收方式从Android 2.3开始引入。</p>
+
+<p>在引入并发垃圾回收之前，系统采用了Stop-the-World回收方式，进行一次垃圾回收通常消耗几百毫秒，这是很影响交互和响应的。</p>
+
+<p>引入并发垃圾回收之后,在GC开始和结束的阶段会有短暂的暂停时间，通常在10毫秒以内。</p>
+
+<p>因此在支持largeHeap的系统上都采用了并发垃圾回收，GC的Pause Time不会很长，对交互响应影响甚微。</p>
+
+<h2>慎用largeHeap</h2>
+
+<p>对于largeHeap的使用，我们该持有的谨慎的态度，largeHeap可以使用，但是要谨慎。</p>
+
+<p>对于本身对内存要求过大的图片或者视频应用，我们可以使用largeHeap。</p>
+
+<p>除上面的情况，如果仅仅是为了解决OutOfMemoryError这样的问题，而尝试使用largeHeap分配更大内存的这种指标不治本的方法不可取。对待这样的OOM问题，建议阅读以下几篇文章，了解Android中内存泄露和垃圾回收，从代码上去查找问题，从根本上解决问题。</p>
+
+<h2>推荐文章</h2>
+
+<ul>
+<li><a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a></li>
+<li><a href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a></li>
+<li><a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">Google IO：Android内存管理主题演讲记录</a></li>
+</ul>
+
+
+<p><script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
+<script type="text/javascript">
+	showBookCopyright();
+</script>
+</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[使用Android lint发现并解决高版本API问题]]></title>
@@ -506,97 +633,6 @@ private void enableHttpResponseCache() {</p>
 
 <ul>
 <li><a href="http://android-developers.blogspot.com/2011/09/androids-http-clients.html">Android’s HTTP Clients</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[JAR包未加入APK程序]]></title>
-    <link href="http://droidyue.com/blog/2015/05/15/jar-not-in-apk/"/>
-    <updated>2015-05-15T20:45:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/05/15/jar-not-in-apk</id>
-    <content type="html"><![CDATA[<p>前段时间打包遇到了一个问题，jar包不能加入到apk包中。从Eclipse中完全可以，一旦放到服务器端进行打包就出现了问题。</p>
-
-<!--more-->
-
-
-<p>使用<code>ant debug -d</code>得到的信息如下
-```java
-[dx] trouble processing:</p>
-
-<pre><code>   [dx] bad class file magic (cafebabe) or version (0033.0000)
-   [dx] ...while parsing com/solo/adsdk/network/a.class
-   [dx] ...while processing com/solo/adsdk/network/a.class
-   [dx]
-   [dx] trouble processing:
-   [dx] bad class file magic (cafebabe) or version (0033.0000)
-   [dx] ...while parsing com/solo/adsdk/network/b.class
-   [dx] ...while processing com/solo/adsdk/network/b.class
-   [dx]
-   [dx] trouble processing:
-   [dx] bad class file magic (cafebabe) or version (0033.0000)
-   [dx] ...while parsing com/solo/adsdk/network/AdsLoader.class
-   [dx] ...while processing com/solo/adsdk/network/AdsLoader.class
-   [dx]
-   [dx] trouble processing:
-   [dx] bad class file magic (cafebabe) or version (0033.0000)
-   [dx] ...while parsing com/solo/adsdk/network/UrlConfig.class
-   [dx] ...while processing com/solo/adsdk/network/UrlConfig.class
-</code></pre>
-
-<p>```
-相比到这里，原因不言则明，原来是jar包的编译版本比工程编译的版本不一致，真实的情况是前后比后者编译版本高。
-经过分析，jar包的编译环境是Java 7， 而工程打包的编译环境是Java 6.</p>
-
-<h2>如何解决</h2>
-
-<p>解决这个问题也简单，不出如下做法</p>
-
-<ul>
-<li>更换成Java 6编译出来的jar包</li>
-<li>使用java 7 打包工程。</li>
-</ul>
-
-
-<h2>如何得知jar包编译版本</h2>
-
-<h3>解压jar包</h3>
-
-<p><code>java
-jar fx android-support-v4.jar
-</code>
-解压后查看当前目录，会多出一个文件夹，这里是名字为android的文件夹。</p>
-
-<h3>查看文件信息</h3>
-
-<p><code>java
-11:52 $ file android/support/v4/net/ConnectivityManagerCompat.class
-android/support/v4/net/ConnectivityManagerCompat.class: compiled Java class data, version 49.0 (Java 1.5)
-</code></p>
-
-<h3>查找版本</h3>
-
-<p>上面我们得到了<code>version 49.0 (Java 1.5)</code>，有些情况下我们得到的只有<code>version 49.0</code>需要查找下面的列表</p>
-
-<h4>版本映射</h4>
-
-<ul>
-<li>45.3 = Java 1.1</li>
-<li>46 = Java 1.2</li>
-<li>47 = Java 1.3</li>
-<li>48 = Java 1.4</li>
-<li>49 = Java 5</li>
-<li>50 = Java 6</li>
-<li>51 = Java 7</li>
-<li>52 = Java 8</li>
-</ul>
-
-
-<h3>参考文章</h3>
-
-<ul>
-<li><a href="http://stackoverflow.com/questions/3313532/what-version-of-javac-built-my-jar">What version of javac built my jar?</a></li>
 </ul>
 
 ]]></content>
