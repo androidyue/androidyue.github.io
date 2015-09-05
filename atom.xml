@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-09-04T19:45:15+08:00</updated>
+  <updated>2015-09-05T11:50:47+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,187 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[剖析Android中进程与线程调度之nice]]></title>
+    <link href="http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice/"/>
+    <updated>2015-09-05T11:35:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice</id>
+    <content type="html"><![CDATA[<p>在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题，研究nice在Linux以及Android系统中的应用。</p>
+
+<!--more-->
+
+
+<h2>一些概念</h2>
+
+<ul>
+<li>进程 是计算机系统中，程序运行的实体，也是线程的容器。</li>
+<li>线程 是进程中实际执行单位，一个线程是程序执行流的最小单元。在一个进程中可以有多个线程存在。</li>
+</ul>
+
+
+<h2>nice与进程调度</h2>
+
+<p>Linux中，使用nice value（以下成为nice值）来设定一个进程的优先级，系统任务调度器根据nice值合理安排调度。</p>
+
+<ul>
+<li>nice的取值范围为-20到19。</li>
+<li>通常情况下，nice的默认值为0。视具体操作系统而定。</li>
+<li>nice的值越大，进程的优先级就越低，获得CPU调用的机会越少，nice值越小，进程的优先级则越高，获得CPU调用的机会越多。</li>
+<li>一个nice值为-20的进程优先级最高，nice值为19的进程优先级最低。</li>
+<li>父进程fork出来的子进程nice值与父进程相同。父进程renice，子进程nice值不会随之改变。</li>
+</ul>
+
+
+<h3>词源考究</h3>
+
+<p>nice这个命令的来源几乎没有资料提到，于是便尝试自己来推断一下。在诸如词霸，沪江等词典给出的意思均为<code>好的；美好的；可爱的；好心的，友好的</code>。而有道词典则稍微给出了一个其他词典没有的<code>和蔼的</code>。个人认为有道给出的这个比较合理。要想做到和蔼，就需要做到谦让，因此或多或少牺牲自己一点，成全他人。所以nice值越高，越和蔼，但是自己的优先级也会越低。</p>
+
+<h3>renice</h3>
+
+<p>对于一个新的进程我们可以按照下面的代码为一个进程设定nice值。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>nice -n 10 adb logcat
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对于已经创建的进程，我们可以使用renice来修改nice值</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo renice -n 0 -p 24161
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>该命令需要使用root权限，-p对应的值为进程id。</p>
+
+<p>注意renice命令在Linux发行版中-n 的值应该为进程的目标优先级。而Mac下-n，则是代表对当前权限的增加值。
+比如在Mac下，讲一个进程的nice值由19改成10，可以这样操作<code>sudo renice -n -9  -p 24161</code>,这一点需要注意，避免掉进坑里。</p>
+
+<h3>Android中的nice</h3>
+
+<p>由于Android基于Linux Kernel，在Android中也存在nice值。但是一般情况下我们无法控制，原因如下：</p>
+
+<ul>
+<li>Android系统并不像其他Linux发行版那样便捷地使用nice命令操作。</li>
+<li>renice需要root权限，一般应用无法实现。</li>
+</ul>
+
+
+<h2>线程调度</h2>
+
+<p>虽然对于进程的优先级，我们无法控制，但是我们可以控制进程中的线程的优先级。在Android中有两种线程的优先级，一种为Android API版本，另一种是 Java 原生版本。</p>
+
+<h3>Android API</h3>
+
+<p>Android中的线程优先级别目前规定了如下，了解了进程优先级与nice值的关系，那么线程优先级与值之间的关系也就更加容易理解。</p>
+
+<ul>
+<li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
+<li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
+<li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
+<li>THREAD_PRIORITY_FOREGROUND 用户正在交互的UI线程，代码中无法设置该优先级，系统会按照情况调整到该优先级，值为-2。</li>
+<li>THREAD_PRIORITY_DISPLAY 也是与UI交互相关的优先级界别，但是要比THREAD_PRIORITY_FOREGROUND优先，代码中无法设置，由系统按照情况调整，值为-4。</li>
+<li>THREAD_PRIORITY_URGENT_DISPLAY 显示线程的最高级别，用来处理绘制画面和检索输入事件，代码中无法设置成该优先级。值为-8。</li>
+<li>THREAD_PRIORITY_AUDIO 声音线程的标准级别，代码中无法设置为该优先级，值为 -16。</li>
+<li>THREAD_PRIORITY_URGENT_AUDIO 声音线程的最高级别，优先程度较THREAD_PRIORITY_AUDIO要高。代码中无法设置为该优先级。值为-19。</li>
+<li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
+<li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
+</ul>
+
+
+<p>使用Android API为线程设置优先级也很简单，只需要在线程执行时调用android.os.Process.setThreadPriority方法即可。这种在线程运行时进行修改优先级，效果类似renice。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>new Thread <span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    @Override
+</span><span class='line'>    public void run<span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      super.run<span class="o">()</span>;
+</span><span class='line'>        android.os.Process.setThreadPriority<span class="o">(</span>Process.THREAD_PRIORITY_BACKGROUND<span class="o">)</span>;
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>.start<span class="o">()</span>;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Java原生API</h3>
+
+<p>Java为Thread提供了三个级别的设置，</p>
+
+<ul>
+<li>MAX_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY，值为10。</li>
+<li>MIN_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_LOWEST，值为0。</li>
+<li>NORM_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_DEFAULT，值为5。</li>
+</ul>
+
+
+<p>使用setPriority我们可以为某个线程设置优先级，使用getPriority可以获得某个线程的优先级。</p>
+
+<p>在Android系统中，不建议使用Java原生的API，因为Android提供的API划分的级别更多，更适合在Android系统中进行设定细致的优先级。</p>
+
+<h2>注意</h2>
+
+<p>Android API的线程优先级和Java原生API的优先级是相对独立的，比如使用android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)后，使用Java原生API,Thread.getPriority()得到的值不会改变。如下面代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>new Thread<span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    @Override
+</span><span class='line'>    public void run<span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        super.run<span class="o">()</span>;
+</span><span class='line'>        Log.i<span class="o">(</span>LOGTAG, <span class="s2">&quot;Java Thread Priority Before=&quot;</span> + Thread.currentThread<span class="o">()</span>.getPriority<span class="o">())</span>;
+</span><span class='line'>        Process.setThreadPriority<span class="o">(</span>Process.THREAD_PRIORITY_LOWEST<span class="o">)</span>;
+</span><span class='line'>        Log.i<span class="o">(</span>LOGTAG, <span class="s2">&quot;Java Thread Priority=&quot;</span> + Thread.currentThread<span class="o">()</span>.getPriority<span class="o">())</span>;
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>.start<span class="o">()</span>;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上述代码的运行日志为</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>I/MainActivity<span class="o">(</span> 3679<span class="o">)</span>: Java Thread Priority <span class="nv">Before</span><span class="o">=</span>5
+</span><span class='line'>I/MainActivity<span class="o">(</span> 3679<span class="o">)</span>: Java Thread <span class="nv">Priority</span><span class="o">=</span>5
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>由于上面的这一点缺陷，导致我们在分析ANR trace时需要注意，在下面的ANR日志信息中，<code>prio=5</code>中proi的值对应的Java原生API的线程优先级。而<code>nice=-6</code>中的nice表示的Android API版本的线程优先级。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="s2">&quot;main&quot;</span> <span class="nv">prio</span><span class="o">=</span>5 <span class="nv">tid</span><span class="o">=</span>1 NATIVE
+</span><span class='line'>  | <span class="nv">group</span><span class="o">=</span><span class="s2">&quot;main&quot;</span> <span class="nv">sCount</span><span class="o">=</span>1 <span class="nv">dsCount</span><span class="o">=</span>0 <span class="nv">obj</span><span class="o">=</span>0x41690f18 <span class="nv">self</span><span class="o">=</span>0x4167e650
+</span><span class='line'>  | <span class="nv">sysTid</span><span class="o">=</span>1765 <span class="nv">nice</span><span class="o">=</span>-6 <span class="nv">sched</span><span class="o">=</span>0/0 <span class="nv">cgrp</span><span class="o">=</span>apps <span class="nv">handle</span><span class="o">=</span>1074196888
+</span><span class='line'>  | <span class="nv">state</span><span class="o">=</span>S <span class="nv">schedstat</span><span class="o">=(</span> 0 0 0 <span class="o">)</span> <span class="nv">utm</span><span class="o">=</span>5764 <span class="nv">stm</span><span class="o">=</span>3654 <span class="nv">core</span><span class="o">=</span>2
+</span><span class='line'>  <span class="c">#00  pc 00022624  /system/lib/libc.so (__futex_syscall3+8)</span>
+</span><span class='line'>  <span class="c">#01  pc 0000f054  /system/lib/libc.so (__pthread_cond_timedwait_relative+48)</span>
+</span><span class='line'>  <span class="c">#02  pc 0000f0b4  /system/lib/libc.so (__pthread_cond_timedwait+64)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>避免ANR</h2>
+
+<p>我在之前的文章<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>中提到使用WorkerThread处理耗时IO操作，同时将WorkerThread的优先级降低，对于耗时IO操作，比如读取数据库，文件等，我们可以设置该workerThread优先级为THREAD_PRIORITY_BACKGROUND，以此降低与主线程竞争的能力。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[程序员的逗比瞬间（第二季）]]></title>
@@ -2500,185 +2681,6 @@ GC Roots有哪些</p>
 
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B00P0GDLGO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00P0GDLGO&amp;linkCode=as2&amp;tag=droidyue-23">苹果Mac OSX高手真经</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[避免Android中Context引起的内存泄露]]></title>
-    <link href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/"/>
-    <updated>2015-04-12T21:28:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android</id>
-    <content type="html"><![CDATA[<p>Context是我们在编写Android程序经常使用到的对象，意思为上下文对象。 常用的有Activity的Context还是有Application的Context。Activity用来展示活动界面，包含了很多的视图，而视图又含有图片，文字等资源。在Android中内存泄露很容易出现，而持有很多对象内存占用的Activity更加容易出现内存泄露，开发者需要特别注意这个问题。</p>
-
-<p>本文讲介绍Android中Context，更具体的说是Activity内存泄露的情况，以及如何避免Activity内存泄露，加速应用性能。</p>
-
-<!--more-->
-
-
-<h2>Drawable引起的内存泄露</h2>
-
-<p>Drawable引起内存泄露这个问题是比较隐晦，难以察觉的。在阅读了Romain Guy的<a href="http://android-developers.blogspot.com.tr/2009/01/avoiding-memory-leaks.html">Avoiding memory leaks</a>，结合grepcode查看源码才明白了。</p>
-
-<p>在Android系统中，当我们进行了屏幕旋转，默认情况下，会销毁掉当前的Activity，并创建一个新的Activity并保持之前的状态。在这个过程中，Android系统会重新加载程序的UI视图和资源。假设我们有一个程序用到了一个很大的Bitmap图像，我们不想每次屏幕旋转时都重新加载这个Bitmap对象，最简单的办法就是将这个Bitmap对象使用static修饰。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="n">Drawable</span> <span class="n">sBackground</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">state</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">state</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">TextView</span> <span class="n">label</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TextView</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'>  <span class="n">label</span><span class="o">.</span><span class="na">setText</span><span class="o">(</span><span class="s">&quot;Leaks are bad&quot;</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">sBackground</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">sBackground</span> <span class="o">=</span> <span class="n">getDrawable</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">drawable</span><span class="o">.</span><span class="na">large_bitmap</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="n">label</span><span class="o">.</span><span class="na">setBackgroundDrawable</span><span class="o">(</span><span class="n">sBackground</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">setContentView</span><span class="o">(</span><span class="n">label</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>但是上面的方法在屏幕旋转时有可能引起内存泄露，无论是咋一看还是仔细看这段代码，都很难发现哪里引起了内存泄露。</p>
-
-<p>当一个Drawable绑定到了View上，实际上这个View对象就会成为这个Drawable的一个callback成员变量，上面的例子中静态的sBackground持有TextView对象lable的引用，而lable只有Activity的引用，而Activity会持有其他更多对象的引用。sBackground生命周期要长于Activity。当屏幕旋转时，Activity无法被销毁，这样就产生了内存泄露问题。</p>
-
-<p>2.3.7及以下版本Drawable的setCallback方法的实现</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">setCallback</span><span class="o">(</span><span class="n">Callback</span> <span class="n">cb</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mCallback</span> <span class="o">=</span> <span class="n">cb</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>好在从4.0.1开始，引入了<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">弱引用</a>处理这个问题，弱引用在GC回收时，不会阻止GC回收其指向的对象，避免了内存泄露问题。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">setCallback</span><span class="o">(</span><span class="n">Callback</span> <span class="n">cb</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mCallback</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">Callback</span><span class="o">&gt;(</span><span class="n">cb</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>单例引起的内存泄露</h2>
-
-<p>单例是我们比较简单常用的一种设计模式,然而如果单例使用不当也会导致内存泄露。
-比如这样一个例子,我们使用饿汉式初始化单例，AppSettings我们需要持有一个Context作为成员变量，如果我们按照下面的实现其实是有问题。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">AppSettings</span> <span class="o">{</span>    
-</span><span class='line'>    <span class="kd">private</span> <span class="n">Context</span> <span class="n">mAppContext</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="n">AppSettings</span> <span class="n">sInstance</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AppSettings</span><span class="o">();</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">//some other codes</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">AppSettings</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">sInstance</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>  
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">setup</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">mAppContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>sInstance作为静态对象，其生命周期要长于普通的对象，其中也包含Activity，当我们进行屏幕旋转，默认情况下，系统会销毁当前Activity，然后当前的Activity被一个单例持有，导致垃圾回收器无法进行回收，进而产生了内存泄露。</p>
-
-<p>解决的方法就是不持有Activity的引用，而是持有Application的Context引用。代码如下修改</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">setup</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mAppContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="na">getApplicationContext</span><span class="o">();</span> 
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>访问这里了解更多关于<a href="http://droidyue.com/blog/2015/01/11/looking-into-singleton/">单例模式的问题</a></p>
-
-<h2>条条方法返回Context</h2>
-
-<p>通常我们想要获取Context对象，主要有以下四种方法</p>
-
-<ul>
-<li>View.getContext,返回当前View对象的Context对象，通常是当前正在展示的Activity对象。</li>
-<li>Activity.getApplicationContext,获取当前Activity所在的(应用)进程的Context对象，通常我们使用Context对象时，要优先考虑这个全局的进程Context。</li>
-<li>ContextWrapper.getBaseContext():用来获取一个ContextWrapper进行装饰之前的Context，可以使用这个方法，这个方法在实际开发中使用并不多，也不建议使用。</li>
-<li>Activity.this 返回当前的Activity实例，如果是UI控件需要使用Activity作为Context对象，但是默认的Toast实际上使用ApplicationContext也可以。</li>
-</ul>
-
-
-<h2>其他内存泄露问题</h2>
-
-<ul>
-<li><a href="http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/">Android中糟糕的AsyncTask</a></li>
-<li><a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a></li>
-<li><a href="http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/">Google为何这样设计OnSharedPreferenceChangeListener</a></li>
-</ul>
-
-
-<h2>避免内存泄露须谨记</h2>
-
-<ul>
-<li>不要让生命周期长于Activity的对象持有到Activity的引用</li>
-<li>尽量使用Application的Context而不是Activity的Context</li>
-<li>尽量不要在Activity中使用非静态内部类，因为非静态内部类会隐式持有外部类实例的引用（具体可以查看<a href="http://droidyue.com/blog/2014/10/02/the-private-modifier-in-java/">细话Java：&#8221;失效&#8221;的private修饰符</a>了解）。如果使用静态内部类，将外部实例引用作为<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">弱引用</a>持有。</li>
-<li>垃圾回收不能解决内存泄露，了解<a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">Android中垃圾回收机制</a></li>
-</ul>
-
-
-<h2>参考文章</h2>
-
-<ul>
-<li><a href="http://android-developers.blogspot.com.tr/2009/01/avoiding-memory-leaks.html">Avoiding memory leaks</a></li>
-<li><a href="http://stackoverflow.com/questions/10641144/difference-between-getcontext-getapplicationcontext-getbasecontext-and">Difference between getContext() , getApplicationContext() , getBaseContext() and “this”</a></li>
-<li><a href="http://stackoverflow.com/questions/1026973/android-whats-the-difference-between-the-various-methods-to-get-a-context">Android &ndash; what&rsquo;s the difference between the various methods to get a Context?</a></li>
-</ul>
-
-
-<h2>好书推荐</h2>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B009VV6EG8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B009VV6EG8&amp;linkCode=as2&amp;tag=droidyue-23">Android应用性能优化</a></li>
-<li><a href="http://www.amazon.cn/gp/product/B00IOB0K1Q/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00IOB0K1Q&amp;linkCode=as2&amp;tag=droidyue-23">图灵程序设计丛书:Java性能优化权威指南</a></li>
-<li><a href="http://www.amazon.cn/gp/product/B009GT0H4U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B009GT0H4U&amp;linkCode=as2&amp;tag=droidyue-23">Java程序性能优化:让你的Java程序更快、更稳定</a></li>
 </ul>
 
 ]]></content>

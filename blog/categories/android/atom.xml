@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-09-04T19:45:15+08:00</updated>
+  <updated>2015-09-05T11:50:47+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,158 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[剖析Android中进程与线程调度之nice]]></title>
+    <link href="http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice/"/>
+    <updated>2015-09-05T11:35:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice</id>
+    <content type="html"><![CDATA[<p>在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题，研究nice在Linux以及Android系统中的应用。</p>
+
+<!--more-->
+
+
+<h2>一些概念</h2>
+
+<ul>
+<li>进程 是计算机系统中，程序运行的实体，也是线程的容器。</li>
+<li>线程 是进程中实际执行单位，一个线程是程序执行流的最小单元。在一个进程中可以有多个线程存在。</li>
+</ul>
+
+
+<h2>nice与进程调度</h2>
+
+<p>Linux中，使用nice value（以下成为nice值）来设定一个进程的优先级，系统任务调度器根据nice值合理安排调度。</p>
+
+<ul>
+<li>nice的取值范围为-20到19。</li>
+<li>通常情况下，nice的默认值为0。视具体操作系统而定。</li>
+<li>nice的值越大，进程的优先级就越低，获得CPU调用的机会越少，nice值越小，进程的优先级则越高，获得CPU调用的机会越多。</li>
+<li>一个nice值为-20的进程优先级最高，nice值为19的进程优先级最低。</li>
+<li>父进程fork出来的子进程nice值与父进程相同。父进程renice，子进程nice值不会随之改变。</li>
+</ul>
+
+
+<h3>词源考究</h3>
+
+<p>nice这个命令的来源几乎没有资料提到，于是便尝试自己来推断一下。在诸如词霸，沪江等词典给出的意思均为<code>好的；美好的；可爱的；好心的，友好的</code>。而有道词典则稍微给出了一个其他词典没有的<code>和蔼的</code>。个人认为有道给出的这个比较合理。要想做到和蔼，就需要做到谦让，因此或多或少牺牲自己一点，成全他人。所以nice值越高，越和蔼，但是自己的优先级也会越低。</p>
+
+<h3>renice</h3>
+
+<p>对于一个新的进程我们可以按照下面的代码为一个进程设定nice值。
+<code>bash
+nice -n 10 adb logcat
+</code>
+对于已经创建的进程，我们可以使用renice来修改nice值
+<code>
+sudo renice -n 0 -p 24161
+</code>
+该命令需要使用root权限，-p对应的值为进程id。</p>
+
+<p>注意renice命令在Linux发行版中-n 的值应该为进程的目标优先级。而Mac下-n，则是代表对当前权限的增加值。
+比如在Mac下，讲一个进程的nice值由19改成10，可以这样操作<code>sudo renice -n -9  -p 24161</code>,这一点需要注意，避免掉进坑里。</p>
+
+<h3>Android中的nice</h3>
+
+<p>由于Android基于Linux Kernel，在Android中也存在nice值。但是一般情况下我们无法控制，原因如下：</p>
+
+<ul>
+<li>Android系统并不像其他Linux发行版那样便捷地使用nice命令操作。</li>
+<li>renice需要root权限，一般应用无法实现。</li>
+</ul>
+
+
+<h2>线程调度</h2>
+
+<p>虽然对于进程的优先级，我们无法控制，但是我们可以控制进程中的线程的优先级。在Android中有两种线程的优先级，一种为Android API版本，另一种是 Java 原生版本。</p>
+
+<h3>Android API</h3>
+
+<p>Android中的线程优先级别目前规定了如下，了解了进程优先级与nice值的关系，那么线程优先级与值之间的关系也就更加容易理解。</p>
+
+<ul>
+<li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
+<li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
+<li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
+<li>THREAD_PRIORITY_FOREGROUND 用户正在交互的UI线程，代码中无法设置该优先级，系统会按照情况调整到该优先级，值为-2。</li>
+<li>THREAD_PRIORITY_DISPLAY 也是与UI交互相关的优先级界别，但是要比THREAD_PRIORITY_FOREGROUND优先，代码中无法设置，由系统按照情况调整，值为-4。</li>
+<li>THREAD_PRIORITY_URGENT_DISPLAY 显示线程的最高级别，用来处理绘制画面和检索输入事件，代码中无法设置成该优先级。值为-8。</li>
+<li>THREAD_PRIORITY_AUDIO 声音线程的标准级别，代码中无法设置为该优先级，值为 -16。</li>
+<li>THREAD_PRIORITY_URGENT_AUDIO 声音线程的最高级别，优先程度较THREAD_PRIORITY_AUDIO要高。代码中无法设置为该优先级。值为-19。</li>
+<li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
+<li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
+</ul>
+
+
+<p>使用Android API为线程设置优先级也很简单，只需要在线程执行时调用android.os.Process.setThreadPriority方法即可。这种在线程运行时进行修改优先级，效果类似renice。
+```
+new Thread () {</p>
+
+<pre><code>@Override
+public void run() {
+    super.run();
+    android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+}
+</code></pre>
+
+<p>}.start();
+```</p>
+
+<h3>Java原生API</h3>
+
+<p>Java为Thread提供了三个级别的设置，</p>
+
+<ul>
+<li>MAX_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY，值为10。</li>
+<li>MIN_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_LOWEST，值为0。</li>
+<li>NORM_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_DEFAULT，值为5。</li>
+</ul>
+
+
+<p>使用setPriority我们可以为某个线程设置优先级，使用getPriority可以获得某个线程的优先级。</p>
+
+<p>在Android系统中，不建议使用Java原生的API，因为Android提供的API划分的级别更多，更适合在Android系统中进行设定细致的优先级。</p>
+
+<h2>注意</h2>
+
+<p>Android API的线程优先级和Java原生API的优先级是相对独立的，比如使用android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)后，使用Java原生API,Thread.getPriority()得到的值不会改变。如下面代码：
+```
+new Thread() {</p>
+
+<pre><code>@Override
+public void run() {
+    super.run();
+    Log.i(LOGTAG, "Java Thread Priority Before=" + Thread.currentThread().getPriority());
+    Process.setThreadPriority(Process.THREAD_PRIORITY_LOWEST);
+    Log.i(LOGTAG, "Java Thread Priority=" + Thread.currentThread().getPriority());
+}
+</code></pre>
+
+<p>}.start();
+<code>
+上述代码的运行日志为
+</code>
+I/MainActivity( 3679): Java Thread Priority Before=5
+I/MainActivity( 3679): Java Thread Priority=5
+```</p>
+
+<p>由于上面的这一点缺陷，导致我们在分析ANR trace时需要注意，在下面的ANR日志信息中，<code>prio=5</code>中proi的值对应的Java原生API的线程优先级。而<code>nice=-6</code>中的nice表示的Android API版本的线程优先级。</p>
+
+<p><code>
+"main" prio=5 tid=1 NATIVE
+  | group="main" sCount=1 dsCount=0 obj=0x41690f18 self=0x4167e650
+  | sysTid=1765 nice=-6 sched=0/0 cgrp=apps handle=1074196888
+  | state=S schedstat=( 0 0 0 ) utm=5764 stm=3654 core=2
+  #00  pc 00022624  /system/lib/libc.so (__futex_syscall3+8)
+  #01  pc 0000f054  /system/lib/libc.so (__pthread_cond_timedwait_relative+48)
+  #02  pc 0000f0b4  /system/lib/libc.so (__pthread_cond_timedwait+64)
+</code></p>
+
+<h2>避免ANR</h2>
+
+<p>我在之前的文章<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>中提到使用WorkerThread处理耗时IO操作，同时将WorkerThread的优先级降低，对于耗时IO操作，比如读取数据库，文件等，我们可以设置该workerThread优先级为THREAD_PRIORITY_BACKGROUND，以此降低与主线程竞争的能力。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[深入讲解Android中Activity launchMode]]></title>
@@ -731,54 +883,6 @@ I/ActivityManager(  462): Process com.example.androidyue.bitmapdemo (pid 4109) h
 	showBookCopyright();
 </script>
 </p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Google Play Services 7.5新增API及多项特性]]></title>
-    <link href="http://droidyue.com/blog/2015/06/23/google-play-services-7-dot-5-adds-new-capabilities/"/>
-    <updated>2015-06-23T21:00:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/06/23/google-play-services-7-dot-5-adds-new-capabilities</id>
-    <content type="html"><![CDATA[<h3>版权说明</h3>
-
-<p>本文为 InfoQ 中文站特供稿件，首发地址为：<a href="http://www.infoq.com/cn/news/2015/06/google-play-services-75">文章链接</a>。如需转载，请与 InfoQ 中文站联系。</p>
-
-<h3>摘要</h3>
-
-<p>最近的Google I/O开发者大会上，Google宣布推出7.5版的Google Play服务，该版本在特性方面增加了诸如智能密码锁和实例ID等功能。在API方面，增加了Google云推送和Google Cast相关的API，同时在Android Wear设备上支持访问Google地图API。</p>
-
-<!--more-->
-
-
-<h3>正文</h3>
-
-<p>最近的Google I/O开发者大会上，Google<a href="http://android-developers.blogspot.com.es/2015/05/a-closer-look-at-google-play-services-75.html">宣布</a>推出7.5版的Google Play服务，该版本在特性方面增加了诸如智能密码锁和实例ID等功能。在API方面，增加了Google云推送和Google Cast相关的API，同时在Android Wear设备上支持访问Google地图API。</p>
-
-<p><strong>智能密码锁</strong></p>
-
-<p><a href="https://developers.google.com/identity/smartlock-passwords/android/">智能密码锁</a>为了简化登陆流程，增加了名为<a href="https://developer.android.com/reference/com/google/android/gms/auth/api/credentials/CredentialsApi.html">CredentialsApi</a>的API和UI，并允许我们对已保存的证书进行检索和保存以备后用。密码管理器是从Chrome浏览器的密码管理器演变而来。了解更多关于该功能细节，请查阅InfoQ<a href="http://www.infoq.com/news/2015/06/google-smart-lock-passwords">具体介绍文章</a>。</p>
-
-<p><strong>实例ID，身份与授权</strong></p>
-
-<p><a href="https://developers.google.com/instance-id/reference">实例ID</a>是一项云服务，该服务用来提供一个唯一的ID来唯一性鉴定应用实例。使用的场景比如确定哪一个应用实例正在发送请求等问题。实例ID还可以用来生成安全令牌，使用安全令牌可以授权第三方应用访问你的应用的服务器端控制的资源，同时安全令牌也可以用来验证一个应用的真实性。</p>
-
-<p><strong>Google云推送</strong></p>
-
-<p>上面提到的实例ID与<a href="https://developer.android.com/google/gcm/index.html">Google云推送</a>紧密相关，Google云推送作为一个服务，既可以接收来自服务器端的信息也可以从客户端向服务器端传送数据。此外，Google云推送还新加入了一个API允许应用设置一个或多个话题进而帮助消息能够精准推送。不仅如此，该服务还增加了一个新的类<a href="https://developer.android.com/reference/com/google/android/gms/gcm/GcmNetworkManager.html">GcmNetworkManager</a>，使用这个类，当服务器端有新信息时，应用与服务器端进行数据同步更加容易。GcmNetworkManager支持对常见行为的处理，比如等待网络连接，设备充电，网络重试和回退等，另外它还支持对后台网络操作的调度进行优化。</p>
-
-<p><strong>Google Cast</strong></p>
-
-<p>众所周知，Google Cast是一套将设备内容呈现到电视或者音响的解决方案，新增的<a href="https://developers.google.com/cast/docs/remote">远程显示API</a>使得管理镜像显示更加容易，另外通过增加媒体队列使得<a href="https://developer.android.com/reference/com/google/android/gms/cast/RemoteMediaPlayer.html">RemoteMediaPlayer</a>可以无缝支持媒体重放。</p>
-
-<p><strong>Google地图和Google Fit</strong></p>
-
-<p>正如一开始提到的，在Android Wear设备上可以使用Google<a href="http://developer.android.com/reference/com/google/android/gms/maps/package-summary.html">地图API</a>了。</p>
-
-<p><a href="https://developers.google.com/fit/">Google Fit</a>，用来构建健康应用解决方案，现在可以使用新增加的<a href="https://developer.android.com/reference/com/google/android/gms/fitness/RecordingApi.html">RecordingApi</a>收集行走距离和燃烧的卡路里数据。</p>
-
-<p>Google Play服务是一个有着系统级别权限的并且可升级的服务和API。正如InfoQ<a href="http://www.infoq.com/news/2013/09/play-services-beat-fragmentation">指出的</a>那样，”在这种情况下，Google可以在宣布之后数天内铺开这些新特性“，如果没有这项服务，则需要底层系统的更新。因为Play服务完全由Google控制，OEM厂商无法修改，所以该服务在缓解软件碎片化问题上起了很关键的作用。</p>
-
-<p><strong>查看英文原文：</strong><a href="http://www.infoq.com/news/2015/06/google-play-services-75">Google Play Services 7.5 Adds New Capabilities, APIs, and More</a></p>
 ]]></content>
   </entry>
   
