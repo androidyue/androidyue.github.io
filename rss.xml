@@ -6,11 +6,211 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Fri, 11 Sep 2015 14:25:55 GMT</pubDate>
+  <pubDate>Sat, 12 Sep 2015 10:23:51 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;h2&gt;版权说明&lt;/h2&gt;
+
+&lt;p&gt;本文为 InfoQ 中文站特供稿件，首发地址为：&lt;a href="http://www.infoq.com/cn/articles/Java-Application-Hostile-to-JIT-Compilation"&gt;你的Java代码对JIT编译友好么？&lt;/a&gt;。如需转载，请与 InfoQ 中文站联系。&lt;/p&gt;
+
+&lt;h2&gt;摘要&lt;/h2&gt;
+
+&lt;p&gt;在JVM中，即时编译器（以下简称JIT）是很重要的一部分，可以帮助应用大幅度提升执行效率。但是很多程序却并不能很好地利用JIT的高性能优化能力。本文中，我们将通过研究一些简单的例子找出程序代码对JIT不友好的问题。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;p&gt;JIT编译器是Java虚拟机（以下简称JVM）中效率最高并且最重要的组成部分之一。但是很多的程序并没有充分利用JIT的高性能优化能力，很多开发者甚至也并不清楚他们的程序有效利用JIT的程度。&lt;/p&gt;
+
+&lt;p&gt;在本文中，我们将介绍一些简单的方法来验证你的程序是否对JIT友好。这里我们并不打算覆盖诸如JIT编译器工作原理这些细节。只是提供一些简单基础的检测和方法来帮助你的代码对JIT友好，进而得到优化。&lt;/p&gt;
+
+&lt;p&gt;JIT编译的关键一点就是JVM会自动地监控正在被解释器执行的方法。一旦某个方法被视为频繁调用，这个方法就会被标记，进而编译成本地机器指令。这些频繁执行的方法的编译由后台的一个JVM线程来完成。在编译完成之前，JVM会执行这个方法的解释执行版本。一旦该方法编译完成，JVM会使用将方法调度表中该方法的解释的版本替换成编译后的版本。&lt;/p&gt;
+
+&lt;p&gt;Hotspot虚拟机有很多JIT编译优化的技术，但是其中最重要的一个优化技术就是内联。在内联的过程中，JIT编译器有效地将一个方法的方法体提取到其调用者中，从而减少虚方法调用。举个例子，看如下的代码：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;public int add(int x, int y) {
+&lt;/span&gt;&lt;span class='line'&gt;  return x + y;
+&lt;/span&gt;&lt;span class='line'&gt;}
+&lt;/span&gt;&lt;span class='line'&gt;  
+&lt;/span&gt;&lt;span class='line'&gt;int result = add(a, b);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;当内联发生之后，上述代码会变成&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;int result = a + b;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上面的变量a和b替换了方法的参数，并且add方法的方法体已经复制到了调用者的区域。使用内联可以为程序带来很多好处，比如
+  * 不会引起额外的性能损失
+  * 减少指针的间接引用
+  * 不需要对内联方法进行虚方法查找&lt;/p&gt;
+
+&lt;p&gt;另外，通过将方法的实现复制到调用者中，JIT编译器处理的代码增多，使得后续的优化和更多的内联成为可能。&lt;/p&gt;
+
+&lt;p&gt;内联取决于方法的大小。缺省情况下，含有35个字节码或更少的方法可以进行内联操作。对于被频繁调用的方法，临界值可以达到325个字节。我们可以通过设置-XX:MaxInlineSize=# 选项来修改最大的临界值，通过设置‑XX:FreqInlineSize=#选项来修改频繁调用的方法的临界值。但是在没有正确的分析的情况下，我们不应该修改这些配置。因为盲目地修改可能会对程序的性能带来不可预料的影响。&lt;/p&gt;
+
+&lt;p&gt;由于内联会对代码的性能有大幅提升，因此让尽可能多的方法达到内联条件尤为重要。这里我们介绍一款叫做Jarscan的工具来帮助我们检测程序中有多少方法是对内联友好的。&lt;/p&gt;
+
+&lt;p&gt;Jarscan工具是分析JIT编译的JITWatch开源工具套件中的一部分。和在运行时分析JIT日志的主工具不同，Jarscan是一款静态分析jar文件的工具。该工具的输出结果格式为CSV，结果中包含了超过频繁调用方法临界值的方法等信息。JITWatch和Jarscan是AdoptOpenJDK工程的一部分，该工程由Chris Newland领导。&lt;/p&gt;
+
+&lt;p&gt;在使用Jarscan并得到分析结果之前，需要从AdoptOpenJDK Jenkins网站下载二进制工具（&lt;a href="https://adopt-openjdk.ci.cloudbees.com/job/jitwatch/jdk=JDK_1.7/ws/lastSuccessfulBuild/artifact/jitwatch-1.0.0-SNAPSHOT-JDK_1.7.tar.gz"&gt;Java 7 工具&lt;/a&gt;，&lt;a href="https://adopt-openjdk.ci.cloudbees.com/job/jitwatch/jdk=OpenJDK8/ws/lastSuccessfulBuild/artifact/jitwatch-1.0.0-SNAPSHOT-OpenJDK8.tar.gz"&gt;Java 8 工具&lt;/a&gt;）。&lt;/p&gt;
+
+&lt;p&gt;运行很简单，如下所示&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;./jarScan.sh &amp;lt;jars to analyse&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;更多关于Jarscan的细节可以访问&lt;a href="https://github.com/AdoptOpenJDK/jitwatch/wiki/JarScan"&gt;AdoptOpenJDK wiki&lt;/a&gt;进行了解。&lt;/p&gt;
+
+&lt;p&gt;上面产生的报告对于开发团队的开发工作很有帮助，根据报告结果，他们可以查找程序中是否包含了过大而不能JIT编译的关键路径方法。上面的操作依赖于手动执行。但是为了以后的自动化，可以开启Java的-XX:+PrintCompilation 选项。开启这个选项会生成如下的日志信息：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;37    1      java.lang.String::hashCode (67 bytes)
+&lt;/span&gt;&lt;span class='line'&gt;124   2  s!  java.lang.ClassLoader::loadClass  (58 bytes)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;其中，第一列表示从进程启动到JIT编译发生经过的时间，单位为毫秒。第二列表示的是编译id，表明该方法正在被编译（在Hotspot中一个方法可以多次去优化和再优化）。第三列表示的是附加的一些标志信息，比如s代表synchronized，！代表有异常处理。最后两列分别代表正在编译的方法名称和该方法的字节大小。&lt;/p&gt;
+
+&lt;p&gt;关于PrintCompilation输出的更多细节，Stephen Colebourne写过一篇博客文章详细介绍日志结果中各列的具体含义，感兴趣的可以访问&lt;a href="http://blog.joda.org/2011/08/printcompilation-jvm-flag.html"&gt;这里&lt;/a&gt;阅读。&lt;/p&gt;
+
+&lt;p&gt;PrintCompilation的输出结果会提供运行时正在编译的方法的信息，Jarscan工具的输出结果可以告诉我们哪些方法不能进行JIT编译。结合两者，我们就可以清楚地知道哪些方法进行了编译，哪些没有进行。另外，PrintCompilation选项可以在线上环境使用，因为开启这个选项几乎不会影响JIT编译器的性能。&lt;/p&gt;
+
+&lt;p&gt;但是，PrintCompilation也存在着两个小问题，有时候会显得不是那么方便：&lt;/p&gt;
+
+&lt;p&gt;  1.输出的结果中未包含方法的签名，如果存在重载方法，区分起来则比较困难。&lt;br/&gt;
+  2.Hotspot虚拟机目前不能将结果输出到单独的文件中，目前只能是以标准输出的形式展示。&lt;/p&gt;
+
+&lt;p&gt;上述的第二个问题的影响在于PrintCompilation的日志会和其他常用的日志混在一起。对于大多数服务器端程序来说，我们需要一个过滤进程来将PrintCompilation的日志过滤到一个独立的日志中。最简单的判断一个方法否是JIT友好的途径就是遵循下面这个简单的步骤：&lt;/p&gt;
+
+&lt;p&gt;  1.确定程序中位于要处理的关键路径上的方法。&lt;br/&gt;
+  2.检查这些方法没有出现在Jarscan的输出结果中。&lt;br/&gt;
+  3.检查这些方法确实出现在了PrintCompilation的输出结果中。&lt;/p&gt;
+
+&lt;p&gt;如果一个方法超过了内联的临界值，大多数情况下最常用的方法就是讲这个重要的方法拆分成多个可以进行内联的小方法，这样修改之后通常会获取更好的执行效率。但是对于所有的性能优化而言，优化之前的执行效率需要测量记录，并且需要需要同优化后的数据进行对比之后，才能决定是否进行优化。为了性能优化而做出的改变不应该是盲目的。&lt;/p&gt;
+
+&lt;p&gt;几乎所有的Java程序都依赖大量的提供关键功能的库。Jarscan可以帮助我们检测哪些库或者框架的方法超过了内联的临界值。举一个具体的例子，我们这里检查JVM主要的运行时库 rt.jar文件。&lt;/p&gt;
+
+&lt;p&gt;为了让结果有点意思，我们分别比较Java 7 和Java 8，并查看这个库的变化。在开始之前我们需要安装Java 7 和 Java8 JDK。首先，我们分别运行Jarscan扫描各自的rt.jar文件，并得到用来后续分析的报告结果：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;$ ./jarScan.sh /Library/Java/JavaVirtualMachines/jdk1.7.0_71.jdk/Contents/Home/jre/lib/rt.jar
+&lt;/span&gt;&lt;span class='line'&gt;  &amp;gt; large_jre_methods_7u71.txt
+&lt;/span&gt;&lt;span class='line'&gt;$ ./jarScan.sh /Library/Java/JavaVirtualMachines/jdk1.8.0_25.jdk/Contents/Home/jre/lib/rt.jar
+&lt;/span&gt;&lt;span class='line'&gt;  &amp;gt; large_jre_methods_8u25.txt&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上述操作结束之后，我们得到两个CSV文件，一个是JDK 7u71的结果，另一个是JDK 8u25。然后我们看一看不同的版本内联情况有哪些变化。首先，一个最简单的判断验证方式，看一看不同版本的JRE中有多少对JIT不友好的方法。&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt; $ wc -l large_jre_methods_*
+&lt;/span&gt;&lt;span class='line'&gt; 3684 large_jre_methods_7u71.txt
+&lt;/span&gt;&lt;span class='line'&gt; 3576 large_jre_methods_8u25.txt&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;我们可以看到，相比Java 7，Java 8 少了100多个内联不友好的方法。下面继续深入研究，看看一些关键的包的变化。为了便于理解如何操作，我们再次介绍一下Jarscan的输出结果。Jarscan的输出结果有如下3个属性组成：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt; "&amp;lt;package&amp;gt;","&amp;lt;method name and signature&amp;gt;",&amp;lt;num of bytes&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;了解了上述的格式，我们可以利用一些Unix文本处理的工具来研究报告结果。比如，我们想看一下Java 7 和 Java 8 这两个版本中java.lang包下哪些方法变得内联友好了：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt; $ cat large_jre_methods_7u71.txt large_jre_methods_8u25.txt | grep -i
+&lt;/span&gt;&lt;span class='line'&gt;  ^\"java.lang | sort | uniq -c&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上面的语句使用grep命令过滤出每份报告中以java.lang开头的行，即只显示位于包java.lang中的类的内联不友好的方法。sort | uniq -c 是一个比较老的Unix小技巧，首先将讲行信息进行排序（相同的信息将聚集到一起），然后对上面的排序数据进行去重操作。另外本命令还会统计一个当前行信息重复的次数，这个数据位于每一行信息的最开始部分。让我们看一下上述命令的执行结果：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;$ cat large_jre_methods_7u71.txt large_jre_methods_8u25.txt | grep -i ^\"java.lang | sort | uniq -c
+&lt;/span&gt;&lt;span class='line'&gt;2 "java.lang.CharacterData00","int getNumericValue(int)",835
+&lt;/span&gt;&lt;span class='line'&gt;2 "java.lang.CharacterData00","int toLowerCase(int)",1339
+&lt;/span&gt;&lt;span class='line'&gt;2 "java.lang.CharacterData00","int toUpperCase(int)",1307
+&lt;/span&gt;&lt;span class='line'&gt;// ... skipped output
+&lt;/span&gt;&lt;span class='line'&gt;2 "java.lang.invoke.DirectMethodHandle","private static java.lang.invoke.LambdaForm makePreparedLambdaForm(java.lang.invoke.MethodType,int)",613
+&lt;/span&gt;&lt;span class='line'&gt;1 "java.lang.invoke.InnerClassLambdaMetafactory","private java.lang.Class spinInnerClass()",497
+&lt;/span&gt;&lt;span class='line'&gt;// ... more output ----&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;报告中，以2（这是使用了uniq -c 对相同的信息计算数量的结果）最为起始的条目说明这些方法在Java 7 和Java 8 中起字节码大小没有改变。虽然这并不能完全肯定地说明这些方法的字节码没有改变，但通常我们也可以视为没有改变。重复次数为1的方法有如下的情况：&lt;br/&gt;
+  a)方法的字节码已经改变。&lt;br/&gt;
+  b)这些方法为新的方法。&lt;/p&gt;
+
+&lt;p&gt;我们看一下以1开始的行数据&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;1 "java.lang.invoke.AbstractValidatingLambdaMetafactory","void
+&lt;/span&gt;&lt;span class='line'&gt;validateMetafactoryArgs()",864
+&lt;/span&gt;&lt;span class='line'&gt;1 "java.lang.invoke.InnerClassLambdaMetafactory","private
+&lt;/span&gt;&lt;span class='line'&gt;java.lang.Class spinInnerClass()",497
+&lt;/span&gt;&lt;span class='line'&gt;1 "java.lang.reflect.Executable","java.lang.String
+&lt;/span&gt;&lt;span class='line'&gt;sharedToGenericString(int,boolean)",329&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上面三个对内联不友好的方法全部来自Java 8，因此这属于新方法的情况。前两个方法与lamda表达式实现相关，第三个方法和反射子系统中继承层级调整有关。在这里，这个改变就是在Java 8 中引入了方法和构造器可以继承的通用基类。&lt;/p&gt;
+
+&lt;p&gt;最后，我们看一看JDK核心库一些令人惊讶的特性：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;  $ grep -i ^\"java.lang.String large_jre_methods_8u25.txt
+&lt;/span&gt;&lt;span class='line'&gt;  "java.lang.String","public java.lang.String[] split(java.lang.String,int)",326
+&lt;/span&gt;&lt;span class='line'&gt;  "java.lang.String","public java.lang.String toLowerCase(java.util.Locale)",431
+&lt;/span&gt;&lt;span class='line'&gt;  "java.lang.String","public java.lang.String toUpperCase(java.util.Locale)",439&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;从上面的日志我们可以了解到，即使是Java 8 中一些java.lang.String中一些关键的方法还是处于内联不友好的状态。尤其是toLowerCase和toUpperCase这两个方法居然过大而无法内联，着实让人感到奇怪。但是，这两个方法由于要处理UTF-8数据而不是简单的ASCII数据，进而增加了方法的复杂性和大小，因而超过了内联友好的临界值。&lt;/p&gt;
+
+&lt;p&gt;对于性能要求较高并且确定只处理ASCII数据的程序，通常我们需要实现一个自己的StringUtils类。该类中包含一些静态的方法来实现上述内联不友好的方法的功能，但这些静态方法既保持紧凑型又能到达内联的要求。&lt;/p&gt;
+
+&lt;p&gt;上述我们讨论的改进都是大部分基于静态分析。除此之外，使用强大的JITWatch工具可以帮助我们更好地优化。JITWatch工具需要设置-XX:+LogCompilation选项开启日志打印。其打印出来的日志为XML格式，而非PrintCompilation简单的文本输出，并且这些日志比较大，通常会到达几百MB。它会影响正在运行的程序（默认情况下主要来自日志输出的影响），因此这个选项不适合在线上的生产环境使用。&lt;/p&gt;
+
+&lt;p&gt;PrintCompilation和Jarscan结合使用并不困难，但却提供了简单且很有实际作用的一步，尤其是对于开发团队打算研究其程序中即时编译执行情况时。大多数情况下，在性能优化中，一个快速的分析可以帮助我们完成一些容易实现的目标。&lt;/p&gt;
+
+&lt;h2&gt;关于作者&lt;/h2&gt;
+
+&lt;p&gt;Ben Evans是jClarity公司的CEO，jClarity是一家致力于Java和JVM性能分析研究的创业公司。除此之外他还是London Java Community的负责人之一并在Java Community Process Executive Committee有一席之地。他之前的项目有Google IPO性能测试，金融交易系统，90年代知名电影网站等。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;查看英文原文：&lt;/strong&gt;&lt;a href="Your%20Java%20Application%20Hostile%20to%20JIT%20Compilation?"&gt;Is Your Java Application Hostile to JIT Compilation?&lt;/a&gt;&lt;/p&gt;
+</description>
+    <title>你的Java代码对JIT编译友好么？</title>
+    <link>http://droidyue.com/blog/2015/09/12/is-your-java-code-jit-friendly/</link>
+    <pubDate>Sat, 12 Sep 2015 10:16:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2015/09/12/is-your-java-code-jit-friendly</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题，研究nice在Linux以及Android系统中的应用。&lt;/p&gt;
 
@@ -2661,37 +2861,6 @@ GC Roots有哪些&lt;/p&gt;
     <link>http://droidyue.com/blog/2015/05/11/google-play-tuiguang/</link>
     <pubDate>Mon, 11 May 2015 13:43:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2015/05/11/google-play-tuiguang</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;前段时间看到QQ提示更新，于是手贱了一次升级到了QQ for Mac V4.0.1,最不爽的一件事在屏幕的右上角多出来了一个横幅，内容就是别人发给你的消息的内容。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;p&gt;如下图&lt;/p&gt;
-
-&lt;p&gt;&lt;img src="http://7jpolu.com1.z0.glb.clouddn.com/qq_notification.png" title="QQ Notification" &gt;&lt;/p&gt;
-
-&lt;p&gt;这是多么脑残的产品想出来的啊，多么地泄露隐私啊。于是果断查看QQ设置，没有办法取消横幅展示。于是另寻办法。&lt;/p&gt;
-
-&lt;p&gt;实际上在Mac系统中有对通知的设置，打开&lt;strong&gt;系统偏好设置&lt;/strong&gt; &amp;mdash; &lt;strong&gt;通知&lt;/strong&gt; 找到QQ，然后将&lt;strong&gt;QQ提示样式&lt;/strong&gt;设置成无即可。如下图&lt;/p&gt;
-
-&lt;p&gt;&lt;img src="http://7jpolu.com1.z0.glb.clouddn.com/qq_notification_turn_off.png" title="Turn off QQ Notification" &gt;&lt;/p&gt;
-
-&lt;p&gt;同理，Mac版微信也可以进行这样的设置。&lt;/p&gt;
-
-&lt;h3&gt;推荐一本书&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00P0GDLGO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B00P0GDLGO&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;苹果Mac OSX高手真经&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-    <title>关闭Mac屏幕右上角QQ通知</title>
-    <link>http://droidyue.com/blog/2015/04/26/guanbi-mac-qq-tishi/</link>
-    <pubDate>Sun, 26 Apr 2015 04:02:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2015/04/26/guanbi-mac-qq-tishi</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
