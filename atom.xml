@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-09-14T21:32:41+08:00</updated>
+  <updated>2015-09-18T08:12:30+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,278 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android进程线程调度之cgroups]]></title>
+    <link href="http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups/"/>
+    <updated>2015-09-17T21:17:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups</id>
+    <content type="html"><![CDATA[<p>做Android开发的同学们，了解cgroups的同学其实不多，cgroups是什么意思呢，在操作系统中有着什么样的作用，以及Android中的cgroups有哪些，各有什么用呢，本文将会进行逐一剖析。</p>
+
+<!--more-->
+
+
+<h2>先看定义</h2>
+
+<p>下面的引用为维基百科的<a href="https://zh.wikipedia.org/wiki/Cgroups">cgroups的定义</a></p>
+
+<blockquote><p>cgroups，其名称源自控制组群（control groups）的简写，是Linux内核的一个功能，用来限制，控制与分离一个进程组群的资源（如CPU、内存、磁盘输入输出等）。</p></blockquote>
+
+<p>维基百科的解释言简意赅，无需赘述，下面以例子讲解如何使用cgroups。</p>
+
+<h2>结合示例</h2>
+
+<p>以下会以Fedora这个Linux发行版为例，介绍如何使用cgroups限制进程的CPU使用率。</p>
+
+<p>这里我们使用一个死循环的Python脚本用来消耗CPU，文件名为loop.py，。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'><span class="c"># coding=utf-8</span>
+</span><span class='line'><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'><span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+</span><span class='line'>    <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行脚本<code>python loop.py</code>，使用top查看该进程的CPU使用情况,CPU使用率接近100%。
+<img src="http://7jpolu.com1.z0.glb.clouddn.com/cpu_cost_no_limit.png"></p>
+
+<p>然后我们将会通过修改配置，利用cgroups将该进程的CPU使用率降低到10%</p>
+
+<p>首先查看当前系统的cgroups</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>16:31:57-androidyue/tmp<span class="nv">$ </span>sudo mount -t cgroup
+</span><span class='line'><span class="o">[</span>sudo<span class="o">]</span> password <span class="k">for </span>androidyue:
+</span><span class='line'>cgroup on /sys/fs/cgroup/systemd <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,release_agent<span class="o">=</span>/usr/lib/systemd/systemd-cgroups-agent,name<span class="o">=</span>systemd<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/cpuset <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,cpuset<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/cpu,cpuacct <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,cpuacct,cpu<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/memory <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,memory<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/devices <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,devices<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/freezer <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,freezer<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/net_cls <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,net_cls<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/blkio <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,blkio<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/perf_event <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,perf_event<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后创建一个cgroup,控制CPU使用率。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">cd</span> /sys/fs/cgroup/cpu
+</span><span class='line'>sudo mkdir cpu_test
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接下来查看刚刚创建的cpu_test</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:04:54-androidyue/sys/fs/cgroup/cpu<span class="nv">$ </span>ls cpu_test/
+</span><span class='line'>cgroup.clone_children  cgroup.procs  cpuacct.usage         cpu.cfs_period_us  cpu.rt_period_us   cpu.shares  notify_on_release
+</span><span class='line'>cgroup.event_control   cpuacct.stat  cpuacct.usage_percpu  cpu.cfs_quota_us   cpu.rt_runtime_us  cpu.stat    tasks
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>完成这一目标修改涉及到的文件有</p>
+
+<p>cpu.cfs_period_us
+设置该cgroup请求到CPU资源分配的周期，单位为微秒（这里使用us代替微秒单位µs）。</p>
+
+<p>cpu.cfs_quota_us
+设置cgroup组内的进程在一次CPU分配周期（即cpu.cfs_period_us指定的值）内可以执行的时间。</p>
+
+<p>如果我们想要设置该cpu_test组内的cpu使用率为10%，我们需要这样修改</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo </span>1000000 &gt; cpu.cfs_period_us
+</span><span class='line'><span class="nb">echo </span>100000 &gt; cpu.cfs_quota_us
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意上述修改需要使用root身份登陆，即<code>sudo -i</code>,下面的将进程加入cgroup同样需要root身份。</p>
+
+<p>将上图中的进程ID 写入到cpu_test下的tasks文件中，并查看tasks验证是否加入成功</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:12:27-root/sys/fs/cgroup/cpu/cpu_test<span class="nv">$ </span>sudo <span class="nb">echo </span>12093 &gt; tasks
+</span><span class='line'>17:12:41-root/sys/fs/cgroup/cpu/cpu_test<span class="nv">$ </span>cat tasks
+</span><span class='line'>12093
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>再次查看进程id为12093的CPU使用率，已成功降低到10%左右。
+<img src="http://7jpolu.com1.z0.glb.clouddn.com/cpu_cost_with_limit.png"></p>
+
+<h2>cgroups在Android中的应用</h2>
+
+<p>在Android中也存在cgroups，涉及到CPU的目前只有两个，一个是apps，路径为<code>/dev/cpuctl/apps</code>。另一个是bg_non_interactive，路径为<code>/dev/cpuctl/apps/bg_non_interactive</code></p>
+
+<h3>cpu.share</h3>
+
+<p>cpu.share文件中保存了整数值，用来设置cgroup分组任务获得CPU时间的相对值。举例来说，cgroup A和cgroup B的cpu.share值都是1024，那么cgroup A 与cgroup B中的任务分配到的CPU时间相同，如果cgroup C的cpu.share为512，那么cgroup C中的任务获得的CPU时间是A或B的一半。</p>
+
+<p>apps下的cpu.share 值为1024</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@htc_m8tl:/dev/cpuctl/apps <span class="c"># cat cpu.shares </span>
+</span><span class='line'>1024
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>bg_non_interactive下的cpu_share值为52</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive <span class="c"># cat cpu.shares</span>
+</span><span class='line'>52
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>也就是说apps分组与bg_non_interactive分组cpu.share值相比接近于20:1。由于Android中只有这两个cgroup，也就是说apps分组中的应用可以利用95%的CPU，而处于bg_non_interactive分组中的应用则只能获得5%的CPU利用率。</p>
+
+<h2>cpu.rt_period_us与cpu.rt_runtime_us</h2>
+
+<p>cpu.rt_period_us用来设置cgroup获得CPU资源的周期，单位为微秒。
+cpu.rt_runtime_us用来设置cgroup中的任务可以最长获得CPU资源的时间，单位为微秒。设定这个值可以访问某个cgroup独占CPU资源。最长的获取CPU资源时间取决于逻辑CPU的数量。比如cpu.rt_runtime_us设置为200000（0.2秒），cpu.rt_period_us设置为1000000（1秒）。在单个逻辑CPU上的获得时间为每秒为0.2秒。 2个逻辑CPU，获得的时间则是0.4秒。</p>
+
+<p>apps分组下的两个配置的值</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@htc_m8tl:/dev/cpuctl/apps <span class="c"># cat cpu.rt_period_us</span>
+</span><span class='line'>1000000
+</span><span class='line'>root@htc_m8tl:/dev/cpuctl/apps <span class="c"># cat cpu.rt_runtime_us</span>
+</span><span class='line'>800000
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>即单个逻辑CPU下每一秒内可以获得0.8秒的执行时间。</p>
+
+<p>bg_non_interactive分组下的两个配置的值</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive <span class="c"># cat cpu.rt_period_us </span>
+</span><span class='line'>1000000
+</span><span class='line'>root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive <span class="c"># cat cpu.rt_runtime_us</span>
+</span><span class='line'>700000
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>即单个逻辑CPU下每一秒可以获得0.7秒的执行时间。</p>
+
+<h3>花落谁家</h3>
+
+<p>在Android中，一个应用（进程）既可以由apps切换到bg_non_interactive，也可以切换回来。</p>
+
+<h4>Activity</h4>
+
+<p>当一个Activity处于可见的状态下，那么这个应用进程就属于apps分组。</p>
+
+<h4>Service</h4>
+
+<p>当Service调用startForeground方法后，那么这个应用进程则是归类于apps分组</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Notification</span><span class="o">.</span><span class="na">Builder</span>  <span class="n">builder</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Notification</span><span class="o">.</span><span class="na">Builder</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'><span class="n">builder</span><span class="o">.</span><span class="na">setContentTitle</span><span class="o">(</span><span class="s">&quot;Title&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">Notification</span> <span class="n">notification</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="na">build</span><span class="o">();</span>
+</span><span class='line'><span class="n">startForeground</span><span class="o">(</span><span class="n">notification</span><span class="o">.</span><span class="na">hashCode</span><span class="o">(),</span> <span class="n">notification</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>如何确定进程的cgroups</h3>
+
+<p>其实确定过程也很简单，总共分三步。</p>
+
+<p>第一步，进入已经root的Android设备终端</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">11</span><span class="o">:</span><span class="mi">10</span> <span class="n">$</span> <span class="n">adb</span> <span class="n">shell</span>
+</span><span class='line'><span class="n">root</span><span class="nd">@htc_m8tl</span><span class="o">:/</span> <span class="err">#</span> <span class="n">su</span>
+</span><span class='line'><span class="n">root</span><span class="nd">@htc_m8tl</span><span class="o">:/</span> <span class="err">#</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第二步，目标应用的进程id，这里以我们的demo程序（包名为com.droidyue.androidthreadschedule）为例。得到的进程id为22871</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">root</span><span class="nd">@htc_m8tl</span><span class="o">:/</span> <span class="err">#</span> <span class="n">ps</span> <span class="o">|</span> <span class="n">grep</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span>
+</span><span class='line'><span class="n">u0_a1434</span>  <span class="mi">22871</span> <span class="mi">23723</span> <span class="mi">970040</span> <span class="mi">54304</span> <span class="n">ffffffff</span> <span class="mi">400</span><span class="n">a045c</span> <span class="n">S</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">androidthreadschedule</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第三步，利用进程id查看其所在的cgroups</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">2</span><span class="o">|</span><span class="n">root</span><span class="nd">@htc_m8tl</span><span class="o">:/</span> <span class="err">#</span> <span class="n">cat</span>  <span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="mi">22871</span><span class="o">/</span><span class="n">cgroup</span>
+</span><span class='line'><span class="mi">3</span><span class="o">:</span><span class="nl">cpu:</span><span class="o">/</span><span class="n">apps</span>
+</span><span class='line'><span class="mi">2</span><span class="o">:</span><span class="nl">memory:</span><span class="o">/</span>
+</span><span class='line'><span class="mi">1</span><span class="o">:</span><span class="nl">cpuacct:</span><span class="o">/</span><span class="n">uid</span><span class="o">/</span><span class="mi">11434</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过以上三步，<del>我们就能把大象关冰箱里</del>,我们就能得到进程所在的cgroups分组。</p>
+
+<h2>利用cgroups我们可以做什么</h2>
+
+<p>其实对于一般应用来说，能做的事情少之又少。对于有需要的应用可以使用Service.startForeground方法来获取更多的CPU资源，但并不建议盲目去这样做，还是要根据自身应用需要实现。</p>
+
+<p>另外，个人认为最大的收获，就是我们可以参照cgroups的分组的思想来设计有类似场景的方案解决实际问题。</p>
+
+<h3>同系列文章</h3>
+
+<ul>
+<li><a href="http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice/?droid_refer=series">剖析Android中进程与线程调度之nice</a></li>
+</ul>
+
+
+<script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
+
+
+<script type="text/javascript">
+    showBookCopyright();
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[你的Java代码对JIT编译友好么？]]></title>
@@ -391,6 +663,13 @@
 <h2>避免ANR</h2>
 
 <p>我在之前的文章<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>中提到使用WorkerThread处理耗时IO操作，同时将WorkerThread的优先级降低，对于耗时IO操作，比如读取数据库，文件等，我们可以设置该workerThread优先级为THREAD_PRIORITY_BACKGROUND，以此降低与主线程竞争的能力。</p>
+
+<h3>同系列文章</h3>
+
+<ul>
+<li><a href="http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups/?droid_refer=series">剖析Android中进程与线程调度之cgroups</a></li>
+</ul>
+
 
 <script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
 
@@ -2695,171 +2974,6 @@ GC Roots有哪些</p>
 
 <ul>
 <li><a href="http://stackoverflow.com/questions/3313532/what-version-of-javac-built-my-jar">What version of javac built my jar?</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Google Play商店推广那些事]]></title>
-    <link href="http://droidyue.com/blog/2015/05/11/google-play-tuiguang/"/>
-    <updated>2015-05-11T21:43:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/05/11/google-play-tuiguang</id>
-    <content type="html"><![CDATA[<p>Play商店是Android的官方商店，虽然在大陆无法访问，但是这里依旧是重要的版本发布市场，尤其是对于那些国际化的产品。对于拓宽海外市场，付费推广就是一部分不可忽视的措施。而Android付费推广必然就是Play商店推广。本文主要从技术方面讲解，如何统计推广数据，以及在开发过程中遇到的一些疑问和困惑。</p>
-
-<!--more-->
-
-
-<h2>生成推广链接</h2>
-
-<p>想要进行推广，必须有推广链接。Google提供了生成推广链接的地址<a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#google-play-url-builder">Google Play URL Builder</a>,遗憾的是这个地址被墙了，不过可以使用<a href="http://www.digitangle.co.uk/toolsandresources/google-play-url-builder/#sthash.HLdt4vXJ.dpbs">这个地址</a>，可能稍微慢一点。</p>
-
-<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/play_url_builder.png"></p>
-
-<h3>简单描述</h3>
-
-<ul>
-<li>Package Name 必填  应用的包名，如com.example.application</li>
-<li>Campaign Source 必填 推广的来源，比如google, citysearch, newsletter4</li>
-<li>Campaign Medium 选填  推广的媒介，比如cpc, banner, email</li>
-<li>Campaign Term   选填 推广的关键字 比如 running+shoes</li>
-<li>Campaign Content 选填 推广内容描述</li>
-<li>Campaign Name  选填 可以填写 产品名，推广代号或者是推广口号</li>
-</ul>
-
-
-<p>生成的推广地址就是<a href="https://play.google.com/store/apps/details?id=com.mx.browser&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dadlink%26utm_term%3Dandroid%252Bbrowser%26utm_content%3DBest%2520and%2520Fast%2520Browser%26utm_campaign%3Dandroidyue_123">https://play.google.com/store/apps/details?id=com.mx.browser&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dadlink%26utm_term%3Dandroid%252Bbrowser%26utm_content%3DBest%2520and%2520Fast%2520Browser%26utm_campaign%3Dandroidyue_123</a></p>
-
-<h2>推广如何工作的</h2>
-
-<p>有了上面的推广链接，我们有必要了解一下Play商店的推广是如何工作的。</p>
-
-<p>  1.用户从网页或者应用中点击Play商店推广链接跳转到Play商店应用的页面下载。<br/>
-  2.应用下载完成并安装后，Google Play商店会发送一个<strong>INSTALL_REFERRER</strong>的Intent广播，该Intent中包含了推广链接中的参数。<br/>
-  3.应用收到<strong>INSTALL_REFERRER</strong>广播之后，从Intent中读取参数，上报推广数据。</p>
-
-<h2>统计推广数据</h2>
-
-<h3>1.manifest声明receiver，接收<strong>INSTALL_REFERRER</strong>广播</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;receiver</span> <span class="na">android:name=</span><span class="s">&quot;.PlayCampaignReceiver&quot;</span> <span class="na">android:exported=</span><span class="s">&quot;true&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;intent-filter&gt;</span>
-</span><span class='line'>              <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">&quot;com.android.vending.INSTALL_REFERRER&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>          <span class="nt">&lt;/intent-filter&gt;</span>  
-</span><span class='line'><span class="nt">&lt;/receiver&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>2.实现PlayCampaignReceiver，处理<strong>INSTALL_REFERRER</strong>广播</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">playstorereferrertester</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.content.BroadcastReceiver</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.content.Context</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.content.Intent</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.util.Log</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">PlayCampaignReceiver</span> <span class="kd">extends</span> <span class="n">BroadcastReceiver</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;PlayCampaignReceiver&quot;</span><span class="o">;</span>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceive</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">,</span> <span class="n">Intent</span> <span class="n">intent</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onReceive intent=&quot;</span> <span class="o">+</span> <span class="n">intent</span><span class="o">);</span>
-</span><span class='line'>      <span class="c1">//处理referrer参数</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">referrer</span> <span class="o">=</span> <span class="n">intent</span><span class="o">.</span><span class="na">getStringExtra</span><span class="o">(</span><span class="s">&quot;referrer&quot;</span><span class="o">);</span>
-</span><span class='line'>      <span class="c1">//some other code</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>多个Receiver</h2>
-
-<p>有些时候我们可能有这样的需求，我们需要多个Receiver监听<strong>INSTALL_REFERRER</strong>广播，其实是可以的。</p>
-
-<h3>代码调用</h3>
-
-<p>这一种是比较推荐的实现方式，比较简单，就是在一个Receiver的onReceive中，实例化另一个Receiver并调用其onReceive方法。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">PlayCampaignReceiver</span> <span class="kd">extends</span> <span class="n">BroadcastReceiver</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;PlayCampaignReceiver&quot;</span><span class="o">;</span>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceive</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">,</span> <span class="n">Intent</span> <span class="n">intent</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onReceive intent=&quot;</span> <span class="o">+</span> <span class="n">intent</span><span class="o">);</span>
-</span><span class='line'>      <span class="c1">//调用另一个Receiver实例的onReceive方法</span>
-</span><span class='line'>      <span class="k">new</span> <span class="nf">AnotherPlayCampaignReceiver</span><span class="o">().</span><span class="na">onReceive</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">intent</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>manifest声明</h3>
-
-<p>通过manifest的增加另一个监听<strong>INSTALL_REFERRER</strong>广播的Receiver的形式理论上也可以，但是之前的Google文档中说这种方式有问题，不建议使用。之前Google统计关于市场推广的描述为</p>
-
-<blockquote><p>Note: Only one BroadcastReceiver class can be specified per application. Should you need to incorporate two or more BroadcastReceivers from different SDKs, you will need to create your own BroadcastReceiver class that will receive all broadcasts and call the appropriate BroadcastReceivers for each type of Broadcast.</p></blockquote>
-
-<h2>何时收到推广数据</h2>
-
-<p>关于何时收到推广数据的问题争论颇多，基本上又两个答案：安装完成之后和打一次打开程序时。这两个答案可以说是都对或者都错。</p>
-
-<p>在3.1之前，<strong>INSTALL_REFERRER</strong>广播 确实是在程序安装之后发送的。 <br/>
-在3.1之后，<strong>INSTALL_REFERRER</strong>广播 就变成了在程序第一次启动的时候进行的。</p>
-
-<p>那么这又是作何原因呢，其真实的原因就是在3.1 API 12之后，Android系统引入了停止状态，也就是说一个刚下载的程序，在用户手动点击图标启动之前，是收不到正常的广播的。只有当处于非停止状态的应用才能收到<strong>INSTALL_REFERRER</strong>广播。所以广播的发送就选择在程序第一次启动时。  更多关于<a href="http://droidyue.com/blog/2014/07/14/look-inside-android-package-stop-state-since-honeycomb-mr1/">Android中的停止状态</a></p>
-
-<p>为了进一步验证这个发送广播实际，我在Play Store上传了一个测试程序，可以使用这个地址<a href="https://play.google.com/store/apps/details?id=com.droidyue.playstorereferrertester&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dblog%26utm_term%3Dtest%252Bapp%26utm_content%3Dtest%252Bapp%26utm_campaign%3Dandroidyue_123456">https://play.google.com/store/apps/details?id=com.droidyue.playstorereferrertester&amp;referrer=utm_source%3Ddroidyue.com%26utm_medium%3Dblog%26utm_term%3Dtest%252Bapp%26utm_content%3Dtest%252Bapp%26utm_campaign%3Dandroidyue_123456</a>从Play Store下载测试一下，过滤日志<code>adb logcat | grep PlayCampaignReceiver</code>测试。</p>
-
-<p>注意：这里的第一次安装可以是从Play Store 应用中点打开按钮，也可以是从Launcher中点击应用图标。前面两种情况都是可以接收到广播的。</p>
-
-<h2>别的包也会收到么</h2>
-
-<p>这也是一个被争论的问题，当然我也是通过上面的包验证了，答案就是不会的。<strong>INSTALL_REFERRER</strong>只会发给那个推广安装的程序。</p>
-
-<h2>例外情况</h2>
-
-<p>从网页到客户端的安装是无法发送<strong>INSTALL_REFERRER</strong>广播的。</p>
-
-<h2>奇怪问题</h2>
-
-<h3>协议为哪个</h3>
-
-<p>其实有人会奇怪，究竟推广链接是market还是https协议，答案是都可以，但是推荐使用https协议的链接，首先的既定事实是Google Play URL Builder默认生成的就是https协议链接，另外https是一个被广泛采用的协议，设想如果一个market协议链接在PC浏览器上被点击是怎样的一种体验呢？答案不言自明。</p>
-
-<h2>参考文章</h2>
-
-<ul>
-<li><a href="https://developers.google.com/analytics/devguides/collection/android/v2/campaigns#overview">Campaign Measurement </a></li>
 </ul>
 
 ]]></content>

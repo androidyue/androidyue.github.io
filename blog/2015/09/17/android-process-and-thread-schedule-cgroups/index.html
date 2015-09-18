@@ -1,0 +1,640 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Android进程线程调度之cgroups - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Android进程线程调度之cgroups Sep 17th, 2015 做Android开发的同学们，了解cgroups的同学其实不多，cgroups是什么意思呢，在操作系统中有着什么样的作用，以及Android中的cgroups有哪些，各有什么用呢，本文将会进行逐一剖析。 先看定义 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://7jpolu.com1.z0.glb.clouddn.com/touch_icon.png"/>
+
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="http://droidyue.b0.upaiyun.com/js/blog/modernizr-2.0.js"></script>
+  <script src="http://droidyue.b0.upaiyun.com/js/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="http://droidyue.b0.upaiyun.com/js/blog/octopress.js" type="text/javascript"></script>
+  <script type="text/javascript">
+      $(document).bind('DOMNodeInserted', function(event) {
+			$('a[href^="http"]').each(
+				function(){
+					if (!$(this).attr('target')) {
+						$(this).attr('target', '_blank')
+					} 
+					if ($(this).attr('href').indexOf("droidyue.com") != -1) {
+						$(this).attr('target', '_self')
+					}
+				}
+			);
+		});
+  </script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-43841039-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+     var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     ga.src='http://droidyue.b0.upaiyun.com/js/dc.js';
+     var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/blogutils.js" charset="utf-8"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/trackurl_maker.js" charset="utf-8"></script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/jijizhazha/">叽叽喳喳</a></li>
+  <li><a href="/donate/">Donate</a></li>
+  <li><a href="/jobs/">Jobs</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Android进程线程调度之cgroups</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-09-17T21:17:00+08:00" pubdate data-updated="true">Sep 17<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>做Android开发的同学们，了解cgroups的同学其实不多，cgroups是什么意思呢，在操作系统中有着什么样的作用，以及Android中的cgroups有哪些，各有什么用呢，本文将会进行逐一剖析。</p>
+
+<!--more-->
+
+
+<h2>先看定义</h2>
+
+<p>下面的引用为维基百科的<a href="https://zh.wikipedia.org/wiki/Cgroups">cgroups的定义</a></p>
+
+<blockquote><p>cgroups，其名称源自控制组群（control groups）的简写，是Linux内核的一个功能，用来限制，控制与分离一个进程组群的资源（如CPU、内存、磁盘输入输出等）。</p></blockquote>
+
+<p>维基百科的解释言简意赅，无需赘述，下面以例子讲解如何使用cgroups。</p>
+
+<h2>结合示例</h2>
+
+<p>以下会以Fedora这个Linux发行版为例，介绍如何使用cgroups限制进程的CPU使用率。</p>
+
+<p>这里我们使用一个死循环的Python脚本用来消耗CPU，文件名为loop.py，。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'><span class="c"># coding=utf-8</span>
+</span><span class='line'><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'><span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+</span><span class='line'>    <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行脚本<code>python loop.py</code>，使用top查看该进程的CPU使用情况,CPU使用率接近100%。
+<img src="http://7jpolu.com1.z0.glb.clouddn.com/cpu_cost_no_limit.png"></p>
+
+<p>然后我们将会通过修改配置，利用cgroups将该进程的CPU使用率降低到10%</p>
+
+<p>首先查看当前系统的cgroups</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>16:31:57-androidyue/tmp<span class="nv">$ </span>sudo mount -t cgroup
+</span><span class='line'><span class="o">[</span>sudo<span class="o">]</span> password <span class="k">for </span>androidyue:
+</span><span class='line'>cgroup on /sys/fs/cgroup/systemd <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,release_agent<span class="o">=</span>/usr/lib/systemd/systemd-cgroups-agent,name<span class="o">=</span>systemd<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/cpuset <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,cpuset<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/cpu,cpuacct <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,cpuacct,cpu<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/memory <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,memory<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/devices <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,devices<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/freezer <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,freezer<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/net_cls <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,net_cls<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/blkio <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,blkio<span class="o">)</span>
+</span><span class='line'>cgroup on /sys/fs/cgroup/perf_event <span class="nb">type </span>cgroup <span class="o">(</span>rw,nosuid,nodev,noexec,relatime,perf_event<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后创建一个cgroup,控制CPU使用率。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">cd</span> /sys/fs/cgroup/cpu
+</span><span class='line'>sudo mkdir cpu_test
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接下来查看刚刚创建的cpu_test</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:04:54-androidyue/sys/fs/cgroup/cpu<span class="nv">$ </span>ls cpu_test/
+</span><span class='line'>cgroup.clone_children  cgroup.procs  cpuacct.usage         cpu.cfs_period_us  cpu.rt_period_us   cpu.shares  notify_on_release
+</span><span class='line'>cgroup.event_control   cpuacct.stat  cpuacct.usage_percpu  cpu.cfs_quota_us   cpu.rt_runtime_us  cpu.stat    tasks
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>完成这一目标修改涉及到的文件有</p>
+
+<p>cpu.cfs_period_us
+设置该cgroup请求到CPU资源分配的周期，单位为微秒（这里使用us代替微秒单位µs）。</p>
+
+<p>cpu.cfs_quota_us
+设置cgroup组内的进程在一次CPU分配周期（即cpu.cfs_period_us指定的值）内可以执行的时间。</p>
+
+<p>如果我们想要设置该cpu_test组内的cpu使用率为10%，我们需要这样修改</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo </span>1000000 &gt; cpu.cfs_period_us
+</span><span class='line'><span class="nb">echo </span>100000 &gt; cpu.cfs_quota_us
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意上述修改需要使用root身份登陆，即<code>sudo -i</code>,下面的将进程加入cgroup同样需要root身份。</p>
+
+<p>将上图中的进程ID 写入到cpu_test下的tasks文件中，并查看tasks验证是否加入成功</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:12:27-root/sys/fs/cgroup/cpu/cpu_test<span class="nv">$ </span>sudo <span class="nb">echo </span>12093 &gt; tasks
+</span><span class='line'>17:12:41-root/sys/fs/cgroup/cpu/cpu_test<span class="nv">$ </span>cat tasks
+</span><span class='line'>12093
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>再次查看进程id为12093的CPU使用率，已成功降低到10%左右。
+<img src="http://7jpolu.com1.z0.glb.clouddn.com/cpu_cost_with_limit.png"></p>
+
+<h2>cgroups在Android中的应用</h2>
+
+<p>在Android中也存在cgroups，涉及到CPU的目前只有两个，一个是apps，路径为<code>/dev/cpuctl/apps</code>。另一个是bg_non_interactive，路径为<code>/dev/cpuctl/apps/bg_non_interactive</code></p>
+
+<h3>cpu.share</h3>
+
+<p>cpu.share文件中保存了整数值，用来设置cgroup分组任务获得CPU时间的相对值。举例来说，cgroup A和cgroup B的cpu.share值都是1024，那么cgroup A 与cgroup B中的任务分配到的CPU时间相同，如果cgroup C的cpu.share为512，那么cgroup C中的任务获得的CPU时间是A或B的一半。</p>
+
+<p>apps下的cpu.share 值为1024</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@htc_m8tl:/dev/cpuctl/apps <span class="c"># cat cpu.shares </span>
+</span><span class='line'>1024
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>bg_non_interactive下的cpu_share值为52</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive <span class="c"># cat cpu.shares</span>
+</span><span class='line'>52
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>也就是说apps分组与bg_non_interactive分组cpu.share值相比接近于20:1。由于Android中只有这两个cgroup，也就是说apps分组中的应用可以利用95%的CPU，而处于bg_non_interactive分组中的应用则只能获得5%的CPU利用率。</p>
+
+<h2>cpu.rt_period_us与cpu.rt_runtime_us</h2>
+
+<p>cpu.rt_period_us用来设置cgroup获得CPU资源的周期，单位为微秒。
+cpu.rt_runtime_us用来设置cgroup中的任务可以最长获得CPU资源的时间，单位为微秒。设定这个值可以访问某个cgroup独占CPU资源。最长的获取CPU资源时间取决于逻辑CPU的数量。比如cpu.rt_runtime_us设置为200000（0.2秒），cpu.rt_period_us设置为1000000（1秒）。在单个逻辑CPU上的获得时间为每秒为0.2秒。 2个逻辑CPU，获得的时间则是0.4秒。</p>
+
+<p>apps分组下的两个配置的值</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@htc_m8tl:/dev/cpuctl/apps <span class="c"># cat cpu.rt_period_us</span>
+</span><span class='line'>1000000
+</span><span class='line'>root@htc_m8tl:/dev/cpuctl/apps <span class="c"># cat cpu.rt_runtime_us</span>
+</span><span class='line'>800000
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>即单个逻辑CPU下每一秒内可以获得0.8秒的执行时间。</p>
+
+<p>bg_non_interactive分组下的两个配置的值</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive <span class="c"># cat cpu.rt_period_us </span>
+</span><span class='line'>1000000
+</span><span class='line'>root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive <span class="c"># cat cpu.rt_runtime_us</span>
+</span><span class='line'>700000
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>即单个逻辑CPU下每一秒可以获得0.7秒的执行时间。</p>
+
+<h3>花落谁家</h3>
+
+<p>在Android中，一个应用（进程）既可以由apps切换到bg_non_interactive，也可以切换回来。</p>
+
+<h4>Activity</h4>
+
+<p>当一个Activity处于可见的状态下，那么这个应用进程就属于apps分组。</p>
+
+<h4>Service</h4>
+
+<p>当Service调用startForeground方法后，那么这个应用进程则是归类于apps分组</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Notification</span><span class="o">.</span><span class="na">Builder</span>  <span class="n">builder</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Notification</span><span class="o">.</span><span class="na">Builder</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'><span class="n">builder</span><span class="o">.</span><span class="na">setContentTitle</span><span class="o">(</span><span class="s">&quot;Title&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">Notification</span> <span class="n">notification</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="na">build</span><span class="o">();</span>
+</span><span class='line'><span class="n">startForeground</span><span class="o">(</span><span class="n">notification</span><span class="o">.</span><span class="na">hashCode</span><span class="o">(),</span> <span class="n">notification</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>如何确定进程的cgroups</h3>
+
+<p>其实确定过程也很简单，总共分三步。</p>
+
+<p>第一步，进入已经root的Android设备终端</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">11</span><span class="o">:</span><span class="mi">10</span> <span class="n">$</span> <span class="n">adb</span> <span class="n">shell</span>
+</span><span class='line'><span class="n">root</span><span class="nd">@htc_m8tl</span><span class="o">:/</span> <span class="err">#</span> <span class="n">su</span>
+</span><span class='line'><span class="n">root</span><span class="nd">@htc_m8tl</span><span class="o">:/</span> <span class="err">#</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第二步，目标应用的进程id，这里以我们的demo程序（包名为com.droidyue.androidthreadschedule）为例。得到的进程id为22871</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">root</span><span class="nd">@htc_m8tl</span><span class="o">:/</span> <span class="err">#</span> <span class="n">ps</span> <span class="o">|</span> <span class="n">grep</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span>
+</span><span class='line'><span class="n">u0_a1434</span>  <span class="mi">22871</span> <span class="mi">23723</span> <span class="mi">970040</span> <span class="mi">54304</span> <span class="n">ffffffff</span> <span class="mi">400</span><span class="n">a045c</span> <span class="n">S</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">androidthreadschedule</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第三步，利用进程id查看其所在的cgroups</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">2</span><span class="o">|</span><span class="n">root</span><span class="nd">@htc_m8tl</span><span class="o">:/</span> <span class="err">#</span> <span class="n">cat</span>  <span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="mi">22871</span><span class="o">/</span><span class="n">cgroup</span>
+</span><span class='line'><span class="mi">3</span><span class="o">:</span><span class="nl">cpu:</span><span class="o">/</span><span class="n">apps</span>
+</span><span class='line'><span class="mi">2</span><span class="o">:</span><span class="nl">memory:</span><span class="o">/</span>
+</span><span class='line'><span class="mi">1</span><span class="o">:</span><span class="nl">cpuacct:</span><span class="o">/</span><span class="n">uid</span><span class="o">/</span><span class="mi">11434</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过以上三步，<del>我们就能把大象关冰箱里</del>,我们就能得到进程所在的cgroups分组。</p>
+
+<h2>利用cgroups我们可以做什么</h2>
+
+<p>其实对于一般应用来说，能做的事情少之又少。对于有需要的应用可以使用Service.startForeground方法来获取更多的CPU资源，但并不建议盲目去这样做，还是要根据自身应用需要实现。</p>
+
+<p>另外，个人认为最大的收获，就是我们可以参照cgroups的分组的思想来设计有类似场景的方案解决实际问题。</p>
+
+<h3>同系列文章</h3>
+
+<ul>
+<li><a href="/blog/2015/09/05/android-process-and-thread-schedule-nice/?droid_refer=series">剖析Android中进程与线程调度之nice</a></li>
+</ul>
+
+
+<script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
+
+
+<script type="text/javascript">
+    showBookCopyright();
+</script>
+
+
+
+</div>
+
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/html/vote_tips.js" charset="utf-8"></script>
+      <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/donate_data.js" charset="utf-8"></script>
+    <link href="http://1.toolite.sinaapp.com/css/donate.css"  rel="stylesheet" type="text/css">
+    <script type="text/javascript">
+    function setup() {
+      document.getElementById("donate_me").addEventListener("click", function() {
+          donate_container.style.visibility = 'visible';
+          donate_container.style.opacity = 1;
+      });
+      document.getElementById('donate_close').addEventListener("click", function() {
+          donate_container.style.opacity = 0;
+          donate_container.style.visibility = "hidden";
+
+      });
+    }
+    </script>
+
+    <div class="donate_container" id="donate_container">
+        <div id="donate_dialog" class="donate_dialog">
+            <span class="donate_close" id="donate_close">×</span>
+            <img src="http://droidyue.b0.upaiyun.com/images/wechat_pay.png" height="210px" width="210px" class="no_boarder_class"/>
+            <img src="http://droidyue.b0.upaiyun.com/images/or_select.png" width="150px" style="margin-bottom:50px" class="no_boarder_class" />
+            <img src="http://droidyue.b0.upaiyun.com/images/alipay_pay.png" height="210px" width="210px" class="no_boarder_class" />
+            <br/>
+            <br/>
+            <div style="text-align: center;"><b><script type="text/javascript">document.write(getDonateTips());</script></b></div>
+            <p style="text-align: center;"><script type="text/javascript">document.write(getDonateProblemText());</script></p>
+            <br/>
+        </div>
+
+    </div>
+
+    
+   
+    <script type="text/javascript">
+        if (shouldDisplay()) {
+        	document.write('<div style="text-align: center;"><br/><button id="donate_me" class="no_background">' + getDonateButtonText() + '</button></div><br/>');
+        	setup();
+        }
+    </script>
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/post_bannder.js"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/furi_netou.js" charset="utf-8"></script>
+      
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blog_ads_data_source.js" charset="utf-8"></script>
+    
+<script type="text/javascript">
+    	displaySection(shouldDisplayBlogAds() && onlyForDesktop(), isBlogAdsInDebug(), makeBlogAdsDataSource(), makeBlogAdsPrefix(), makeBlogAdsSuffix());
+</script>
+
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/random_recommend.js" charset="utf-8"></script>
+<script type="text/javascript">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix());
+</script>
+
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/post_recommend_book_data_source.js" charset="utf-8"></script>
+<script type="text/javascript">
+        displaySection(shouldDisplayPostBook(), isPostBookInDebug(), makePostBookDataSource(), makePostBookPrefix(), makePostBookSuffix());
+</script>
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-09-17T21:17:00+08:00" pubdate data-updated="true">Sep 17<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/09/12/is-your-java-code-jit-friendly/" title="Previous Post: 你的Java代码对JIT编译友好么？">&laquo; 你的Java代码对JIT编译友好么？</a>
+      
+      
+    </p>
+     
+      <script>if (isDesktop()) {window._bd_share_config={"common":{"bdSnsKey":{},"bdMini":"2","bdMiniList":["mshare","fbook","tsina","twi","weixin","linkedin","qzone","youdao","bdysc","tieba","douban","sqq","mail","copy","print"],"bdPic":"","bdStyle":"0","bdSize":"16"},"slide":{"type":"slide","bdImg":"6","bdPos":"right","bdTop":"250"},"selectShare":{"bdContainerClass":null,"bdSelectMiniList":["qzone","tsina","tqq","renren","weixin"]}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];}</script>
+
+    
+  </footer>
+  </article>
+
+  <section>
+   <!--高速版-->
+<div id="SOHUCS" sid="/blog/2015/09/17/android-process-and-thread-schedule-cgroups"></div>
+<script charset="utf-8" type="text/javascript" src="http://changyan.sohu.com/upload/changyan.js" ></script>
+<script type="text/javascript">
+    window.changyan.api.config({
+        appid: 'cyrU6w9cI',
+        conf: 'prod_0d366f76b04261efa2b407c3b62edd9f'
+    });
+</script>        
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	bestPosts = makeBatchUrlTrackable(bestPosts, "ninki_posts");
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix());
+</script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blogroll_data_source.js" charset="utf-8"></script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix());
+</script>
+<script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/common_book_data_source.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix());
+</script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/program_book_data_source.js" charset="utf-8"></script>
+        
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix());
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/09/17/android-process-and-thread-schedule-cgroups/">Android进程线程调度之cgroups</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/12/is-your-java-code-jit-friendly/">你的Java代码对JIT编译友好么？</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/05/android-process-and-thread-schedule-nice/">剖析Android中进程与线程调度之nice</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/29/funny-programmer-season-two/">程序员的逗比瞬间（第二季）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/22/where-has-the-java-permgen-gone/">Java永久代去哪儿了</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/16/dive-into-android-activity-launchmode/">深入讲解Android中Activity launchMode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/08/funny-programmer-season-one/">程序员的逗比瞬间（第一季）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/01/dive-into-android-large-heap/">探究android:largeHeap</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/25/use-android-lint-to-find-higher-api-usage/">使用Android lint发现并解决高版本API问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/11/start-proxy-server-on-mac/">在Mac上为其他设备开启代理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/06/wei-shi-yao-gao-duan-ren-cai-hui-shi-yong-pai-mai-xuan-gong-zuo/">为什么高端人才会使用拍卖选工作</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/04/six-books-every-programer-must-read/">程序员必读的六本书</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/27/desgign-pattern-observer/">这就是观察者模式</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/23/google-play-services-7-dot-5-adds-new-capabilities/">Google Play Services 7.5新增API及多项特性</a>
+      </li>
+    
+  </ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> 云存储提供方： <a href="https://www.upyun.com/"><img src="http://upfiles.b0.upaiyun.com/logo/90x45.png" alt="UPYUN"></a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://7jpncc.com1.z0.glb.clouddn.com/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
