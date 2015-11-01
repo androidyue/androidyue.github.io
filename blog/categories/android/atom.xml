@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-10-26T07:46:00+08:00</updated>
+  <updated>2015-11-01T17:11:40+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,254 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[关于Android Log的一些思考]]></title>
+    <link href="http://droidyue.com/blog/2015/11/01/thinking-about-android-log/"/>
+    <updated>2015-11-01T17:09:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/11/01/thinking-about-android-log</id>
+    <content type="html"><![CDATA[<p>在日常的Android开发中，日志打印是一项必不可少的操作，我们通过分析打印的日志可以分析程序的运行数据和情况。然而使用日志打印的正确姿势又是怎样呢，如何屏蔽日志信息输出呢，本文将逐一进行回答。</p>
+
+<!--more-->
+
+
+<h2>哪些形式</h2>
+
+<h3>System.out.println</h3>
+
+<p>这是标准的Java输出方法，相信很多公司都不提倡使用，这里进行列举，目的是为了提醒大家不用。</p>
+
+<h3>Android Log</h3>
+
+<p>Android自身提供了一个日志工具类，那就是android.util.Log。使用很简单，如下
+<code>java
+Log.i(LOGTAG, "onCreate");
+</code></p>
+
+<h2>TAG选取</h2>
+
+<h3>选用人名</h3>
+
+<p>关于TAG的选取，很多人都曾采用人名的形式，比如
+<code>
+Log.i("andy", "onCreate");
+</code>
+这样做的目标一是为了过滤方便，当一个人在写一个模块多个文件时，使用这个形式，过滤起来很容易帮助理解程序的执行情况。另外的目的就是为了表明日志周围代码的作者姓甚名谁。</p>
+
+<p>然而，我却不推荐这种人名作为TAG的形式。原因如下</p>
+
+<ul>
+<li>以人名作为关键字过滤，不易确定产生日志的类文件</li>
+<li>随着某个人模块实现的增加，过滤人名易产生来自其他模块的干扰信息。</li>
+</ul>
+
+
+<h3>动态选取</h3>
+
+<p>还有一种选取LOGTAG的方式，就是
+<code>
+private static final String LOGTAG = DroidSettings.class.getSimpleName();
+</code>
+这样使用，得到的LOGTAG的值就是DroidSettings，然而并非如此，当DroidSettings这个类进行了混淆之后，类名变成了类似a,b,c这样的名称，LOGTAG则不再是DroidSettings这个值了。这样可能造成的问题就是，内部混淆有日志的包，我们去过滤DroidSettings 却永远得不到任何信息。</p>
+
+<h3>推荐的记录形式</h3>
+
+<p>推荐的形式就是以字符串字面量形式去设置LOGTAG。如下，在DroidSettings类中
+<code>java
+private static final String LOGTAG = "DroidSettings";
+</code></p>
+
+<h3>优雅打印日志的姿势</h3>
+
+<p>什么才是打印日志的优雅姿势是，我认为一条好的日志需要包含以下三点</p>
+
+<ul>
+<li>这条日志所在的类，我们通过LOGTAG可以表示</li>
+<li>这条日志所在的方法，需要加入方法名的字符串</li>
+<li>必要的其他信息，比如参数或者局部变量。</li>
+</ul>
+
+
+<p>结合三点，下面是一个符合规则的简单示例
+```java
+private String  getBookName(int bookId) {</p>
+
+<pre><code>String bookName = mBooks.get(bookId);
+DroidLog.i(LOGTAG, "getBookName bookId=" + bookId + ";bookName=" + bookName);
+return bookName;
+</code></pre>
+
+<p>}
+```
+上面的代码，包含了所在类（LOGTAG），方法名(getBookName)， 参数(bookId)，局部变量(bookName)。必要的信息都展示了出来，对于了解程序运行很有帮助。</p>
+
+<h2>屏蔽日志输出</h2>
+
+<p>在Android中进行屏蔽日志，有两种实现形式，一种是在编译期屏蔽，另一种则是从运行时进行屏蔽，后者相对比较常见，从后向前介绍。</p>
+
+<h3>运行时屏蔽</h3>
+
+<p>在运行时屏蔽日志，通常的做法是创建一个自定义的类，比如叫做DroidLog
+```java
+public class DroidLog {</p>
+
+<pre><code>private static final boolean ENABLE_LOG = true;
+
+
+public static void i(String tag, String message) {
+    if (ENABLE_LOG) {
+        android.util.Log.i(tag, message);
+    }
+}
+</code></pre>
+
+<p>}
+```
+在编码时，我们调用DroidLog.i方法来记录日志，然后在打包时，修改ENABLE_LOG的值为false，这样就能屏蔽了日志输出。</p>
+
+<p>然后运行时屏蔽的方案实际上有一点小问题，比如
+```java
+private void dumpDebugInfo() {</p>
+
+<pre><code>DroidLog.i(LOGTAG, "sdkVersion=" + Build.VERSION.SDK_INT + "; Locale=" + Locale.getDefault());
+</code></pre>
+
+<p>}
+<code>``
+虽然上面的日志不会打印，但是</code>&ldquo;sdkVersion=&rdquo; + Build.VERSION.SDK_INT + &ldquo;; Locale=&rdquo; + Locale.getDefault()`这段字符串拼接语句却实实在在执行了。总的来说，还是会产生一些影响。</p>
+
+<p>关于字符串拼接的细节，可以阅读<a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a></p>
+
+<h2>编译期屏蔽</h2>
+
+<p>既然运行时屏蔽存在问题，那么是否可以提前到编译期进行屏蔽呢，答案是肯定的。这里我们就使用了Proguard的一个小功能。</p>
+
+<p>assumenosideeffects从英文单词上去理解，意思为 假设没有副作用。该功能属于优化的一种方式，该功能常常用来处理日志打印，比如我们想要屏蔽掉来自DroidLog的日志打印。
+在混淆的配置文件中，加入下列代码</p>
+
+<p>```
+-assumenosideeffects class com.droidyue.logdemo.DroidLog {</p>
+
+<pre><code>    public static *** i(...);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>然而仅仅处理DroidLog是不够的，因为我们无法保证团队其他成员是否使用了原生的android.utils.Log来进行日志打印（尽管有编码约束）</p>
+
+<p>```
+-assumenosideeffects class android.util.Log {</p>
+
+<pre><code>    public static *** d(...);
+    public static *** e(...);
+    public static *** i(...);
+    public static *** v(...);
+    public static *** println(...);
+    public static *** w(...);
+    public static *** wtf(...);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>一般写到这里，基本可以结束，但是我们还需要探究一下，编译期屏蔽是否和运行时屏蔽一样有着同样的问题呢？ 我们接下来证明<br/>
+首先，我们选用这段代码作为例子
+```java
+public class MainActivity extends Activity {</p>
+
+<pre><code>private static final String LOGTAG = "MainActivity" ;
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+    dumpDebugInfo();
+}
+
+private void dumpDebugInfo() {
+    Locale defaultLocale = Locale.getDefault();
+    DroidLog.i(LOGTAG, "sdkVersion=" + Build.VERSION.SDK_INT + "; Locale=" + defaultLocale);
+}
+</code></pre>
+
+<p>}
+<code>
+然后修改混淆文件proguard-project.txt，启用混淆处理。
+</code>
+-assumenosideeffects class android.util.Log {</p>
+
+<pre><code>public static *** d(...);
+public static *** i(...);
+public static *** v(...);
+</code></pre>
+
+<p>}</p>
+
+<p>-assumenosideeffects class com.droidyue.logdemo.DroidLog {</p>
+
+<pre><code>    public static *** i(...);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>然后使用Eclipse的导出功能，生成指定签名的APK包，运行必然没有日志输出。</p>
+
+<p>接下来对生成的APK包进行反编译，得到的smali文件。查看MainActivity.smali。</p>
+
+<p>注意：Proguard进行优化，发生了内联操作，讲dumpDebugInfo的方法体实现提取到onCreate方法中。</p>
+
+<p>onCreate方法体中没有任何关于<code>DroidLog.i</code>方法的调用，但是<code>"sdkVersion=" + Build.VERSION.SDK_INT + "; Locale=" + defaultLocale</code>对应的字符串拼接操作依然存在。
+```</p>
+
+<h1>virtual methods</h1>
+
+<p>.method protected onCreate(Landroid/os/Bundle;)V</p>
+
+<pre><code>.locals 3
+
+invoke-super {p0, p1}, Landroid/app/Activity;-&gt;onCreate(Landroid/os/Bundle;)V
+
+const v0, 0x7f030017
+
+invoke-virtual {p0, v0}, Lcom/droidyue/logdemo/MainActivity;-&gt;setContentView(I)V
+
+invoke-static {}, Ljava/util/Locale;-&gt;getDefault()Ljava/util/Locale;
+
+move-result-object v0
+
+new-instance v1, Ljava/lang/StringBuilder;
+
+const-string v2, "sdkVersion="
+
+invoke-direct {v1, v2}, Ljava/lang/StringBuilder;-&gt;&lt;init&gt;(Ljava/lang/String;)V
+
+sget v2, Landroid/os/Build$VERSION;-&gt;SDK_INT:I
+
+invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;-&gt;append(I)Ljava/lang/StringBuilder;
+
+move-result-object v1
+
+const-string v2, "; Locale="
+
+invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;-&gt;append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+move-result-object v1
+
+invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;-&gt;append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+
+move-result-object v0
+
+invoke-virtual {v0}, Ljava/lang/StringBuilder;-&gt;toString()Ljava/lang/String;
+
+return-void
+</code></pre>
+
+<p>.end method
+```
+因此，无论是运行时日志屏蔽还是编译期，message参数上发生的字符串拼接都依然存在。但是编译期屏蔽减少了方法调用（即方法进出栈操作），理论上编译期屏蔽日志更优。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android性能调优利器StrictMode]]></title>
@@ -1003,133 +1251,6 @@ startActivity(intent);
 <h2>One More Thing</h2>
 
 <p>为了更深刻理解，建议多读几次。如果文章有问题，请在下方评论指出。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[探究android:largeHeap]]></title>
-    <link href="http://droidyue.com/blog/2015/08/01/dive-into-android-large-heap/"/>
-    <updated>2015-08-01T17:10:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/08/01/dive-into-android-large-heap</id>
-    <content type="html"><![CDATA[<p>在日常的Android开发中，我们必然遇到过OutOfMemoryError这样的崩溃，产生的原因无外乎两点，一是内存过小不够用，二是程序设计有误，导致不能释放内存，其中后者情况较多。在解决这个问题时，我们亦或多或少听到android:largeHeap，然而这个概念又是什么呢，它该如何使用，存在哪些问题呢。本文讲比较全面介绍Android中的largeHeap帮助各位全面深入了解这个概念。</p>
-
-<!--more-->
-
-
-<h2>磨刀不误砍柴工</h2>
-
-<p>为了便于理解，先简单介绍一些和文章相关的基础概念。</p>
-
-<ul>
-<li>通常，一个Android程序在运行时会启动一个Dalvik虚拟机（暂不讨论ART模式）</li>
-<li>虚拟机的运行时内存一般由堆和栈两大部分构成。</li>
-<li>栈是存储方法调用的一片内存数据区。</li>
-<li>堆内存占据了虚拟机的大部分内存空间，程序执行时产生的对象就分配在堆内存上。</li>
-<li>如果是堆内存没有可用的空间存储生成的对象，JVM会抛出java.lang.OutOfMemoryError。</li>
-</ul>
-
-
-<p>如若具体了解堆和栈，请参考文章<a href="http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/">Java中的堆和栈的区别</a>和<a href="http://droidyue.com/blog/2014/12/21/java-runtime-data-areas/">JVM运行时的数据区</a></p>
-
-<h2>largeHeap介绍</h2>
-
-<p>一个应用如果使用了largeHeap，会请求系统为Dalvik虚拟机分配更大的内存空间。使用起来也很方便，只需在manifest文件application节点加入<strong>android:largeHeap=&ldquo;true&rdquo;</strong>即可。
-```xml
-&lt;application android:icon=&ldquo;@drawable/icon&rdquo;</p>
-
-<pre><code>android:allowBackup="false"
-android:label="@string/app_name" 
-android:debuggable="true" 
-android:theme="@android:style/Theme.Black"
-android:largeHeap="true"
-</code></pre>
-
-<blockquote><p>```</p></blockquote>
-
-<h2>largeHeap有多大</h2>
-
-<p>在Android中，有如下两个方法可以帮助我们查看当前内存大小</p>
-
-<ul>
-<li>ActivityManager.getMemoryClass()获得内用正常情况下内存的大小</li>
-<li>ActivityManager.getLargeMemoryClass()可以获得开启largeHeap最大的内存大小</li>
-</ul>
-
-
-<p>然而largeHeap这个最大值是如何决定的呢？想要了解这个问题，我们就需要看一下Android系统中的一个文件。</p>
-
-<p>这个文件路径是<code>/system/build.prop</code>，由于文件比较大，这里我们只截取关于dalvik内存的配置信息，如下。
-<code>java
-dalvik.vm.heapstartsize=8m
-dalvik.vm.heapgrowthlimit=192m
-dalvik.vm.heapsize=512m
-dalvik.vm.heaptargetutilization=0.75
-dalvik.vm.heapminfree=2m
-dalvik.vm.heapmaxfree=8m
-</code></p>
-
-<p>上面有诸多配置，但从字面意思也不难理解，为了正确理解，有必要逐一解释一下。</p>
-
-<p><strong>dalvik.vm.heapstartsize=8m</strong></p>
-
-<p>相当于虚拟机的 -Xms配置，该项用来设置堆内存的初始大小。</p>
-
-<p><strong>dalvik.vm.heapgrowthlimit=192m</strong></p>
-
-<p>相当于虚拟机的 -XX:HeapGrowthLimit配置，该项用来设置一个标准的应用的最大堆内存大小。一个标准的应用就是没有使用android:largeHeap的应用。</p>
-
-<p><strong>dalvik.vm.heapsize=512m</strong></p>
-
-<p>相当于虚拟机的 -Xmx配置，该项设置了使用android:largeHeap的应用的最大堆内存大小。</p>
-
-<p><strong>dalvik.vm.heaptargetutilization=0.75</strong></p>
-
-<p>相当于虚拟机的 -XX:HeapTargetUtilization,该项用来设置当前理想的堆内存利用率。其取值位于0与1之间。当GC进行完垃圾回收之后，Dalvik的堆内存会进行相应的调整，通常结果是当前存活的对象的大小与堆内存大小做除法，得到的值为这个选项的设置，即这里的0.75。注意，这只是一个参考值，<a href="http://grepcode.com/file/repo1.maven.org/maven2/org.robovm/robovm-rt/1.0.0/dalvik/system/VMRuntime.java#VMRuntime.setTargetHeapUtilization%28float%29">Dalvik虚拟机也可以忽略此设置</a>。</p>
-
-<p><strong>dalvik.vm.heapminfree=2m</strong>与<strong>dalvik.vm.heapmaxfree=8m</strong></p>
-
-<p>dalvik.vm.heapminfree对应的是-XX:HeapMinFree配置，用来设置单次堆内存调整的最小值。<strong>dalvik.vm.heapmaxfree</strong>对应的是-XX:HeapMaxFree配置，用来设置单次堆内存调整的最大值。通常情况下，还需要结合上面的 -XX:HeapTargetUtilization的值，才能确定内存调整时，需要调整的大小。</p>
-
-<h2>largeHeap需要权限么</h2>
-
-<p>为何有此疑问呢？ 原因是这样的。 首先一个设备的内存是固定的，当我们使用了largeHeap之后就可以使我们的程序内存增加，但这部分增加的内存有可能是源自被系统杀掉的后台程序。所以，使用largeHeap理论上是有可能杀掉其他的程序的。</p>
-
-<p>然而，结果就是不需要权限，Google在一开始就是这样，只需要简单在Application元素上加入android:largeHeap=&ldquo;true"就能正常使用。</p>
-
-<h2>largeHeap对GC的影响</h2>
-
-<p>拥有了更多的内存，是不是就意味着要花更多的时间遍历对象垃圾回收呢？其实不然。</p>
-
-<p>首先largeHeap自Android 4.0开始支持，而并发的垃圾回收方式从Android 2.3开始引入。</p>
-
-<p>在引入并发垃圾回收之前，系统采用了Stop-the-World回收方式，进行一次垃圾回收通常消耗几百毫秒，这是很影响交互和响应的。</p>
-
-<p>引入并发垃圾回收之后,在GC开始和结束的阶段会有短暂的暂停时间，通常在10毫秒以内。</p>
-
-<p>因此在支持largeHeap的系统上都采用了并发垃圾回收，GC的Pause Time不会很长，对交互响应影响甚微。</p>
-
-<h2>慎用largeHeap</h2>
-
-<p>对于largeHeap的使用，我们该持有的谨慎的态度，largeHeap可以使用，但是要谨慎。</p>
-
-<p>对于本身对内存要求过大的图片或者视频应用，我们可以使用largeHeap。</p>
-
-<p>除上面的情况，如果仅仅是为了解决OutOfMemoryError这样的问题，而尝试使用largeHeap分配更大内存的这种指标不治本的方法不可取。对待这样的OOM问题，建议阅读以下几篇文章，了解Android中内存泄露和垃圾回收，从代码上去查找问题，从根本上解决问题。</p>
-
-<h2>推荐文章</h2>
-
-<ul>
-<li><a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a></li>
-<li><a href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a></li>
-<li><a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">Google IO：Android内存管理主题演讲记录</a></li>
-</ul>
-
-
-<p><script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
-<script type="text/javascript">
-	showBookCopyright();
-</script>
-</p>
 ]]></content>
   </entry>
   

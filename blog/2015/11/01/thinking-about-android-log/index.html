@@ -1,0 +1,658 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>关于Android Log的一些思考 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Ruby,Android,Linux,日语" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="关于Android Log的一些思考 Nov 1st, 2015 在日常的Android开发中，日志打印是一项必不可少的操作，我们通过分析打印的日志可以分析程序的运行数据和情况。然而使用日志打印的正确姿势又是怎样呢，如何屏蔽日志信息输出呢，本文将逐一进行回答。 哪些形式 System.out. &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://7jpolu.com1.z0.glb.clouddn.com/touch_icon.png"/>
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2015/11/01/thinking-about-android-log">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="http://droidyue.b0.upaiyun.com/js/blog/modernizr-2.0.js"></script>
+  <script src="http://droidyue.b0.upaiyun.com/js/jquery.min.js"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/blogutils.js" charset="utf-8"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="http://droidyue.b0.upaiyun.com/js/blog/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/trackurl_maker.js" charset="utf-8"></script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/ninki">干货</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/jijizhazha/">叽叽喳喳</a></li>
+  <li><a href="/donate/">Donate</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">关于Android Log的一些思考</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-01T17:09:00+08:00" pubdate data-updated="true">Nov 1<span>st</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在日常的Android开发中，日志打印是一项必不可少的操作，我们通过分析打印的日志可以分析程序的运行数据和情况。然而使用日志打印的正确姿势又是怎样呢，如何屏蔽日志信息输出呢，本文将逐一进行回答。</p>
+
+<!--more-->
+
+
+<h2>哪些形式</h2>
+
+<h3>System.out.println</h3>
+
+<p>这是标准的Java输出方法，相信很多公司都不提倡使用，这里进行列举，目的是为了提醒大家不用。</p>
+
+<h3>Android Log</h3>
+
+<p>Android自身提供了一个日志工具类，那就是android.util.Log。使用很简单，如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onCreate&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>TAG选取</h2>
+
+<h3>选用人名</h3>
+
+<p>关于TAG的选取，很多人都曾采用人名的形式，比如</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;andy&quot;</span><span class="o">,</span> <span class="s">&quot;onCreate&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样做的目标一是为了过滤方便，当一个人在写一个模块多个文件时，使用这个形式，过滤起来很容易帮助理解程序的执行情况。另外的目的就是为了表明日志周围代码的作者姓甚名谁。</p>
+
+<p>然而，我却不推荐这种人名作为TAG的形式。原因如下</p>
+
+<ul>
+<li>以人名作为关键字过滤，不易确定产生日志的类文件</li>
+<li>随着某个人模块实现的增加，过滤人名易产生来自其他模块的干扰信息。</li>
+</ul>
+
+
+<h3>动态选取</h3>
+
+<p>还有一种选取LOGTAG的方式，就是</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="n">DroidSettings</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getSimpleName</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样使用，得到的LOGTAG的值就是DroidSettings，然而并非如此，当DroidSettings这个类进行了混淆之后，类名变成了类似a,b,c这样的名称，LOGTAG则不再是DroidSettings这个值了。这样可能造成的问题就是，内部混淆有日志的包，我们去过滤DroidSettings 却永远得不到任何信息。</p>
+
+<h3>推荐的记录形式</h3>
+
+<p>推荐的形式就是以字符串字面量形式去设置LOGTAG。如下，在DroidSettings类中</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;DroidSettings&quot;</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>优雅打印日志的姿势</h3>
+
+<p>什么才是打印日志的优雅姿势是，我认为一条好的日志需要包含以下三点</p>
+
+<ul>
+<li>这条日志所在的类，我们通过LOGTAG可以表示</li>
+<li>这条日志所在的方法，需要加入方法名的字符串</li>
+<li>必要的其他信息，比如参数或者局部变量。</li>
+</ul>
+
+
+<p>结合三点，下面是一个符合规则的简单示例</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">String</span>  <span class="nf">getBookName</span><span class="o">(</span><span class="kt">int</span> <span class="n">bookId</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">String</span> <span class="n">bookName</span> <span class="o">=</span> <span class="n">mBooks</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">bookId</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">DroidLog</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;getBookName bookId=&quot;</span> <span class="o">+</span> <span class="n">bookId</span> <span class="o">+</span> <span class="s">&quot;;bookName=&quot;</span> <span class="o">+</span> <span class="n">bookName</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">bookName</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码，包含了所在类（LOGTAG），方法名(getBookName)， 参数(bookId)，局部变量(bookName)。必要的信息都展示了出来，对于了解程序运行很有帮助。</p>
+
+<h2>屏蔽日志输出</h2>
+
+<p>在Android中进行屏蔽日志，有两种实现形式，一种是在编译期屏蔽，另一种则是从运行时进行屏蔽，后者相对比较常见，从后向前介绍。</p>
+
+<h3>运行时屏蔽</h3>
+
+<p>在运行时屏蔽日志，通常的做法是创建一个自定义的类，比如叫做DroidLog</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">DroidLog</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">ENABLE_LOG</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">i</span><span class="o">(</span><span class="n">String</span> <span class="n">tag</span><span class="o">,</span> <span class="n">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">ENABLE_LOG</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">android</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">tag</span><span class="o">,</span> <span class="n">message</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在编码时，我们调用DroidLog.i方法来记录日志，然后在打包时，修改ENABLE_LOG的值为false，这样就能屏蔽了日志输出。</p>
+
+<p>然后运行时屏蔽的方案实际上有一点小问题，比如</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">dumpDebugInfo</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">DroidLog</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;sdkVersion=&quot;</span> <span class="o">+</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION</span><span class="o">.</span><span class="na">SDK_INT</span> <span class="o">+</span> <span class="s">&quot;; Locale=&quot;</span> <span class="o">+</span> <span class="n">Locale</span><span class="o">.</span><span class="na">getDefault</span><span class="o">());</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>虽然上面的日志不会打印，但是<code>"sdkVersion=" + Build.VERSION.SDK_INT + "; Locale=" + Locale.getDefault()</code>这段字符串拼接语句却实实在在执行了。总的来说，还是会产生一些影响。</p>
+
+<p>关于字符串拼接的细节，可以阅读<a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a></p>
+
+<h2>编译期屏蔽</h2>
+
+<p>既然运行时屏蔽存在问题，那么是否可以提前到编译期进行屏蔽呢，答案是肯定的。这里我们就使用了Proguard的一个小功能。</p>
+
+<p>assumenosideeffects从英文单词上去理解，意思为 假设没有副作用。该功能属于优化的一种方式，该功能常常用来处理日志打印，比如我们想要屏蔽掉来自DroidLog的日志打印。
+在混淆的配置文件中，加入下列代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">assumenosideeffects</span> <span class="kd">class</span> <span class="nc">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">logdemo</span><span class="o">.</span><span class="na">DroidLog</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">i</span><span class="o">(...);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然而仅仅处理DroidLog是不够的，因为我们无法保证团队其他成员是否使用了原生的android.utils.Log来进行日志打印（尽管有编码约束）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">assumenosideeffects</span> <span class="kd">class</span> <span class="nc">android</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">Log</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">d</span><span class="o">(...);</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">e</span><span class="o">(...);</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">i</span><span class="o">(...);</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">v</span><span class="o">(...);</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">println</span><span class="o">(...);</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">w</span><span class="o">(...);</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">wtf</span><span class="o">(...);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>一般写到这里，基本可以结束，但是我们还需要探究一下，编译期屏蔽是否和运行时屏蔽一样有着同样的问题呢？ 我们接下来证明<br/>
+首先，我们选用这段代码作为例子</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="n">Activity</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;MainActivity&quot;</span> <span class="o">;</span>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">dumpDebugInfo</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">dumpDebugInfo</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">Locale</span> <span class="n">defaultLocale</span> <span class="o">=</span> <span class="n">Locale</span><span class="o">.</span><span class="na">getDefault</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">DroidLog</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;sdkVersion=&quot;</span> <span class="o">+</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION</span><span class="o">.</span><span class="na">SDK_INT</span> <span class="o">+</span> <span class="s">&quot;; Locale=&quot;</span> <span class="o">+</span> <span class="n">defaultLocale</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后修改混淆文件proguard-project.txt，启用混淆处理。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">assumenosideeffects</span> <span class="kd">class</span> <span class="nc">android</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">Log</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">d</span><span class="o">(...);</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">i</span><span class="o">(...);</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">v</span><span class="o">(...);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">-</span><span class="n">assumenosideeffects</span> <span class="kd">class</span> <span class="nc">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">logdemo</span><span class="o">.</span><span class="na">DroidLog</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="o">***</span> <span class="n">i</span><span class="o">(...);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后使用Eclipse的导出功能，生成指定签名的APK包，运行必然没有日志输出。</p>
+
+<p>接下来对生成的APK包进行反编译，得到的smali文件。查看MainActivity.smali。</p>
+
+<p>注意：Proguard进行优化，发生了内联操作，讲dumpDebugInfo的方法体实现提取到onCreate方法中。</p>
+
+<p>onCreate方法体中没有任何关于<code>DroidLog.i</code>方法的调用，但是<code>"sdkVersion=" + Build.VERSION.SDK_INT + "; Locale=" + defaultLocale</code>对应的字符串拼接操作依然存在。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="err">#</span> <span class="n">virtual</span> <span class="n">methods</span>
+</span><span class='line'><span class="o">.</span><span class="na">method</span> <span class="kd">protected</span> <span class="n">onCreate</span><span class="o">(</span><span class="n">Landroid</span><span class="o">/</span><span class="n">os</span><span class="o">/</span><span class="n">Bundle</span><span class="o">;)</span><span class="n">V</span>
+</span><span class='line'>    <span class="o">.</span><span class="na">locals</span> <span class="mi">3</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">invoke</span><span class="o">-</span><span class="kd">super</span> <span class="o">{</span><span class="n">p0</span><span class="o">,</span> <span class="n">p1</span><span class="o">},</span> <span class="n">Landroid</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">Activity</span><span class="o">;-&gt;</span><span class="n">onCreate</span><span class="o">(</span><span class="n">Landroid</span><span class="o">/</span><span class="n">os</span><span class="o">/</span><span class="n">Bundle</span><span class="o">;)</span><span class="n">V</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">const</span> <span class="n">v0</span><span class="o">,</span> <span class="mh">0x7f030017</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">invoke</span><span class="o">-</span><span class="n">virtual</span> <span class="o">{</span><span class="n">p0</span><span class="o">,</span> <span class="n">v0</span><span class="o">},</span> <span class="n">Lcom</span><span class="o">/</span><span class="n">droidyue</span><span class="o">/</span><span class="n">logdemo</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">;-&gt;</span><span class="n">setContentView</span><span class="o">(</span><span class="n">I</span><span class="o">)</span><span class="n">V</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">invoke</span><span class="o">-</span><span class="kd">static</span> <span class="o">{},</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">util</span><span class="o">/</span><span class="n">Locale</span><span class="o">;-&gt;</span><span class="n">getDefault</span><span class="o">()</span><span class="n">Ljava</span><span class="o">/</span><span class="n">util</span><span class="o">/</span><span class="n">Locale</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">move</span><span class="o">-</span><span class="n">result</span><span class="o">-</span><span class="n">object</span> <span class="n">v0</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">new</span><span class="o">-</span><span class="n">instance</span> <span class="n">v1</span><span class="o">,</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">const</span><span class="o">-</span><span class="n">string</span> <span class="n">v2</span><span class="o">,</span> <span class="s">&quot;sdkVersion=&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">invoke</span><span class="o">-</span><span class="n">direct</span> <span class="o">{</span><span class="n">v1</span><span class="o">,</span> <span class="n">v2</span><span class="o">},</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;-&gt;&lt;</span><span class="n">init</span><span class="o">&gt;(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;)</span><span class="n">V</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">sget</span> <span class="n">v2</span><span class="o">,</span> <span class="n">Landroid</span><span class="o">/</span><span class="n">os</span><span class="o">/</span><span class="n">Build$VERSION</span><span class="o">;-&gt;</span><span class="nl">SDK_INT:</span><span class="n">I</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">invoke</span><span class="o">-</span><span class="n">virtual</span> <span class="o">{</span><span class="n">v1</span><span class="o">,</span> <span class="n">v2</span><span class="o">},</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;-&gt;</span><span class="n">append</span><span class="o">(</span><span class="n">I</span><span class="o">)</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">move</span><span class="o">-</span><span class="n">result</span><span class="o">-</span><span class="n">object</span> <span class="n">v1</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">const</span><span class="o">-</span><span class="n">string</span> <span class="n">v2</span><span class="o">,</span> <span class="s">&quot;; Locale=&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">invoke</span><span class="o">-</span><span class="n">virtual</span> <span class="o">{</span><span class="n">v1</span><span class="o">,</span> <span class="n">v2</span><span class="o">},</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;-&gt;</span><span class="n">append</span><span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;)</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">move</span><span class="o">-</span><span class="n">result</span><span class="o">-</span><span class="n">object</span> <span class="n">v1</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">invoke</span><span class="o">-</span><span class="n">virtual</span> <span class="o">{</span><span class="n">v1</span><span class="o">,</span> <span class="n">v0</span><span class="o">},</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;-&gt;</span><span class="n">append</span><span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Object</span><span class="o">;)</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">move</span><span class="o">-</span><span class="n">result</span><span class="o">-</span><span class="n">object</span> <span class="n">v0</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">invoke</span><span class="o">-</span><span class="n">virtual</span> <span class="o">{</span><span class="n">v0</span><span class="o">},</span> <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;-&gt;</span><span class="n">toString</span><span class="o">()</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span><span class="o">-</span><span class="kt">void</span>
+</span><span class='line'><span class="o">.</span><span class="na">end</span> <span class="n">method</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因此，无论是运行时日志屏蔽还是编译期，message参数上发生的字符串拼接都依然存在。但是编译期屏蔽减少了方法调用（即方法进出栈操作），理论上编译期屏蔽日志更优。</p>
+</div>
+
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/html/vote_tips.js" charset="utf-8"></script>
+  <html>
+	<link href="http://1.toolite.sinaapp.com/css/new_donate.css"  rel="stylesheet" type="text/css">
+	<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/donate_data.js" charset="utf-8"></script>
+	
+	<div class="donate_widget">
+		<br/>
+		<div style="text-align: center;font-size:20px;"><script type="text/javascript">document.write(getDonateTips());</script></div></br>
+		<input class="donate_item" id="donate_item_first" type="button"  value="5.12">
+		<input class="donate_item" id="donate_item_second" type="button"  value="10.24">
+		<input class="donate_item" id="donate_item_third" type="button"  value="20.48">
+		<input class="donate_item" id="donate_item_fourth" type="button"  value="随意金额">
+		<div id="donate_dialog" class="donate_dialog">
+			<img src="http://7xnq3g.com1.z0.glb.clouddn.com/wechat_any.png" id="donate_img" height="200px" width="200px"/>
+			<p style="text-align: center;">打开微信，扫一扫即可</p>
+		</div>
+	</div>
+
+
+	<script type="text/javascript" src="http://1.toolite.sinaapp.com/donate/donate_widget.js" charset="utf-8"></script>
+</html>
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/post_bannder.js"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/furi_netou.js" charset="utf-8"></script>
+      
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blog_ads_data_source.js" charset="utf-8"></script>
+    
+<script type="text/javascript">
+    	displaySection(shouldDisplayBlogAds() && onlyForDesktop(), isBlogAdsInDebug(), makeBlogAdsDataSource(), makeBlogAdsPrefix(), makeBlogAdsSuffix(), sDroidBlogAdClass);
+</script>
+
+  
+  <link rel="stylesheet" type="text/css" href="http://droidyue.b0.upaiyun.com/book_recommend/book_recommend_pro.css">
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/book_recommend/book_recommend.js" charset="utf-8"></script>
+
+
+  
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/random_recommend.js" charset="utf-8"></script>
+<script type="text/javascript">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+
+  
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/weixin_gongzhonghao.js" charset="utf-8"></script>
+  
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-01T17:09:00+08:00" pubdate data-updated="true">Nov 1<span>st</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/log/'>Log</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/10/24/great-english-programming-blog/" title="Previous Post: 优秀的英文技术博客">&laquo; 优秀的英文技术博客</a>
+      
+      
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!--高速版-->
+<div id="SOHUCS" sid="/blog/2015/11/01/thinking-about-android-log"></div>
+<script charset="utf-8" type="text/javascript" src="http://changyan.sohu.com/upload/changyan.js" ></script>
+<script type="text/javascript">
+    window.changyan.api.config({
+        appid: 'cyrU6w9cI',
+        conf: 'prod_0d366f76b04261efa2b407c3b62edd9f'
+    });
+</script>        
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	bestPosts = makeBatchUrlTrackable(bestPosts, "ninki_posts");
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blogroll_data_source.js" charset="utf-8"></script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/common_book_data_source.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/program_book_data_source.js" charset="utf-8"></script>
+        
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/11/01/thinking-about-android-log/">关于Android Log的一些思考</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/24/great-english-programming-blog/">优秀的英文技术博客</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/17/funny-programmer-season-three/">程序员的逗比瞬间(第三季)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/26/android-tuning-tool-strictmode/">Android性能调优利器StrictMode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/17/android-process-and-thread-schedule-cgroups/">Android进程线程调度之cgroups</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/12/is-your-java-code-jit-friendly/">你的Java代码对JIT编译友好么？</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/05/android-process-and-thread-schedule-nice/">剖析Android中进程与线程调度之nice</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/29/funny-programmer-season-two/">程序员的逗比瞬间（第二季）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/22/where-has-the-java-permgen-gone/">Java永久代去哪儿了</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/16/dive-into-android-activity-launchmode/">深入讲解Android中Activity launchMode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/08/funny-programmer-season-one/">程序员的逗比瞬间（第一季）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/01/dive-into-android-large-heap/">探究android:largeHeap</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/25/use-android-lint-to-find-higher-api-usage/">使用Android lint发现并解决高版本API问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/11/start-proxy-server-on-mac/">在Mac上为其他设备开启代理</a>
+      </li>
+    
+  </ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> 云存储提供方： <a href="https://www.upyun.com/"><img src="http://upfiles.b0.upaiyun.com/logo/90x45.png" alt="UPYUN"></a></span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/baidu_analytics.js" charset="utf-8"> </script> 
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://7jpncc.com1.z0.glb.clouddn.com/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
