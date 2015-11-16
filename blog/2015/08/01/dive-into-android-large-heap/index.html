@@ -215,6 +215,78 @@
 
 <p>除上面的情况，如果仅仅是为了解决OutOfMemoryError这样的问题，而尝试使用largeHeap分配更大内存的这种指标不治本的方法不可取。对待这样的OOM问题，建议阅读以下几篇文章，了解Android中内存泄露和垃圾回收，从代码上去查找问题，从根本上解决问题。</p>
 
+<h2>补漏</h2>
+
+<p>感谢大牛<a href="http://weibo.com/u/1783932377?topnav=1&amp;wvr=6&amp;topsug=1">裸奔的凯子哥</a>指出。</p>
+
+<p>无论是否开启largeHeap，ActivityManager.getLargeMemoryClass()都可以打印出largeHeap的大小。因为其本身只是读取了配置文件的值而已。即下面的代码无论largeHeap开启与否，打印出来的日志都相同</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">ActivityManager</span> <span class="n">activityManager</span> <span class="o">=</span> <span class="o">(</span><span class="n">ActivityManager</span><span class="o">)</span> <span class="n">getSystemService</span><span class="o">(</span><span class="n">ACTIVITY_SERVICE</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">largeMemoryClass</span> <span class="o">=</span> <span class="n">activityManager</span><span class="o">.</span><span class="na">getLargeMemoryClass</span><span class="o">();</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">memoryClass</span> <span class="o">=</span> <span class="n">activityManager</span><span class="o">.</span><span class="na">getMemoryClass</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">ActivityManager</span><span class="o">.</span><span class="na">MemoryInfo</span> <span class="n">info</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ActivityManager</span><span class="o">.</span><span class="na">MemoryInfo</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">activityManager</span><span class="o">.</span><span class="na">getMemoryInfo</span><span class="o">(</span><span class="n">info</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;largeMemoryClass = &quot;</span> <span class="o">+</span> <span class="n">largeMemoryClass</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;memoryClass = &quot;</span> <span class="o">+</span> <span class="n">memoryClass</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>如何验证</h3>
+
+<p>关于如何验证，这里设置一个按钮，每次创建100M的内存对象，观察开启largeHeap前后的反应</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="kt">byte</span><span class="o">[]&gt;</span> <span class="n">mLeakyContainer</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">findViewById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">testBtn</span><span class="o">).</span><span class="na">setOnClickListener</span><span class="o">(</span><span class="k">new</span> <span class="n">View</span><span class="o">.</span><span class="na">OnClickListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>            <span class="nd">@Override</span>
+</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onClick</span><span class="o">(</span><span class="n">View</span> <span class="n">v</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="kt">byte</span><span class="o">[]</span> <span class="n">b</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">100</span> <span class="o">*</span> <span class="mi">1000</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">];</span>
+</span><span class='line'>                <span class="n">mLeakyContainer</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">b</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">});</span>
+</span><span class='line'>        <span class="n">testMemoryInfo</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>以正常情况下可用192M内存为例，点击两次按钮，应用崩溃。</li>
+<li>然后在manifest开启largeHeap，以最大512M内存可用为例，点击6次应用崩溃</li>
+</ul>
+
+
+<p>验证源码可以访问github查看<a href="https://github.com/androidyue/largeHeapDemo">largeHeapDemo</a></p>
+
 <h2>推荐文章</h2>
 
 <ul>
