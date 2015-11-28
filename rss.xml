@@ -6,11 +6,347 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Mon, 16 Nov 2015 14:27:20 GMT</pubDate>
+  <pubDate>Sat, 28 Nov 2015 11:09:45 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;h2&gt;版权说明&lt;/h2&gt;
+
+&lt;p&gt;本文为 InfoQ 中文站特供稿件，首发地址为：&lt;a href="http://www.infoq.com/cn/articles/Java-8-Lambdas-A-Peek-Under-the-Hood"&gt;http://www.infoq.com/cn/articles/Java-8-Lambdas-A-Peek-Under-the-Hood&lt;/a&gt;。如需转载，请与 InfoQ 中文站联系。&lt;/p&gt;
+
+&lt;h2&gt;正文&lt;/h2&gt;
+
+&lt;p&gt;2014年3月，Java 8发布，Lambda表达式作为一项重要的特性随之而来。或许现在你已经在使用Lambda表达式来书写简洁灵活的代码。比如，你可以使用Lambda表达式和新增的流相关的API，完成如下的大量数据的查询处理：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;int total = invoices.stream()
+&lt;/span&gt;&lt;span class='line'&gt;                    .filter(inv -&amp;gt; inv.getMonth() == Month.JULY)
+&lt;/span&gt;&lt;span class='line'&gt;                    .mapToInt(Invoice::getAmount)
+&lt;/span&gt;&lt;span class='line'&gt;                    .sum();&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上面的示例代码描述了如何从一打发票中计算出7月份的应付款总额。其中我们使用Lambda表达式过滤出7月份的发票，使用方法引用来提取出发票的金额。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;p&gt;到这里，你可能会对Java编译器和JVM内部如何处理Lambda表达式和方法引用比较好奇。可能会提出这样的问题，Lambda表达式会不会就是匿名内部类的语法糖呢？毕竟上面的示例代码可以使用匿名内部类实现，将Lambda表达式的方法体实现移到匿名内部类对应的方法中即可，但是我们并不赞成这样做。如下为匿名内部类实现版本：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;int total = invoices.stream()
+&lt;/span&gt;&lt;span class='line'&gt;                    .filter(new Predicate&amp;lt;Invoice&amp;gt;() {
+&lt;/span&gt;&lt;span class='line'&gt;                        @Override
+&lt;/span&gt;&lt;span class='line'&gt;                        public boolean test(Invoice inv) {
+&lt;/span&gt;&lt;span class='line'&gt;                            return inv.getMonth() == Month.JULY;
+&lt;/span&gt;&lt;span class='line'&gt;                        }
+&lt;/span&gt;&lt;span class='line'&gt;                    })
+&lt;/span&gt;&lt;span class='line'&gt;                    .mapToInt(new ToIntFunction&amp;lt;Invoice&amp;gt;() {
+&lt;/span&gt;&lt;span class='line'&gt;                        @Override
+&lt;/span&gt;&lt;span class='line'&gt;                        public int applyAsInt(Invoice inv) {
+&lt;/span&gt;&lt;span class='line'&gt;                            return inv.getAmount();
+&lt;/span&gt;&lt;span class='line'&gt;                        }
+&lt;/span&gt;&lt;span class='line'&gt;                    })
+&lt;/span&gt;&lt;span class='line'&gt;                    .sum();&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;本文将会介绍为什么Java编译器没有采用内部类的形式处理Lambda表达式，并解密Lambda表达式和方法引用的内部实现。接着介绍字节码生成并简略分析Lambda表达式理论上的性能。最后，我们将讨论一下实践中Lambda表达式的性能问题。&lt;/p&gt;
+
+&lt;h2&gt;为什么匿名内部类不好？&lt;/h2&gt;
+
+&lt;p&gt;实际上，匿名内部类存在着影响应用性能的问题。&lt;/p&gt;
+
+&lt;p&gt;首先，编译器会为每一个匿名内部类创建一个类文件。创建出来的类文件的名称通常按照这样的规则 ClassName$1， 其中ClassName就是匿名内部类定义所属的类的名称，ClassName后面需要接上$符合和数字。生成如此多的文件就会带来问题，因为类在使用之前需要加载类文件并进行验证，这个过程则会影响应用的启动性能。类文件的加载很有可能是一个耗时的操作，这其中包含了磁盘IO和解压JAR文件。&lt;/p&gt;
+
+&lt;p&gt;假设Lambda表达式翻译成匿名内部类，那么每一个Lambda表达式都会有一个对应的类文件。随着匿名内部类进行加载，其必然要占用JVM中的元空间（从Java 8开始永久代的一种替代实现）。如果匿名内部类的方法被JIT编译成机器代码，则会存储到代码缓存中。同时，匿名内部类都需要实例化成独立的对象。以上关于匿名内部类的种种会使得应用的内存占用增加。因此我们有必要引入新的缓存机制减少过多的内存占用，这也就意味着我们需要引入某种抽象层。&lt;/p&gt;
+
+&lt;p&gt;最重要的，一旦Lambda表达式使用了匿名内部类实现，就会限制了后续Lambda表达式实现的更改，降低了其随着JVM改进而改进的能力。&lt;/p&gt;
+
+&lt;p&gt;我们看一下下面的这段代码：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;import java.util.function.Function;
+&lt;/span&gt;&lt;span class='line'&gt;public class AnonymousClassExample {
+&lt;/span&gt;&lt;span class='line'&gt;    Function&amp;lt;String, String&amp;gt; format = new Function&amp;lt;String, String&amp;gt;() {
+&lt;/span&gt;&lt;span class='line'&gt;        public String apply(String input){
+&lt;/span&gt;&lt;span class='line'&gt;            return Character.toUpperCase(input.charAt(0)) + input.substring(1);
+&lt;/span&gt;&lt;span class='line'&gt;        }
+&lt;/span&gt;&lt;span class='line'&gt;    };
+&lt;/span&gt;&lt;span class='line'&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;使用这个命令我们可以检查任何类文件生成的字节码&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;javap -c -v ClassName &lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;示例中使用Function创建的匿名内部类对应的字节码如下：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;0: aload_0       
+&lt;/span&gt;&lt;span class='line'&gt;1: invokespecial #1 // Method java/lang/Object."&amp;lt;init&amp;gt;":()V
+&lt;/span&gt;&lt;span class='line'&gt;4: aload_0       
+&lt;/span&gt;&lt;span class='line'&gt;5: new           #2 // class AnonymousClassExample$1
+&lt;/span&gt;&lt;span class='line'&gt;8: dup           
+&lt;/span&gt;&lt;span class='line'&gt;9: aload_0       
+&lt;/span&gt;&lt;span class='line'&gt;10: invokespecial #3 // Method AnonymousClass$1."&amp;lt;init&amp;gt;":(LAnonymousClassExample;)V
+&lt;/span&gt;&lt;span class='line'&gt;13: putfield      #4 // Field format:Ljava/util/function/Function;
+&lt;/span&gt;&lt;span class='line'&gt;16: return  &lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上述字节码的含义如下：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;第5行，使用字节码操作new创建了类型AnonymousClassExample$1的一个对象，同时将新创建的对象的的引用压入栈中。&lt;/li&gt;
+&lt;li&gt;第8行，使用dup操作复制栈上的引用。&lt;/li&gt;
+&lt;li&gt;第10行，上面的复制的引用被指令invokespecial消耗使用，用来初始化匿名内部类实例。&lt;/li&gt;
+&lt;li&gt;第13行，栈顶依旧是创建的对象的引用，这个引用通过putfield指令保存到AnonymousClassExample类的format属性中。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;AnonymousClassExample$1就是由编译器生成的匿名内部类的名称。如果想更加验证的话，你可以检查AnonymousClassExample$1这个类文件，你会发现这个类就是Function接口的实现。&lt;/p&gt;
+
+&lt;p&gt;将Lambda表达式翻译成匿名内部类会限制以后可能进行的优化（比如缓存）。因为一旦使用了翻译成匿名内部类形式，那么Lambda表达式则和匿名内部类的字节码生成机制绑定。因而，Java语言和JVM工程师需要设计一个稳定并且具有足够信息的二进制表示形式来支持以后的JVM实现策略。下面的部分将介绍不使用匿名内部类机制，Lambda表达式是如何工作的。&lt;/p&gt;
+
+&lt;h2&gt;Lambdas表达式和invokedynamic&lt;/h2&gt;
+
+&lt;p&gt;为了解决前面提到的担心，Java语言和JVM工程师决定将翻译策略推迟到运行时。利用Java 7引入的invokedynamic字节码指令我们可以高效地完成这一实现。将Lambda表达式转化成字节码只需要如下两步：&lt;/p&gt;
+
+&lt;p&gt;1.生成一个invokedynamic调用点，也叫做Lambda工厂。当调用时返回一个Lambda表达式转化成的&lt;a href="http://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html"&gt;函数式接口&lt;/a&gt;实例。&lt;/p&gt;
+
+&lt;p&gt;2.将Lambda表达式的方法体转换成方法供invokedynamic指令调用。&lt;/p&gt;
+
+&lt;p&gt;为了阐明上述的第一步，我们这里举一个包含Lambda表达式的简单类：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;import java.util.function.Function;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;public class Lambda {
+&lt;/span&gt;&lt;span class='line'&gt;    Function&amp;lt;String, Integer&amp;gt; f = s -&amp;gt; Integer.parseInt(s);
+&lt;/span&gt;&lt;span class='line'&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;查看上面的类经过编译之后生成的字节码：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;0: aload_0
+&lt;/span&gt;&lt;span class='line'&gt;1: invokespecial #1 // Method java/lang/Object."&amp;lt;init&amp;gt;":()V
+&lt;/span&gt;&lt;span class='line'&gt;4: aload_0
+&lt;/span&gt;&lt;span class='line'&gt;5: invokedynamic #2, 0 // InvokeDynamic
+&lt;/span&gt;&lt;span class='line'&gt;                  #0:apply:()Ljava/util/function/Function;
+&lt;/span&gt;&lt;span class='line'&gt;10: putfield #3 // Field f:Ljava/util/function/Function;
+&lt;/span&gt;&lt;span class='line'&gt;13: return&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;需要注意的是，方法引用的编译稍微有点不同，因为javac不需要创建一个合成的方法，javac可以直接访问该方法。&lt;/p&gt;
+
+&lt;p&gt;Lambda表达式转化成字节码的第二步取决于Lambda表达式是否为对变量捕获。Lambda表达式方法体需要访问外部的变量则为对变量捕获，反之则为对变量不捕获。&lt;/p&gt;
+
+&lt;p&gt;对于不进行变量捕获的Lambda表达式，其方法体实现会被提取到一个与之具有相同签名的静态方法中，这个静态方法和Lambda表达式位于同一个类中。比如上面的那段Lambda表达式会被提取成类似这样的方法：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;static Integer lambda$1(String s) {
+&lt;/span&gt;&lt;span class='line'&gt;    return Integer.parseInt(s);
+&lt;/span&gt;&lt;span class='line'&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;需要注意的是，这里的$1并不是代表内部类，这里仅仅是为了展示编译后的代码而已。&lt;/p&gt;
+
+&lt;p&gt;对于捕获变量的Lambda表达式情况有点复杂，同前面一样Lambda表达式依然会被提取到一个静态方法中，不同的是被捕获的变量同正常的参数一样传入到这个方法中。在本例中，采用通用的翻译策略预先将被捕获的变量作为额外的参数传入方法中。比如下面的示例代码：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;int offset = 100;
+&lt;/span&gt;&lt;span class='line'&gt;Function&amp;lt;String, Integer&amp;gt; f = s -&amp;gt; Integer.parseInt(s) + offset; &lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;对应的翻译后的实现方法为：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class=''&gt;&lt;span class='line'&gt;static Integer lambda$1(int offset, String s) {
+&lt;/span&gt;&lt;span class='line'&gt;    return Integer.parseInt(s) + offset;
+&lt;/span&gt;&lt;span class='line'&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;需要注意的是编译器对于Lambda表达式的翻译策略并非固定的，因为这样invokedynamic可以使编译器在后期使用不同的翻译实现策略。比如，被捕获的变量可以放入数组中。如果Lambda表达式用到了类的实例的属性，其对应生成的方法可以是实例方法，而不是静态方法，这样可以避免传入多余的参数。&lt;/p&gt;
+
+&lt;h2&gt;性能分析&lt;/h2&gt;
+
+&lt;p&gt;Lambda表达式最主要的优势表现在性能方面，虽然使用它很轻松的将很多行代码缩减成一句，但是其内部实现却不这么简单。下面对内部实现的每一步进行性能分析。&lt;/p&gt;
+
+&lt;p&gt;第一步就是连接，对应的就是我们上面提到的Lambda工厂。这一步相当于匿名内部类的类加载过程。来自Oracle的Sergey Kuksenko发布过相关的&lt;a href="http://www.google.com/url?q=http%3A%2F%2Fwww.oracle.com%2Ftechnetwork%2Fjava%2Fjvmls2013kuksen-2014088.pdf&amp;amp;sa=D&amp;amp;sntz=1&amp;amp;usg=AFQjCNEvk_uT2Gf5fi6oU2cBm29FJ9X0ZA"&gt;性能报告&lt;/a&gt;，并且他也在2013 &lt;a href="https://www.google.com/url?q=https%3A%2F%2Fmedianetwork.oracle.com%2Fvideo%2Fplayer%2F2623576348001&amp;amp;sa=D&amp;amp;sntz=1&amp;amp;usg=AFQjCNHq8XfMibI94INM3Zl8UGzk-kKbew"&gt;JVM语言大会&lt;/a&gt;就该话题做过&lt;a href="http://www.oracle.com/technetwork/java/jvmls2013kuksen-2014088.pdf"&gt;分享&lt;/a&gt;。报告表明，Lambda工厂的预热准备需要消耗时间，并且这个过程比较慢。伴随着更多的调用点连接，代码被频繁调用后（比如被JIT编译优化）性能会提升。另一方面如果连接处于不频繁调用的情况，那么Lambda工厂方式也会比匿名内部类加载要快，最高可达100倍。&lt;/p&gt;
+
+&lt;p&gt;第二步就是捕获变量。正如我们前面提到的，如果是不进行捕获变量，这一步会自动进行优化，避免在基于Lambda工厂实现下额外创建对象。对于匿名内部类而言，这一步对应的是创建外部类的实例，为了优化内部类这一步的问题，我们需要手动的修改代码，如创建一个对象，并将它设置给一个静态的属性。如下述代码：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="c1"&gt;// Hoisted Function&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="n"&gt;Function&lt;/span&gt;&lt;span class="o"&gt;&amp;lt;&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Integer&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;parseInt&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;Function&lt;/span&gt;&lt;span class="o"&gt;&amp;lt;&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Integer&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="n"&gt;Integer&lt;/span&gt; &lt;span class="nf"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;arg&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;Integer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;parseInt&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;arg&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;};&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="c1"&gt;// Usage:&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;result&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;parseInt&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="err"&gt;“&lt;/span&gt;&lt;span class="mi"&gt;123&lt;/span&gt;&lt;span class="err"&gt;”&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;第三部就是真实方法的调用。在这一步中匿名内部类和Lambda表达式执行的操作相同，因此没有性能上的差别。不进行捕获的Lambda表达式要比进行static优化过的匿名内部类较优。进行变量捕获的Lambda表达式和匿名内部类表达式性能大致相同。&lt;/p&gt;
+
+&lt;p&gt;在这一节中，我们明显可以看到Lambda表达式的实现表现良好，匿名内部类通常需要我们手动的进行优化来避免额外对象生成，而对于不进行变量捕获的Lambda表达式，JVM已经为我们做好了优化。&lt;/p&gt;
+
+&lt;h2&gt;实践中的性能分析&lt;/h2&gt;
+
+&lt;p&gt;理解了Lambda的性能模型很是重要，但是实际应用中的总体性能如何呢？我们在使用Java 8 编写了一些软件项目，一般都取得了很好的效果。非变量捕获的Lambda表达式给我们带来了很大的帮助。这里有一个很特殊的例子描述了关于优化方向的一些有趣的问题。&lt;/p&gt;
+
+&lt;p&gt;这个例子的场景是代码需要运行在一个要求GC暂定时间越少越好的系统上。因而我们需要避免创建大量的对象。在这个工程中，我们使用了大量的Lambda表达式来实现回调处理。然而在这些使用Lambda实现的回调中很多并没有捕获局部变量，而是需要引用当前类的变量或者调用当前类的方法。然而目前仍需要对象分配。下面就是我们提到的例子的代码：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="nf"&gt;MessageProcessor&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="nf"&gt;processMessages&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;queue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;read&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;obj&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;obj&lt;/span&gt; &lt;span class="k"&gt;instanceof&lt;/span&gt; &lt;span class="n"&gt;NewClient&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;            &lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;processNewClient&lt;/span&gt;&lt;span class="o"&gt;((&lt;/span&gt;&lt;span class="n"&gt;NewClient&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;});&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;有一个简单的办法解决这个问题，我们将Lambda表达式的代码提前到构造方法中，并将其赋值给一个成员属性。在调用点我们直接引用这个属性即可。下面就是修改后的代码：&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="n"&gt;Consumer&lt;/span&gt;&lt;span class="o"&gt;&amp;lt;&lt;/span&gt;&lt;span class="n"&gt;Msg&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;handler&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="nf"&gt;MessageProcessor&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;handler&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;obj&lt;/span&gt; &lt;span class="k"&gt;instanceof&lt;/span&gt; &lt;span class="n"&gt;NewClient&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;            &lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;processNewClient&lt;/span&gt;&lt;span class="o"&gt;((&lt;/span&gt;&lt;span class="n"&gt;NewClient&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="n"&gt;obj&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;};&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="nf"&gt;processMessages&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;queue&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;read&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;handler&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;然而上面的修改后代码给却给整个工程带来了一个严重的问题：性能分析表明，这种修改产生很大的对象申请，其产生的内存申请在总应用的60%以上。&lt;/p&gt;
+
+&lt;p&gt;类似这种无关上下文的优化可能带来其他问题。&lt;/p&gt;
+
+&lt;p&gt;  1.纯粹为了优化的目的，使用了非惯用的代码写法，可读性会稍差一些。&lt;br/&gt;
+  2.内存分配方面的问题，示例中为MessageProcessor增加了一个成员属性，使得MessageProcessor对象需要申请更大的内存空间。Lambda表达式的创建和捕获位于构造方式中，使得MessageProcessor的构造方法调用缓慢一些。&lt;/p&gt;
+
+&lt;p&gt;我们遇到这种情况，需要进行内存分析，结合合理的业务用例来进行优化。有些情况下，我们使用成员属性确保为经常调用的Lambda表达式只申请一个对象，这样的缓存策略大有裨益。任何性能调优的科学的方法都可以进行尝试。&lt;/p&gt;
+
+&lt;p&gt;上述的方法也是其他程序员对Lambda表达式进行优化应该使用的。书写整洁，简单，函数式的代码永远是第一步。任何优化，如上面的提前代码作为成员属性，都必须结合真实的具体问题进行处理。变量捕获并申请对象的Lambda表达式并非不好，就像我们我们写出&lt;code&gt;new Foo()&lt;/code&gt;代码并非一无是处一样。&lt;/p&gt;
+
+&lt;p&gt;除此之外，我们想要写出最优的Lambda表达式，常规书写很重要。如果一个Lambda表达式用来表示一个简单的方法，并且没有必要对上下文进行捕获，大多数情况下，一切以简单可读即可。&lt;/p&gt;
+
+&lt;h2&gt;总结&lt;/h2&gt;
+
+&lt;p&gt;在这片文章中，我们研究了Lambda表达式不是简单的匿名内部类的语法糖，为什么匿名内部类不是Lambda表达式的内部实现机制以及Lambda表达式的具体实现机制。对于大多数情况来说，Lambda表达式要比匿名内部类性能更优。然而现状并非完美，基于测量驱动优化，我们仍然有很大的提升空间。&lt;/p&gt;
+
+&lt;p&gt;Lambda表达式的这种实现形式并非Java 8 所有。Scala曾经通过生成匿名内部类的形式支持Lambda表达式。在Scala 2.12版本，Lambda的实现形式替换为Java 8中的Lambda 工厂机制。后续其他可以在JVM上运行的语言也可能支持Lambda的这种机制。&lt;/p&gt;
+
+&lt;h2&gt;关于作者&lt;/h2&gt;
+
+&lt;p&gt;Richard Warburton是一位资深专家，善于技术攻坚。最近，他写了一个关于&lt;a href="http://tinyurl.com/java8lambdas"&gt;Java 8 Lambda表达式&lt;/a&gt;的书，由O&amp;#8217;Reilly出版，同时他也在&lt;a href="http://java8training.com/"&gt;java8training&lt;/a&gt;网站为Java程序员教授函数式编程。他涉猎的领域相当广泛，如数据分析，静态分析，编译器和网络协议等领域。他是伦敦Java协会的Leader，并举办OpenJdk hack活动。他进行了多次演讲，曾在Devoxx, JavaOne, JFokus, Devoxx UK, Geecon, Oredev, JAX London 和 Codemotion等会议做分享。除上述之外，他还是Warwick大学的计算机科学博士。&lt;/p&gt;
+
+&lt;p&gt;Raoul-Gabriel Urma是剑桥大学计算机科学的博士生。他也是Manning出版社出版的&lt;a href="http://manning.com/urma/"&gt;Java 8 in Action: Lambdas, streams, and functional-style programming&lt;/a&gt;的联合作者。他发表过10多篇论文，也在国际会议做过20多场分享。他既在诸如Google，eBay，Oracle和Goldman Sachs这样的大公司工作过，也参与过小的创业公司。Raoul也是皇家艺术协会的一员。他的Twitter是@raoulUK。&lt;/p&gt;
+
+&lt;p&gt;Mario Fusco是来自Red Hat的高级软件工程师，他的工作是开发Drools核心开发和JBoss规则引擎。他有着相当丰富的Java经验，参与并领导了很多业界企业级的项目。他的兴趣是函数式编程和领域专用语言。由于对着两项的热爱，他创建了一个叫做lambdaj的开源库，目的是提供一个管理集合的Java DSL实现，使得使用更加函数式编码化。他的Twitter ID是@mariofusco。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;查看英文原文：&lt;/strong&gt;&lt;a href="http://www.infoq.com/articles/Java-8-Lambdas-A-Peek-Under-the-Hood"&gt;Java 8 Lambdas &amp;ndash; A Peek Under the Hood&lt;/a&gt;&lt;/p&gt;
+</description>
+    <title>深入探索Java 8 Lambda表达式</title>
+    <link>http://droidyue.com/blog/2015/11/28/article-java-8-lambdas-a-peek-under-the-hood/</link>
+    <pubDate>Sat, 28 Nov 2015 11:05:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2015/11/28/article-java-8-lambdas-a-peek-under-the-hood</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;小黑屋里怎么能没有欢乐，苦逼的码农们，我要拯救不开心。&lt;/p&gt;
 
@@ -3627,267 +3963,6 @@ cpu.rt_runtime_us用来设置cgroup中的任务可以最长获得CPU资源的时
     <link>http://droidyue.com/blog/2015/07/04/six-books-every-programer-must-read/</link>
     <pubDate>Sat, 04 Jul 2015 10:37:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2015/07/04/six-books-every-programer-must-read</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;观察者模式是软件设计模式中的一种，使用也比较普遍，尤其是在GUI编程中。关于设计模式的文章，网络上写的都比较多，而且很多文章写的也不错，虽然说有一种重复早轮子的嫌疑，但此轮子非彼轮子，侧重点不同，思路也不同，讲述方式也不近相同。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;h2&gt;定义&lt;/h2&gt;
-
-&lt;p&gt;关于定义，最准确的莫过于&lt;a href="http://www.amazon.cn/gp/product/B0011FBU34/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B0011FBU34&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;Head First设计模式&lt;/a&gt;中写到的。&lt;/p&gt;
-
-&lt;blockquote&gt;&lt;p&gt;观察者模式定义了一个一对多的依赖关系，让一个或多个观察者对象监听一个主题对象。这样一来，当被观察者状态发生改变时，需要通知相应的观察者，使这些观察者对象能够自动更新。&lt;/p&gt;&lt;/blockquote&gt;
-
-&lt;h2&gt;关键要素&lt;/h2&gt;
-
-&lt;h3&gt;主题&lt;/h3&gt;
-
-&lt;p&gt;主题是观察者观察的对象，一个主题必须具备下面三个特征。&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;持有监听的观察者的引用&lt;/li&gt;
-&lt;li&gt;支持增加和删除观察者&lt;/li&gt;
-&lt;li&gt;主题状态改变，通知观察者&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;观察者&lt;/h3&gt;
-
-&lt;p&gt;当主题发生变化，收到通知进行具体的处理是观察者必须具备的特征。&lt;/p&gt;
-
-&lt;h2&gt;为什么要用这种模式&lt;/h2&gt;
-
-&lt;p&gt;这里举一个例子来说明，牛奶送奶站就是主题，订奶客户为监听者，客户从送奶站订阅牛奶后，会每天收到牛奶。如果客户不想订阅了，可以取消，以后就不会收到牛奶。&lt;/p&gt;
-
-&lt;h3&gt;松耦合&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;观察者增加或删除无需修改主题的代码，只需调用主题对应的增加或者删除的方法即可。&lt;/li&gt;
-&lt;li&gt;主题只负责通知观察者，但无需了解观察者如何处理通知。举个例子，送奶站只负责送递牛奶，不关心客户是喝掉还是洗脸。&lt;/li&gt;
-&lt;li&gt;观察者只需等待主题通知，无需观察主题相关的细节。还是那个例子，客户只需关心送奶站送到牛奶，不关心牛奶由哪个快递人员，使用何种交通工具送达。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;通知不错过&lt;/h3&gt;
-
-&lt;p&gt;由于被动接受，正常情况下不会错过主题的改变通知。而主动获取的话，由于时机选取问题，可能导致错过某些状态。&lt;/p&gt;
-
-&lt;h2&gt;Java实现&lt;/h2&gt;
-
-&lt;p&gt;Java中有观察者模式使用的API&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;java.util.Observable 这是一个类，而非接口，主题需要继承这个类。&lt;/li&gt;
-&lt;li&gt;java.util.Observer   这是一个接口，监听者需要实现这个接口。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;示例代码&lt;/h3&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;span class='line-number'&gt;19&lt;/span&gt;
-&lt;span class='line-number'&gt;20&lt;/span&gt;
-&lt;span class='line-number'&gt;21&lt;/span&gt;
-&lt;span class='line-number'&gt;22&lt;/span&gt;
-&lt;span class='line-number'&gt;23&lt;/span&gt;
-&lt;span class='line-number'&gt;24&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;java.util.Observable&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;java.util.Observer&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;MainRoot&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Observer&lt;/span&gt; &lt;span class="n"&gt;consumer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;Consumer&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;MilkProvider&lt;/span&gt; &lt;span class="n"&gt;provider&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;MilkProvider&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;provider&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;addObserver&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;consumer&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;provider&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;milkProduced&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;MilkProvider&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;Observable&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;milkProduced&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;setChanged&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;&lt;span class="c1"&gt;//状态改变，必须调用&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;notifyObservers&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Consumer&lt;/span&gt; &lt;span class="kd"&gt;implements&lt;/span&gt; &lt;span class="n"&gt;Observer&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;update&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Observable&lt;/span&gt; &lt;span class="n"&gt;arg0&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;arg1&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;Consumer update...&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;arg0&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;;arg1=&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;arg1&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;上述代码完成了&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;将consumer加入主题provider的观察者行列&lt;/li&gt;
-&lt;li&gt;provider设置状态变化，通知持有的观察者&lt;/li&gt;
-&lt;li&gt;观察者consumer收到通知，打印日志处理&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h3&gt;setChanged为何物&lt;/h3&gt;
-
-&lt;p&gt;其实上述代码中存在这样一处代码&lt;code&gt;setChanged();&lt;/code&gt;，如果在通知之前没有调用这个方法，观察者是收不到通知的，这是为什么呢&lt;/p&gt;
-
-&lt;p&gt;这里我们看一下setChanged的源码&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;protected&lt;/span&gt; &lt;span class="kd"&gt;synchronized&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;setChanged&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;changed&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kc"&gt;true&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;很简单，然后找一下谁使用changed这个值&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kd"&gt;synchronized&lt;/span&gt; &lt;span class="kt"&gt;boolean&lt;/span&gt; &lt;span class="nf"&gt;hasChanged&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;changed&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;notifyObservers的代码&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;notifyObservers&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;size&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;Observer&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;arrays&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kc"&gt;null&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;synchronized&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;hasChanged&lt;/span&gt;&lt;span class="o"&gt;())&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;clearChanged&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;size&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;observers&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;size&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;arrays&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;Observer&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="o"&gt;];&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;observers&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;toArray&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;arrays&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;arrays&lt;/span&gt; &lt;span class="o"&gt;!=&lt;/span&gt; &lt;span class="kc"&gt;null&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Observer&lt;/span&gt; &lt;span class="n"&gt;observer&lt;/span&gt; &lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;arrays&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;observer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;update&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;但是为什么要加入这样一个开关呢？可能原因大致有三点&lt;/p&gt;
-
-&lt;p&gt;  1.筛选有效通知，只有有效通知可以调用setChanged。比如，我的微信朋友圈一条状态，好友A点赞，后续该状态的点赞和评论并不是每条都通知A，只有A的好友触发的操作才会通知A。&lt;/p&gt;
-
-&lt;p&gt;  2.便于撤销通知操作，在主题中，我们可以设置很多次setChanged，但是在最后由于某种原因需要取消通知，我们可以使用clearChanged轻松解决问题。&lt;/p&gt;
-
-&lt;p&gt;  3.主动权控制，由于setChanged为protected,而notifyObservers方法为public，这就导致存在外部随意调用notifyObservers的可能，但是外部无法调用setChanged，因此真正的控制权应该在主题这里。&lt;/p&gt;
-
-&lt;h3&gt;主动获取&lt;/h3&gt;
-
-&lt;p&gt;观察者模式即所谓的推送方式，然而推送并非完美无缺。比如主题变化会推送大量的数据，而其中的一些观察者只需要某项数据，此时观察者就需要在具体实现中花费时间筛选数据。&lt;/p&gt;
-
-&lt;p&gt;这确实是个问题，想要解决也不难，需要主题为某些数据提供getter方法，观察者只需调用getter取数据处理即可。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;span class='line-number'&gt;15&lt;/span&gt;
-&lt;span class='line-number'&gt;16&lt;/span&gt;
-&lt;span class='line-number'&gt;17&lt;/span&gt;
-&lt;span class='line-number'&gt;18&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;MilkProvider&lt;/span&gt; &lt;span class="kd"&gt;extends&lt;/span&gt; &lt;span class="n"&gt;Observable&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;milkProduced&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;setChanged&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;&lt;span class="c1"&gt;//状态改变，必须调用&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;notifyObservers&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;float&lt;/span&gt; &lt;span class="nf"&gt;getPrice&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mf"&gt;2.5f&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Consumer&lt;/span&gt; &lt;span class="kd"&gt;implements&lt;/span&gt; &lt;span class="n"&gt;Observer&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;update&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Observable&lt;/span&gt; &lt;span class="n"&gt;arg0&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Object&lt;/span&gt; &lt;span class="n"&gt;arg1&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;MilkProvider&lt;/span&gt; &lt;span class="n"&gt;provider&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;MilkProvider&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="n"&gt;arg0&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;out&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;milk price =&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;provider&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getPrice&lt;/span&gt;&lt;span class="o"&gt;());&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;h2&gt;不足与隐患&lt;/h2&gt;
-
-&lt;p&gt;主要的问题表现在内存管理上，主要由以下两点&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;主题持有观察者的引用，如果未正常处理从主题中删除观察者，会导致观察者无法被回收。&lt;/li&gt;
-&lt;li&gt;如果观察者具体实现代码有问题，会导致主题和观察者对象形成循环引用，在某些采用引用计数的垃圾回收器可能导致无法回收。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;h2&gt;书山有路&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B00INI842W/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B00INI842W&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;设计模式之禅&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B0011FBU34/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B0011FBU34&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;Head First设计模式&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://www.amazon.cn/gp/product/B001130JN8/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;amp;camp=536&amp;amp;creative=3200&amp;amp;creativeASIN=B001130JN8&amp;amp;linkCode=as2&amp;amp;tag=droidyue-23"&gt;设计模式 可复用面向对象软件的基础 &lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-</description>
-    <title>这就是观察者模式</title>
-    <link>http://droidyue.com/blog/2015/06/27/desgign-pattern-observer/</link>
-    <pubDate>Sat, 27 Jun 2015 02:40:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2015/06/27/desgign-pattern-observer</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
