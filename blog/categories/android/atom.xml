@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-12-01T21:12:33+08:00</updated>
+  <updated>2015-12-06T22:49:07+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,178 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android处理崩溃的一些实践]]></title>
+    <link href="http://droidyue.com/blog/2015/12/06/practise-about-crash-in-android/"/>
+    <updated>2015-12-06T22:47:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/12/06/practise-about-crash-in-android</id>
+    <content type="html"><![CDATA[<p>对于任何程序来说，崩溃都是一件很难避免的事情，当然Android程序也不例外。在Android程序中，引起崩溃的多属于运行时异常或者错误，对于这些异常我们很难做到类似Checked Exception那样显式捕获，因而最终导致了程序崩溃。本文讲介绍一些如何处理崩溃的实践，比如收集崩溃的stacktrace，甚至如何避免出现程序已停止的对话框。</p>
+
+<!--more-->
+
+
+<h2>如何收集崩溃信息</h2>
+
+<p>收集崩溃信息，可以更好的修复问题，增强程序的稳定性。Android中的崩溃收集沿用了Java的收集机制，实现起来比较简单。</p>
+
+<h3>1.实现UncaughtExceptionHandler</h3>
+
+<p>我们需要实现UncaughtExceptionHandler接口中的<code>uncaughtException</code>方法。该方法体中最常见的操作就是读取崩溃的stacktrace信息，然后上报到服务器数据便于开发者分析。实现代码如下：
+```java
+public class SimpleUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {</p>
+
+<pre><code>private static final String LOGTAG = "SimpleUncaughtExceptionHandler";
+
+@Override
+public void uncaughtException(Thread thread, Throwable ex) {
+    //读取stacktrace信息
+    final Writer result = new StringWriter();
+    final PrintWriter printWriter = new PrintWriter(result);
+    ex.printStackTrace(printWriter);
+    String errorReport = result.toString();
+    Log.i(LOGTAG, "uncaughtException errorReport=" + errorReport);
+}
+</code></pre>
+
+<p>}
+```
+除此之外，还建议携带以下信息发送到服务器，帮助更快定位和重现问题。</p>
+
+<ul>
+<li>设备唯一ID（基于IMEI或者Android ID等），方便根据用户提供的id，查找崩溃的stacktrace</li>
+<li>设备语言与区域 方便重现</li>
+<li>应用的版本号</li>
+<li>设备的系统版本</li>
+<li>设备类型，如平板，手机，TV等</li>
+<li>崩溃发生的时间等</li>
+</ul>
+
+
+<h3>注册默认的异常处理</h3>
+
+<p>注册默认的异常处理就是最后的一步，很简单，通常建议放在Application的onCreate方法中进行。
+```java
+public class DroidApplication extends Application {</p>
+
+<pre><code>private static final String LOGTAG = "DroidApplication";
+
+@Override
+public void onCreate() {
+    super.onCreate();
+    Log.i(LOGTAG, "onCreate");
+    Thread.setDefaultUncaughtExceptionHandler(new SimpleUncaughtExceptionHandler());
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>验证</h3>
+
+<p>当我们刻意触发一个NullPointerException时，过滤日志<code>adb logcat | grep SimpleUncaughtExceptionHandler</code>类似如下信息，则说明成功了。
+<code>java
+I/SimpleUncaughtExceptionHandler(22469): uncaughtException errorReport=java.lang.NullPointerException
+I/SimpleUncaughtExceptionHandler(22469):  at com.droidyue.avoidforceclosedemo.MainActivity.causeNPE(MainActivity.java:22)
+I/SimpleUncaughtExceptionHandler(22469):  at com.droidyue.avoidforceclosedemo.MainActivity.onClick(MainActivity.java:29)
+I/SimpleUncaughtExceptionHandler(22469):  at android.view.View.performClick(View.java:4470)
+I/SimpleUncaughtExceptionHandler(22469):  at android.view.View$PerformClick.run(View.java:18593)
+I/SimpleUncaughtExceptionHandler(22469):  at android.os.Handler.handleCallback(Handler.java:733)
+I/SimpleUncaughtExceptionHandler(22469):  at android.os.Handler.dispatchMessage(Handler.java:95)
+I/SimpleUncaughtExceptionHandler(22469):  at android.os.Looper.loop(Looper.java:157)
+I/SimpleUncaughtExceptionHandler(22469):  at android.app.ActivityThread.main(ActivityThread.java:5867)
+I/SimpleUncaughtExceptionHandler(22469):  at java.lang.reflect.Method.invokeNative(Native Method)
+I/SimpleUncaughtExceptionHandler(22469):  at java.lang.reflect.Method.invoke(Method.java:515)
+I/SimpleUncaughtExceptionHandler(22469):  at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:858)
+I/SimpleUncaughtExceptionHandler(22469):  at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:674)
+I/SimpleUncaughtExceptionHandler(22469):  at dalvik.system.NativeStart.main(Native Method)
+</code></p>
+
+<h2>不出现应用崩溃对话框</h2>
+
+<p>在Android崩溃的时候，我们都会看到类似这样的对话框</p>
+
+<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/app_crash.png" alt="app crash" /></p>
+
+<p>然而，实际上有些情况下是不需要展示这个对话框的，一个常用的例子，我的程序中一个不太重要的推送服务采用了单独的进程，当这个进程崩溃时，实际上是可以允许不让用户感知的。</p>
+
+<p>如果我们采取主进程仍弹出对话框，其他进程不弹出的策略，那么我们的问题，可以总结成如下三个</p>
+
+<ul>
+<li>如何判断进程为主进程还是其他进程，或者某个进程</li>
+<li>如何在某些进程不弹出应用崩溃对话框</li>
+<li>如何在主进程弹出崩溃对话框</li>
+</ul>
+
+
+<p>既然问题来了，我们就开动挖掘机深挖吧。</p>
+
+<h3>进程判定</h3>
+
+<p>进行进程判定也比较容易，首先我们需要获得进程名
+```java
+public static String getProcessName(Context appContext) {</p>
+
+<pre><code>String currentProcessName = "";
+int pid = android.os.Process.myPid();
+ActivityManager manager = (ActivityManager) appContext.getSystemService(Context.ACTIVITY_SERVICE);
+for (ActivityManager.RunningAppProcessInfo processInfo : manager.getRunningAppProcesses()) {
+    if (processInfo.pid == pid) {
+        currentProcessName = processInfo.processName;
+        break;
+    }
+}
+return currentProcessName;
+</code></pre>
+
+<p>}
+<code>
+判断主进程，则对比进程名是否和报名相同即可
+</code>java
+mAppContext.getPackageName().equals(processName)
+<code>
+判断为某个进程，在mainifest这样这样声明
+</code>java
+<service android:name=".DroidService" android:process=":service"></service>
+<code>
+其对应的完整进程名为`com.droidyue.avoidforceclosedemo:service`，我们判断可以使用如下代码
+</code>java
+&ldquo;com.droidyue.avoidforceclosedemo:service&rdquo;.equals(processName);
+```</p>
+
+<h3>不弹框的处理</h3>
+
+<p>不弹框的需要做的就是不调用Android默认的异常处理，当异常出现时，收集完信息，执行进程kill即可。
+<code>java
+android.os.Process.killProcess(android.os.Process.myPid());
+</code></p>
+
+<h3>主进程保持弹窗的处理</h3>
+
+<p>想要保持弹窗也比较容易，就是调用Android默认的异常处理。</p>
+
+<p>首先需要获得Android默认的异常处理，在设置自定的异常处理之前，将Android默认处理保存起来。如下是在自定义异常处理的构造方法中获取Android默认处理
+```java
+public DroidUncaughtExceptionHandler(Context context) {</p>
+
+<pre><code>mAppContext = context.getApplicationContext();
+mDefaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+</code></pre>
+
+<p>}
+<code>
+然后在异常处理方法uncaughtException中调用如下方法
+</code>java
+mDefaultExceptionHandler.uncaughtException(thread, ex);
+```</p>
+
+<p>注意，如果你的应用崩溃后，不调用Android默认的异常处理，也不进行杀死进程，则进程处于不可交互，即UI点击无响应状态。</p>
+
+<h2>源码</h2>
+
+<p>本示例源码，存放在Github，地址为<a href="https://github.com/androidyue/AvoidForceCloseDemo">AvoidForceCloseDemo</a></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[详解 Android 中的 HandlerThread]]></title>
@@ -1044,171 +1216,6 @@ u0_a1434  22871 23723 970040 54304 ffffffff 400a045c S com.droidyue.androidthrea
 
 <ul>
 <li><a href="/blog/2015/09/05/android-process-and-thread-schedule-nice/?droid_refer=series">剖析Android中进程与线程调度之nice</a></li>
-</ul>
-
-
-<p><script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
-<script type="text/javascript">
-	showBookCopyright();
-</script>
-</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[剖析Android中进程与线程调度之nice]]></title>
-    <link href="http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice/"/>
-    <updated>2015-09-05T11:35:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice</id>
-    <content type="html"><![CDATA[<p>在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题，研究nice在Linux以及Android系统中的应用。</p>
-
-<!--more-->
-
-
-<h2>一些概念</h2>
-
-<ul>
-<li>进程 是计算机系统中，程序运行的实体，也是线程的容器。</li>
-<li>线程 是进程中实际执行单位，一个线程是程序执行流的最小单元。在一个进程中可以有多个线程存在。</li>
-</ul>
-
-
-<h2>nice与进程调度</h2>
-
-<p>Linux中，使用nice value（以下成为nice值）来设定一个进程的优先级，系统任务调度器根据nice值合理安排调度。</p>
-
-<ul>
-<li>nice的取值范围为-20到19。</li>
-<li>通常情况下，nice的默认值为0。视具体操作系统而定。</li>
-<li>nice的值越大，进程的优先级就越低，获得CPU调用的机会越少，nice值越小，进程的优先级则越高，获得CPU调用的机会越多。</li>
-<li>一个nice值为-20的进程优先级最高，nice值为19的进程优先级最低。</li>
-<li>父进程fork出来的子进程nice值与父进程相同。父进程renice，子进程nice值不会随之改变。</li>
-</ul>
-
-
-<h3>词源考究</h3>
-
-<p>nice这个命令的来源几乎没有资料提到，于是便尝试自己来推断一下。在诸如词霸，沪江等词典给出的意思均为<code>好的；美好的；可爱的；好心的，友好的</code>。而有道词典则稍微给出了一个其他词典没有的<code>和蔼的</code>。个人认为有道给出的这个比较合理。要想做到和蔼，就需要做到谦让，因此或多或少牺牲自己一点，成全他人。所以nice值越高，越和蔼，但是自己的优先级也会越低。</p>
-
-<h3>renice</h3>
-
-<p>对于一个新的进程我们可以按照下面的代码为一个进程设定nice值。
-<code>bash
-nice -n 10 adb logcat
-</code>
-对于已经创建的进程，我们可以使用renice来修改nice值
-<code>
-sudo renice -n 0 -p 24161
-</code>
-该命令需要使用root权限，-p对应的值为进程id。</p>
-
-<p>注意renice命令在Linux发行版中-n 的值应该为进程的目标优先级。而Mac下-n，则是代表对当前权限的增加值。
-比如在Mac下，讲一个进程的nice值由19改成10，可以这样操作<code>sudo renice -n -9  -p 24161</code>,这一点需要注意，避免掉进坑里。</p>
-
-<h3>Android中的nice</h3>
-
-<p>由于Android基于Linux Kernel，在Android中也存在nice值。但是一般情况下我们无法控制，原因如下：</p>
-
-<ul>
-<li>Android系统并不像其他Linux发行版那样便捷地使用nice命令操作。</li>
-<li>renice需要root权限，一般应用无法实现。</li>
-</ul>
-
-
-<h2>线程调度</h2>
-
-<p>虽然对于进程的优先级，我们无法控制，但是我们可以控制进程中的线程的优先级。在Android中有两种线程的优先级，一种为Android API版本，另一种是 Java 原生版本。</p>
-
-<h3>Android API</h3>
-
-<p>Android中的线程优先级别目前规定了如下，了解了进程优先级与nice值的关系，那么线程优先级与值之间的关系也就更加容易理解。</p>
-
-<ul>
-<li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
-<li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
-<li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
-<li>THREAD_PRIORITY_FOREGROUND 用户正在交互的UI线程，代码中无法设置该优先级，系统会按照情况调整到该优先级，值为-2。</li>
-<li>THREAD_PRIORITY_DISPLAY 也是与UI交互相关的优先级界别，但是要比THREAD_PRIORITY_FOREGROUND优先，代码中无法设置，由系统按照情况调整，值为-4。</li>
-<li>THREAD_PRIORITY_URGENT_DISPLAY 显示线程的最高级别，用来处理绘制画面和检索输入事件，代码中无法设置成该优先级。值为-8。</li>
-<li>THREAD_PRIORITY_AUDIO 声音线程的标准级别，代码中无法设置为该优先级，值为 -16。</li>
-<li>THREAD_PRIORITY_URGENT_AUDIO 声音线程的最高级别，优先程度较THREAD_PRIORITY_AUDIO要高。代码中无法设置为该优先级。值为-19。</li>
-<li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
-<li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
-</ul>
-
-
-<p>使用Android API为线程设置优先级也很简单，只需要在线程执行时调用android.os.Process.setThreadPriority方法即可。这种在线程运行时进行修改优先级，效果类似renice。
-```
-new Thread () {</p>
-
-<pre><code>@Override
-public void run() {
-    super.run();
-    android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-}
-</code></pre>
-
-<p>}.start();
-```</p>
-
-<h3>Java原生API</h3>
-
-<p>Java为Thread提供了三个级别的设置，</p>
-
-<ul>
-<li>MAX_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY，值为10。</li>
-<li>MIN_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_LOWEST，值为0。</li>
-<li>NORM_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_DEFAULT，值为5。</li>
-</ul>
-
-
-<p>使用setPriority我们可以为某个线程设置优先级，使用getPriority可以获得某个线程的优先级。</p>
-
-<p>在Android系统中，不建议使用Java原生的API，因为Android提供的API划分的级别更多，更适合在Android系统中进行设定细致的优先级。</p>
-
-<h2>注意</h2>
-
-<p>Android API的线程优先级和Java原生API的优先级是相对独立的，比如使用android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)后，使用Java原生API,Thread.getPriority()得到的值不会改变。如下面代码：
-```
-new Thread() {</p>
-
-<pre><code>@Override
-public void run() {
-    super.run();
-    Log.i(LOGTAG, "Java Thread Priority Before=" + Thread.currentThread().getPriority());
-    Process.setThreadPriority(Process.THREAD_PRIORITY_LOWEST);
-    Log.i(LOGTAG, "Java Thread Priority=" + Thread.currentThread().getPriority());
-}
-</code></pre>
-
-<p>}.start();
-<code>
-上述代码的运行日志为
-</code>
-I/MainActivity( 3679): Java Thread Priority Before=5
-I/MainActivity( 3679): Java Thread Priority=5
-```</p>
-
-<p>由于上面的这一点缺陷，导致我们在分析ANR trace时需要注意，在下面的ANR日志信息中，<code>prio=5</code>中proi的值对应的Java原生API的线程优先级。而<code>nice=-6</code>中的nice表示的Android API版本的线程优先级。</p>
-
-<p><code>
-"main" prio=5 tid=1 NATIVE
-  | group="main" sCount=1 dsCount=0 obj=0x41690f18 self=0x4167e650
-  | sysTid=1765 nice=-6 sched=0/0 cgrp=apps handle=1074196888
-  | state=S schedstat=( 0 0 0 ) utm=5764 stm=3654 core=2
-  #00  pc 00022624  /system/lib/libc.so (__futex_syscall3+8)
-  #01  pc 0000f054  /system/lib/libc.so (__pthread_cond_timedwait_relative+48)
-  #02  pc 0000f0b4  /system/lib/libc.so (__pthread_cond_timedwait+64)
-</code></p>
-
-<h2>避免ANR</h2>
-
-<p>我在之前的文章<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>中提到使用WorkerThread处理耗时IO操作，同时将WorkerThread的优先级降低，对于耗时IO操作，比如读取数据库，文件等，我们可以设置该workerThread优先级为THREAD_PRIORITY_BACKGROUND，以此降低与主线程竞争的能力。</p>
-
-<h3>同系列文章</h3>
-
-<ul>
-<li><a href="/blog/2015/09/17/android-process-and-thread-schedule-cgroups/?droid_refer=series">剖析Android中进程与线程调度之cgroups</a></li>
 </ul>
 
 

@@ -1,0 +1,571 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Android处理崩溃的一些实践 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Android处理崩溃的一些实践 Dec 6th, 2015 对于任何程序来说，崩溃都是一件很难避免的事情，当然Android程序也不例外。在Android程序中，引起崩溃的多属于运行时异常或者错误，对于这些异常我们很难做到类似Checked Exception那样显式捕获， &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://7jpolu.com1.z0.glb.clouddn.com/touch_icon.png"/>
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2015/12/06/practise-about-crash-in-android">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="http://droidyue.b0.upaiyun.com/js/blog/modernizr-2.0.js"></script>
+  <script src="http://droidyue.b0.upaiyun.com/js/jquery.min.js"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/blogutils.js" charset="utf-8"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="http://droidyue.b0.upaiyun.com/js/blog/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/trackurl_maker.js" charset="utf-8"></script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/ninki">干货铺子</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/jijizhazha/">叽叽喳喳</a></li>
+  <li><a href="/donate/">Donate</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Android处理崩溃的一些实践</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-06T22:47:00+08:00" pubdate data-updated="true">Dec 6<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>对于任何程序来说，崩溃都是一件很难避免的事情，当然Android程序也不例外。在Android程序中，引起崩溃的多属于运行时异常或者错误，对于这些异常我们很难做到类似Checked Exception那样显式捕获，因而最终导致了程序崩溃。本文讲介绍一些如何处理崩溃的实践，比如收集崩溃的stacktrace，甚至如何避免出现程序已停止的对话框。</p>
+
+<!--more-->
+
+
+<h2>如何收集崩溃信息</h2>
+
+<p>收集崩溃信息，可以更好的修复问题，增强程序的稳定性。Android中的崩溃收集沿用了Java的收集机制，实现起来比较简单。</p>
+
+<h3>1.实现UncaughtExceptionHandler</h3>
+
+<p>我们需要实现UncaughtExceptionHandler接口中的<code>uncaughtException</code>方法。该方法体中最常见的操作就是读取崩溃的stacktrace信息，然后上报到服务器数据便于开发者分析。实现代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SimpleUncaughtExceptionHandler</span> <span class="kd">implements</span> <span class="n">Thread</span><span class="o">.</span><span class="na">UncaughtExceptionHandler</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;SimpleUncaughtExceptionHandler&quot;</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">uncaughtException</span><span class="o">(</span><span class="n">Thread</span> <span class="n">thread</span><span class="o">,</span> <span class="n">Throwable</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">//读取stacktrace信息</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="n">Writer</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringWriter</span><span class="o">();</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="n">PrintWriter</span> <span class="n">printWriter</span> <span class="o">=</span> <span class="k">new</span> <span class="n">PrintWriter</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">ex</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">(</span><span class="n">printWriter</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">String</span> <span class="n">errorReport</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="na">toString</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;uncaughtException errorReport=&quot;</span> <span class="o">+</span> <span class="n">errorReport</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>除此之外，还建议携带以下信息发送到服务器，帮助更快定位和重现问题。</p>
+
+<ul>
+<li>设备唯一ID（基于IMEI或者Android ID等），方便根据用户提供的id，查找崩溃的stacktrace</li>
+<li>设备语言与区域 方便重现</li>
+<li>应用的版本号</li>
+<li>设备的系统版本</li>
+<li>设备类型，如平板，手机，TV等</li>
+<li>崩溃发生的时间等</li>
+</ul>
+
+
+<h3>注册默认的异常处理</h3>
+
+<p>注册默认的异常处理就是最后的一步，很简单，通常建议放在Application的onCreate方法中进行。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">DroidApplication</span> <span class="kd">extends</span> <span class="n">Application</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;DroidApplication&quot;</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onCreate&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">Thread</span><span class="o">.</span><span class="na">setDefaultUncaughtExceptionHandler</span><span class="o">(</span><span class="k">new</span> <span class="n">SimpleUncaughtExceptionHandler</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>验证</h3>
+
+<p>当我们刻意触发一个NullPointerException时，过滤日志<code>adb logcat | grep SimpleUncaughtExceptionHandler</code>类似如下信息，则说明成功了。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span> <span class="n">uncaughtException</span> <span class="n">errorReport</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">NullPointerException</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">avoidforceclosedemo</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">causeNPE</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">22</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">avoidforceclosedemo</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onClick</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">29</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">View</span><span class="o">.</span><span class="na">performClick</span><span class="o">(</span><span class="n">View</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">4470</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">View</span><span class="n">$PerformClick</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">View</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">18593</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">handleCallback</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">733</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">95</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">157</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5867</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invokeNative</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">515</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">858</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">674</span><span class="o">)</span>
+</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">SimpleUncaughtExceptionHandler</span><span class="o">(</span><span class="mi">22469</span><span class="o">):</span>  <span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">NativeStart</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>不出现应用崩溃对话框</h2>
+
+<p>在Android崩溃的时候，我们都会看到类似这样的对话框</p>
+
+<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/app_crash.png" alt="app crash" /></p>
+
+<p>然而，实际上有些情况下是不需要展示这个对话框的，一个常用的例子，我的程序中一个不太重要的推送服务采用了单独的进程，当这个进程崩溃时，实际上是可以允许不让用户感知的。</p>
+
+<p>如果我们采取主进程仍弹出对话框，其他进程不弹出的策略，那么我们的问题，可以总结成如下三个</p>
+
+<ul>
+<li>如何判断进程为主进程还是其他进程，或者某个进程</li>
+<li>如何在某些进程不弹出应用崩溃对话框</li>
+<li>如何在主进程弹出崩溃对话框</li>
+</ul>
+
+
+<p>既然问题来了，我们就开动挖掘机深挖吧。</p>
+
+<h3>进程判定</h3>
+
+<p>进行进程判定也比较容易，首先我们需要获得进程名</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">String</span> <span class="nf">getProcessName</span><span class="o">(</span><span class="n">Context</span> <span class="n">appContext</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">String</span> <span class="n">currentProcessName</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">;</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">pid</span> <span class="o">=</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">myPid</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">ActivityManager</span> <span class="n">manager</span> <span class="o">=</span> <span class="o">(</span><span class="n">ActivityManager</span><span class="o">)</span> <span class="n">appContext</span><span class="o">.</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">ACTIVITY_SERVICE</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">for</span> <span class="o">(</span><span class="n">ActivityManager</span><span class="o">.</span><span class="na">RunningAppProcessInfo</span> <span class="n">processInfo</span> <span class="o">:</span> <span class="n">manager</span><span class="o">.</span><span class="na">getRunningAppProcesses</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">processInfo</span><span class="o">.</span><span class="na">pid</span> <span class="o">==</span> <span class="n">pid</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">currentProcessName</span> <span class="o">=</span> <span class="n">processInfo</span><span class="o">.</span><span class="na">processName</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">break</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">currentProcessName</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>判断主进程，则对比进程名是否和报名相同即可</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">mAppContext</span><span class="o">.</span><span class="na">getPackageName</span><span class="o">().</span><span class="na">equals</span><span class="o">(</span><span class="n">processName</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>判断为某个进程，在mainifest这样这样声明</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">&lt;</span><span class="n">service</span> <span class="nl">android:</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;.DroidService&quot;</span> <span class="nl">android:</span><span class="n">process</span><span class="o">=</span><span class="s">&quot;:service&quot;</span><span class="o">&gt;&lt;/</span><span class="n">service</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其对应的完整进程名为<code>com.droidyue.avoidforceclosedemo:service</code>，我们判断可以使用如下代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="s">&quot;com.droidyue.avoidforceclosedemo:service&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">processName</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>不弹框的处理</h3>
+
+<p>不弹框的需要做的就是不调用Android默认的异常处理，当异常出现时，收集完信息，执行进程kill即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">killProcess</span><span class="o">(</span><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">myPid</span><span class="o">());</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>主进程保持弹窗的处理</h3>
+
+<p>想要保持弹窗也比较容易，就是调用Android默认的异常处理。</p>
+
+<p>首先需要获得Android默认的异常处理，在设置自定的异常处理之前，将Android默认处理保存起来。如下是在自定义异常处理的构造方法中获取Android默认处理</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="nf">DroidUncaughtExceptionHandler</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">mAppContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="na">getApplicationContext</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">mDefaultExceptionHandler</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">getDefaultUncaughtExceptionHandler</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后在异常处理方法uncaughtException中调用如下方法</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">mDefaultExceptionHandler</span><span class="o">.</span><span class="na">uncaughtException</span><span class="o">(</span><span class="n">thread</span><span class="o">,</span> <span class="n">ex</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意，如果你的应用崩溃后，不调用Android默认的异常处理，也不进行杀死进程，则进程处于不可交互，即UI点击无响应状态。</p>
+
+<h2>源码</h2>
+
+<p>本示例源码，存放在Github，地址为<a href="https://github.com/androidyue/AvoidForceCloseDemo">AvoidForceCloseDemo</a></p>
+</div>
+
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/html/vote_tips.js" charset="utf-8"></script>
+  <html>
+	<link href="http://1.toolite.sinaapp.com/css/new_donate.css"  rel="stylesheet" type="text/css">
+	<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/donate_data.js" charset="utf-8"></script>
+	
+	<div class="donate_widget">
+		<br/>
+		<div style="text-align: center;font-size:20px;"><script type="text/javascript">document.write(getDonateTips());</script></div></br>
+		<input class="donate_item" id="donate_item_first" type="button"  value="5.12">
+		<input class="donate_item" id="donate_item_second" type="button"  value="10.24">
+		<input class="donate_item" id="donate_item_third" type="button"  value="20.48">
+		<input class="donate_item" id="donate_item_fourth" type="button"  value="随意金额">
+		<div id="donate_dialog" class="donate_dialog">
+			<img src="http://7xnq3g.com1.z0.glb.clouddn.com/wechat_any.png" id="donate_img" height="200px" width="200px"/>
+			<p style="text-align: center;">打开微信，扫一扫即可</p>
+		</div>
+	</div>
+
+
+	<script type="text/javascript" src="http://1.toolite.sinaapp.com/donate/donate_widget.js" charset="utf-8"></script>
+</html>
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/post_bannder.js"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/furi_netou.js" charset="utf-8"></script>
+      
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blog_ads_data_source.js" charset="utf-8"></script>
+    
+<script type="text/javascript">
+    	displaySection(shouldDisplayBlogAds() && onlyForDesktop(), isBlogAdsInDebug(), makeBlogAdsDataSource(), makeBlogAdsPrefix(), makeBlogAdsSuffix(), sDroidBlogAdClass);
+</script>
+
+  
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- ad_unit -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-7565659593663612"
+     data-ad-slot="6262517342"
+     data-ad-format="auto"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+  
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/random_recommend.js" charset="utf-8"></script>
+<script type="text/javascript">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+
+  
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/weixin_gongzhonghao.js" charset="utf-8"></script>
+  
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-06T22:47:00+08:00" pubdate data-updated="true">Dec 6<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/11/28/article-java-8-lambdas-a-peek-under-the-hood/" title="Previous Post: 深入探索Java 8 Lambda表达式">&laquo; 深入探索Java 8 Lambda表达式</a>
+      
+      
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!--高速版-->
+<div id="SOHUCS" sid="/blog/2015/12/06/practise-about-crash-in-android"></div>
+<script charset="utf-8" type="text/javascript" src="http://changyan.sohu.com/upload/changyan.js" ></script>
+<script type="text/javascript">
+    window.changyan.api.config({
+        appid: 'cyrU6w9cI',
+        conf: 'prod_0d366f76b04261efa2b407c3b62edd9f'
+    });
+</script>        
+
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/notice.js"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/12/06/practise-about-crash-in-android/">Android处理崩溃的一些实践</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/28/article-java-8-lambdas-a-peek-under-the-hood/">深入探索Java 8 Lambda表达式</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/15/funny-programmer-finale/">程序员的逗比瞬间 最终番</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/08/make-use-of-handlerthread/">详解 Android 中的 HandlerThread</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/01/thinking-about-android-log/">关于Android Log的一些思考</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/24/great-english-programming-blog/">优秀的英文技术博客</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/17/funny-programmer-season-three/">程序员的逗比瞬间(第三季)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/26/android-tuning-tool-strictmode/">Android性能调优利器StrictMode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/17/android-process-and-thread-schedule-cgroups/">Android进程线程调度之cgroups</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/12/is-your-java-code-jit-friendly/">你的Java代码对JIT编译友好么？</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/05/android-process-and-thread-schedule-nice/">剖析Android中进程与线程调度之nice</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/29/funny-programmer-season-two/">程序员的逗比瞬间（第二季）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/22/where-has-the-java-permgen-gone/">Java永久代去哪儿了</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/16/dive-into-android-activity-launchmode/">深入讲解Android中Activity launchMode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/08/funny-programmer-season-one/">程序员的逗比瞬间（第一季）</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blogroll_data_source.js" charset="utf-8"></script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/common_book_data_source.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/program_book_data_source.js" charset="utf-8"></script>
+        
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8" src="http://1.toolite.sinaapp.com/book_recommend/android_book_data.js"></script>
+<script type="text/javascript" charset="utf-8" src="http://1.toolite.sinaapp.com/book_recommend/java_book_data.js"></script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	bestPosts = makeBatchUrlTrackable(bestPosts, "ninki_posts");
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> 云存储提供方： <a href="https://www.upyun.com/"><img src="http://upfiles.b0.upaiyun.com/logo/90x45.png" alt="UPYUN"></a></span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/baidu_analytics.js" charset="utf-8"> </script> 
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://7jpncc.com1.z0.glb.clouddn.com/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
