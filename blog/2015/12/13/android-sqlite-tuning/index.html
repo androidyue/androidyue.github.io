@@ -1,0 +1,555 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Android中SQLite操作性能优化 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Android中SQLite操作性能优化 Dec 13th, 2015 数据库是应用开发中常用的技术，在Android应用中也不例外。Android默认使用了SQLite数据库，在应用程序开发中，我们使用最多的无外乎增删改查。纵使操作简单，也有可能出现查找数据缓慢，插入数据耗时等情况， &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://7jpolu.com1.z0.glb.clouddn.com/touch_icon.png"/>
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2015/12/13/android-sqlite-tuning">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="http://droidyue.b0.upaiyun.com/js/blog/modernizr-2.0.js"></script>
+  <script src="http://droidyue.b0.upaiyun.com/js/jquery.min.js"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/blogutils.js" charset="utf-8"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="http://droidyue.b0.upaiyun.com/js/blog/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/trackurl_maker.js" charset="utf-8"></script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/ninki">干货铺子</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/jijizhazha/">叽叽喳喳</a></li>
+  <li><a href="/donate/">Donate</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Android中SQLite操作性能优化</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-13T17:38:00+08:00" pubdate data-updated="true">Dec 13<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>数据库是应用开发中常用的技术，在Android应用中也不例外。Android默认使用了SQLite数据库，在应用程序开发中，我们使用最多的无外乎增删改查。纵使操作简单，也有可能出现查找数据缓慢，插入数据耗时等情况，如果出现了这种问题，我们就需要考虑对数据库操作进行优化了。本文将介绍一些实用的数据库优化操作，希望可以帮助大家更好地在开发过程中使用数据库。</p>
+
+<!--more-->
+
+
+<h2>建立索引</h2>
+
+<p>很多时候，我们都听说，想要查找快速就建立索引。这句话没错，数据表的索引类似于字典中的拼音索引或者部首索引。</p>
+
+<h3>索引的解释</h3>
+
+<p>重温一下我们小时候查字典的过程：</p>
+
+<ul>
+<li>对于已经知道拼音的字，比如<code>中</code>这个字，我们只需要在拼音索引里面找到<code>zhong</code>，就可以确定这个字在词典中的页码。</li>
+<li>对于不知道拼音的字，比如<code>欗</code>这个字，我们只需要在部首索引里面查找这个字，就能找到确定这个字在词典中的页码。</li>
+</ul>
+
+
+<p>没错，索引做的事情就是这么简单，使得我们不需要查找整个数据表就可以实现快速访问。</p>
+
+<h3>建立索引</h3>
+
+<p>创建索引的基本语法如下</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>CREATE INDEX index_name ON table_name;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>创建单列索引</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>CREATE INDEX index_name ON table_name (column_name);</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>索引真的好么</h3>
+
+<p>毋庸置疑，索引加速了我们检索数据表的速度。然而正如西方谚语 &ldquo;There are two sides of a coin&#8221;，索引亦有缺点：</p>
+
+<ul>
+<li>对于增加，更新和删除来说，使用了索引会变慢，比如你想要删除字典中的一个字，那么你同时也需要删除这个字在拼音索引和部首索引中的信息。</li>
+<li>建立索引会增加数据库的大小，比如字典中的拼音索引和部首索引实际上是会增加字典的页数，让字典变厚的。</li>
+<li>为数据量比较小的表建立索引，往往会事倍功半。</li>
+</ul>
+
+
+<p>所以使用索引需要考虑实际情况进行利弊权衡，对于查询操作量级较大，业务对要求查询要求较高的，还是推荐使用索引的。</p>
+
+<h2>编译SQL语句</h2>
+
+<p>SQLite想要执行操作，需要将程序中的sql语句编译成对应的SQLiteStatement，比如<code>select * from record</code>这一句，被执行100次就需要编译100次。对于批量处理插入或者更新的操作，我们可以使用显式编译来做到重用SQLiteStatement。</p>
+
+<p>想要做到重用SQLiteStatement也比较简单，基本如下：</p>
+
+<ul>
+<li>编译sql语句获得SQLiteStatement对象，参数使用<code>?</code>代替</li>
+<li>在循环中对SQLiteStatement对象进行具体数据绑定，bind方法中的index从1开始，不是0</li>
+</ul>
+
+
+<p>请参考如下简单的使用代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">insertWithPreCompiledStatement</span><span class="o">(</span><span class="n">SQLiteDatabase</span> <span class="n">db</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">String</span> <span class="n">sql</span> <span class="o">=</span> <span class="s">&quot;INSERT INTO &quot;</span> <span class="o">+</span> <span class="n">TableDefine</span><span class="o">.</span><span class="na">TABLE_RECORD</span> <span class="o">+</span> <span class="s">&quot;( &quot;</span> <span class="o">+</span> <span class="n">TableDefine</span><span class="o">.</span><span class="na">COLUMN_INSERT_TIME</span> <span class="o">+</span> <span class="s">&quot;) VALUES(?)&quot;</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">SQLiteStatement</span>  <span class="n">statement</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="na">compileStatement</span><span class="o">(</span><span class="n">sql</span><span class="o">);</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">while</span> <span class="o">(</span><span class="n">count</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">count</span><span class="o">++;</span>
+</span><span class='line'>        <span class="n">statement</span><span class="o">.</span><span class="na">clearBindings</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">statement</span><span class="o">.</span><span class="na">bindLong</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">());</span>
+</span><span class='line'>        <span class="n">statement</span><span class="o">.</span><span class="na">executeInsert</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>显式使用事务</h2>
+
+<p>在Android中，无论是使用SQLiteDatabase的insert,delete等方法还是execSQL都开启了事务，来确保每一次操作都具有原子性，使得结果要么是操作之后的正确结果，要么是操作之前的结果。</p>
+
+<p>然而事务的实现是依赖于名为rollback journal文件，借助这个临时文件来完成原子操作和回滚功能。既然属于文件，就符合Unix的文件范型(Open-Read/Write-Close)，因而对于批量的修改操作会出现反复打开文件读写再关闭的操作。然而好在，我们可以显式使用事务，将批量的数据库更新带来的journal文件打开关闭降低到1次。</p>
+
+<p>具体的实现代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">insertWithTransaction</span><span class="o">(</span><span class="n">SQLiteDatabase</span> <span class="n">db</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">ContentValues</span> <span class="n">values</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ContentValues</span><span class="o">();</span>
+</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">db</span><span class="o">.</span><span class="na">beginTransaction</span><span class="o">();</span>
+</span><span class='line'>        <span class="k">while</span> <span class="o">(</span><span class="n">count</span><span class="o">++</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">values</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">COLUMN_INSERT_TIME</span><span class="o">,</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">());</span>
+</span><span class='line'>            <span class="n">db</span><span class="o">.</span><span class="na">insert</span><span class="o">(</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">TABLE_RECORD</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="n">values</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>          <span class="n">db</span><span class="o">.</span><span class="na">setTransactionSuccessful</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">db</span><span class="o">.</span><span class="na">endTransaction</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码中，如果没有异常抛出，我们则认为事务成功，调用<code>db.setTransactionSuccessful();</code>确保操作真实生效。如果在此过程中出现异常，则批量数据一条也不会插入现有的表中。</p>
+
+<h2>查询数据优化</h2>
+
+<p>对于查询的优化，除了建立索引以外，有以下几点微优化的建议</p>
+
+<h3>按需获取数据列信息</h3>
+
+<p>通常情况下，我们处于自己省时省力的目的，对于查找使用类似这样的代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">badQuery</span><span class="o">(</span><span class="n">SQLiteDatabase</span> <span class="n">db</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">db</span><span class="o">.</span><span class="na">query</span><span class="o">(</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">TABLE_RECORD</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">)</span> <span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中上面方法的第二个参数类型为String[]，意思是返回结果参考的colum信息，传递null表明需要获取全部的column数据。这里建议大家传递真实需要的字符串数据对象表明需要的列信息，这样做效率会有所提升。</p>
+
+<h3>提前获取列索引</h3>
+
+<p>当我们需要遍历cursor时，我们通常的做法是这样</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">badQueryWithLoop</span><span class="o">(</span><span class="n">SQLiteDatabase</span> <span class="n">db</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">Cursor</span> <span class="n">cursor</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="na">query</span><span class="o">(</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">TABLE_RECORD</span><span class="o">,</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]{</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">COLUMN_INSERT_TIME</span><span class="o">},</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">)</span> <span class="o">;</span>
+</span><span class='line'>    <span class="k">while</span> <span class="o">(</span><span class="n">cursor</span><span class="o">.</span><span class="na">moveToNext</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">long</span> <span class="n">insertTime</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="na">getLong</span><span class="o">(</span><span class="n">cursor</span><span class="o">.</span><span class="na">getColumnIndex</span><span class="o">(</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">COLUMN_INSERT_TIME</span><span class="o">));</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是如果我们将获取ColumnIndex的操作提到循环之外，效果会更好一些，修改后的代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">goodQueryWithLoop</span><span class="o">(</span><span class="n">SQLiteDatabase</span> <span class="n">db</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">Cursor</span> <span class="n">cursor</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="na">query</span><span class="o">(</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">TABLE_RECORD</span><span class="o">,</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]{</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">COLUMN_INSERT_TIME</span><span class="o">},</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">)</span> <span class="o">;</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">insertTimeColumnIndex</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="na">getColumnIndex</span><span class="o">(</span><span class="n">TableDefine</span><span class="o">.</span><span class="na">COLUMN_INSERT_TIME</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">while</span> <span class="o">(</span><span class="n">cursor</span><span class="o">.</span><span class="na">moveToNext</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">long</span> <span class="n">insertTime</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="na">getLong</span><span class="o">(</span><span class="n">insertTimeColumnIndex</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="n">cursor</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>ContentValues的容量调整</h2>
+
+<p>SQLiteDatabase提供了方便的ContentValues简化了我们处理列名与值的映射，ContentValues内部采用了HashMap来存储Key-Value数据，ContentValues的初始容量是8，如果当添加的数据超过8之前，则会进行双倍扩容操作，因此建议对ContentValues填入的内容进行估量，设置合理的初始化容量，减少不必要的内部扩容操作。</p>
+
+<h2>及时关闭Cursor</h2>
+
+<p>使用数据库，比较常见的就是忘记关闭Cursor。关于如何发现未关闭的Cursor，我们可以使用StrictMode，详细请戳这里<a href="http://droidyue.com/blog/2015/09/26/android-tuning-tool-strictmode/">Android性能调优利器StrictMode</a></p>
+
+<h2>耗时异步化</h2>
+
+<p>数据库的操作，属于本地IO，通常比较耗时，如果处理不好，很容易导致<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">ANR</a>,因此建议将这些耗时操作放入异步线程中处理，这里推荐一个单线程 + 任务队列形式处理的<a href="http://droidyue.com/blog/2015/11/08/make-use-of-handlerthread/">HandlerThread</a>实现异步化。</p>
+
+<h2>源码下载</h2>
+
+<p>示例源码，存放在Github，地址为<a href="https://github.com/androidyue/AndroidSQLiteTuningDemo">AndroidSQLiteTuningDemo</a></p>
+</div>
+
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/html/vote_tips.js" charset="utf-8"></script>
+  <html>
+	<link href="http://1.toolite.sinaapp.com/css/new_donate.css"  rel="stylesheet" type="text/css">
+	<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/donate_data.js" charset="utf-8"></script>
+	
+	<div class="donate_widget">
+		<br/>
+		<div style="text-align: center;font-size:20px;"><script type="text/javascript">document.write(getDonateTips());</script></div></br>
+		<input class="donate_item" id="donate_item_first" type="button"  value="5.12">
+		<input class="donate_item" id="donate_item_second" type="button"  value="10.24">
+		<input class="donate_item" id="donate_item_third" type="button"  value="20.48">
+		<input class="donate_item" id="donate_item_fourth" type="button"  value="随意金额">
+		<div id="donate_dialog" class="donate_dialog">
+			<img src="http://7xnq3g.com1.z0.glb.clouddn.com/wechat_any.png" id="donate_img" height="200px" width="200px"/>
+			<p style="text-align: center;">打开微信，扫一扫即可</p>
+		</div>
+	</div>
+
+
+	<script type="text/javascript" src="http://1.toolite.sinaapp.com/donate/donate_widget.js" charset="utf-8"></script>
+</html>
+
+  <script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/post_bannder.js"></script>
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/furi_netou.js" charset="utf-8"></script>
+      
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blog_ads_data_source.js" charset="utf-8"></script>
+    
+<script type="text/javascript">
+    	displaySection(shouldDisplayBlogAds() && onlyForDesktop(), isBlogAdsInDebug(), makeBlogAdsDataSource(), makeBlogAdsPrefix(), makeBlogAdsSuffix(), sDroidBlogAdClass);
+</script>
+
+  
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_banner -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-9462722060870271"
+     data-ad-slot="5127799347"
+     data-ad-format="auto"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+  
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/random_recommend.js" charset="utf-8"></script>
+<script type="text/javascript">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+
+  
+  <script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/weixin_gongzhonghao.js" charset="utf-8"></script>
+  
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-13T17:38:00+08:00" pubdate data-updated="true">Dec 13<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/12/06/practise-about-crash-in-android/" title="Previous Post: Android处理崩溃的一些实践">&laquo; Android处理崩溃的一些实践</a>
+      
+      
+    </p>
+  </footer>
+  </article>
+
+  <section>
+   <!--高速版-->
+<div id="SOHUCS" sid="/blog/2015/12/13/android-sqlite-tuning"></div>
+<script charset="utf-8" type="text/javascript" src="http://changyan.sohu.com/upload/changyan.js" ></script>
+<script type="text/javascript">
+    window.changyan.api.config({
+        appid: 'cyrU6w9cI',
+        conf: 'prod_0d366f76b04261efa2b407c3b62edd9f'
+    });
+</script>        
+
+  </section>
+
+	<script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/post_end_ad.js" charset="utf-8"></script>
+
+</div>
+
+<aside class="sidebar">
+  
+    <script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/notice.js"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/12/13/android-sqlite-tuning/">Android中SQLite操作性能优化</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/12/06/practise-about-crash-in-android/">Android处理崩溃的一些实践</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/28/article-java-8-lambdas-a-peek-under-the-hood/">深入探索Java 8 Lambda表达式</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/15/funny-programmer-finale/">程序员的逗比瞬间 最终番</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/08/make-use-of-handlerthread/">详解 Android 中的 HandlerThread</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/01/thinking-about-android-log/">关于Android Log的一些思考</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/24/great-english-programming-blog/">优秀的英文技术博客</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/17/funny-programmer-season-three/">程序员的逗比瞬间(第三季)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/26/android-tuning-tool-strictmode/">Android性能调优利器StrictMode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/17/android-process-and-thread-schedule-cgroups/">Android进程线程调度之cgroups</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/12/is-your-java-code-jit-friendly/">你的Java代码对JIT编译友好么？</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/05/android-process-and-thread-schedule-nice/">剖析Android中进程与线程调度之nice</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/29/funny-programmer-season-two/">程序员的逗比瞬间（第二季）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/22/where-has-the-java-permgen-gone/">Java永久代去哪儿了</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/16/dive-into-android-activity-launchmode/">深入讲解Android中Activity launchMode</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/blogroll_data_source.js" charset="utf-8"></script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript" src="http://toolite.sinaapp.com/droidyue_com/common_book_data_source.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droidyue_com/program_book_data_source.js" charset="utf-8"></script>
+        
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8" src="http://1.toolite.sinaapp.com/book_recommend/android_book_data.js"></script>
+<script type="text/javascript" charset="utf-8" src="http://1.toolite.sinaapp.com/book_recommend/java_book_data.js"></script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/sidebar_ad.js" charset="utf-8"></script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	bestPosts = makeBatchUrlTrackable(bestPosts, "ninki_posts");
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> 云存储提供方： <a href="https://www.upyun.com/"><img src="http://upfiles.b0.upaiyun.com/logo/90x45.png" alt="UPYUN"></a></span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+<script type="text/javascript" src="http://1.toolite.sinaapp.com/droid_ref/baidu_analytics.js" charset="utf-8"> </script> 
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://7jpncc.com1.z0.glb.clouddn.com/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>

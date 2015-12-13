@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-12-12T11:27:27+08:00</updated>
+  <updated>2015-12-13T17:44:40+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,183 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android中SQLite操作性能优化]]></title>
+    <link href="http://droidyue.com/blog/2015/12/13/android-sqlite-tuning/"/>
+    <updated>2015-12-13T17:38:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/12/13/android-sqlite-tuning</id>
+    <content type="html"><![CDATA[<p>数据库是应用开发中常用的技术，在Android应用中也不例外。Android默认使用了SQLite数据库，在应用程序开发中，我们使用最多的无外乎增删改查。纵使操作简单，也有可能出现查找数据缓慢，插入数据耗时等情况，如果出现了这种问题，我们就需要考虑对数据库操作进行优化了。本文将介绍一些实用的数据库优化操作，希望可以帮助大家更好地在开发过程中使用数据库。</p>
+
+<!--more-->
+
+
+<h2>建立索引</h2>
+
+<p>很多时候，我们都听说，想要查找快速就建立索引。这句话没错，数据表的索引类似于字典中的拼音索引或者部首索引。</p>
+
+<h3>索引的解释</h3>
+
+<p>重温一下我们小时候查字典的过程：</p>
+
+<ul>
+<li>对于已经知道拼音的字，比如<code>中</code>这个字，我们只需要在拼音索引里面找到<code>zhong</code>，就可以确定这个字在词典中的页码。</li>
+<li>对于不知道拼音的字，比如<code>欗</code>这个字，我们只需要在部首索引里面查找这个字，就能找到确定这个字在词典中的页码。</li>
+</ul>
+
+
+<p>没错，索引做的事情就是这么简单，使得我们不需要查找整个数据表就可以实现快速访问。</p>
+
+<h3>建立索引</h3>
+
+<p>创建索引的基本语法如下
+<code>
+CREATE INDEX index_name ON table_name;
+</code></p>
+
+<p>创建单列索引
+<code>
+CREATE INDEX index_name ON table_name (column_name);
+</code></p>
+
+<h3>索引真的好么</h3>
+
+<p>毋庸置疑，索引加速了我们检索数据表的速度。然而正如西方谚语 &ldquo;There are two sides of a coin"，索引亦有缺点：</p>
+
+<ul>
+<li>对于增加，更新和删除来说，使用了索引会变慢，比如你想要删除字典中的一个字，那么你同时也需要删除这个字在拼音索引和部首索引中的信息。</li>
+<li>建立索引会增加数据库的大小，比如字典中的拼音索引和部首索引实际上是会增加字典的页数，让字典变厚的。</li>
+<li>为数据量比较小的表建立索引，往往会事倍功半。</li>
+</ul>
+
+
+<p>所以使用索引需要考虑实际情况进行利弊权衡，对于查询操作量级较大，业务对要求查询要求较高的，还是推荐使用索引的。</p>
+
+<h2>编译SQL语句</h2>
+
+<p>SQLite想要执行操作，需要将程序中的sql语句编译成对应的SQLiteStatement，比如<code>select * from record</code>这一句，被执行100次就需要编译100次。对于批量处理插入或者更新的操作，我们可以使用显式编译来做到重用SQLiteStatement。</p>
+
+<p>想要做到重用SQLiteStatement也比较简单，基本如下：</p>
+
+<ul>
+<li>编译sql语句获得SQLiteStatement对象，参数使用<code>?</code>代替</li>
+<li>在循环中对SQLiteStatement对象进行具体数据绑定，bind方法中的index从1开始，不是0</li>
+</ul>
+
+
+<p>请参考如下简单的使用代码
+```java
+private void insertWithPreCompiledStatement(SQLiteDatabase db) {</p>
+
+<pre><code>String sql = "INSERT INTO " + TableDefine.TABLE_RECORD + "( " + TableDefine.COLUMN_INSERT_TIME + ") VALUES(?)";
+SQLiteStatement  statement = db.compileStatement(sql);
+int count = 0;
+while (count &lt; 100) {
+    count++;
+    statement.clearBindings();
+    statement.bindLong(1, System.currentTimeMillis());
+    statement.executeInsert();
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h2>显式使用事务</h2>
+
+<p>在Android中，无论是使用SQLiteDatabase的insert,delete等方法还是execSQL都开启了事务，来确保每一次操作都具有原子性，使得结果要么是操作之后的正确结果，要么是操作之前的结果。</p>
+
+<p>然而事务的实现是依赖于名为rollback journal文件，借助这个临时文件来完成原子操作和回滚功能。既然属于文件，就符合Unix的文件范型(Open-Read/Write-Close)，因而对于批量的修改操作会出现反复打开文件读写再关闭的操作。然而好在，我们可以显式使用事务，将批量的数据库更新带来的journal文件打开关闭降低到1次。</p>
+
+<p>具体的实现代码如下：</p>
+
+<p>```java
+private void insertWithTransaction(SQLiteDatabase db) {</p>
+
+<pre><code>int count = 0;
+ContentValues values = new ContentValues();
+try {
+    db.beginTransaction();
+    while (count++ &lt; 100) {
+        values.put(TableDefine.COLUMN_INSERT_TIME, System.currentTimeMillis());
+        db.insert(TableDefine.TABLE_RECORD, null, values);
+    }
+    db.setTransactionSuccessful();
+} catch (Exception e) {
+    e.printStackTrace();
+} finally {
+    db.endTransaction();
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上面的代码中，如果没有异常抛出，我们则认为事务成功，调用<code>db.setTransactionSuccessful();</code>确保操作真实生效。如果在此过程中出现异常，则批量数据一条也不会插入现有的表中。</p>
+
+<h2>查询数据优化</h2>
+
+<p>对于查询的优化，除了建立索引以外，有以下几点微优化的建议</p>
+
+<h3>按需获取数据列信息</h3>
+
+<p>通常情况下，我们处于自己省时省力的目的，对于查找使用类似这样的代码
+```java
+private void badQuery(SQLiteDatabase db) {</p>
+
+<pre><code>db.query(TableDefine.TABLE_RECORD, null, null, null, null, null, null) ;
+</code></pre>
+
+<p>}
+```
+其中上面方法的第二个参数类型为String[]，意思是返回结果参考的colum信息，传递null表明需要获取全部的column数据。这里建议大家传递真实需要的字符串数据对象表明需要的列信息，这样做效率会有所提升。</p>
+
+<h3>提前获取列索引</h3>
+
+<p>当我们需要遍历cursor时，我们通常的做法是这样
+```java
+private void badQueryWithLoop(SQLiteDatabase db) {</p>
+
+<pre><code>Cursor cursor = db.query(TableDefine.TABLE_RECORD, new String[]{TableDefine.COLUMN_INSERT_TIME}, null, null, null, null, null) ;
+while (cursor.moveToNext()) {
+    long insertTime = cursor.getLong(cursor.getColumnIndex(TableDefine.COLUMN_INSERT_TIME));
+}
+</code></pre>
+
+<p>}
+<code>
+但是如果我们将获取ColumnIndex的操作提到循环之外，效果会更好一些，修改后的代码如下：
+</code>java
+private void goodQueryWithLoop(SQLiteDatabase db) {</p>
+
+<pre><code>Cursor cursor = db.query(TableDefine.TABLE_RECORD, new String[]{TableDefine.COLUMN_INSERT_TIME}, null, null, null, null, null) ;
+int insertTimeColumnIndex = cursor.getColumnIndex(TableDefine.COLUMN_INSERT_TIME);
+while (cursor.moveToNext()) {
+    long insertTime = cursor.getLong(insertTimeColumnIndex);
+}
+cursor.close();
+</code></pre>
+
+<p>}
+```</p>
+
+<h2>ContentValues的容量调整</h2>
+
+<p>SQLiteDatabase提供了方便的ContentValues简化了我们处理列名与值的映射，ContentValues内部采用了HashMap来存储Key-Value数据，ContentValues的初始容量是8，如果当添加的数据超过8之前，则会进行双倍扩容操作，因此建议对ContentValues填入的内容进行估量，设置合理的初始化容量，减少不必要的内部扩容操作。</p>
+
+<h2>及时关闭Cursor</h2>
+
+<p>使用数据库，比较常见的就是忘记关闭Cursor。关于如何发现未关闭的Cursor，我们可以使用StrictMode，详细请戳这里<a href="http://droidyue.com/blog/2015/09/26/android-tuning-tool-strictmode/">Android性能调优利器StrictMode</a></p>
+
+<h2>耗时异步化</h2>
+
+<p>数据库的操作，属于本地IO，通常比较耗时，如果处理不好，很容易导致<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">ANR</a>,因此建议将这些耗时操作放入异步线程中处理，这里推荐一个单线程 + 任务队列形式处理的<a href="http://droidyue.com/blog/2015/11/08/make-use-of-handlerthread/">HandlerThread</a>实现异步化。</p>
+
+<h2>源码下载</h2>
+
+<p>示例源码，存放在Github，地址为<a href="https://github.com/androidyue/AndroidSQLiteTuningDemo">AndroidSQLiteTuningDemo</a></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android处理崩溃的一些实践]]></title>
@@ -1012,210 +1189,6 @@ D/MainActivity(20996): cost = 9
 <li>在线上环境即Release版本不建议开启严格模式。</li>
 <li>严格模式无法监控JNI中的磁盘IO和网络请求。</li>
 <li>应用中并非需要解决全部的违例情况，比如有些IO操作必须在主线程中进行。</li>
-</ul>
-
-
-<p><script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
-<script type="text/javascript">
-	showBookCopyright();
-</script>
-</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android进程线程调度之cgroups]]></title>
-    <link href="http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups/"/>
-    <updated>2015-09-17T21:17:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups</id>
-    <content type="html"><![CDATA[<p>做Android开发的同学们，了解cgroups的同学其实不多，cgroups是什么意思呢，在操作系统中有着什么样的作用，以及Android中的cgroups有哪些，各有什么用呢，本文将会进行逐一剖析。</p>
-
-<!--more-->
-
-
-<h2>先看定义</h2>
-
-<p>下面的引用为维基百科的<a href="https://zh.wikipedia.org/wiki/Cgroups">cgroups的定义</a></p>
-
-<blockquote><p>cgroups，其名称源自控制组群（control groups）的简写，是Linux内核的一个功能，用来限制，控制与分离一个进程组群的资源（如CPU、内存、磁盘输入输出等）。</p></blockquote>
-
-<p>维基百科的解释言简意赅，无需赘述，下面以例子讲解如何使用cgroups。</p>
-
-<h2>结合示例</h2>
-
-<p>以下会以Fedora这个Linux发行版为例，介绍如何使用cgroups限制进程的CPU使用率。</p>
-
-<p>这里我们使用一个死循环的Python脚本用来消耗CPU，文件名为loop.py，。
-```python</p>
-
-<h1>!/usr/bin/env python</h1>
-
-<h1>coding=utf-8</h1>
-
-<p>i = 0
-while True:</p>
-
-<pre><code>i = i + 1
-</code></pre>
-
-<p>```</p>
-
-<p>执行脚本<code>python loop.py</code>，使用top查看该进程的CPU使用情况,CPU使用率接近100%。
-<img class="<a" src="href="http://7jpolu.com1.z0.glb.clouddn.com/cpu_cost_no_limit.png">http://7jpolu.com1.z0.glb.clouddn.com/cpu_cost_no_limit.png</a>"></p>
-
-<p>然后我们将会通过修改配置，利用cgroups将该进程的CPU使用率降低到10%</p>
-
-<p>首先查看当前系统的cgroups
-<code>bash
-16:31:57-androidyue/tmp$ sudo mount -t cgroup
-[sudo] password for androidyue:
-cgroup on /sys/fs/cgroup/systemd type cgroup (rw,nosuid,nodev,noexec,relatime,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd)
-cgroup on /sys/fs/cgroup/cpuset type cgroup (rw,nosuid,nodev,noexec,relatime,cpuset)
-cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (rw,nosuid,nodev,noexec,relatime,cpuacct,cpu)
-cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,memory)
-cgroup on /sys/fs/cgroup/devices type cgroup (rw,nosuid,nodev,noexec,relatime,devices)
-cgroup on /sys/fs/cgroup/freezer type cgroup (rw,nosuid,nodev,noexec,relatime,freezer)
-cgroup on /sys/fs/cgroup/net_cls type cgroup (rw,nosuid,nodev,noexec,relatime,net_cls)
-cgroup on /sys/fs/cgroup/blkio type cgroup (rw,nosuid,nodev,noexec,relatime,blkio)
-cgroup on /sys/fs/cgroup/perf_event type cgroup (rw,nosuid,nodev,noexec,relatime,perf_event)
-</code></p>
-
-<p>然后创建一个cgroup,控制CPU使用率。
-<code>bash
-cd /sys/fs/cgroup/cpu
-sudo mkdir cpu_test
-</code></p>
-
-<p>接下来查看刚刚创建的cpu_test
-<code>bash
-17:04:54-androidyue/sys/fs/cgroup/cpu$ ls cpu_test/
-cgroup.clone_children  cgroup.procs  cpuacct.usage         cpu.cfs_period_us  cpu.rt_period_us   cpu.shares  notify_on_release
-cgroup.event_control   cpuacct.stat  cpuacct.usage_percpu  cpu.cfs_quota_us   cpu.rt_runtime_us  cpu.stat    tasks
-</code></p>
-
-<p>完成这一目标修改涉及到的文件有</p>
-
-<p>cpu.cfs_period_us
-设置该cgroup请求到CPU资源分配的周期，单位为微秒（这里使用us代替微秒单位µs）。</p>
-
-<p>cpu.cfs_quota_us
-设置cgroup组内的进程在一次CPU分配周期（即cpu.cfs_period_us指定的值）内可以执行的时间。</p>
-
-<p>如果我们想要设置该cpu_test组内的cpu使用率为10%，我们需要这样修改
-<code>
-echo 1000000 &gt; cpu.cfs_period_us
-echo 100000 &gt; cpu.cfs_quota_us
-</code>
-注意上述修改需要使用root身份登陆，即<code>sudo -i</code>,下面的将进程加入cgroup同样需要root身份。</p>
-
-<p>将上图中的进程ID 写入到cpu_test下的tasks文件中，并查看tasks验证是否加入成功
-<code>bash
-17:12:27-root/sys/fs/cgroup/cpu/cpu_test$ sudo echo 12093 &gt; tasks
-17:12:41-root/sys/fs/cgroup/cpu/cpu_test$ cat tasks
-12093
-</code></p>
-
-<p>再次查看进程id为12093的CPU使用率，已成功降低到10%左右。
-<img class="<a" src="href="http://7jpolu.com1.z0.glb.clouddn.com/cpu_cost_with_limit.png">http://7jpolu.com1.z0.glb.clouddn.com/cpu_cost_with_limit.png</a>"></p>
-
-<h2>cgroups在Android中的应用</h2>
-
-<p>在Android中也存在cgroups，涉及到CPU的目前只有两个，一个是apps，路径为<code>/dev/cpuctl/apps</code>。另一个是bg_non_interactive，路径为<code>/dev/cpuctl/apps/bg_non_interactive</code></p>
-
-<h3>cpu.share</h3>
-
-<p>cpu.share文件中保存了整数值，用来设置cgroup分组任务获得CPU时间的相对值。举例来说，cgroup A和cgroup B的cpu.share值都是1024，那么cgroup A 与cgroup B中的任务分配到的CPU时间相同，如果cgroup C的cpu.share为512，那么cgroup C中的任务获得的CPU时间是A或B的一半。</p>
-
-<p>apps下的cpu.share 值为1024
-<code>bash
-root@htc_m8tl:/dev/cpuctl/apps # cat cpu.shares
-1024
-</code>
-bg_non_interactive下的cpu_share值为52
-<code>bash
-root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive # cat cpu.shares
-52
-</code>
-也就是说apps分组与bg_non_interactive分组cpu.share值相比接近于20:1。由于Android中只有这两个cgroup，也就是说apps分组中的应用可以利用95%的CPU，而处于bg_non_interactive分组中的应用则只能获得5%的CPU利用率。</p>
-
-<h2>cpu.rt_period_us与cpu.rt_runtime_us</h2>
-
-<p>cpu.rt_period_us用来设置cgroup获得CPU资源的周期，单位为微秒。
-cpu.rt_runtime_us用来设置cgroup中的任务可以最长获得CPU资源的时间，单位为微秒。设定这个值可以访问某个cgroup独占CPU资源。最长的获取CPU资源时间取决于逻辑CPU的数量。比如cpu.rt_runtime_us设置为200000（0.2秒），cpu.rt_period_us设置为1000000（1秒）。在单个逻辑CPU上的获得时间为每秒为0.2秒。 2个逻辑CPU，获得的时间则是0.4秒。</p>
-
-<p>apps分组下的两个配置的值
-<code>bash
-root@htc_m8tl:/dev/cpuctl/apps # cat cpu.rt_period_us
-1000000
-root@htc_m8tl:/dev/cpuctl/apps # cat cpu.rt_runtime_us
-800000
-</code>
-即单个逻辑CPU下每一秒内可以获得0.8秒的执行时间。</p>
-
-<p>bg_non_interactive分组下的两个配置的值
-<code>bash
-root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive # cat cpu.rt_period_us
-1000000
-root@htc_m8tl:/dev/cpuctl/apps/bg_non_interactive # cat cpu.rt_runtime_us
-700000
-</code>
-即单个逻辑CPU下每一秒可以获得0.7秒的执行时间。</p>
-
-<h3>花落谁家</h3>
-
-<p>在Android中，一个应用（进程）既可以由apps切换到bg_non_interactive，也可以切换回来。</p>
-
-<h4>Activity</h4>
-
-<p>当一个Activity处于可见的状态下，那么这个应用进程就属于apps分组。</p>
-
-<h4>Service</h4>
-
-<p>当Service调用startForeground方法后，那么这个应用进程则是归类于apps分组
-<code>java
-Notification.Builder  builder = new Notification.Builder(this);
-builder.setContentTitle("Title");
-Notification notification = builder.build();
-startForeground(notification.hashCode(), notification);
-</code></p>
-
-<h3>如何确定进程的cgroups</h3>
-
-<p>其实确定过程也很简单，总共分三步。</p>
-
-<p>第一步，进入已经root的Android设备终端
-<code>
-11:10 $ adb shell
-root@htc_m8tl:/ # su
-root@htc_m8tl:/ #
-</code></p>
-
-<p>第二步，目标应用的进程id，这里以我们的demo程序（包名为com.droidyue.androidthreadschedule）为例。得到的进程id为22871
-<code>
-root@htc_m8tl:/ # ps | grep com.droidyue
-u0_a1434  22871 23723 970040 54304 ffffffff 400a045c S com.droidyue.androidthreadschedule
-</code></p>
-
-<p>第三步，利用进程id查看其所在的cgroups
-<code>
-2|root@htc_m8tl:/ # cat  /proc/22871/cgroup
-3:cpu:/apps
-2:memory:/
-1:cpuacct:/uid/11434
-</code></p>
-
-<p>通过以上三步，<del>我们就能把大象关冰箱里</del>,我们就能得到进程所在的cgroups分组。</p>
-
-<h2>利用cgroups我们可以做什么</h2>
-
-<p>其实对于一般应用来说，能做的事情少之又少。对于有需要的应用可以使用Service.startForeground方法来获取更多的CPU资源，但并不建议盲目去这样做，还是要根据自身应用需要实现。</p>
-
-<p>另外，个人认为最大的收获，就是我们可以参照cgroups的分组的思想来设计有类似场景的方案解决实际问题。</p>
-
-<h3>同系列文章</h3>
-
-<ul>
-<li><a href="/blog/2015/09/05/android-process-and-thread-schedule-nice/?droid_refer=series">剖析Android中进程与线程调度之nice</a></li>
 </ul>
 
 
