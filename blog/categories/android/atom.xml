@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2015-12-13T17:49:45+08:00</updated>
+  <updated>2015-12-20T10:57:26+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,310 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[关于Android中工作者线程的思考]]></title>
+    <link href="http://droidyue.com/blog/2015/12/20/worker-thread-in-android/"/>
+    <updated>2015-12-20T10:47:00+08:00</updated>
+    <id>http://droidyue.com/blog/2015/12/20/worker-thread-in-android</id>
+    <content type="html"><![CDATA[<h2>版权说明</h2>
+
+<p>本文为 InfoQ 中文站特供稿件，首发地址为：<a href="http://www.infoq.com/cn/articles/android-worker-thread">http://www.infoq.com/cn/articles/android-worker-thread</a> 如需转载，请与 InfoQ 中文站联系。</p>
+
+<h2>摘要</h2>
+
+<p>在Android开发过程中，我们经常使用工作者线程，如AsyncTask和线程池。然而我们经常使用的这些工作者线程存在哪些不易察觉的问题呢，关于工作者线程有哪些优化呢，文本将逐一介绍并回答这些问题。</p>
+
+<p>本文系2015 北京 GDG Devfest分享内容文章。</p>
+
+<p>在Android中，我们或多或少使用了工作者线程，比如Thread，AsyncTask，HandlerThread，甚至是自己创建的线程池，使用工作者线程我们可以将耗时的操作从主线程中移走。然而在Android系统中为什么存在工作者线程呢，常用的工作者线程有哪些不易察觉的问题呢，关于工作者线程有哪些优化的方面呢，本文将一一解答这些问题。</p>
+
+<!--more-->
+
+
+<h2>工作者线程的存在原因</h2>
+
+<ul>
+<li>因为Android的UI单线程模型，所有的UI相关的操作都需要在主线程(UI线程)执行</li>
+<li>Android中各大组件的生命周期回调都是位于主线程中，使得主线程的职责更重</li>
+<li>如果不使用工作者线程为主线程分担耗时的任务，会造成应用卡顿，严重时可能出现ANR(Application Not Responding),即程序未响应。</li>
+</ul>
+
+
+<p>因而，在Android中使用工作者线程显得势在必行，如一开始提到那样，在Android中工作者线程有很多，接下来我们将围绕AsyncTask，HandlerThread等深入研究。</p>
+
+<h2>AsyncTask</h2>
+
+<p>AsyncTask是Android框架提供给开发者的一个辅助类，使用该类我们可以轻松的处理异步线程与主线程的交互，由于其便捷性，在Android工程中，AsyncTask被广泛使用。然而AsyncTask并非一个完美的方案，使用它往往会存在一些问题。接下来将逐一列举AsyncTask不容易被开发者察觉的问题。</p>
+
+<h3>AsyncTask与内存泄露</h3>
+
+<p>内存泄露是Android开发中常见的问题，只要开发者稍有不慎就有可能导致程序产生内存泄露，严重时甚至可能导致OOM(OutOfMemory，即内存溢出错误)。AsyncTask也不例外，也有可能造成内存泄露。</p>
+
+<p>以一个简单的场景为例：
+在Activity中，通常我们这样使用AsyncTask
+```java
+//In Activity
+new AsyncTask&lt;String, Void, Void>() {</p>
+
+<pre><code>@Override
+protected Void doInBackground(String... params) {
+    //some code
+    return null;
+}
+</code></pre>
+
+<p>}.execute(&ldquo;hello world&rdquo;);
+<code>``
+上述代码使用的匿名内存类创建AsyncTask实例，然而在Java中，</code>非静态内存类会隐式持有外部类的实例引用`，上面例子AsyncTask创建于Activity中，因而会隐式持有Activity的实例引用。</p>
+
+<p>而在AsyncTask内部实现中,mFuture同样使用匿名内部类创建对象，而mFuture会作为执行任务加入到任务执行器中。
+```
+private final WorkerRunnable&lt;Params, Result> mWorker;
+public AsyncTask() {</p>
+
+<pre><code>mFuture = new FutureTask&lt;Result&gt;(mWorker) {
+    @Override
+    protected void done() {
+        //some code
+    }
+};
+</code></pre>
+
+<p>}
+<code>
+而mFuture加入任务执行器，实际上是放入了一个静态成员变量SERIAL_EXECUTOR指向的对象SerialExecutor的一个ArrayDeque类型的集合中。
+</code>java
+public static final Executor SERIAL_EXECUTOR = new SerialExecutor();
+private static class SerialExecutor implements Executor {</p>
+
+<pre><code>    final ArrayDeque&lt;Runnable&gt; mTasks = new ArrayDeque&lt;Runnable&gt;();
+
+public synchronized void execute(final Runnable r) {
+    mTasks.offer(new Runnable() {
+        public void run() {
+            //fake code
+            r.run();
+        }
+    });
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>当任务处于排队状态，则Activity实例引用被静态常量SERIAL_EXECUTOR 间接持有。</p>
+
+<p>在通常情况下，当设备发生屏幕旋转事件，当前的Activity被销毁，新的Activity被创建，以此完成对布局的重新加载。</p>
+
+<p>而本例中，当屏幕旋转时，处于排队的AsyncTask由于其对Activity实例的引用关系，导致这个Activity不能被销毁，其对应的内存不能被GC回收，因而就出现了内存泄露问题。</p>
+
+<p>关于如何避免内存泄露，我们可以使用静态内部类 + 弱引用的形式解决。</p>
+
+<h3>cancel的问题</h3>
+
+<p>AsyncTask作为任务，是支持调用者取消任务的，即允许我们使用AsyncTask.canncel()方法取消提交的任务。然而其实cancel并非真正的起作用。</p>
+
+<p>首先，我们看一下cancel方法：
+```java
+public final boolean cancel(boolean mayInterruptIfRunning) {</p>
+
+<pre><code>mCancelled.set(true);
+return mFuture.cancel(mayInterruptIfRunning);
+</code></pre>
+
+<p>}
+<code>``
+cancel方法接受一个boolean类型的参数，名称为</code>mayInterruptIfRunning`，意思是是否可以打断正在执行的任务。</p>
+
+<p>当我们调用cancel(false)，不打断正在执行的任务，对应的结果是</p>
+
+<ul>
+<li>处于doInBackground中的任务不受影响，继续执行</li>
+<li>任务结束时不会去调用<code>onPostExecute</code>方法，而是执行<code>onCancelled</code>方法</li>
+</ul>
+
+
+<p>当我们调用cancel(true)，表示打断正在执行的任务，会出现如下情况：</p>
+
+<ul>
+<li>如果doInBackground方法处于阻塞状态，如调用Thread.sleep,wait等方法，则会抛出InterruptedException。</li>
+<li>对于某些情况下，有可能无法打断正在执行的任务</li>
+</ul>
+
+
+<p>如下，就是一个cancel方法无法打断正在执行的任务的例子
+```
+AsyncTask&lt;String,Void,Void> task = new AsyncTask&lt;String, Void, Void>() {</p>
+
+<pre><code>@Override
+protected Void doInBackground(String... params) {
+    boolean loop = true;
+    while(loop) {
+        Log.i(LOGTAG, "doInBackground after interrupting the loop");
+    }
+    return null;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>task.execute(&ldquo;hello world&rdquo;);
+try {</p>
+
+<pre><code>Thread.sleep(2000);//确保AsyncTask任务执行
+task.cancel(true);
+</code></pre>
+
+<p>} catch (InterruptedException e) {</p>
+
+<pre><code>e.printStackTrace();
+</code></pre>
+
+<p>}
+<code>``
+上面的例子，如果想要使cancel正常工作需要在循环中，需要在循环条件里面同时检测</code>isCancelled()`才可以。</p>
+
+<h3>串行带来的问题</h3>
+
+<p>Android团队关于AsyncTask执行策略进行了多次修改，修改大致如下：
+  * 自最初引入到Donut(1.6)之前，任务串行执行
+  * 从Donut到GINGERBREAD_MR1(2.3.4),任务被修改成了并行执行
+  * 从HONEYCOMB（3.0）至今，任务恢复至串行，但可以设置<code>executeOnExecutor()</code>实现并行执行。</p>
+
+<p>然而AsyncTask的串行实际执行起来是这样的逻辑</p>
+
+<ul>
+<li>由串行执行器控制任务的初始分发</li>
+<li>并行执行器一次执行单个任务，并启动下一个</li>
+</ul>
+
+
+<p>在AsyncTask中，并发执行器实际为ThreadPoolExecutor的实例，其CORE_POOL_SIZE为当前设备CPU数量+1，MAXIMUM_POOL_SIZE值为CPU数量的2倍 + 1。</p>
+
+<p>以一个四核手机为例，当我们持续调用AsyncTask任务过程中</p>
+
+<ul>
+<li>在AsyncTask线程数量小于CORE_POOL_SIZE(5个)时，会启动新的线程处理任务，不重用之前空闲的线程</li>
+<li>当数量超过CORE_POOL_SIZE(5个)，才开始重用之前的线程处理任务</li>
+</ul>
+
+
+<p>但是由于AsyncTask属于默认线性执行任务，导致并发执行器总是处于某一个线程工作的状态，因而造成了ThreadPool中其他线程的浪费。同时由于AsyncTask中并不存在allowCoreThreadTimeOut(boolean)的调用，所以ThreadPool中的核心线程即使处于空闲状态也不会销毁掉。</p>
+
+<h2>Executors</h2>
+
+<p>Executors是Java API中一个快速创建线程池的工具类，然而在它里面也是存在问题的。</p>
+
+<p>以Executors中获取一个固定大小的线程池方法为例
+```java
+public static ExecutorService newFixedThreadPool(int nThreads) {</p>
+
+<pre><code>return new ThreadPoolExecutor(nThreads, nThreads,0L, 
+    TimeUnit.MILLISECONDS,new LinkedBlockingQueue&lt;Runnable&gt;());
+</code></pre>
+
+<p>}
+```
+在上面代码实现中，CORE_POOL_SIZE和MAXIMUM_POOL_SIZE都是同样的值，如果把nThreads当成核心线程数，则无法保证最大并发，而如果当做最大并发线程数，则会造成线程的浪费。因而Executors这样的API导致了我们无法在最大并发数和线程节省上做到平衡。</p>
+
+<p>为了达到最大并发数和线程节省的平衡，建议自行创建ThreadPoolExecutor，根据业务和设备信息确定CORE_POOL_SIZE和MAXIMUM_POOL_SIZE的合理值。</p>
+
+<h2>HandlerThread</h2>
+
+<p>HandlerThread是Android中提供特殊的线程类，使用这个类我们可以轻松创建一个带有Looper的线程，同时利用Looper我们可以结合Handler实现任务的控制与调度。以Handler的post方法为例，我们可以封装一个轻量级的任务处理器
+```java
+private Handler mHandler;
+private LightTaskManager() {</p>
+
+<pre><code>HandlerThread workerThread = new HandlerThread("LightTaskThread");
+workerThread.start();
+mHandler = new Handler(workerThread.getLooper());
+</code></pre>
+
+<p>}</p>
+
+<p>public void post(Runnable run) {</p>
+
+<pre><code>mHandler.post(run);
+</code></pre>
+
+<p>}</p>
+
+<p>public void postAtFrontOfQueue(Runnable runnable) {</p>
+
+<pre><code>mHandler.postAtFrontOfQueue(runnable);
+</code></pre>
+
+<p>}</p>
+
+<p>public void postDelayed(Runnable runnable, long delay) {</p>
+
+<pre><code>mHandler.postDelayed(runnable, delay);
+</code></pre>
+
+<p>}</p>
+
+<p>public void postAtTime(Runnable runnable, long time) {</p>
+
+<pre><code>mHandler.postAtTime(runnable, time);
+</code></pre>
+
+<p>}
+```
+在本例中，我们可以按照如下规则提交任务</p>
+
+<ul>
+<li>post 提交优先级一般的任务</li>
+<li>postAtFrontOfQueue 将优先级较高的任务加入到队列前端</li>
+<li>postAtTime 指定时间提交任务</li>
+<li>postDelayed 延后提交优先级较低的任务</li>
+</ul>
+
+
+<p>上面的轻量级任务处理器利用HandlerThread的单一线程 + 任务队列的形式，可以处理类似本地IO（文件或数据库读取）的轻量级任务。在具体的处理场景下，可以参考如下做法：</p>
+
+<ul>
+<li>对于本地IO读取，并显示到界面，建议使用postAtFrontOfQueue</li>
+<li>对于本地IO写入，不需要通知界面，建议使用postDelayed</li>
+<li>一般操作，可以使用post</li>
+</ul>
+
+
+<h2>线程优先级调整</h2>
+
+<p>在Android应用中，将耗时任务放入异步线程是一个不错的选择，那么为异步线程调整应有的优先级则是一件锦上添花的事情。众所周知，线程的并行通过CPU的时间片切换实现，对线程优先级调整，最主要的策略就是降低异步线程的优先级，从而使得主线程获得更多的CPU资源。</p>
+
+<p>Android中的线程优先级和Linux系统进程优先级有些类似，其值都是从-20至19。其中Android中，开发者可以控制的优先级有：</p>
+
+<ul>
+<li><code>THREAD_PRIORITY_DEFAULT</code>，默认的线程优先级，值为0</li>
+<li><code>THREAD_PRIORITY_LOWEST</code>，最低的线程级别，值为19</li>
+<li><code>THREAD_PRIORITY_BACKGROUND</code> 后台线程建议设置这个优先级，值为10</li>
+<li><code>THREAD_PRIORITY_MORE_FAVORABLE</code> 相对<code>THREAD_PRIORITY_DEFAULT</code>稍微优先，值为-1</li>
+<li><code>THREAD_PRIORITY_LESS_FAVORABLE</code> 相对<code>THREAD_PRIORITY_DEFAULT</code>稍微落后一些，值为1</li>
+</ul>
+
+
+<p>为线程设置优先级也比较简单，通用的做法是在run方法体的开始部分加入下列代码
+<code>java
+android.os.Process.setThreadPriority(priority);
+</code></p>
+
+<p>通常设置优先级的规则如下：</p>
+
+<ul>
+<li>一般的工作者线程，设置成<code>THREAD_PRIORITY_BACKGROUND</code></li>
+<li>对于优先级很低的线程，可以设置<code>THREAD_PRIORITY_LOWEST</code></li>
+<li>其他特殊需求，视业务应用具体的优先级</li>
+</ul>
+
+
+<h2>总结</h2>
+
+<p>在Android中工作者线程如此普遍，然而潜在的问题也不可避免，建议在开发者使用工作者线程时，从工作者线程的数量和优先级等方面进行审视，做到较为合理的使用。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android 中 SQLite 性能优化]]></title>
@@ -807,392 +1111,6 @@ return-void
 <p>.end method
 ```
 因此，无论是运行时日志屏蔽还是编译期，message参数上发生的字符串拼接都依然存在。但是编译期屏蔽减少了方法调用（即方法进出栈操作），理论上编译期屏蔽日志更优。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android性能调优利器StrictMode]]></title>
-    <link href="http://droidyue.com/blog/2015/09/26/android-tuning-tool-strictmode/"/>
-    <updated>2015-09-26T20:50:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/09/26/android-tuning-tool-strictmode</id>
-    <content type="html"><![CDATA[<p>作为Android开发，日常的开发工作中或多或少要接触到性能问题，比如我的Android程序运行缓慢卡顿，并且常常出现ANR对话框等等问题。既然有性能问题，就需要进行性能优化。正所谓工欲善其事，必先利其器。一个好的工具，可以帮助我们发现并定位问题，进而有的放矢进行解决。本文主要介绍StrictMode 在Android 应用开发中的应用和一些问题。</p>
-
-<!--more-->
-
-
-<h2>什么是StrictMode</h2>
-
-<p>StrictMode意思为严格模式，是用来检测程序中违例情况的开发者工具。最常用的场景就是检测主线程中本地磁盘和网络读写等耗时的操作。</p>
-
-<h3>严在哪里</h3>
-
-<p>既然叫做严格模式，那么又严格在哪些地方呢？<br/>
-在Android中，主线程，也就是UI线程，除了负责处理UI相关的操作外，还可以执行文件读取或者数据库读写操作（从Android 4.0 开始，网络操作禁止在主线程中执行，否则会抛出<a href="http://droidyue.com/blog/2014/11/08/look-into-android-dot-os-dot-networkonmainthreadexception/">NetworkOnMainThreadException</a>）。使用严格模式，系统检测出主线程违例的情况会做出相应的反应，如日志打印，弹出对话框亦或者崩溃等。换言之，严格模式会将应用的违例细节暴露给开发者方便优化与改善。</p>
-
-<h3>具体能检测什么</h3>
-
-<p>严格模式主要检测两大问题，一个是线程策略，即TreadPolicy，另一个是VM策略，即VmPolicy。</p>
-
-<h3>ThreadPolicy</h3>
-
-<p>线程策略检测的内容有</p>
-
-<ul>
-<li>自定义的耗时调用 使用<strong>detectCustomSlowCalls()</strong>开启</li>
-<li>磁盘读取操作 使用<strong>detectDiskReads()</strong>开启</li>
-<li>磁盘写入操作 使用<strong>detectDiskWrites()</strong>开启</li>
-<li>网络操作  使用<strong>detectNetwork()</strong>开启</li>
-</ul>
-
-
-<h3>VmPolicy</h3>
-
-<p>虚拟机策略检测的内容有</p>
-
-<ul>
-<li>Activity泄露 使用<strong>detectActivityLeaks()</strong>开启</li>
-<li>未关闭的Closable对象泄露  使用<strong>detectLeakedClosableObjects()</strong>开启</li>
-<li>泄露的Sqlite对象  使用<strong>detectLeakedSqlLiteObjects()</strong>开启</li>
-<li>检测实例数量 使用<strong>setClassInstanceLimit()</strong>开启</li>
-</ul>
-
-
-<h2>工作原理</h2>
-
-<p>其实StrictMode实现原理也比较简单，以IO操作为例，主要是通过在open，read，write，close时进行监控。<code>libcore.io.BlockGuardOs</code>文件就是监控的地方。以open为例，如下进行监控。</p>
-
-<p>```java
-@Override
-public FileDescriptor open(String path, int flags, int mode) throws ErrnoException {</p>
-
-<pre><code>BlockGuard.getThreadPolicy().onReadFromDisk();
-if ((mode &amp; O_ACCMODE) != O_RDONLY) {
-    BlockGuard.getThreadPolicy().onWriteToDisk();
-}
-return os.open(path, flags, mode);
-</code></pre>
-
-<p>}
-<code>
-其中**onReadFromDisk()**方法的实现，代码位于StrictMode.java中。
-</code>
-public void onReadFromDisk() {</p>
-
-<pre><code>if ((mPolicyMask &amp; DETECT_DISK_READ) == 0) {
-    return;
-}
-if (tooManyViolationsThisLoop()) {
-    return;
-}
-BlockGuard.BlockGuardPolicyException e = new StrictModeDiskReadViolation(mPolicyMask);
-e.fillInStackTrace();
-startHandlingViolationException(e);
-</code></pre>
-
-<p>}
-```</p>
-
-<h2>如何使用</h2>
-
-<p>关于StrictMode如何使用，最重要的就是如何启用严格模式。</p>
-
-<h3>放在哪里</h3>
-
-<p>严格模式的开启可以放在Application或者Activity以及其他组件的onCreate方法。为了更好地分析应用中的问题，建议放在Application的onCreate方法中。</p>
-
-<h3>简单启用</h3>
-
-<p>以下的代码启用全部的ThreadPolicy和VmPolicy违例检测
-```java
-if (IS_DEBUG &amp;&amp; Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {</p>
-
-<pre><code>StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().build());
-StrictMode.setVmPolicy(new VmPolicy.Builder().detectAll().penaltyLog().build());
-</code></pre>
-
-<p>}
-```
-严格模式需要在debug模式开启，不要在release版本中启用。</p>
-
-<p>同时，严格模式自API 9 开始引入，某些API方法也从 API 11 引入。使用时应该注意 API 级别。</p>
-
-<p>如有需要，也可以开启部分的严格模式。</p>
-
-<h3>查看结果</h3>
-
-<p>严格模式有很多种报告违例的形式，但是想要分析具体违例情况，还是需要查看日志，终端下过滤StrictMode就能得到违例的具体stacktrace信息。
-<code>bash
-adb logcat | grep StrictMode
-</code></p>
-
-<h2>解决违例</h2>
-
-<ul>
-<li>如果是主线程中出现文件读写违例，建议使用工作线程（必要时结合Handler）完成。</li>
-<li>如果是对SharedPreferences写入操作，在API 9 以上 建议优先调用apply而非commit。</li>
-<li>如果是存在未关闭的Closable对象，根据对应的stacktrace进行关闭。</li>
-<li>如果是SQLite对象泄露，根据对应的stacktrace进行释放。</li>
-</ul>
-
-
-<p>举个例子</p>
-
-<p>以主线程中的文件写入为例，引起违例警告的代码
-```java
-public void writeToExternalStorage() {</p>
-
-<pre><code>File externalStorage = Environment.getExternalStorageDirectory();
-File destFile = new File(externalStorage, "dest.txt");
-try {
-    OutputStream output = new FileOutputStream(destFile, true);
-    output.write("droidyue.com".getBytes());
-    output.flush();
-    output.close();
-} catch (FileNotFoundException e) {
-    e.printStackTrace();
-} catch (IOException e) {
-    e.printStackTrace();
-}
-</code></pre>
-
-<p>}
-<code>
-引起的警告为
-</code>bash
-D/StrictMode( 9730): StrictMode policy violation; ~duration=20 ms: android.os.StrictMode$StrictModeDiskReadViolation: policy=31 violation=2
-D/StrictMode( 9730):    at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1176)
-D/StrictMode( 9730):    at libcore.io.BlockGuardOs.open(BlockGuardOs.java:106)
-D/StrictMode( 9730):    at libcore.io.IoBridge.open(IoBridge.java:390)
-D/StrictMode( 9730):    at java.io.FileOutputStream.<init>(FileOutputStream.java:88)
-D/StrictMode( 9730):    at com.example.strictmodedemo.MainActivity.writeToExternalStorage(MainActivity.java:56)
-D/StrictMode( 9730):    at com.example.strictmodedemo.MainActivity.onCreate(MainActivity.java:30)
-D/StrictMode( 9730):    at android.app.Activity.performCreate(Activity.java:4543)
-<code>
-因为上述属于主线程中的IO违例，解决方法就是讲写入操作放入工作线程。
-</code>
-public void writeToExternalStorage() {</p>
-
-<pre><code>new Thread() {
-    @Override
-    public void run() {
-        super.run();
-        File externalStorage = Environment.getExternalStorageDirectory();
-        File destFile = new File(externalStorage, "dest.txt");
-        try {
-            OutputStream output = new FileOutputStream(destFile, true);
-            output.write("droidyue.com".getBytes());
-            output.flush();
-            output.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-}.start();
-</code></pre>
-
-<p>}
-<code>
-然而这并非完善，因为OutputStream.write方法可能抛出IOException，导致存在OutputStream对象未关闭的情况，仍然需要改进避免出现Closable对象未关闭的违例。改进如下
-</code>java
-public void writeToExternalStorage() {</p>
-
-<pre><code>new Thread() {
-    @Override
-    public void run() {
-        super.run();
-        File externalStorage = Environment.getExternalStorageDirectory();
-        File destFile = new File(externalStorage, "dest.txt");
-        OutputStream output = null;
-        try {
-            output = new FileOutputStream(destFile, true);
-            output.write("droidyue.com".getBytes());
-            output.flush();
-            output.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (null != output) {
-                try {
-                    output.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-}.start();
-</code></pre>
-
-<p>}
-```</p>
-
-<h2>检测内存泄露</h2>
-
-<p>通常情况下，检测内存泄露，我们需要使用MAT对heap dump 文件进行分析，这种操作不困难，但也不容易。使用严格模式，只需要过滤日志就能发现内存泄露。</p>
-
-<p>这里以Activity为例说明，首先我们需要开启对检测Activity泄露的违例检测。使用上面的detectAll或者detectActivityLeaks()均可。其次写一段能够产生Activity泄露的代码。
-```
-public class LeakyActivity extends Activity{</p>
-
-<pre><code>@Override
-protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    MyApplication.sLeakyActivities.add(this);
-}
-</code></pre>
-
-<p>}
-<code>
-MyApplication中关于sLeakyActivities的部分实现
-</code>java
-public class MyApplication extends Application {</p>
-
-<pre><code>public static final boolean IS_DEBUG = true;
-public static ArrayList&lt;Activity&gt; sLeakyActivities = new ArrayList&lt;Activity&gt;();
-</code></pre>
-
-<p>}
-```</p>
-
-<p>当我们反复进入LeakyActivity再退出，过滤StrictMode就会得到这样的日志
-<code>bash
-E/StrictMode( 2622): class com.example.strictmodedemo.LeakyActivity; instances=2; limit=1
-E/StrictMode( 2622): android.os.StrictMode$InstanceCountViolation: class com.example.strictmodedemo.LeakyActivity; instances=2; limit=1
-E/StrictMode( 2622):    at android.os.StrictMode.setClassInstanceLimit(StrictMode.java:1)
-</code>
-分析日志，LeakyActivity本应该是只存在一份实例，但现在出现了2个，说明LeakyActivity发生了内存泄露。</p>
-
-<p>严格模式除了可以检测Activity的内存泄露之外，还能自定义检测类的实例泄露。从API 11 开始，系统提供的这个方法可以实现我们的需求。
-<code>
-public StrictMode.VmPolicy.Builder setClassInstanceLimit (Class klass, int instanceLimit)
-</code>
-举个栗子，比如一个浏览器中只允许存在一个SearchBox实例，我们就可以这样设置已检测SearchBox实例的泄露
-<code>
-StrictMode.setVmPolicy(new VmPolicy.Builder().setClassInstanceLimit(SearchBox.class, 1).penaltyLog().build());
-</code></p>
-
-<h2>noteSlowCall</h2>
-
-<p>StrictMode从 API 11开始允许开发者自定义一些耗时调用违例，这种自定义适用于自定义的任务执行类中，比如我们有一个进行任务处理的类，为TaskExecutor。
-```
-public class TaskExecutor {</p>
-
-<pre><code>public void execute(Runnable task) {
-    task.run();
-}
-</code></pre>
-
-<p>}
-<code>
-先需要跟踪每个任务的耗时情况，如果大于500毫秒需要提示给开发者，noteSlowCall就可以实现这个功能，如下修改代码
-</code>java
-public class TaskExecutor {</p>
-
-<pre><code>private static long SLOW_CALL_THRESHOLD = 500;
-public void executeTask(Runnable task) {
-    long startTime = SystemClock.uptimeMillis();
-    task.run();
-    long cost = SystemClock.uptimeMillis() - startTime;
-    if (cost &gt; SLOW_CALL_THRESHOLD) {
-        StrictMode.noteSlowCall("slowCall cost=" + cost);
-    }
-}
-</code></pre>
-
-<p>}
-<code>
-执行一个耗时2000毫秒的任务
-</code>bash
-TaskExecutor executor = new TaskExecutor();
-executor.executeTask(new Runnable() {</p>
-
-<pre><code>@Override
-public void run() {
-    try {
-        Thread.sleep(2000);
-    } catch (InterruptedException e) {
-        e.printStackTrace();
-    }
-}
-</code></pre>
-
-<p>});
-<code>
-得到的违例日志，注意其中`~duration=20 ms`并非耗时任务的执行时间，而我们的自定义信息`msg=slowCall cost=2000`才包含了真正的耗时。
-</code>bash
-D/StrictMode(23890): StrictMode policy violation; ~duration=20 ms: android.os.StrictMode$StrictModeCustomViolation: policy=31 violation=8 msg=slowCall cost=2000
-D/StrictMode(23890):    at android.os.StrictMode$AndroidBlockGuardPolicy.onCustomSlowCall(StrictMode.java:1163)
-D/StrictMode(23890):    at android.os.StrictMode.noteSlowCall(StrictMode.java:1974)
-D/StrictMode(23890):    at com.example.strictmodedemo.TaskExecutor.executeTask(TaskExecutor.java:17)
-D/StrictMode(23890):    at com.example.strictmodedemo.MainActivity.onCreate(MainActivity.java:36)
-D/StrictMode(23890):    at android.app.Activity.performCreate(Activity.java:4543)
-D/StrictMode(23890):    at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1071)
-D/StrictMode(23890):    at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2158)
-D/StrictMode(23890):    at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:2237)
-D/StrictMode(23890):    at android.app.ActivityThread.access$600(ActivityThread.java:139)
-D/StrictMode(23890):    at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1262)
-D/StrictMode(23890):    at android.os.Handler.dispatchMessage(Handler.java:99)
-D/StrictMode(23890):    at android.os.Looper.loop(Looper.java:156)
-D/StrictMode(23890):    at android.app.ActivityThread.main(ActivityThread.java:5005)
-D/StrictMode(23890):    at java.lang.reflect.Method.invokeNative(Native Method)
-D/StrictMode(23890):    at java.lang.reflect.Method.invoke(Method.java:511)
-D/StrictMode(23890):    at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:784)
-D/StrictMode(23890):    at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:551)
-D/StrictMode(23890):    at dalvik.system.NativeStart.main(Native Method)
-```</p>
-
-<h2>其他技巧</h2>
-
-<p>除了通过日志查看之外，我们也可以在开发者选项中开启严格模式，开启之后，如果主线程中有执行时间长的操作，屏幕则会闪烁，这是一个更加直接的方法。</p>
-
-<p>{% img  <a href="http://7jpolu.com1.z0.glb.clouddn.com/strictmode_developer_tools.png">http://7jpolu.com1.z0.glb.clouddn.com/strictmode_developer_tools.png</a> %}</p>
-
-<h2>问题来了</h2>
-
-<h3>日志的时间靠谱么</h3>
-
-<p>在下面的过滤日志中，我们看到下面的一个IO操作要消耗31毫秒，这是真的么<br/>
-<code>bash
-D/StrictMode( 2921): StrictMode policy violation; ~duration=31 ms: android.os.StrictMode$StrictModeDiskReadViolation: policy=31 violation=2
-D/StrictMode( 2921):    at android.os.StrictMode$AndroidBlockGuardPolicy.onReadFromDisk(StrictMode.java:1176)
-D/StrictMode( 2921):    at libcore.io.BlockGuardOs.read(BlockGuardOs.java:148)
-D/StrictMode( 2921):    at libcore.io.IoBridge.read(IoBridge.java:422)
-D/StrictMode( 2921):    at java.io.FileInputStream.read(FileInputStream.java:179)
-D/StrictMode( 2921):    at java.io.InputStreamReader.read(InputStreamReader.java:244)
-D/StrictMode( 2921):    at java.io.BufferedReader.fillBuf(BufferedReader.java:130)
-D/StrictMode( 2921):    at java.io.BufferedReader.readLine(BufferedReader.java:354)
-D/StrictMode( 2921):    at com.example.strictmodedemo.MainActivity.testReadContentOfFile(MainActivity.java:65)
-D/StrictMode( 2921):    at com.example.strictmodedemo.MainActivity.onCreate(MainActivity.java:28)
-D/StrictMode( 2921):    at android.app.Activity.performCreate(Activity.java:4543)
-</code></p>
-
-<p>从上面的stacktrace可以看出testReadContentOfFile方法中包含了文件读取IO操作，至于是否为31毫秒，我们可以利用秒表的原理计算一下，即在方法调用的地方如下记录
-<code>java
-long startTime = System.currentTimeMillis();
-testReadContentOfFile();
-long cost = System.currentTimeMillis() - startTime;
-Log.d(LOGTAG, "cost = " + cost);
-</code>
-得到的日志中上述操作耗时9毫秒，非31毫秒。
-<code>bash
-D/MainActivity(20996): cost = 9
-</code>
-注：通常情况下StrictMode给出的耗时相对实际情况偏高，并不是真正的耗时数据。</p>
-
-<h2>注意</h2>
-
-<ul>
-<li>在线上环境即Release版本不建议开启严格模式。</li>
-<li>严格模式无法监控JNI中的磁盘IO和网络请求。</li>
-<li>应用中并非需要解决全部的违例情况，比如有些IO操作必须在主线程中进行。</li>
-</ul>
-
-
-<p>{% include post/book_copyright.html %}</p>
 ]]></content>
   </entry>
   
