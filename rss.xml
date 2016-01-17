@@ -6,11 +6,509 @@
   <title>技术小黑屋</title>
   <!-- source: http://droidyue.com/atom.xml -->
   <link>http://droidyue.com/</link>
-  <pubDate>Sun, 17 Jan 2016 03:37:03 GMT</pubDate>
+  <pubDate>Sun, 17 Jan 2016 13:00:29 GMT</pubDate>
   
   
   
 
+  
+  <item><description>&lt;p&gt;Android 6.0，代号棉花糖，自发布伊始，其主要的特征运行时权限就很受关注。因为这一特征不仅改善了用户对于应用的使用体验，还使得应用开发者在实践开发中需要做出改变。&lt;/p&gt;
+
+&lt;p&gt;没有深入了解运行时权限的开发者通常会有很多疑问，比如什么是运行时权限，哪些是运行时的权限，我的应用是不是会在6.0系统上各种崩溃呢，如何才能支持运行时权限机制呢。本文讲尝试回答这一些问题，希望读者阅读完成之后，都能找到较为完美的答案。&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+
+&lt;h2&gt;权限一刀切&lt;/h2&gt;
+
+&lt;p&gt;在6.0以前的系统，都是权限一刀切的处理方式，&lt;strong&gt;只要用户安装，Manifest申请的权限都会被赋予，并且安装后权限也撤销不了&lt;/strong&gt;。&lt;br/&gt;
+这种情况下，当我们从Google Play安装一个应用，在安装之前会得到这样的权限提示信息。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://7jpolu.com1.z0.glb.clouddn.com/pre-marshmallow-permission.jpg" alt="Permission" /&gt;&lt;/p&gt;
+
+&lt;p&gt;当上述对话框弹出后，用户只有两种选择：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;我信任你，即使有敏感权限&lt;/li&gt;
+&lt;li&gt;你一个**应用，要这个权限干嘛，我还是不安装了。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;所以，这种一刀切的处理方式还是有弊端的，我们没有办法只允许某些权限或者拒绝某些权限。&lt;/p&gt;
+
+&lt;h2&gt;棉花糖运行时权限&lt;/h2&gt;
+
+&lt;p&gt;从棉花糖开始，Android系统引入了新的权限机制，即本文要讲的运行时权限。&lt;/p&gt;
+
+&lt;p&gt;何为运行时权限呢？举个栗子，以某个需要拍照的应用为例，当运行时权限生效时，其Camera权限不是在安装后赋予，而是在应用运行的时候进行请求权限（比如当用户按下”相机拍照“按钮后）看到的效果则是这样的&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://7jpolu.com1.z0.glb.clouddn.com/marshmallow-permission.png" alt="Requesting Camera Permission" /&gt;&lt;/p&gt;
+
+&lt;p&gt;接下来，对于Camera权限的处理完全权交给用户。是不是有点像苹果系统的处理呢，不要说这是抄袭，暂且称为师夷长技以制夷。&lt;/p&gt;
+
+&lt;h2&gt;权限的分组&lt;/h2&gt;
+
+&lt;p&gt;Android中有很多权限，但并非所有的权限都是敏感权限，于是6.0系统就对权限进行了分类，一般为下述几类&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;正常(Normal Protection)权限&lt;/li&gt;
+&lt;li&gt;危险(Dangerous)权限&lt;/li&gt;
+&lt;li&gt;特殊(Particular)权限&lt;/li&gt;
+&lt;li&gt;其他权限（一般很少用到）&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;正常权限&lt;/h2&gt;
+
+&lt;p&gt;正常权限具有如下的几个特点&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;对用户隐私没有较大影响或者不会打来安全问题。&lt;/li&gt;
+&lt;li&gt;安装后就赋予这些权限，&lt;strong&gt;不需要显示提醒用户，用户也不能取消这些权限&lt;/strong&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;正常权限列表&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;span class='line-number'&gt;15&lt;/span&gt;
+&lt;span class='line-number'&gt;16&lt;/span&gt;
+&lt;span class='line-number'&gt;17&lt;/span&gt;
+&lt;span class='line-number'&gt;18&lt;/span&gt;
+&lt;span class='line-number'&gt;19&lt;/span&gt;
+&lt;span class='line-number'&gt;20&lt;/span&gt;
+&lt;span class='line-number'&gt;21&lt;/span&gt;
+&lt;span class='line-number'&gt;22&lt;/span&gt;
+&lt;span class='line-number'&gt;23&lt;/span&gt;
+&lt;span class='line-number'&gt;24&lt;/span&gt;
+&lt;span class='line-number'&gt;25&lt;/span&gt;
+&lt;span class='line-number'&gt;26&lt;/span&gt;
+&lt;span class='line-number'&gt;27&lt;/span&gt;
+&lt;span class='line-number'&gt;28&lt;/span&gt;
+&lt;span class='line-number'&gt;29&lt;/span&gt;
+&lt;span class='line-number'&gt;30&lt;/span&gt;
+&lt;span class='line-number'&gt;31&lt;/span&gt;
+&lt;span class='line-number'&gt;32&lt;/span&gt;
+&lt;span class='line-number'&gt;33&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;ACCESS_LOCATION_EXTRA_COMMANDS&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;ACCESS_NETWORK_STATE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;ACCESS_NOTIFICATION_POLICY&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;ACCESS_WIFI_STATE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;BLUETOOTH&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;BLUETOOTH_ADMIN&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;BROADCAST_STICKY&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;CHANGE_NETWORK_STATE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;CHANGE_WIFI_MULTICAST_STATE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;CHANGE_WIFI_STATE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;DISABLE_KEYGUARD&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;EXPAND_STATUS_BAR&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;GET_PACKAGE_SIZE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;INTERNET&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;KILL_BACKGROUND_PROCESSES&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;MODIFY_AUDIO_SETTINGS&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;NFC&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;READ_SYNC_SETTINGS&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;READ_SYNC_STATS&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;RECEIVE_BOOT_COMPLETED&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;REORDER_TASKS&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;REQUEST_INSTALL_PACKAGES&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;SET_TIME_ZONE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;SET_WALLPAPER&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;SET_WALLPAPER_HINTS&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;TRANSMIT_IR&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;USE_FINGERPRINT&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;VIBRATE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;WAKE_LOCK&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;WRITE_SYNC_SETTINGS&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;SET_ALARM&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;INSTALL_SHORTCUT&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;UNINSTALL_SHORTCUT&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上述的权限基本设计的是关于网络，蓝牙，时区，快捷方式等方面，只要在Manifest指定了这些权限，就会被授予，并且不能撤销。&lt;/p&gt;
+
+&lt;h2&gt;特殊权限&lt;/h2&gt;
+
+&lt;p&gt;这里讲特殊权限提前讲一下，因为这个相对来说简单一些。&lt;/p&gt;
+
+&lt;p&gt;特殊权限，顾名思义，就是一些特别敏感的权限，在Android系统中，主要由两个&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;SYSTEM_ALERT_WINDOW，设置悬浮窗，进行一些黑科技&lt;/li&gt;
+&lt;li&gt;WRITE_SETTINGS  修改系统设置&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;关于上面两个特殊权限的授权，做法是使用&lt;code&gt;startActivityForResult&lt;/code&gt;启动授权界面来完成。&lt;/p&gt;
+
+&lt;h3&gt;请求SYSTEM_ALERT_WINDOW&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;span class='line-number'&gt;15&lt;/span&gt;
+&lt;span class='line-number'&gt;16&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;REQUEST_CODE&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt;  &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;requestAlertWindowPermission&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;Intent&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Settings&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;ACTION_MANAGE_OVERLAY_PERMISSION&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;setData&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Uri&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;parse&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;package:&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;getPackageName&lt;/span&gt;&lt;span class="o"&gt;()));&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;startActivityForResult&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;REQUEST_CODE&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="nd"&gt;@Override&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;protected&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onActivityResult&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;requestCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;resultCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;super&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;onActivityResult&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;requestCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;resultCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;requestCode&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;REQUEST_CODE&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Settings&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;canDrawOverlays&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;          &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;onActivityResult granted&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上述代码需要注意的是&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;使用Action &lt;code&gt;Settings.ACTION_MANAGE_OVERLAY_PERMISSION&lt;/code&gt;启动隐式Intent&lt;/li&gt;
+&lt;li&gt;使用&lt;code&gt;"package:" + getPackageName()&lt;/code&gt;携带App的包名信息&lt;/li&gt;
+&lt;li&gt;使用&lt;code&gt;Settings.canDrawOverlays&lt;/code&gt;方法判断授权结果&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;请求WRITE_SETTINGS&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;span class='line-number'&gt;15&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;REQUEST_CODE_WRITE_SETTINGS&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;requestWriteSettings&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="n"&gt;intent&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;Intent&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Settings&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;ACTION_MANAGE_WRITE_SETTINGS&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;setData&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Uri&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;parse&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;package:&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;getPackageName&lt;/span&gt;&lt;span class="o"&gt;()));&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;startActivityForResult&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;intent&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;REQUEST_CODE_WRITE_SETTINGS&lt;/span&gt; &lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="nd"&gt;@Override&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;protected&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onActivityResult&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;requestCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;resultCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Intent&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;super&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;onActivityResult&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;requestCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;resultCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;requestCode&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;REQUEST_CODE_WRITE_SETTINGS&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Settings&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;System&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;canWrite&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;            &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;onActivityResult write settings granted&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;上述代码需要注意的是&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;使用Action &lt;code&gt;Settings.ACTION_MANAGE_WRITE_SETTINGS&lt;/code&gt; 启动隐式Intent&lt;/li&gt;
+&lt;li&gt;使用&lt;code&gt;"package:" + getPackageName()&lt;/code&gt;携带App的包名信息&lt;/li&gt;
+&lt;li&gt;使用&lt;code&gt;Settings.System.canWrite&lt;/code&gt;方法检测授权结果&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;注意：关于这两个特殊权限，一般不建议应用申请。&lt;/p&gt;
+
+&lt;h2&gt;危险权限&lt;/h2&gt;
+
+&lt;p&gt;危险权限实际上才是运行时权限主要处理的对象，这些权限可能引起隐私问题或者影响其他程序运行。Android中的危险权限可以归为以下几个分组：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;CALENDAR&lt;/li&gt;
+&lt;li&gt;CAMERA&lt;/li&gt;
+&lt;li&gt;CONTACTS&lt;/li&gt;
+&lt;li&gt;LOCATION&lt;/li&gt;
+&lt;li&gt;MICROPHONE&lt;/li&gt;
+&lt;li&gt;PHONE&lt;/li&gt;
+&lt;li&gt;SENSORS&lt;/li&gt;
+&lt;li&gt;SMS&lt;/li&gt;
+&lt;li&gt;STORAGE&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;各个权限分组与其具体的权限，可以参考下图：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://ww4.sinaimg.cn/large/6a195423jw1ezwpc11cs0j20hr0majwm.jpg" alt="Permission Groups and detailed permissions" /&gt;&lt;/p&gt;
+
+&lt;h2&gt;必须要支持运行时权限么&lt;/h2&gt;
+
+&lt;p&gt;目前应用实际上是可以不需要支持运行时权限的，但是最终肯定还是需要支持的，只是时间问题而已。&lt;/p&gt;
+
+&lt;p&gt;想要不支持运行时权限机制很简单，只需要将&lt;code&gt;targetSdkVersion&lt;/code&gt;设置低于23就可以了，意思是告诉系统，我还没有完全在API 23（6.0）上完全搞定，不要给我启动新的特性。&lt;/p&gt;
+
+&lt;h2&gt;不支持运行时权限会崩溃么&lt;/h2&gt;
+
+&lt;p&gt;可能会，但不是那种一上来就噼里啪啦崩溃不断的那种。&lt;/p&gt;
+
+&lt;p&gt;如果你的应用将&lt;code&gt;targetSdkVersion&lt;/code&gt;设置低于23，那么在6.0的系统上不会为这个应用开启运行时权限机制，即按照以前的一刀切方式处理。&lt;/p&gt;
+
+&lt;h3&gt;然而有点糟糕的是&lt;/h3&gt;
+
+&lt;p&gt;6.0系统提供了一个应用权限管理界面，界面长得是这样的&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://ww2.sinaimg.cn/large/6a195423jw1ezwqnmjhcdj20u01hc40k.jpg" width="300"&gt;&lt;/p&gt;
+
+&lt;p&gt;既然是可以管理，用户就能取消权限，当一个不支持运行时权限的应用某项权限被取消时&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://ww4.sinaimg.cn/large/6a195423jw1ezwqaftmpgj20u01hc77e.jpg" width="300"&gt;&lt;/p&gt;
+
+&lt;p&gt;系统会弹出一个对话框提醒撤销的危害，如果用户执意撤销，会带来如下的反应&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;如果你的程序正在运行，则会被杀掉。&lt;/li&gt;
+&lt;li&gt;当你的应用再次运行时，可能出现崩溃&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;为什么会可能崩溃的，比如下面这段代码&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;TelephonyManager&lt;/span&gt; &lt;span class="n"&gt;telephonyManager&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;TelephonyManager&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="n"&gt;getSystemService&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Context&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;TELEPHONY_SERVICE&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;String&lt;/span&gt; &lt;span class="n"&gt;deviceId&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;telephonyManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getDeviceId&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;deviceId&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;equals&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;mLastDeviceId&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;&lt;span class="c1"&gt;//This may cause NPE&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="c1"&gt;//do something&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;如果用户撤消了获取DeviceId的权限，那么再次运行时,deviceId就是null，如果程序后续处理不当，就会出现崩溃。&lt;/p&gt;
+
+&lt;h2&gt;该来的还得来&lt;/h2&gt;
+
+&lt;p&gt;6.0的运行时权限，我们最终都是要支持的，通常我们需要使用如下的API&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;int checkSelfPermission(String permission)&lt;/strong&gt; 用来检测应用是否已经具有权限&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;void requestPermissions(String[] permissions, int requestCode)&lt;/strong&gt;  进行请求单个或多个权限&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)&lt;/strong&gt; 用户对请求作出响应后的回调&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;以一个请求Camera权限为例&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;span class='line-number'&gt;9&lt;/span&gt;
+&lt;span class='line-number'&gt;10&lt;/span&gt;
+&lt;span class='line-number'&gt;11&lt;/span&gt;
+&lt;span class='line-number'&gt;12&lt;/span&gt;
+&lt;span class='line-number'&gt;13&lt;/span&gt;
+&lt;span class='line-number'&gt;14&lt;/span&gt;
+&lt;span class='line-number'&gt;15&lt;/span&gt;
+&lt;span class='line-number'&gt;16&lt;/span&gt;
+&lt;span class='line-number'&gt;17&lt;/span&gt;
+&lt;span class='line-number'&gt;18&lt;/span&gt;
+&lt;span class='line-number'&gt;19&lt;/span&gt;
+&lt;span class='line-number'&gt;20&lt;/span&gt;
+&lt;span class='line-number'&gt;21&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="nd"&gt;@Override&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onClick&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;View&lt;/span&gt; &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(!(&lt;/span&gt;&lt;span class="n"&gt;checkSelfPermission&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Manifest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;permission&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;CAMERA&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;PackageManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;PERMISSION_GRANTED&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;requestCameraPermission&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;REQUEST_PERMISSION_CAMERA_CODE&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;requestCameraPermission&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;requestPermissions&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]{&lt;/span&gt;&lt;span class="n"&gt;Manifest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;permission&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;CAMERA&lt;/span&gt;&lt;span class="o"&gt;},&lt;/span&gt; &lt;span class="n"&gt;REQUEST_PERMISSION_CAMERA_CODE&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="nd"&gt;@Override&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onRequestPermissionsResult&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;requestCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;permissions&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;grantResults&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;super&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;onRequestPermissionsResult&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;requestCode&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;permissions&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;grantResults&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;requestCode&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;REQUEST_PERMISSION_CAMERA_CODE&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;grantResult&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;grantResults&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="o"&gt;];&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="kt"&gt;boolean&lt;/span&gt; &lt;span class="n"&gt;granted&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;grantResult&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;PackageManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;PERMISSION_GRANTED&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;onRequestPermissionsResult granted=&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;granted&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;通常情况下，我们会得到这样的一个对话框&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://ww1.sinaimg.cn/large/6a195423jw1ezwtttfjp1j20u01hc0vr.jpg" width="300"&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;当用户选择允许，我们就可以在onRequestPermissionsResult方法中进行响应的处理，比如打开摄像头&lt;/strong&gt;&lt;br/&gt;
+&lt;strong&gt;当用户拒绝，你的应用可能就开始危险了&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;当我们再次尝试申请权限时，弹出的对话框和之前有点不一样了，主要表现为多了一个checkbox。如下图&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="http://ww1.sinaimg.cn/large/6a195423jw1ezwtz1ljjgj20u01hcad8.jpg" width="300"&gt;&lt;/p&gt;
+
+&lt;p&gt;当用户勾选了”不再询问“拒绝后，你的程序基本这个权限就Game Over了。&lt;/p&gt;
+
+&lt;p&gt;不过，你还有一丝希望，那就是再出现上述的对话框之前做一些说明信息，比如你使用这个权限的目的（一定要坦白）。&lt;/p&gt;
+
+&lt;p&gt;shouldShowRequestPermissionRationale这个API可以帮我们判断接下来的对话框是否包含”不再询问“选择框。&lt;/p&gt;
+
+&lt;h3&gt;一个标准的流程&lt;/h3&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;span class='line-number'&gt;6&lt;/span&gt;
+&lt;span class='line-number'&gt;7&lt;/span&gt;
+&lt;span class='line-number'&gt;8&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(!(&lt;/span&gt;&lt;span class="n"&gt;checkSelfPermission&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Manifest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;permission&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;READ_CONTACTS&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;PackageManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;PERMISSION_GRANTED&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;shouldShowRequestPermissionRationale&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Manifest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;permission&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;READ_CONTACTS&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;      &lt;span class="n"&gt;Toast&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;makeText&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;Please grant the permission this time&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Toast&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;LENGTH_LONG&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;show&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;requestReadContactsPermission&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt; &lt;span class="k"&gt;else&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;i&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;onClick granted&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h3&gt;如何批量申请&lt;/h3&gt;
+
+&lt;p&gt;批量申请权限很简单，只需要字符串数组放置多个权限即可。如请求代码&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kd"&gt;static&lt;/span&gt; &lt;span class="kd"&gt;final&lt;/span&gt; &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;REQUEST_CODE&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;requestMultiplePermissions&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;String&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;permissions&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;&lt;span class="n"&gt;Manifest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;permission&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;WRITE_EXTERNAL_STORAGE&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;Manifest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;permission&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;READ_PHONE_STATE&lt;/span&gt;&lt;span class="o"&gt;};&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;requestPermissions&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;permissions&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;REQUEST_CODE&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;p&gt;对应的界面效果是
+&lt;img src="http://ww2.sinaimg.cn/large/6a195423jw1ezxulzbeu2j20iq0ggt9y.jpg" alt="Multiple Requesting Permissions" /&gt;&lt;/p&gt;
+
+&lt;p&gt;注意：间隔较短的多个权限申请建议设置成单次多个权限申请形式，避免弹出多个对话框，造成不太好的视觉效果。&lt;/p&gt;
+
+&lt;h3&gt;申请这么多权限岂不是很累&lt;/h3&gt;
+
+&lt;p&gt;其实你不需要每个权限都去显式申请，举一个例子，如果你的应用授权了读取联系人的权限，那么你的应用也是被赋予了写入联系人的权限。因为读取联系人和写入联系人这两个权限都属于联系人权限分组，所以一旦组内某个权限被允许，该组的其他权限也是被允许的。&lt;/p&gt;
+
+&lt;h2&gt;注意事项&lt;/h2&gt;
+
+&lt;h3&gt;API问题&lt;/h3&gt;
+
+&lt;p&gt;由于checkSelfPermission和requestPermissions从API 23才加入，低于23版本，需要在运行时判断 或者使用Support Library v4中提供的方法&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;ContextCompat.checkSelfPermission&lt;/li&gt;
+&lt;li&gt;ActivityCompat.requestPermissions&lt;/li&gt;
+&lt;li&gt;ActivityCompat.shouldShowRequestPermissionRationale&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h3&gt;多系统问题&lt;/h3&gt;
+
+&lt;p&gt;当我们支持了6.0必须也要支持4.4，5.0这些系统，所以需要在很多情况下，需要有两套处理。比如Camera权限&lt;/p&gt;
+
+&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
+&lt;span class='line-number'&gt;2&lt;/span&gt;
+&lt;span class='line-number'&gt;3&lt;/span&gt;
+&lt;span class='line-number'&gt;4&lt;/span&gt;
+&lt;span class='line-number'&gt;5&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;isMarshmallow&lt;/span&gt;&lt;span class="o"&gt;())&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;requestPermission&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;&lt;span class="c1"&gt;//然后在回调中处理&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt; &lt;span class="k"&gt;else&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;useCamera&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;&lt;span class="c1"&gt;//低于6.0直接使用Camera&lt;/span&gt;
+&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
+
+
+&lt;h2&gt;两个权限&lt;/h2&gt;
+
+&lt;p&gt;运行时权限对于应用影响比较大的权限有两个，他们分别是&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;READ_PHONE_STATE&lt;/li&gt;
+&lt;li&gt;WRITE_EXTERNAL_STORAGE/READ_EXTERNAL_STORAGE&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;其中READ_PHONE_STATE用来获取deviceID，即IMEI号码。这是很多统计依赖计算设备唯一ID的参考。如果新的权限导致读取不到，避免导致统计的异常。建议在完全支持运行时权限之前，将对应的值写入到App本地数据中，对于新安装的，可以采取其他策略减少对统计的影响。&lt;/p&gt;
+
+&lt;p&gt;WRITE_EXTERNAL_STORAGE/READ_EXTERNAL_STORAGE这两个权限和外置存储（即sdcard）有关，对于下载相关的应用这一点还是比较重要的，我们应该尽可能的说明和引导用户授予该权限。&lt;/p&gt;
+
+&lt;h2&gt;些许建议&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;不要使用多余的权限，新增权限时要慎重&lt;/li&gt;
+&lt;li&gt;使用Intent来替代某些权限，如拨打电话（和你的产品经理PK去吧）&lt;/li&gt;
+&lt;li&gt;对于使用权限获取的某些值，比如deviceId，尽量本地存储，下次访问直接使用本地的数据值&lt;/li&gt;
+&lt;li&gt;注意，由于用户可以撤销某些权限，所以不要使用应用本地的标志位来记录是否获取到某权限。&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;h2&gt;注意&lt;/h2&gt;
+
+&lt;p&gt;即使支持了运行时权限，也要在Manifest声明，因为市场应用会根据这个信息和硬件设备进行匹配，决定你的应用是否在该设备上显示。&lt;/p&gt;
+
+&lt;h2&gt;是否支持运行时权限&lt;/h2&gt;
+
+&lt;p&gt;个人觉得Marshmallow的运行时权限对于用户来说绝对是一个好东西，但是目前想要支持需要做的事情还是比较多的。&lt;/p&gt;
+
+&lt;p&gt;对于一个有很多依赖的宿主应用，想要做到支持还是有一些工作量的，因为你的权限申请受制于依赖。&lt;/p&gt;
+
+&lt;p&gt;建议在短期内暂时可以不考虑支持该运行时权限机制,等时机成熟或者简单易用的第三方库完善之后再支持也未尝不可。&lt;/p&gt;
+</description>
+    <title>聊一聊Android 6.0的运行时权限</title>
+    <link>http://droidyue.com/blog/2016/01/17/understanding-marshmallow-runtime-permission/</link>
+    <pubDate>Sun, 17 Jan 2016 12:40:00 GMT</pubDate>
+    <guid isPermaLink="false">http://droidyue.com/blog/2016/01/17/understanding-marshmallow-runtime-permission</guid>
+    
+  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
   <item><description>&lt;p&gt;最近遇到了一个问题，关于Navigation Bar遮挡PopupWindow的问题，问题不难，粗略做一点总结。&lt;/p&gt;
 
@@ -3997,222 +4495,6 @@ cpu.rt_runtime_us用来设置cgroup中的任务可以最长获得CPU资源的时
     <link>http://droidyue.com/blog/2015/08/08/funny-programmer-season-one/</link>
     <pubDate>Sat, 08 Aug 2015 11:23:00 GMT</pubDate>
     <guid isPermaLink="false">http://droidyue.com/blog/2015/08/08/funny-programmer-season-one</guid>
-    
-  <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
-  
-  <item><description>&lt;p&gt;在日常的Android开发中，我们必然遇到过OutOfMemoryError这样的崩溃，产生的原因无外乎两点，一是内存过小不够用，二是程序设计有误，导致不能释放内存，其中后者情况较多。在解决这个问题时，我们亦或多或少听到android:largeHeap，然而这个概念又是什么呢，它该如何使用，存在哪些问题呢。本文讲比较全面介绍Android中的largeHeap帮助各位全面深入了解这个概念。&lt;/p&gt;
-
-&lt;!--more--&gt;
-
-
-&lt;h2&gt;磨刀不误砍柴工&lt;/h2&gt;
-
-&lt;p&gt;为了便于理解，先简单介绍一些和文章相关的基础概念。&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;通常，一个Android程序在运行时会启动一个Dalvik虚拟机（暂不讨论ART模式）&lt;/li&gt;
-&lt;li&gt;虚拟机的运行时内存一般由堆和栈两大部分构成。&lt;/li&gt;
-&lt;li&gt;栈是存储方法调用的一片内存数据区。&lt;/li&gt;
-&lt;li&gt;堆内存占据了虚拟机的大部分内存空间，程序执行时产生的对象就分配在堆内存上。&lt;/li&gt;
-&lt;li&gt;如果是堆内存没有可用的空间存储生成的对象，JVM会抛出java.lang.OutOfMemoryError。&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;如若具体了解堆和栈，请参考文章&lt;a href="http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/"&gt;Java中的堆和栈的区别&lt;/a&gt;和&lt;a href="http://droidyue.com/blog/2014/12/21/java-runtime-data-areas/"&gt;JVM运行时的数据区&lt;/a&gt;&lt;/p&gt;
-
-&lt;h2&gt;largeHeap介绍&lt;/h2&gt;
-
-&lt;p&gt;一个应用如果使用了largeHeap，会请求系统为Dalvik虚拟机分配更大的内存空间。使用起来也很方便，只需在manifest文件application节点加入&lt;strong&gt;android:largeHeap=&amp;ldquo;true&amp;rdquo;&lt;/strong&gt;即可。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='xml'&gt;&lt;span class='line'&gt;&lt;span class="nt"&gt;&amp;lt;application&lt;/span&gt; &lt;span class="na"&gt;android:icon=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;@drawable/icon&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="na"&gt;android:allowBackup=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;false&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="na"&gt;android:label=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;@string/app_name&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="na"&gt;android:debuggable=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;true&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;  &lt;span class="na"&gt;android:theme=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;@android:style/Theme.Black&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="na"&gt;android:largeHeap=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;true&amp;quot;&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="nt"&gt;&amp;gt;&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;h2&gt;largeHeap有多大&lt;/h2&gt;
-
-&lt;p&gt;在Android中，有如下两个方法可以帮助我们查看当前内存大小&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;ActivityManager.getMemoryClass()获得内用正常情况下内存的大小&lt;/li&gt;
-&lt;li&gt;ActivityManager.getLargeMemoryClass()可以获得开启largeHeap最大的内存大小&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;然而largeHeap这个最大值是如何决定的呢？想要了解这个问题，我们就需要看一下Android系统中的一个文件。&lt;/p&gt;
-
-&lt;p&gt;这个文件路径是&lt;code&gt;/system/build.prop&lt;/code&gt;，由于文件比较大，这里我们只截取关于dalvik内存的配置信息，如下。&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;dalvik&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;vm&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;heapstartsize&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;dalvik&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;vm&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;heapgrowthlimit&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;192&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;dalvik&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;vm&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;heapsize&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;512&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;dalvik&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;vm&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;heaptargetutilization&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mf"&gt;0.75&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;dalvik&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;vm&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;heapminfree&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;&lt;span class="n"&gt;dalvik&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;vm&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;heapmaxfree&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;p&gt;上面有诸多配置，但从字面意思也不难理解，为了正确理解，有必要逐一解释一下。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;dalvik.vm.heapstartsize=8m&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;相当于虚拟机的 -Xms配置，该项用来设置堆内存的初始大小。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;dalvik.vm.heapgrowthlimit=192m&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;相当于虚拟机的 -XX:HeapGrowthLimit配置，该项用来设置一个标准的应用的最大堆内存大小。一个标准的应用就是没有使用android:largeHeap的应用。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;dalvik.vm.heapsize=512m&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;相当于虚拟机的 -Xmx配置，该项设置了使用android:largeHeap的应用的最大堆内存大小。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;dalvik.vm.heaptargetutilization=0.75&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;相当于虚拟机的 -XX:HeapTargetUtilization,该项用来设置当前理想的堆内存利用率。其取值位于0与1之间。当GC进行完垃圾回收之后，Dalvik的堆内存会进行相应的调整，通常结果是当前存活的对象的大小与堆内存大小做除法，得到的值为这个选项的设置，即这里的0.75。注意，这只是一个参考值，&lt;a href="http://grepcode.com/file/repo1.maven.org/maven2/org.robovm/robovm-rt/1.0.0/dalvik/system/VMRuntime.java#VMRuntime.setTargetHeapUtilization%28float%29"&gt;Dalvik虚拟机也可以忽略此设置&lt;/a&gt;。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;dalvik.vm.heapminfree=2m&lt;/strong&gt;与&lt;strong&gt;dalvik.vm.heapmaxfree=8m&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;dalvik.vm.heapminfree对应的是-XX:HeapMinFree配置，用来设置单次堆内存调整的最小值。&lt;strong&gt;dalvik.vm.heapmaxfree&lt;/strong&gt;对应的是-XX:HeapMaxFree配置，用来设置单次堆内存调整的最大值。通常情况下，还需要结合上面的 -XX:HeapTargetUtilization的值，才能确定内存调整时，需要调整的大小。&lt;/p&gt;
-
-&lt;h2&gt;largeHeap需要权限么&lt;/h2&gt;
-
-&lt;p&gt;为何有此疑问呢？ 原因是这样的。 首先一个设备的内存是固定的，当我们使用了largeHeap之后就可以使我们的程序内存增加，但这部分增加的内存有可能是源自被系统杀掉的后台程序。所以，使用largeHeap理论上是有可能杀掉其他的程序的。&lt;/p&gt;
-
-&lt;p&gt;然而，结果就是不需要权限，Google在一开始就是这样，只需要简单在Application元素上加入android:largeHeap=&amp;ldquo;true&amp;#8221;就能正常使用。&lt;/p&gt;
-
-&lt;h2&gt;largeHeap对GC的影响&lt;/h2&gt;
-
-&lt;p&gt;拥有了更多的内存，是不是就意味着要花更多的时间遍历对象垃圾回收呢？其实不然。&lt;/p&gt;
-
-&lt;p&gt;首先largeHeap自Android 4.0开始支持，而并发的垃圾回收方式从Android 2.3开始引入。&lt;/p&gt;
-
-&lt;p&gt;在引入并发垃圾回收之前，系统采用了Stop-the-World回收方式，进行一次垃圾回收通常消耗几百毫秒，这是很影响交互和响应的。&lt;/p&gt;
-
-&lt;p&gt;引入并发垃圾回收之后,在GC开始和结束的阶段会有短暂的暂停时间，通常在10毫秒以内。&lt;/p&gt;
-
-&lt;p&gt;因此在支持largeHeap的系统上都采用了并发垃圾回收，GC的Pause Time不会很长，对交互响应影响甚微。&lt;/p&gt;
-
-&lt;h2&gt;慎用largeHeap&lt;/h2&gt;
-
-&lt;p&gt;对于largeHeap的使用，我们该持有的谨慎的态度，largeHeap可以使用，但是要谨慎。&lt;/p&gt;
-
-&lt;p&gt;对于本身对内存要求过大的图片或者视频应用，我们可以使用largeHeap。&lt;/p&gt;
-
-&lt;p&gt;除上面的情况，如果仅仅是为了解决OutOfMemoryError这样的问题，而尝试使用largeHeap分配更大内存的这种指标不治本的方法不可取。对待这样的OOM问题，建议阅读以下几篇文章，了解Android中内存泄露和垃圾回收，从代码上去查找问题，从根本上解决问题。&lt;/p&gt;
-
-&lt;h2&gt;补漏&lt;/h2&gt;
-
-&lt;p&gt;感谢大牛&lt;a href="http://weibo.com/u/1783932377?topnav=1&amp;amp;wvr=6&amp;amp;topsug=1"&gt;裸奔的凯子哥&lt;/a&gt;指出。&lt;/p&gt;
-
-&lt;p&gt;无论是否开启largeHeap，ActivityManager.getLargeMemoryClass()都可以打印出largeHeap的大小。因为其本身只是读取了配置文件的值而已。即下面的代码无论largeHeap开启与否，打印出来的日志都相同&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt; &lt;span class="n"&gt;ActivityManager&lt;/span&gt; &lt;span class="n"&gt;activityManager&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="n"&gt;getSystemService&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;ACTIVITY_SERVICE&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;largeMemoryClass&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;activityManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getLargeMemoryClass&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kt"&gt;int&lt;/span&gt; &lt;span class="n"&gt;memoryClass&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;activityManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getMemoryClass&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;MemoryInfo&lt;/span&gt; &lt;span class="n"&gt;info&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;ActivityManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;MemoryInfo&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;activityManager&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;getMemoryInfo&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;info&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;d&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;largeMemoryClass = &amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;largeMemoryClass&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="n"&gt;Log&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;d&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;LOGTAG&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;memoryClass = &amp;quot;&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;memoryClass&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;h3&gt;如何验证&lt;/h3&gt;
-
-&lt;p&gt;关于如何验证，这里设置一个按钮，每次创建100M的内存对象，观察开启largeHeap前后的反应&lt;/p&gt;
-
-&lt;figure class='code'&gt;&lt;figcaption&gt;&lt;span&gt;&lt;/span&gt;&lt;/figcaption&gt;&lt;div class="highlight"&gt;&lt;table&gt;&lt;tr&gt;&lt;td class="gutter"&gt;&lt;pre class="line-numbers"&gt;&lt;span class='line-number'&gt;1&lt;/span&gt;
-&lt;span class='line-number'&gt;2&lt;/span&gt;
-&lt;span class='line-number'&gt;3&lt;/span&gt;
-&lt;span class='line-number'&gt;4&lt;/span&gt;
-&lt;span class='line-number'&gt;5&lt;/span&gt;
-&lt;span class='line-number'&gt;6&lt;/span&gt;
-&lt;span class='line-number'&gt;7&lt;/span&gt;
-&lt;span class='line-number'&gt;8&lt;/span&gt;
-&lt;span class='line-number'&gt;9&lt;/span&gt;
-&lt;span class='line-number'&gt;10&lt;/span&gt;
-&lt;span class='line-number'&gt;11&lt;/span&gt;
-&lt;span class='line-number'&gt;12&lt;/span&gt;
-&lt;span class='line-number'&gt;13&lt;/span&gt;
-&lt;span class='line-number'&gt;14&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;td class='code'&gt;&lt;pre&gt;&lt;code class='java'&gt;&lt;span class='line'&gt;&lt;span class="kd"&gt;private&lt;/span&gt; &lt;span class="n"&gt;ArrayList&lt;/span&gt;&lt;span class="o"&gt;&amp;lt;&lt;/span&gt;&lt;span class="kt"&gt;byte&lt;/span&gt;&lt;span class="o"&gt;[]&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;mLeakyContainer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;ArrayList&lt;/span&gt;&lt;span class="o"&gt;&amp;lt;&amp;gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="kd"&gt;protected&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onCreate&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Bundle&lt;/span&gt; &lt;span class="n"&gt;savedInstanceState&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="kd"&gt;super&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;onCreate&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;savedInstanceState&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;setContentView&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;R&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;layout&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;activity_main&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;findViewById&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;R&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;id&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;testBtn&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="na"&gt;setOnClickListener&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="n"&gt;View&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;OnClickListener&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;            &lt;span class="nd"&gt;@Override&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;            &lt;span class="kd"&gt;public&lt;/span&gt; &lt;span class="kt"&gt;void&lt;/span&gt; &lt;span class="nf"&gt;onClick&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;View&lt;/span&gt; &lt;span class="n"&gt;v&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;                &lt;span class="kt"&gt;byte&lt;/span&gt;&lt;span class="o"&gt;[]&lt;/span&gt; &lt;span class="n"&gt;b&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="kt"&gt;byte&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="mi"&gt;1000&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="mi"&gt;1000&lt;/span&gt;&lt;span class="o"&gt;];&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;                &lt;span class="n"&gt;mLeakyContainer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;add&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;            &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="o"&gt;});&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;        &lt;span class="n"&gt;testMemoryInfo&lt;/span&gt;&lt;span class="o"&gt;();&lt;/span&gt;
-&lt;/span&gt;&lt;span class='line'&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;&lt;/figure&gt;
-
-
-&lt;ul&gt;
-&lt;li&gt;以正常情况下可用192M内存为例，点击两次按钮，应用崩溃。&lt;/li&gt;
-&lt;li&gt;然后在manifest开启largeHeap，以最大512M内存可用为例，点击6次应用崩溃&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;验证源码可以访问github查看&lt;a href="https://github.com/androidyue/largeHeapDemo"&gt;largeHeapDemo&lt;/a&gt;&lt;/p&gt;
-
-&lt;h2&gt;推荐文章&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/"&gt;Android中Handler引起的内存泄露&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/"&gt;避免Android中Context引起的内存泄露&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/"&gt;Google IO：Android内存管理主题演讲记录&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"&gt;&lt;/script&gt;
-
-
-&lt;script type="text/javascript"&gt;
-    showBookCopyright();
-&lt;/script&gt;
-
-
-
-</description>
-    <title>探究android:largeHeap</title>
-    <link>http://droidyue.com/blog/2015/08/01/dive-into-android-large-heap/</link>
-    <pubDate>Sat, 01 Aug 2015 09:10:00 GMT</pubDate>
-    <guid isPermaLink="false">http://droidyue.com/blog/2015/08/01/dive-into-android-large-heap</guid>
     
   <source url="http://droidyue.com/atom.xml">技术小黑屋</source></item>
   
