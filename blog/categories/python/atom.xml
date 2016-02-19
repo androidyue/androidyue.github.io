@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: python | 技术小黑屋]]></title>
+  <title><![CDATA[Category: Python | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/python/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-02-18T21:38:51+08:00</updated>
+  <updated>2016-02-19T18:39:50+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -14,95 +14,503 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Read Output From Shell]]></title>
-    <link href="http://droidyue.com/blog/2013/11/05/read-output-from-shell/"/>
-    <updated>2013-11-05T12:38:00+08:00</updated>
-    <id>http://droidyue.com/blog/2013/11/05/read-output-from-shell</id>
-    <content type="html"><![CDATA[<p>Python provides a lot of method to read output from a just executed shell. However many of them has been deprecated(Not recommened). But subprocess works at present compared to other methods.
-```python
-from subprocess import Popen,PIPE,STDOUT</p>
+    <title type="html"><![CDATA[每周一脚本：过滤单个Android程序日志]]></title>
+    <link href="http://droidyue.com/blog/2014/09/15/weekly-scripts-grep-android-application-log-in-terminal/"/>
+    <updated>2014-09-15T18:55:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/09/15/weekly-scripts-grep-android-application-log-in-terminal</id>
+    <content type="html"><![CDATA[<p>在Android软件开发中，增加日志的作用很重要，便于我们了解程序的执行情况和数据。Eclipse开发工具会提供了可视化的工具，但是还是感觉终端效率会高一些，于是自己写了一个python的脚本来通过包名来过滤某一程序的日志。</p>
 
-<p>def readFromCommand(command) :</p>
+<h3>原理</h3>
 
-<pre><code>p = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
-result = p.stdout.read().strip()
-return result
+<p>通过包名得到对应的进程ID（可能多个），然后使用adb logcat 过滤进程ID即可得到对应程序的日志。</p>
+
+<!--more-->
+
+
+<h3>源码</h3>
+
+<p>```python lineos:false <a href="https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py">https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py</a></p>
+
+<h1>!/usr/bin/env python</h1>
+
+<h1>coding:utf-8</h1>
+
+<h1>This script is aimed to grep logs by application(User should input a packageName and then we look up for the process ids then separate logs by process ids).</h1>
+
+<p>import os
+import sys</p>
+
+<p>packageName=str(sys.argv[1])</p>
+
+<p>command = &ldquo;adb shell ps | grep %s | awk &lsquo;{print $2}&rsquo;&rdquo;%(packageName)
+p = os.popen(command)</p>
+
+<h2>for some applications,there are multiple processes,so we should get all the process id</h2>
+
+<p>pid = p.readline().strip()
+filters = pid
+while(pid != &ldquo;&rdquo;):</p>
+
+<pre><code>pid = p.readline().strip()
+if (pid != ''):
+    filters = filters +  "|" + pid
+    #print 'command = %s;filters=%s'%(command, filters)
 </code></pre>
 
-<p>print readFromCommand(&lsquo;ls&rsquo;)</p>
+<p>if (filters != &lsquo;&rsquo;) :</p>
 
-<h1>result</h1>
+<pre><code>cmd = 'adb logcat | grep --color=always -E "%s" '%(filters)
+os.system(cmd)
+</code></pre>
 
-<h1>0001-.patch</h1>
+<p>```</p>
 
-<h1>0001-.patch.zip</h1>
+<h3>使用方法</h3>
 
-<h1>0001-Replace-app_name-into-Browser.patch</h1>
+<p><code>bash lineos:false
+python logcatPkg.py com.mx.browser
+</code></p>
 
-<p>```
-A detailed description about subprocess has been written down here. <a href="http://docs.python.org/2/library/subprocess.html">http://docs.python.org/2/library/subprocess.html</a></p>
+<h3>最新代码</h3>
 
-<h3>Others</h3>
+<p> <a href="https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py" target="_blank">locatPkg.py</a></p>
+
+<h3>不足</h3>
 
 <ul>
-<li><a href="http://www.amazon.com/gp/product/1449319793/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=1449319793&linkCode=as2&tag=droidyueblog-20&linkId=7L2XQ6AYY5SBBJ5W">Python for Data Analysis: Data Wrangling with Pandas, NumPy, and IPython</a><img src="http://ir-na.amazon-adsystem.com/e/ir?t=droidyueblog-20&l=as2&o=1&a=1449319793" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li> 当脚本执行后，Android程序如果关闭或者重新启动，导致进程ID变化，无法自动继续输出日志，只能再次执行此脚本。</li>
+</ul>
+
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00KVLDS20/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KVLDS20&linkCode=as2&tag=droidyue-23">仅用两周就能自制脚本语言？</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00KVLDS20" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B002A2LQR2/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002A2LQR2&linkCode=as2&tag=droidyue-23">一个不错的Shell脚本学习指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002A2LQR2" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B005YWYH6C/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005YWYH6C&linkCode=as2&tag=droidyue-23">Windows 7脚本编程和命令行工具指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B005YWYH6C" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[Get MD5 Hash of Big Files]]></title>
-    <link href="http://droidyue.com/blog/2013/10/07/get-md5-hash-of-big-files/"/>
-    <updated>2013-10-07T10:16:00+08:00</updated>
-    <id>http://droidyue.com/blog/2013/10/07/get-md5-hash-of-big-files</id>
-    <content type="html"><![CDATA[<p>Recently I have been dealing with files and I need to get md5 hash of all kinds of files;Some are small and some are big.<br/>
-For the small files I use this method to get md5 hash value.
-```python
-def getFileMd5(filename):</p>
+    <title type="html"><![CDATA[Ruby程序区分运行来源]]></title>
+    <link href="http://droidyue.com/blog/2014/08/17/how-to-determin-file-load-type-in-ruby/"/>
+    <updated>2014-08-17T20:12:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/08/17/how-to-determin-file-load-type-in-ruby</id>
+    <content type="html"><![CDATA[<p>当我们在写模块的时候，或多或少需要直接运行这个文件也可以执行一些方法，但是这样对于当这个模块被require或者include时，显得不好，在ruby里，有没有区分运行来自当前文件，还是被require的目标文件调用呢？</p>
 
-<pre><code>file = open(filename, 'rb') 
-m = md5()
-m.update(file.read())
-file.close()
-result =  m.hexdigest()
-return result
+<h2>Python可以</h2>
+
+<p>比如像Python这样
+```python lineos:false
+if <strong>name</strong> == &lsquo;<strong>main</strong>&rsquo;:</p>
+
+<pre><code>print "from direct running"
 </code></pre>
 
-<p><code>
-However for calculating md5 hash value of big files,the above method will be very Less Efficient.For Big files I use the following method(It's acquired from stackoverflow)
-</code>python
-def getBigFileMd5(filename, block_size=2**20):</p>
+<p>```</p>
 
-<pre><code>f = open(filename, 'rb')
-m = md5()
-while True:
-    data = f.read(block_size)
-    if not data:
-        break
-    m.update(data)
-f.close()
-return m.hexdigest()
+<!--more-->
+
+
+<h2>Ruby当然也可以</h2>
+
+<p>对于处处为程序员着想，拥有快乐编程理念的Ruby来说当然是可以区别的。其原理就是判断启动文件是否为模块的代码文件。
+```ruby lineos:false
+if <strong>FILE</strong> == $0</p>
+
+<pre><code>puts 'called from direct running'
 </code></pre>
 
-<p>```
-And I did a test.The cost of Getting md5 hash of a Big file(size:10.7 GiB; 11,455,512,109 bytes) is 213.447s.And I think it&rsquo;s OK.</p>
+<p>end
+```</p>
+
+<h2>举个例子</h2>
+
+<p>工具类模块utils.rb
+```ruby lineos:false
+module Utils</p>
+
+<pre><code>class StringUtils
+    def self.test
+        puts "test method myfile=" + __FILE__ + ';load from ' +  $0
+    end
+end
+</code></pre>
+
+<p>end</p>
+
+<p>if <strong>FILE</strong> == $0</p>
+
+<pre><code>puts 'called from direct running'
+Utils::StringUtils.test() 
+</code></pre>
+
+<p>end
+<code>
+直接运行，结果,if条件成立，执行了输出
+</code>bash lineos:false
+20:04:37-androidyue~/rubydir/test$ ruby utils.rb
+called from direct running
+test method myfile=utils.rb;load from utils.rb
+<code>
+引用Utils的类test.rb
+</code>ruby lineos:false
+require &lsquo;./utils&rsquo;
+Utils::StringUtils.test()
+<code>
+运行结果，引入模块的条件不成立，没有输出`called from direct running`
+</code>bash lineos:false
+20:08:07-androidyue~/rubydir/test$ ruby test.rb
+test method myfile=/home/androidyue/rubydir/test/utils.rb;load from test.rb
+```</p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B0073APSCK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0073APSCK&linkCode=as2&tag=droidyue-23">Ruby元编程</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0073APSCK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00D1HUYVE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D1HUYVE&linkCode=as2&tag=droidyue-23">代码的未来</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00D1HUYVE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B005KGBTQ8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005KGBTQ8&linkCode=as2&tag=droidyue-23">大神松本行弘的程序世界</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B005KGBTQ8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[How to Create a .db File in Python with Sqlite3]]></title>
-    <link href="http://droidyue.com/blog/2013/10/07/how-to-create-a-db-file-in-python-with-sqlite3/"/>
-    <updated>2013-10-07T09:35:00+08:00</updated>
-    <id>http://droidyue.com/blog/2013/10/07/how-to-create-a-db-file-in-python-with-sqlite3</id>
-    <content type="html"><![CDATA[<p>How to create a .db file in Python with sqlite3?Actually It&rsquo;s really easy.<br/>
-Run the following code<br/>
-<code>python
-import sqlite3
-sqlite3.connect('./test.db')
-</code>
-After running the above code,the test.db file will be created if it does not exist.<br/>
-Of course,you have the proper permission to create the file.</p>
+    <title type="html"><![CDATA[赶走那些Android工程中得冗余字符串]]></title>
+    <link href="http://droidyue.com/blog/2014/08/08/remove-repeated-string-resources-in-android-project/"/>
+    <updated>2014-08-08T19:32:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/08/08/remove-repeated-string-resources-in-android-project</id>
+    <content type="html"><![CDATA[<p>Android提供了一套很方便的进行资源（语言）国际化机制，为了更好地支持多语言，很多工程的翻译往往会放到类似crowdin这样的平台上。资源是全了，但是还是会有一些问题。</p>
+
+<!--more-->
+
+
+<h2>哪些问题</h2>
+
+<p>以下使用一些语言进行举例。其中values为工程默认的资源。</p>
+
+<ul>
+<li>某语言的资源和某语言限定区域的资源之间。如<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，这种表现最为严重。</li>
+<li>某语言的资源和默认的资源之间。<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串，可能原因是由于<strong>values-fr</strong>存在未翻译字符串导致</li>
+</ul>
+
+
+<h2>为什么要去重</h2>
+
+<ul>
+<li>洁癖，容不下半点冗余。</li>
+</ul>
+
+
+<h2>解决思路</h2>
+
+<ul>
+<li><p>如果<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，去除<strong>values-fr-rCA</strong>中的重复字符串，保留<strong>values-fr</strong>。这样可以保证在values-fr-rCA下也可以正确读取到资源。</p></li>
+<li><p>如果<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串。如去除<strong>values-fr</strong>中得重复字符串，保留values的条目。</p></li>
+</ul>
+
+
+<h2>Py脚本</h2>
+
+<p>```python filenos:false removeRepeatedStrings.py <a href="https://raw.githubusercontent.com/androidyue/DroidResCleaner/master/removeRepeatedStrings.py">https://raw.githubusercontent.com/androidyue/DroidResCleaner/master/removeRepeatedStrings.py</a></p>
+
+<h1>!/usr/bin/env python</h1>
+
+<h1>coding=utf-8</h1>
+
+<p>from os import listdir,path, system
+from sys import argv
+try:</p>
+
+<pre><code>import xml.etree.cElementTree as ET
+</code></pre>
+
+<p>except ImportError:</p>
+
+<pre><code>import xml.etree.ElementTree as ET
+</code></pre>
+
+<p>def genRegionLangPair(filePath):</p>
+
+<pre><code>basicLanguage = None
+if ('values' in filePath) :
+    hasRegionLimit = ('r' == filePath[-3:-2])
+    if (hasRegionLimit):
+        basicLanguage = filePath[0:-4]
+        if (not path.exists(basicLanguage)) :
+            return None 
+        belongsToEnglish =  ("values-en" in basicLanguage)
+        if (belongsToEnglish):
+            #Compare with the res/values/strings.xml
+            return (path.dirname(basicLanguage) + '/values/strings.xml', filePath + "/strings.xml")
+        else:
+            return (basicLanguage + '/strings.xml', filePath + "/strings.xml")
+return None
+</code></pre>
+
+<p>def genLangPair(filePath):</p>
+
+<pre><code>def shouldGenLanPair(filePath):
+    if (not 'values' in filePath ):
+        return False
+    if('dpi' in filePath):
+        return False
+    if ('dimes' in filePath):
+        return False
+    if ('large' in filePath):
+        return False 
+    return True
+
+if(shouldGenLanPair(filePath)):
+    basicLanguage = path.dirname(filePath) + '/values/strings.xml'
+    targetLanguage = filePath + '/strings.xml'
+    if (not path.exists(targetLanguage)):
+       return None 
+
+    if (not path.samefile(basicLanguage,targetLanguage)) :
+        return (basicLanguage, targetLanguage)
+return None
+</code></pre>
+
+<p>def genCompareList(filePath):</p>
+
+<pre><code>compareLists = []
+for file in listdir(filePath):
+    regionPair = genRegionLangPair(filePath + '/' + file)
+    if (None != regionPair):
+        compareLists.append(regionPair)
+
+    languagePair = genLangPair(filePath + '/' + file) 
+    if (None != languagePair) :
+        compareLists.append(languagePair)
+
+return compareLists
+</code></pre>
+
+<p>def getXmlEntries(filePath):</p>
+
+<pre><code>root = ET.ElementTree(file=filePath).getroot()
+entries = {}
+for child in root:
+    attrib = child.attrib
+    if (None != attrib) :
+        entries[attrib.get('name')] = child.text
+print 'xmlEntriesCount',len(entries)
+return entries
+</code></pre>
+
+<p>def rewriteRegionFile(sourceEntries, filePath):</p>
+
+<pre><code>if (not path.exists(filePath)):
+    return 
+ET.register_namespace('xliff',"urn:oasis:names:tc:xliff:document:1.2")
+tree = ET.ElementTree(file=filePath)
+root = tree.getroot()
+print root
+totalCount = 0
+removeCount = 0
+unRemoveCount = 0
+print len(root)
+toRemoveList = []
+for child in root:
+    totalCount = totalCount + 1
+    attrib = child.attrib
+    if (None == attrib):
+        continue
+
+    childName = attrib.get('name')
+
+    if (sourceEntries.get(childName) == child.text):
+        removeCount = removeCount + 1
+        toRemoveList.append(child)
+    else:
+        unRemoveCount = unRemoveCount + 1
+        print childName, sourceEntries.get(childName), child.text
+print filePath,totalCount, removeCount,unRemoveCount
+
+for aItem in toRemoveList:
+    root.remove(aItem)
+
+if (len(root) != 0 ):
+    tree.write(filePath, encoding="UTF-8")
+else:
+    command = 'rm -rf %s'%(path.dirname(filePath))
+    print command
+    system(command)
+</code></pre>
+
+<p>def main(projectDir):</p>
+
+<pre><code>lists = genCompareList(projectDir + "/res/")
+
+for item in lists:
+    print item
+    src = item[0]
+    dest = item[1]
+    rewriteRegionFile(getXmlEntries(src),dest)
+</code></pre>
+
+<p>if <strong>name</strong> == &ldquo;<strong>main</strong>&rdquo;:</p>
+
+<pre><code>if (len(argv) == 2) :
+    main(argv[1])
+</code></pre>
+
+<p>```</p>
+
+<h2>如何使用</h2>
+
+<p><code>bash filenos:false
+python removeRepeatedStrings.py your_android_project_root_dir
+</code></p>
+
+<h2>工程参与</h2>
+
+<p><a href="https://github.com/androidyue/DroidResCleaner/blob/master/removeRepeatedStrings.py" target="_blank">RemoveRepeatedStrings.py</a></p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00DZEX5JQ/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00DZEX5JQ&linkCode=as2&tag=droidyue-23">控制你行为的秘密</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00DZEX5JQ" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B0090HBORW/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0090HBORW&linkCode=as2&tag=droidyue-23">好工作是设计出来的</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0090HBORW" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B001F7AEFI/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001F7AEFI&linkCode=as2&tag=droidyue-23">原来这才是瑞士多功能军刀</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B001F7AEFI" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Python中字典序列化操作]]></title>
+    <link href="http://droidyue.com/blog/2014/07/26/dict-and-json-serialization-in-python/"/>
+    <updated>2014-07-26T13:32:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/26/dict-and-json-serialization-in-python</id>
+    <content type="html"><![CDATA[<p>JSON是一种轻量级的数据交换格式，各种语言都有良好的支持。字典是Python的一种数据结构。可以看成关联数组。</p>
+
+<p>有些时候我们需要设计到字典转换成JSON序列化到文件，或者从文件中读取JSON。简单备忘一下。</p>
+
+<!--more-->
+
+
+<h2>Dict转JSON写入文件</h2>
+
+<p>```python</p>
+
+<h1>!/usr/bin/env python</h1>
+
+<h1>coding=utf-8</h1>
+
+<p>import json
+d = {&lsquo;first&rsquo;: &lsquo;One&rsquo;, &lsquo;second&rsquo;:2}
+json.dump(d, open(&lsquo;/tmp/result.txt&rsquo;, &lsquo;w&rsquo;))
+```</p>
+
+<h2>写入结果</h2>
+
+<p><code>bash
+cat /tmp/result.txt
+{"second": 2, "first": "One"}
+</code></p>
+
+<h2>读取JSON</h2>
+
+<p>```python</p>
+
+<h1>!/usr/bin/env python</h1>
+
+<h1>coding=utf-8</h1>
+
+<p>import json
+d = json.load(open(&lsquo;/tmp/result.txt&rsquo;,&lsquo;r&rsquo;))
+print d, type(d)
+```</p>
+
+<h2>运行结果</h2>
+
+<p><code>bash
+{u'second': 2, u'first': u'One'} &lt;type 'dict'&gt;
+</code></p>
+
+<h3>其他</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B00GHGZLWS/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00GHGZLWS&linkCode=as2&tag=droidyue-23">利用Python进行数据分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00GHGZLWS" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+<li><a href="http://www.amazon.cn/gp/product/B00KYFJTP8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KYFJTP8&linkCode=as2&tag=droidyue-23">编写高质量代码:改善Python程序的91个建议</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00KYFJTP8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Python中的字典遍历]]></title>
+    <link href="http://droidyue.com/blog/2014/07/15/python-dictionary-traversal-examples/"/>
+    <updated>2014-07-15T19:21:00+08:00</updated>
+    <id>http://droidyue.com/blog/2014/07/15/python-dictionary-traversal-examples</id>
+    <content type="html"><![CDATA[<p>备忘一下python中的字典如何遍历,没有什么太多技术含量.仅供作为初学者的我参考.</p>
+
+<!--more-->
+
+
+<p>```python</p>
+
+<h1>!/usr/bin/env python</h1>
+
+<h1>coding=utf-8</h1>
+
+<p>demoDict = {&lsquo;1&rsquo;:&lsquo;Chrome&rsquo;, &lsquo;2&rsquo;:&lsquo;Android&rsquo;}</p>
+
+<p>for key in demoDict.keys():</p>
+
+<pre><code>print key
+</code></pre>
+
+<p>for value in demoDict.values():</p>
+
+<pre><code>print value
+</code></pre>
+
+<p>for key in demoDict:</p>
+
+<pre><code>print key, demoDict[key]
+</code></pre>
+
+<p>for key, value in demoDict.items():</p>
+
+<pre><code>print key, value
+</code></pre>
+
+<p>for key in demoDict.iterkeys():</p>
+
+<pre><code>print key
+</code></pre>
+
+<p>for value in demoDict.itervalues():</p>
+
+<pre><code>print value
+</code></pre>
+
+<p>for key, value in demoDict.iteritems():</p>
+
+<pre><code>print key, value
+</code></pre>
+
+<p>print &lsquo;dict.keys()=&rsquo;, demoDict.keys(), &lsquo;;dict.iterkeys()=&rsquo;, demoDict.iterkeys()
+```</p>
+
+<h2>interitems和iterms区别</h2>
+
+<ul>
+<li>参考 <a href="http://stackoverflow.com/questions/10458437/python-what-is-the-difference-between-dict-items-and-dict-iteritems">http://stackoverflow.com/questions/10458437/python-what-is-the-difference-between-dict-items-and-dict-iteritems</a></li>
+</ul>
+
+
+<h3>Others</h3>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/B003TSBAMM/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B003TSBAMM&linkCode=as2&tag=droidyue-23">Python基础教程</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B003TSBAMM" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
+
 ]]></content>
   </entry>
   
