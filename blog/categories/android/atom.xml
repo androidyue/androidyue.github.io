@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-02-21T20:33:44+08:00</updated>
+  <updated>2016-02-21T21:05:11+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,196 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[关于获取当前Activity的一些思考]]></title>
+    <link href="http://droidyue.com/blog/2016/02/21/thinking-of-getting-the-current-activity-in-android/"/>
+    <updated>2016-02-21T20:53:00+08:00</updated>
+    <id>http://droidyue.com/blog/2016/02/21/thinking-of-getting-the-current-activity-in-android</id>
+    <content type="html"><![CDATA[<p>在Android开发过程中，我们有时候需要获取当前的Activity实例，比如弹出Dialog操作，必须要用到这个。关于如何实现由很多种思路，这其中有的简单，有的复杂，这里简单总结一下个人的一些经验吧。</p>
+
+<!--more-->
+
+
+<h2>反射</h2>
+
+<p>反射是我们经常会想到的方法，思路大概为</p>
+
+<p>  1 获取ActivityThread中所有的ActivityRecord <br/>
+  2 从ActivityRecord中获取状态不是<code>pause</code>的Activity并返回</p>
+
+<p>一个使用反射来实现的代码大致如下
+```java</p>
+
+<pre><code>public static Activity getActivity() {
+    Class activityThreadClass = null;
+    try {
+        activityThreadClass = Class.forName("android.app.ActivityThread");
+        Object activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
+        Field activitiesField = activityThreadClass.getDeclaredField("mActivities");
+        activitiesField.setAccessible(true);
+        Map activities = (Map) activitiesField.get(activityThread);
+        for (Object activityRecord : activities.values()) {
+            Class activityRecordClass = activityRecord.getClass();
+            Field pausedField = activityRecordClass.getDeclaredField("paused");
+            pausedField.setAccessible(true);
+            if (!pausedField.getBoolean(activityRecord)) {
+                Field activityField = activityRecordClass.getDeclaredField("activity");
+                activityField.setAccessible(true);
+                Activity activity = (Activity) activityField.get(activityRecord);
+                return activity;
+            }
+        }
+    } catch (ClassNotFoundException e) {
+        e.printStackTrace();
+    } catch (NoSuchMethodException e) {
+        e.printStackTrace();
+    } catch (IllegalAccessException e) {
+        e.printStackTrace();
+    } catch (InvocationTargetException e) {
+        e.printStackTrace();
+    } catch (NoSuchFieldException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+</code></pre>
+
+<p>```</p>
+
+<p>然而这种方法并不是很推荐，主要是有以下的不足：</p>
+
+<ul>
+<li>反射通常会比较慢</li>
+<li>不稳定性，这个才是不推荐的原因，Android框架代码存在修改的可能性，谁要无法100%保证<code>mActivities</code>，<code>paused</code>固定不变。所以可靠性不是完全可靠。</li>
+</ul>
+
+
+<h2>Activity基类</h2>
+
+<p>既然反射不是很可靠，那么有一种比较可靠的方式，就是使用Activity基类。</p>
+
+<p>在Activity的<code>onResume</code>方法中，将当前的Activity实例保存到一个变量中。
+```java
+public class BaseActivity extends Activity{</p>
+
+<pre><code>@Override
+protected void onResume() {
+    super.onResume();
+    MyActivityManager.getInstance().setCurrentActivity(this);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>然而，这一种方法也不仅完美，因为这种方法是基于约定的，所以必须每个Activity都继承BaseActivity，如果一旦出现没有继承BaseActivity的就可能有问题。</p>
+
+<h2>回调方法</h2>
+
+<p>介绍了上面两种不是尽善尽美的方法，这里实际上还是有一种更便捷的方法，那就是通过Framework提供的回调来实现。</p>
+
+<p>Android自 API 14开始引入了一个方法，即Application的<code>registerActivityLifecycleCallbacks</code>方法，用来监听所有Activity的生命周期回调，比如<code>onActivityCreated</code>,<code>onActivityResumed</code>等。</p>
+
+<p>So，一个简单的实现如下
+```java
+public class MyApplication extends Application {</p>
+
+<pre><code>@Override
+public void onCreate() {
+    super.onCreate();
+    registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+        @Override
+        public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+
+        }
+
+        @Override
+        public void onActivityStarted(Activity activity) {
+
+        }
+
+        @Override
+        public void onActivityResumed(Activity activity) {
+            MyActivityManager.getInstance().setCurrentActivity(activity);
+        }
+
+        @Override
+        public void onActivityPaused(Activity activity) {
+
+        }
+
+        @Override
+        public void onActivityStopped(Activity activity) {
+
+        }
+
+        @Override
+        public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+
+        }
+
+        @Override
+        public void onActivityDestroyed(Activity activity) {
+
+        }
+    });
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>然而，金无足赤人无完人，这种方法唯一的遗憾就是只支持API 14即其以上。不过还在现在大多数设备都满足了这个要求。</p>
+
+<h3>为什么是弱引用</h3>
+
+<p>可能有人会带着疑问看到这里，MyActivityManager是个什么鬼，好，我们现在看一下这个类的实现
+```java
+public class MyActivityManager {</p>
+
+<pre><code>private static MyActivityManager sInstance = new MyActivityManager();
+private WeakReference&lt;Activity&gt; sCurrentActivityWeakRef;
+
+
+private MyActivityManager() {
+
+}
+
+public static MyActivityManager getInstance() {
+    return sInstance;
+}
+
+public Activity getCurrentActivity() {
+    Activity currentActivity = null;
+    if (sCurrentActivityWeakRef != null) {
+        currentActivity = sCurrentActivityWeakRef.get();
+    }
+    return currentActivity;
+}
+
+public void setCurrentActivity(Activity activity) {
+    sCurrentActivityWeakRef = new WeakReference&lt;Activity&gt;(activity);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>这个类，实现了当前Activity的设置和获取。</p>
+
+<p>那么为什么要使用弱引用持有Activity实例呢？</p>
+
+<p>其实最主要的目的就是避免内存泄露，因为使用默认的强引用会导致Activity实例无法释放，导致内存泄露的出现。详细了解弱引用，请参考本文<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">译文：理解Java中的弱引用</a></p>
+
+<h2>Demo源码</h2>
+
+<ul>
+<li><a href="https://github.com/androidyue/GetCurrentActivityDemo">GetCurrentActivityDemo</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[聊一聊Android 6.0的运行时权限]]></title>
@@ -966,178 +1156,6 @@ cursor.close();
 <h2>源码下载</h2>
 
 <p>示例源码，存放在Github，地址为<a href="https://github.com/androidyue/AndroidSQLiteTuningDemo">AndroidSQLiteTuningDemo</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android处理崩溃的一些实践]]></title>
-    <link href="http://droidyue.com/blog/2015/12/06/practise-about-crash-in-android/"/>
-    <updated>2015-12-06T22:47:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/12/06/practise-about-crash-in-android</id>
-    <content type="html"><![CDATA[<p>对于任何程序来说，崩溃都是一件很难避免的事情，当然Android程序也不例外。在Android程序中，引起崩溃的多属于运行时异常或者错误，对于这些异常我们很难做到类似Checked Exception那样显式捕获，因而最终导致了程序崩溃。本文讲介绍一些如何处理崩溃的实践，比如收集崩溃的stacktrace，甚至如何避免出现程序已停止的对话框。</p>
-
-<!--more-->
-
-
-<h2>如何收集崩溃信息</h2>
-
-<p>收集崩溃信息，可以更好的修复问题，增强程序的稳定性。Android中的崩溃收集沿用了Java的收集机制，实现起来比较简单。</p>
-
-<h3>1.实现UncaughtExceptionHandler</h3>
-
-<p>我们需要实现UncaughtExceptionHandler接口中的<code>uncaughtException</code>方法。该方法体中最常见的操作就是读取崩溃的stacktrace信息，然后上报到服务器数据便于开发者分析。实现代码如下：
-```java
-public class SimpleUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {</p>
-
-<pre><code>private static final String LOGTAG = "SimpleUncaughtExceptionHandler";
-
-@Override
-public void uncaughtException(Thread thread, Throwable ex) {
-    //读取stacktrace信息
-    final Writer result = new StringWriter();
-    final PrintWriter printWriter = new PrintWriter(result);
-    ex.printStackTrace(printWriter);
-    String errorReport = result.toString();
-    Log.i(LOGTAG, "uncaughtException errorReport=" + errorReport);
-}
-</code></pre>
-
-<p>}
-```
-除此之外，还建议携带以下信息发送到服务器，帮助更快定位和重现问题。</p>
-
-<ul>
-<li>设备唯一ID（基于IMEI或者Android ID等），方便根据用户提供的id，查找崩溃的stacktrace</li>
-<li>设备语言与区域 方便重现</li>
-<li>应用的版本号</li>
-<li>设备的系统版本</li>
-<li>设备类型，如平板，手机，TV等</li>
-<li>崩溃发生的时间等</li>
-</ul>
-
-
-<h3>注册默认的异常处理</h3>
-
-<p>注册默认的异常处理就是最后的一步，很简单，通常建议放在Application的onCreate方法中进行。
-```java
-public class DroidApplication extends Application {</p>
-
-<pre><code>private static final String LOGTAG = "DroidApplication";
-
-@Override
-public void onCreate() {
-    super.onCreate();
-    Log.i(LOGTAG, "onCreate");
-    Thread.setDefaultUncaughtExceptionHandler(new SimpleUncaughtExceptionHandler());
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<h3>验证</h3>
-
-<p>当我们刻意触发一个NullPointerException时，过滤日志<code>adb logcat | grep SimpleUncaughtExceptionHandler</code>类似如下信息，则说明成功了。
-<code>java
-I/SimpleUncaughtExceptionHandler(22469): uncaughtException errorReport=java.lang.NullPointerException
-I/SimpleUncaughtExceptionHandler(22469):  at com.droidyue.avoidforceclosedemo.MainActivity.causeNPE(MainActivity.java:22)
-I/SimpleUncaughtExceptionHandler(22469):  at com.droidyue.avoidforceclosedemo.MainActivity.onClick(MainActivity.java:29)
-I/SimpleUncaughtExceptionHandler(22469):  at android.view.View.performClick(View.java:4470)
-I/SimpleUncaughtExceptionHandler(22469):  at android.view.View$PerformClick.run(View.java:18593)
-I/SimpleUncaughtExceptionHandler(22469):  at android.os.Handler.handleCallback(Handler.java:733)
-I/SimpleUncaughtExceptionHandler(22469):  at android.os.Handler.dispatchMessage(Handler.java:95)
-I/SimpleUncaughtExceptionHandler(22469):  at android.os.Looper.loop(Looper.java:157)
-I/SimpleUncaughtExceptionHandler(22469):  at android.app.ActivityThread.main(ActivityThread.java:5867)
-I/SimpleUncaughtExceptionHandler(22469):  at java.lang.reflect.Method.invokeNative(Native Method)
-I/SimpleUncaughtExceptionHandler(22469):  at java.lang.reflect.Method.invoke(Method.java:515)
-I/SimpleUncaughtExceptionHandler(22469):  at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:858)
-I/SimpleUncaughtExceptionHandler(22469):  at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:674)
-I/SimpleUncaughtExceptionHandler(22469):  at dalvik.system.NativeStart.main(Native Method)
-</code></p>
-
-<h2>不出现应用崩溃对话框</h2>
-
-<p>在Android崩溃的时候，我们都会看到类似这样的对话框</p>
-
-<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/app_crash.png" alt="app crash" /></p>
-
-<p>然而，实际上有些情况下是不需要展示这个对话框的，一个常用的例子，我的程序中一个不太重要的推送服务采用了单独的进程，当这个进程崩溃时，实际上是可以允许不让用户感知的。</p>
-
-<p>如果我们采取主进程仍弹出对话框，其他进程不弹出的策略，那么我们的问题，可以总结成如下三个</p>
-
-<ul>
-<li>如何判断进程为主进程还是其他进程，或者某个进程</li>
-<li>如何在某些进程不弹出应用崩溃对话框</li>
-<li>如何在主进程弹出崩溃对话框</li>
-</ul>
-
-
-<p>既然问题来了，我们就开动挖掘机深挖吧。</p>
-
-<h3>进程判定</h3>
-
-<p>进行进程判定也比较容易，首先我们需要获得进程名
-```java
-public static String getProcessName(Context appContext) {</p>
-
-<pre><code>String currentProcessName = "";
-int pid = android.os.Process.myPid();
-ActivityManager manager = (ActivityManager) appContext.getSystemService(Context.ACTIVITY_SERVICE);
-for (ActivityManager.RunningAppProcessInfo processInfo : manager.getRunningAppProcesses()) {
-    if (processInfo.pid == pid) {
-        currentProcessName = processInfo.processName;
-        break;
-    }
-}
-return currentProcessName;
-</code></pre>
-
-<p>}
-<code>
-判断主进程，则对比进程名是否和包名相同即可
-</code>java
-mAppContext.getPackageName().equals(processName)
-<code>
-判断为某个进程，在mainifest这样这样声明
-</code>java
-<service android:name=".DroidService" android:process=":service"></service>
-<code>
-其对应的完整进程名为`com.droidyue.avoidforceclosedemo:service`，我们判断可以使用如下代码
-</code>java
-&ldquo;com.droidyue.avoidforceclosedemo:service&rdquo;.equals(processName);
-```</p>
-
-<h3>不弹框的处理</h3>
-
-<p>不弹框的需要做的就是不调用Android默认的异常处理，当异常出现时，收集完信息，执行进程kill即可。
-<code>java
-android.os.Process.killProcess(android.os.Process.myPid());
-</code></p>
-
-<h3>主进程保持弹窗的处理</h3>
-
-<p>想要保持弹窗也比较容易，就是调用Android默认的异常处理。</p>
-
-<p>首先需要获得Android默认的异常处理，在设置自定的异常处理之前，将Android默认处理保存起来。如下是在自定义异常处理的构造方法中获取Android默认处理
-```java
-public DroidUncaughtExceptionHandler(Context context) {</p>
-
-<pre><code>mAppContext = context.getApplicationContext();
-mDefaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
-</code></pre>
-
-<p>}
-<code>
-然后在异常处理方法uncaughtException中调用如下方法
-</code>java
-mDefaultExceptionHandler.uncaughtException(thread, ex);
-```</p>
-
-<p>注意，如果你的应用崩溃后，不调用Android默认的异常处理，也不进行杀死进程，则进程处于不可交互，即UI点击无响应状态。</p>
-
-<h2>源码</h2>
-
-<p>本示例源码，存放在Github，地址为<a href="https://github.com/androidyue/AvoidForceCloseDemo">AvoidForceCloseDemo</a></p>
 ]]></content>
   </entry>
   
