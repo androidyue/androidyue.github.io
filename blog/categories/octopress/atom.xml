@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Octopress | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/octopress/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-02-27T09:03:32+08:00</updated>
+  <updated>2016-02-28T17:29:05+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -14,34 +14,140 @@
 
   
   <entry>
+    <title type="html"><![CDATA[一个简易小工具，七牛Uploader for Octopress]]></title>
+    <link href="http://droidyue.com/blog/2016/02/28/an-easy-tool-to-upload-file-to-qiniu-especially-for-octopress/"/>
+    <updated>2016-02-28T17:15:00+08:00</updated>
+    <id>http://droidyue.com/blog/2016/02/28/an-easy-tool-to-upload-file-to-qiniu-especially-for-octopress</id>
+    <content type="html"><![CDATA[<p>春节假期，带着电脑回家，蹭着邻居的网，除夕晚上用ruby写了一个简单的工具。安利一下，广而告之。</p>
+
+<!--more-->
+
+
+<h2>为什么写这个应用</h2>
+
+<h3>为什么用七牛</h3>
+
+<p>七牛是我比较看好的一个云存储，其国内国外有很多cdn，如果我把我的网站放到七牛上，打开速度应该会显著提升。</p>
+
+<h3>为什么还自己写</h3>
+
+<ul>
+<li>七牛官方的qrsync不支持例外目录，会上传.git文件夹下的内容</li>
+<li>七牛的qrsync更新策略不符合我的需求</li>
+<li>自己有时间和能力</li>
+</ul>
+
+
+<h2>功能描述</h2>
+
+<ul>
+<li>暂时只支持对文件的上传和更新，不含删除和下载功能</li>
+<li>尤其适合于Octopress网站</li>
+</ul>
+
+
+<h2>使用</h2>
+
+<h3>创建授权信息文件</h3>
+
+<p>从七牛后台 账号&mdash;>秘钥 中获取AccessKey和SecretKey分别填入下面
+<code>
+[auth]
+access_key = ""
+secret_key = ""
+</code>
+将上述内容保存成文件<code>.qiniu.ini</code> 放在同步脚本的祖先目录上即可，也可以放在家目录。</p>
+
+<p>举个例子，比如你的同步脚本放在<code>~/tools/notes/sync_dir/</code>下，你的配置文件，可以放在<code>~/</code>,<code>~/tools/</code>以及<code>~/tools/notes/</code>。</p>
+
+<p>注意，不要将上述文件放同步脚本目录，以免信息泄露。</p>
+
+<h3>同步</h3>
+
+<p>使用方法如下，很简单，需要传入同步文件夹路径和bucket名称</p>
+
+<p><code>java
+ruby push2Qiniu.rb dir_to_sync bucket
+</code></p>
+
+<h2>实现原理</h2>
+
+<p>实现原理很简单，基本如下</p>
+
+<ul>
+<li>新文件 直接上传</li>
+<li>已存在的文件，如果lastModified没有变化，不上传</li>
+<li>已存在的文件，如果lastModified有变化，检测文件内容md5，如果和上一次不同，则上传，否则不上传。</li>
+</ul>
+
+
+<h2>和Octopress集成</h2>
+
+<p>修改Octopress的Rakefile文件
+```ruby
+desc &ldquo;Default deploy task&rdquo;
+task :deploy do
+  # Check if preview posts exist, which should not be published
+  if File.exists?(&ldquo;.preview-mode&rdquo;)</p>
+
+<pre><code>puts "## Found posts in preview mode, regenerating files ..."
+File.delete(".preview-mode")
+Rake::Task[:generate].execute
+</code></pre>
+
+<p>  end</p>
+
+<p>  Rake::Task[:copydot].invoke(source_dir, public_dir)
+  atom2rssDir = &lsquo;~/osc_git/php_works/&rsquo;
+  Rake::Task[&ldquo;#{deploy_default}&rdquo;].execute
+  //在这里加入同步脚本执行
+end
+```</p>
+
+<h2>源码</h2>
+
+<ul>
+<li><a href="https://github.com/androidyue/Qiniu_Uploader">Qiniu_Uploader</a></li>
+</ul>
+
+
+<h2>使用七牛</h2>
+
+<p>下面的是七牛的一位员工的QQ二维码，想要使用七牛（每月免费10G流量）并得到更多优惠，请联系她，注明来自技术小黑屋。</p>
+
+<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/qiniu_tina.jpg" alt="http://7jpolu.com1.z0.glb.clouddn.com/qiniu_tina.jpg" /></p>
+]]></content>
+  </entry>
+  
+  <entry>
     <title type="html"><![CDATA[Octopress中嵌入ruby代码如何不被解析]]></title>
     <link href="http://droidyue.com/blog/2014/08/18/how-to-escape-embeded-ruby-block-in-octopress/"/>
     <updated>2014-08-18T07:48:00+08:00</updated>
     <id>http://droidyue.com/blog/2014/08/18/how-to-escape-embeded-ruby-block-in-octopress</id>
-    <content type="html"><![CDATA[<p>用Octopress写博客即将快一年了，感觉自己用的还可以，并且借此熟练使用了Markdown，但是前几天写一篇关于如何在Octopress中集成多说评论的文章的时候，遇到了一个代码高亮的问题，就是如何处理{{}}代码块的问题。</p>
+    <content type="html"><![CDATA[<p>用Octopress写博客即将快一年了，感觉自己用的还可以，并且借此熟练使用了Markdown，但是前几天写一篇关于如何在Octopress中集成多说评论的文章的时候，遇到了一个代码高亮的问题，就是如何处理代码块的问题。</p>
 
 <!--more-->
 
 
 <h2>问题描述</h2>
 
-<p>默认的{{}}作为嵌入的ruby代码会被解释然后转成其真实的值对应的HTML代码形式。</p>
+<p>默认的作为嵌入的ruby代码会被解释然后转成其真实的值对应的HTML代码形式。</p>
 
 <h2>举个例子</h2>
 
-<p><code>{{ page.title }}</code>代表当前页面的标题，默认情况下，如果执行了<code>rake generate &amp;&amp; rake preview</code>，这段代码会被解释成了<strong>{{page.title}}</strong></p>
+<p><code>Category: Octopress</code>代表当前页面的标题，默认情况下，如果执行了<code>rake generate &amp;&amp; rake preview</code>，这段代码会被解释成了<strong>Category: Octopress</strong></p>
 
 <p>但是我们想要的是原样输出，类似这样在代码块中。
 <code>html
-{% raw %}{{ page.title }}{% endraw %}
+{{ page.title }}
 </code></p>
 
 <h2>如何做到</h2>
 
 <p>如果想避免嵌入的ruby代码块被解析，使用&#123;% raw %&#125;和&#123;% endraw %&#125;来包裹不想被解析的代码块即可。示例如下</p>
 
-<p>&#123;% raw %&#125;{% raw %}{{ page.title }}{% endraw %}&#123;% endraw %&#125;
-&#123;% raw %&#125;{% raw %}{{ page.url }}{% endraw %}&#123;% endraw %&#125;</p>
+<p>&#123;% raw %&#125;{{ page.title }}&#123;% endraw %&#125;
+&#123;% raw %&#125;{{ page.url }}&#123;% endraw %&#125;</p>
 
 <h2>更棘手的</h2>
 
@@ -69,7 +175,7 @@
 <!--more-->
 
 
-<p>{%img <a href="http://7jpolu.com1.z0.glb.clouddn.com/jiathis_flash_issue.png">http://7jpolu.com1.z0.glb.clouddn.com/jiathis_flash_issue.png</a> Octoress jiathis Issue %}</p>
+<p><img class="<a" src="href="http://7jpolu.com1.z0.glb.clouddn.com/jiathis_flash_issue.png">http://7jpolu.com1.z0.glb.clouddn.com/jiathis_flash_issue.png</a>" title="Octoress jiathis Issue" ></p>
 
 <h2>究其原因</h2>
 
@@ -194,9 +300,9 @@ OK，到这里就解决问题了，检查一下看看吧。</p>
 
 <p>回到顶部功能，不仅仅要在文章页生效，同时也需要对类似归档页面有效才完美。于是我们需要找一个公用的位置。这个位置就是<strong>source/_layouts/default.html</strong>
 <code>html linenos:false source/_layouts/default.html
-  &lt;footer role="contentinfo"&gt;{% raw %}{% include footer.html %}{% endraw %}&lt;/footer&gt;
-  {% raw %}{% include after_footer.html %}{% endraw %}
-  {% raw %}{% include custom/scroll_to_top.html %}{% endraw %}
+  &lt;footer role="contentinfo"&gt;{% include footer.html %}&lt;/footer&gt;
+  {% include after_footer.html %}
+  {% include custom/scroll_to_top.html %}
 &lt;/body&gt;
 &lt;/html&gt;
 </code></p>
@@ -268,7 +374,7 @@ border-bottom: 1px solid $page-border-bottom;
 <!-- 多说评论框 start -->
 
 
-<div class="ds-thread" data-thread-key="{% raw %}{{ page.id }}{% endraw %}" data-title="{% raw %}{{ page.title }}{% endraw %}" data-url="{% raw %}{{site.url}}{{ page.url  }}{% endraw %}"></div>
+<div class="ds-thread" data-thread-key="{{ page.id }}" data-title="{{ page.title }}" data-url="{{site.url}}{{ page.url  }}"></div>
 
 
 <!-- 多说评论框 end -->
@@ -285,7 +391,7 @@ border-bottom: 1px solid $page-border-bottom;
 <!-- 多说评论框 start -->
 
 
-<div class="ds-thread" data-thread-key="{% raw %}{{ page.id }}{% endraw %}" data-title="{% raw %}{{ page.title }}{% endraw %}" data-url="{% raw %}{{site.url}}{{ page.url  }}{% endraw %}"></div>
+<div class="ds-thread" data-thread-key="{{ page.id }}" data-title="{{ page.title }}" data-url="{{site.url}}{{ page.url  }}"></div>
 
 
 <!-- 多说评论框 end -->
@@ -315,7 +421,7 @@ border-bottom: 1px solid $page-border-bottom;
  var duoshuoQuery = {short_name:&ldquo;your_short_name&rdquo;};
 ```
 关于short_name的这个值，需要从多说后台查找，如下图
-{%img <a href="http://7jpolu.com1.z0.glb.clouddn.com/duoshuo_short_name.png">http://7jpolu.com1.z0.glb.clouddn.com/duoshuo_short_name.png</a> %}</p>
+<img class="<a" src="href="http://7jpolu.com1.z0.glb.clouddn.com/duoshuo_short_name.png">http://7jpolu.com1.z0.glb.clouddn.com/duoshuo_short_name.png</a>"></p>
 
 <h3>将文件嵌入到<strong><code>&lt;body&gt;&lt;/body&gt;</code></strong></h3>
 
@@ -323,52 +429,52 @@ border-bottom: 1px solid $page-border-bottom;
 ```html source/_layouts/post.html linenos:false
   </footer>
   </article>
-{% raw %}{% if page.comments == true %}{% endraw %}
+{% if page.comments == true %}
   <section>
-   {% raw %}{% include post/duoshuo.html %}{% endraw %}
+   {% include post/duoshuo.html %}
   </section>
- {% raw %}{% endif %}{% endraw %}
+ {% endif %}
 </div>
-{% raw %}{% unless page.sidebar == false %}{% endraw %}
+{% unless page.sidebar == false %}
 <aside class="sidebar">
-  {% raw %}{% if site.post_asides.size %}{% endraw %}</p>
+  {% if site.post_asides.size %}</p>
 
-<pre><code>{% raw %}{% include_array post_asides %}{% endraw %}
+<pre><code>{% include_array post_asides %}
 </code></pre>
 
-<p>  {% raw %}{% else %}{% endraw %}</p>
+<p>  {% else %}</p>
 
-<pre><code>{% raw %}{% include_array default_asides %}{% endraw %}
+<pre><code>{% include_array default_asides %}
 </code></pre>
 
-<p>  {% raw %}{% endif %}{% endraw %}
+<p>  {% endif %}
 </aside>
-{% raw %}{% endunless %}{% endraw %}
+{% endunless %}
 ```</p>
 
 <p>同样，将文件嵌入到<strong>source/_layouts/page.html</strong>里面
 ```html source/_layouts/page.html lineos:false
-{% raw %}{% if  page.comments == true %}{% endraw %}
+{% if  page.comments == true %}
 <section>
- {% raw %}{% include post/duoshuo.html %}{% endraw %}
+ {% include post/duoshuo.html %}
   </section>
-{% raw %}{% endif %}{% endraw %}
+{% endif %}
 </div>
-{% raw %}{% unless page.sidebar == false %}{% endraw %}
+{% unless page.sidebar == false %}
 <aside class="sidebar">
-  {% raw %}{% if site.page_asides.size %}{% endraw %}</p>
+  {% if site.page_asides.size %}</p>
 
-<pre><code>{% raw %}{% include_array page_asides %}{% endraw %}
+<pre><code>{% include_array page_asides %}
 </code></pre>
 
-<p>  {% raw %}{% else %}{% endraw %}</p>
+<p>  {% else %}</p>
 
-<pre><code>{% raw %}{% include_array default_asides %}{% endraw %}
+<pre><code>{% include_array default_asides %}
 </code></pre>
 
-<p>  {% raw %}{% endif %}{% endraw %}
+<p>  {% endif %}
 </aside>
-{% raw %}{% endunless %}{% endraw %}
+{% endunless %}
 ```
 到这里，基本可以跑成功了。</p>
 
@@ -377,12 +483,12 @@ border-bottom: 1px solid $page-border-bottom;
 <h3>表象</h3>
 
 <p>不要高兴的太早，集成后的多说还是有点小问题，就是当需要登陆或者输入邮箱地址的时候，会出现如下图的问题，登陆框的背后有一层带颜色的层。
-{%img <a href="http://7jpolu.com1.z0.glb.clouddn.com/duoshuo_background_issue.png">http://7jpolu.com1.z0.glb.clouddn.com/duoshuo_background_issue.png</a> duoshuo issue in Octopress %}</p>
+<img class="<a" src="href="http://7jpolu.com1.z0.glb.clouddn.com/duoshuo_background_issue.png">http://7jpolu.com1.z0.glb.clouddn.com/duoshuo_background_issue.png</a>" title="duoshuo issue in Octopress" ></p>
 
 <h3>原因</h3>
 
 <p>具体原因是我所使用的css为所有的body div增加了一个背景。下图为id为ds-wrapper的div的背景属性
-{%img <a href="http://7jpolu.com1.z0.glb.clouddn.com/div_background_property.png">http://7jpolu.com1.z0.glb.clouddn.com/div_background_property.png</a> ds-wrapper div background %}</p>
+<img class="<a" src="href="http://7jpolu.com1.z0.glb.clouddn.com/div_background_property.png">http://7jpolu.com1.z0.glb.clouddn.com/div_background_property.png</a>" title="ds-wrapper div background" ></p>
 
 <h3>解决</h3>
 
@@ -433,63 +539,6 @@ border-bottom: 1px solid $page-border-bottom;
 <ul>
 <li><a href="http://www.amazon.cn/gp/product/B00B01LKQ6/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00B01LKQ6&linkCode=as2&tag=droidyue-23">如何以数据驱动决策,提升网站价值</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00B01LKQ6" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 <li><a href="http://www.amazon.cn/gp/product/B0011BTJV8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011BTJV8&linkCode=as2&tag=droidyue-23">访客至上的网页设计秘笈</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011BTJV8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Octopress 下 rake 失败问题解决]]></title>
-    <link href="http://droidyue.com/blog/2014/07/24/rake-issues-in-octopress/"/>
-    <updated>2014-07-24T19:11:00+08:00</updated>
-    <id>http://droidyue.com/blog/2014/07/24/rake-issues-in-octopress</id>
-    <content type="html"><![CDATA[<p>在 Mac 机器上，使用 octopress 总是问题重重，今天遇到了这样的问题，解决了，记录一下。
-<code>bash
-13:28 $ rake generate
-rake aborted!
-You have already activated rake 10.1.1, but your Gemfile requires rake 0.9.2.2. Prepending `bundle exec` to your command may solve this.
-/Users/androidyue/.rvm/gems/ruby-1.9.3-p484/gems/bundler-1.6.2/lib/bundler/runtime.rb:34:in `block in setup'
-/Users/androidyue/.rvm/gems/ruby-1.9.3-p484/gems/bundler-1.6.2/lib/bundler/runtime.rb:19:in `setup'
-/Users/androidyue/.rvm/gems/ruby-1.9.3-p484/gems/bundler-1.6.2/lib/bundler.rb:120:in `setup'
-/Users/androidyue/.rvm/gems/ruby-1.9.3-p484/gems/bundler-1.6.2/lib/bundler/setup.rb:7:in `&lt;top (required)&gt;'
-/Users/androidyue/github/myblog/Rakefile:2:in `&lt;top (required)&gt;'
-(See full trace by running task with --trace)
-</code></p>
-
-<!--more-->
-
-
-<h2>查看 rake 信息</h2>
-
-<p>```ruby
-13:48 $ gem list rake</p>
-
-<p><strong><em> LOCAL GEMS </em></strong></p>
-
-<p>rake (10.1.1, 0.9.6, 0.9.2.2)
-```</p>
-
-<h2>方法一</h2>
-
-<p>在所有的 rake 命令前面加入 bundle exec 前缀。
-<code>bash
-bundle exec rake generate
-</code></p>
-
-<h2>方法二</h2>
-
-<p>修改Gemfile 文件如下。
-<code>ruby
- group :development do
--  gem 'rake', '~&gt; 0.9'
-+  gem 'rake', '~&gt; 10.0'
-</code></p>
-
-<h3>其他</h3>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B002WJI7YI/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002WJI7YI&linkCode=as2&tag=droidyue-23">锦绣蓝图:怎样规划令人流连忘返的网站</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002WJI7YI" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00ASOV2AU/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASOV2AU&linkCode=as2&tag=droidyue-23">你的网站赚钱吗？</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASOV2AU" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 ]]></content>
