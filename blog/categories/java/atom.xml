@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Java | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/java/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-03-13T13:08:59+08:00</updated>
+  <updated>2016-03-13T20:23:48+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,291 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[理解Java中ThreadLocal]]></title>
+    <link href="http://droidyue.com/blog/2016/03/13/learning-threadlocal-in-java/"/>
+    <updated>2016-03-13T20:21:00+08:00</updated>
+    <id>http://droidyue.com/blog/2016/03/13/learning-threadlocal-in-java</id>
+    <content type="html"><![CDATA[<p>提到ThreadLocal，有些Android或者Java程序员可能有所陌生，可能会提出种种问题，它是做什么的，是不是和线程有关，怎么使用呢？等等问题，本文将总结一下我对ThreadLocal的理解和认识，希望让大家理解ThreadLocal更加透彻一些。</p>
+
+<!--more-->
+
+
+<h2>ThreadLocal是什么</h2>
+
+<p>ThreadLocal是一个关于创建线程局部变量的类。</p>
+
+<p>通常情况下，我们创建的变量是可以被任何一个线程访问并修改的。而使用ThreadLocal创建的变量只能被当前线程访问，其他线程则无法访问和修改。</p>
+
+<h2>Global &amp;&amp; Local</h2>
+
+<p>上面的两个修饰看似矛盾，实则不然。</p>
+
+<ul>
+<li>Global 意思是在当前线程中，任何一个点都可以访问到ThreadLocal的值。</li>
+<li>Local 意思是该线程的ThreadLocal只能被该线程访问，一般情况下其他线程访问不到。</li>
+</ul>
+
+
+<h2>用法简介</h2>
+
+<h3>创建，支持泛型</h3>
+
+<p><code>java
+ThreadLocal&lt;String&gt; mStringThreadLocal = new ThreadLocal&lt;&gt;();
+</code></p>
+
+<h3>set方法</h3>
+
+<p><code>java
+mStringThreadLocal.set("droidyue.com");
+</code></p>
+
+<h3>get方法</h3>
+
+<p><code>java
+mStringThreadLocal.get();
+</code></p>
+
+<p>完整的使用示例
+```java
+private void testThreadLocal() {</p>
+
+<pre><code>Thread t = new Thread() {
+    ThreadLocal&lt;String&gt; mStringThreadLocal = new ThreadLocal&lt;&gt;();
+
+    @Override
+    public void run() {
+        super.run();
+        mStringThreadLocal.set("droidyue.com");
+        mStringThreadLocal.get();
+    }
+};
+
+t.start();
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>ThreadLocal初始值</h3>
+
+<p>为ThreadLocal设置默认的get初始值，需要重写<code>initialValue</code>方法，下面是一段代码，我们将默认值修改成了线程的名字
+```java
+ThreadLocal<String> mThreadLocal = new ThreadLocal<String>() {</p>
+
+<pre><code>@Override
+protected String initialValue() {
+    return Thread.currentThread().getName();
+}
+</code></pre>
+
+<p>};
+```</p>
+
+<h2>Android中的应用</h2>
+
+<p>在Android中，Looper类就是利用了ThreadLocal的特性，保证每个线程只存在一个Looper对象。
+```java
+static final ThreadLocal<Looper> sThreadLocal = new ThreadLocal<Looper>();
+private static void prepare(boolean quitAllowed) {</p>
+
+<pre><code>if (sThreadLocal.get() != null) {
+    throw new RuntimeException("Only one Looper may be created per thread");
+}
+sThreadLocal.set(new Looper(quitAllowed));
+</code></pre>
+
+<p>}
+```</p>
+
+<h2>如何实现</h2>
+
+<p>为了更好的掌握ThreadLocal，我认为了解其内部实现是很有必要的，这里我们以set方法从起始看一看ThreadLocal的实现原理。</p>
+
+<p>下面是ThreadLocal的set方法，大致意思为</p>
+
+<ul>
+<li>首先获取当前线程</li>
+<li>利用当前线程作为句柄获取一个ThreadLocalMap的对象</li>
+<li>如果上述ThreadLocalMap对象不为空，则设置值，否则创建这个ThreadLocalMap对象并设置值</li>
+</ul>
+
+
+<p>源码如下
+```java
+public void set(T value) {</p>
+
+<pre><code>Thread t = Thread.currentThread();
+ThreadLocalMap map = getMap(t);
+if (map != null)
+    map.set(this, value);
+else
+    createMap(t, value);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>下面是一个利用Thread对象作为句柄获取ThreadLocalMap对象的代码</p>
+
+<p>```java
+ThreadLocalMap getMap(Thread t) {</p>
+
+<pre><code>return t.threadLocals;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上面的代码获取的实际上是Thread对象的threadLocals变量，可参考下面代码
+```java
+class Thread implements Runnable {</p>
+
+<pre><code>/* ThreadLocal values pertaining to this thread. This map is maintained
+ * by the ThreadLocal class. */
+
+ThreadLocal.ThreadLocalMap threadLocals = null;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>而如果一开始设置，即ThreadLocalMap对象未创建，则新建ThreadLocalMap对象，并设置初始值。
+```java
+void createMap(Thread t, T firstValue) {</p>
+
+<pre><code>t.threadLocals = new ThreadLocalMap(this, firstValue);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>总结：实际上ThreadLocal的值是放入了当前线程的一个ThreadLocalMap实例中，所以只能在本线程中访问，其他线程无法访问。</p>
+
+<h2>对象存放在哪里</h2>
+
+<p>在Java中，栈内存归属于单个线程，每个线程都会有一个栈内存，其存储的变量只能在其所属线程中可见，即栈内存可以理解成线程的私有内存。而堆内存中的对象对所有线程可见。堆内存中的对象可以被所有线程访问。</p>
+
+<h3>问：那么是不是说ThreadLocal的实例以及其值存放在栈上呢？</h3>
+
+<p>其实不是，因为ThreadLocal实例实际上也是被其创建的类持有（更顶端应该是被线程持有）。而ThreadLocal的值其实也是被线程实例持有。</p>
+
+<p><strong>它们都是位于堆上，只是通过一些技巧将可见性修改成了线程可见。</strong></p>
+
+<p>关于堆和栈的比较，请参考<a href="http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/">Java中的堆和栈的区别</a></p>
+
+<h2>真的只能被一个线程访问么</h2>
+
+<p>既然上面提到了ThreadLocal只对当前线程可见，是不是说ThreadLocal的值只能被一个线程访问呢？</p>
+
+<p>使用InheritableThreadLocal可以实现多个线程访问ThreadLocal的值。</p>
+
+<p>如下，我们在主线程中创建一个InheritableThreadLocal的实例，然后在子线程中得到这个InheritableThreadLocal实例设置的值。</p>
+
+<p>```java
+private void testInheritableThreadLocal() {</p>
+
+<pre><code>final ThreadLocal threadLocal = new InheritableThreadLocal();
+threadLocal.set("droidyue.com");
+Thread t = new Thread() {
+    @Override
+    public void run() {
+        super.run();
+        Log.i(LOGTAG, "testInheritableThreadLocal =" + threadLocal.get());
+    }
+};
+
+t.start();
+</code></pre>
+
+<p>}
+<code>
+上面的代码输出的日志信息为
+</code>
+I/MainActivity( 5046): testInheritableThreadLocal =droidyue.com
+<code>
+使用InheritableThreadLocal可以将某个线程的ThreadLocal值在其子线程创建时传递过去。因为在线程创建过程中，有相关的处理逻辑。
+</code>java
+//Thread.java
+ private void init(ThreadGroup g, Runnable target, String name,</p>
+
+<pre><code>                  long stackSize, AccessControlContext acc) {
+    //code goes here
+    if (parent.inheritableThreadLocals != null)
+        this.inheritableThreadLocals =
+            ThreadLocal.createInheritedMap(parent.inheritableThreadLocals);
+    /* Stash the specified stack size in case the VM cares */
+    this.stackSize = stackSize;
+
+    /* Set thread ID */
+    tid = nextThreadID();
+</code></pre>
+
+<p>}
+```
+上面代码就是在线程创建的时候，复制父线程的inheritableThreadLocals的数据。</p>
+
+<h2>会导致内存泄露么</h2>
+
+<p>有网上讨论说ThreadLocal会导致内存泄露，原因如下</p>
+
+<ul>
+<li>首先ThreadLocal实例被线程的ThreadLocalMap实例持有，也可以看成被线程持有。</li>
+<li>如果应用使用了线程池，那么之前的线程实例处理完之后出于复用的目的依然存活</li>
+<li>所以，ThreadLocal设定的值被持有，导致内存泄露。</li>
+</ul>
+
+
+<p>上面的逻辑是清晰的，可是ThreadLocal并不会产生内存泄露，因为ThreadLocalMap做选择key的时候，并不是直接选择ThreadLocal实例，而是ThreadLocalMap实例的弱引用。
+```java
+static class ThreadLocalMap {</p>
+
+<p>/<em>*
+* The entries in this hash map extend WeakReference, using
+* its main ref field as the key (which is always a
+* ThreadLocal object).  Note that null keys (i.e. entry.get()
+* == null) mean that the key is no longer referenced, so the
+* entry can be expunged from table.  Such entries are referred to
+* as &ldquo;stale entries&rdquo; in the code that follows.
+</em>/</p>
+
+<pre><code>static class Entry extends WeakReference&lt;ThreadLocal&lt;?&gt;&gt; {
+    /** The value associated with this ThreadLocal. */
+    Object value;
+
+    Entry(ThreadLocal&lt;?&gt; k, Object v) {
+        super(k);
+        value = v;
+    }
+}
+</code></pre>
+
+<p>}
+```
+所以实际上从ThreadLocal设计角度来说是不会导致内存泄露的。</p>
+
+<h2>使用场景</h2>
+
+<ul>
+<li>实现单个线程单例以及单个线程上下文信息存储，比如交易id等</li>
+<li>实现线程安全，非线程安全的对象使用ThreadLocal之后就会变得线程安全，因为每个线程都会有一个对应的实例</li>
+<li>承载一些线程相关的数据，避免在方法中来回传递参数</li>
+</ul>
+
+
+<h2>参考文章</h2>
+
+<ul>
+<li><a href="http://tutorials.jenkov.com/java-concurrency/threadlocal.html">Java ThreadLocal</a></li>
+<li><a href="http://cs.oswego.edu/pipermail/concurrency-interest/2007-October/004456.html">Threadlocals and memory leaks in J2EE</a></li>
+<li><a href="http://veerasundar.com/blog/2010/11/java-thread-local-how-to-use-and-code-sample/">Java Thread Local – How to use and code sample</a></li>
+<li><a href="http://javarevisited.blogspot.hk/2012/05/how-to-use-threadlocal-in-java-benefits.html">ThreadLocal in Java &ndash; Example Program and Tutorial</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[深入探索Java 8 Lambda表达式]]></title>
@@ -746,220 +1031,6 @@ if( count &lt;= 0){
 <li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011F7WU4&amp;linkCode=as2&amp;tag=droidyue-23">Java编程思想(第4版) </a></li>
 <li><a href="http://www.amazon.cn/gp/product/B00G9KF4JC/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00G9KF4JC&amp;linkCode=as2&amp;tag=droidyue-23">Java核心技术(卷1):基础知识</a></li>
 <li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00D2ID4PK&amp;linkCode=as2&amp;tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[读懂Java中的Socket编程]]></title>
-    <link href="http://droidyue.com/blog/2015/03/08/sockets-programming-in-java/"/>
-    <updated>2015-03-08T16:09:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/03/08/sockets-programming-in-java</id>
-    <content type="html"><![CDATA[<p>Socket,又称为套接字，Socket是计算机网络通信的基本的技术之一。如今大多数基于网络的软件，如浏览器，即时通讯工具甚至是P2P下载都是基于Socket实现的。本文会介绍一下基于TCP/IP的Socket编程，并且如何写一个客户端/服务器程序。</p>
-
-<!--more-->
-
-
-<h2>餐前甜点</h2>
-
-<p>Unix的输入输出(IO)系统遵循Open-Read-Write-Close这样的操作范本。当一个用户进程进行IO操作之前，它需要调用Open来指定并获取待操作文件或设备读取或写入的权限。一旦IO操作对象被打开，那么这个用户进程可以对这个对象进行一次或多次的读取或写入操作。Read操作用来从IO操作对象读取数据，并将数据传递给用户进程。Write操作用来将用户进程中的数据传递（写入）到IO操作对象。 当所有的Read和Write操作结束之后，用户进程需要调用Close来通知系统其完成对IO对象的使用。</p>
-
-<p>在Unix开始支持进程间通信（InterProcess Communication，简称IPC）时，IPC的接口就设计得类似文件IO操作接口。在Unix中，一个进程会有一套可以进行读取写入的IO描述符。IO描述符可以是文件，设备或者是通信通道（socket套接字）。一个文件描述符由三部分组成：创建（打开socket），读取写入数据（接受和发送到socket）还有销毁（关闭socket）。</p>
-
-<p>在Unix系统中，类BSD版本的IPC接口是作为TCP和UDP协议之上的一层进行实现的。消息的目的地使用socket地址来表示。一个socket地址是由网络地址和端口号组成的通信标识符。</p>
-
-<p>进程间通信操作需要一对儿socket。进程间通信通过在一个进程中的一个socket与另一个进程中得另一个socket进行数据传输来完成。当一个消息执行发出后，这个消息在发送端的socket中处于排队状态，直到下层的网络协议将这些消息发送出去。当消息到达接收端的socket后，其也会处于排队状态，直到接收端的进程对这条消息进行了接收处理。</p>
-
-<h2>TCP和UDP通信</h2>
-
-<p>关于socket编程我们有两种通信协议可以进行选择。一种是数据报通信，另一种就是流通信。</p>
-
-<h3>数据报通信</h3>
-
-<p>数据报通信协议，就是我们常说的UDP（User Data Protocol 用户数据报协议）。UDP是一种无连接的协议，这就意味着我们每次发送数据报时，需要同时发送本机的socket描述符和接收端的socket描述符。因此，我们在每次通信时都需要发送额外的数据。</p>
-
-<h3>流通信</h3>
-
-<p>流通信协议，也叫做TCP(Transfer Control Protocol，传输控制协议)。和UDP不同，TCP是一种基于连接的协议。在使用流通信之前，我们必须在通信的一对儿socket之间建立连接。其中一个socket作为服务器进行监听连接请求。另一个则作为客户端进行连接请求。一旦两个socket建立好了连接，他们可以单向或双向进行数据传输。</p>
-
-<p>读到这里，我们多少有这样的疑问，我们进行socket编程使用UDP还是TCP呢。选择基于何种协议的socket编程取决于你的具体的客户端-服务器端程序的应用场景。下面我们简单分析一下TCP和UDP协议的区别，或许可以帮助你更好地选择使用哪种。</p>
-
-<p>在UDP中，每次发送数据报时，需要附带上本机的socket描述符和接收端的socket描述符。而由于TCP是基于连接的协议，在通信的socket对之间需要在通信之前建立连接，因此会有建立连接这一耗时存在于TCP协议的socket编程。</p>
-
-<p>在UDP中，数据报数据在大小上有64KB的限制。而TCP中也不存在这样的限制。一旦TCP通信的socket对建立了连接，他们之间的通信就类似IO流，所有的数据会按照接受时的顺序读取。</p>
-
-<p>UDP是一种不可靠的协议，发送的数据报不一定会按照其发送顺序被接收端的socket接受。然后TCP是一种可靠的协议。接收端收到的包的顺序和包在发送端的顺序是一致的。</p>
-
-<p>简而言之，TCP适合于诸如远程登录(rlogin,telnet)和文件传输（FTP）这类的网络服务。因为这些需要传输的数据的大小不确定。而UDP相比TCP更加简单轻量一些。UDP用来实现实时性较高或者丢包不重要的一些服务。在局域网中UDP的丢包率都相对比较低。</p>
-
-<h2>Java中的socket编程</h2>
-
-<p>下面的部分我将通过一些示例讲解一下如何使用socket编写客户端和服务器端的程序。</p>
-
-<p>注意：在接下来的示例中，我将使用基于TCP/IP协议的socket编程，因为这个协议远远比UDP/IP使用的要广泛。并且所有的socket相关的类都位于java.net包下，所以在我们进行socket编程时需要引入这个包。</p>
-
-<h3>客户端编写</h3>
-
-<h4>开启Socket</h4>
-
-<p>如果在客户端，你需要写下如下的代码就可以打开一个socket。
-<code>java
-String host = "127.0.0.1";
-int port = 8919;
-Socket client = new Socket(host, port);
-</code>
-上面代码中，host即客户端需要连接的机器，port就是服务器端用来监听请求的端口。在选择端口时，需要注意一点，就是0~1023这些端口都已经被系统预留了。这些端口为一些常用的服务所使用，比如邮件，FTP和HTTP。当你在编写服务器端的代码，选择端口时，请选择一个大于1023的端口。</p>
-
-<h4>写入数据</h4>
-
-<p>接下来就是写入请求数据，我们从客户端的socket对象中得到OutputStream对象，然后写入数据后。很类似文件IO的处理代码。
-```java
-public class ClientSocket {</p>
-
-<pre><code>public static void main(String args[]) {
-    String host = "127.0.0.1";
-    int port = 8919;
-    try {
-        Socket client = new Socket(host, port);
-        Writer writer = new OutputStreamWriter(client.getOutputStream());
-        writer.write("Hello From Client");
-        writer.flush();
-        writer.close();
-        client.close();
-    } catch (IOException e) {
-        e.printStackTrace();
-    }
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<h4>关闭IO对象</h4>
-
-<p>类似文件IO，在读写数据完成后，我们需要对IO对象进行关闭，以确保资源的正确释放。</p>
-
-<h3>服务器端编写</h3>
-
-<h4>打开服务器端的socket</h4>
-
-<p><code>java
-int port = 8919;
-ServerSocket server = new ServerSocket(port);
-Socket socket = server.accept();
-</code>
-上面的代码创建了一个服务器端的socket，然后调用accept方法监听并获取客户端的请求socket。accept方法是一个阻塞方法，在服务器端与客户端之间建立联系之前会一直等待阻塞。</p>
-
-<h4>读取数据</h4>
-
-<p>通过上面得到的socket对象获取InputStream对象，然后安装文件IO一样读取数据即可。这里我们将内容打印出来。
-```java
-public class ServerClient {</p>
-
-<pre><code>public static void main(String[] args) {
-      int port = 8919; 
-      try {
-          ServerSocket server = new ServerSocket(port); 
-              Socket socket = server.accept(); 
-          Reader reader = new InputStreamReader(socket.getInputStream()); 
-          char chars[] = new char[1024]; 
-          int len; 
-          StringBuilder builder = new StringBuilder(); 
-          while ((len=reader.read(chars)) != -1) { 
-             builder.append(new String(chars, 0, len)); 
-          } 
-          System.out.println("Receive from client message=: " + builder); 
-          reader.close(); 
-          socket.close(); 
-          server.close(); 
-      } catch (Exception e) {
-          e.printStackTrace();
-      }
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<h4>关闭IO对象</h4>
-
-<p>还是不能忘记的，最后需要正确地关闭IO对象，以确保资源的正确释放。</p>
-
-<h3>附注一个例子</h3>
-
-<p>这里我们增加一个例子，使用socket实现一个回声服务器，就是服务器会将客户端发送过来的数据传回给客户端。代码很简单。
-```java
-import java.io.<em>;
-import java.net.</em>;
-public class EchoServer {</p>
-
-<pre><code>public static void main(String args[]) {
-    // declaration section:
-    // declare a server socket and a client socket for the server
-    // declare an input and an output stream
-    ServerSocket echoServer = null;
-    String line;
-    DataInputStream is;
-    PrintStream os;
-    Socket clientSocket = null;
-    // Try to open a server socket on port 9999
-    // Note that we can't choose a port less than 1023 if we are not
-    // privileged users (root)
-    try {
-       echoServer = new ServerSocket(9999);
-    }
-    catch (IOException e) {
-       System.out.println(e);
-    } 
-    // Create a socket object from the ServerSocket to listen and accept 
-    // connections.
-    // Open input and output streams
-    try {
-           clientSocket = echoServer.accept();
-           is = new DataInputStream(clientSocket.getInputStream());
-           os = new PrintStream(clientSocket.getOutputStream());
-           // As long as we receive data, echo that data back to the client.
-           while (true) {
-             line = is.readLine();
-             os.println(line); 
-           }
-    } catch (IOException e) {
-           System.out.println(e);
-        }
-    }
-</code></pre>
-
-<p>}
-<code>
-编译运行上面的代码，进行如下请求，就可以看到客户端请求携带的数据的内容。
-</code>java
-15:00 $ curl <a href="http://127.0.0.1:9999/?111">http://127.0.0.1:9999/?111</a>
-GET /?111 HTTP/1.1
-User-Agent: curl/7.37.1
-Host: 127.0.0.1:9999
-Accept: <em>/</em>
-```</p>
-
-<h2>总结</h2>
-
-<p>进行客户端-服务器端编程还是比较有趣的，同时在Java中进行socket编程要比其他语言（如C）要简单快速编写。</p>
-
-<p>java.net这个包里面包含了很多强大灵活的类供开发者进行网络编程，在进行网络编程中，建议使用这个包下面的API。同时Sun.*这个包也包含了很多的网络编程相关的类，但是不建议使用这个包下面的API，因为这个包可能会改变，另外这个包不能保证在所有的平台都有包含。</p>
-
-<h2>原文信息</h2>
-
-<ul>
-<li>原文地址：<a href="http://www.javaworld.com/article/2077322/core-java/core-java-sockets-programming-in-java-a-tutorial.html?null">Sockets programming in Java: A tutorial</a></li>
-</ul>
-
-
-<h2>好书推荐</h2>
-
-<ul>
-<li><a href="http://www.amazon.cn/gp/product/B00116OTVS/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00116OTVS&amp;linkCode=as2&amp;tag=droidyue-23">TCP/IP详解卷1:协议</a></li>
-<li><a href="http://www.amazon.cn/gp/product/B002FB7KG4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B002FB7KG4&amp;linkCode=as2&amp;tag=droidyue-23">TCP/IP详解•卷2：实现</a></li>
-<li><a href="http://www.amazon.cn/gp/product/B002WC7NKO/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B002WC7NKO&amp;linkCode=as2&amp;tag=droidyue-23">TCP.IP详解(卷3):TCP事务协议.HTTP和UNIX域协议</a></li>
 </ul>
 
 ]]></content>

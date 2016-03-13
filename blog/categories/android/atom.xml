@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Android | 技术小黑屋]]></title>
   <link href="http://droidyue.com/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-03-13T13:08:59+08:00</updated>
+  <updated>2016-03-13T20:23:48+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,291 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[理解Java中ThreadLocal]]></title>
+    <link href="http://droidyue.com/blog/2016/03/13/learning-threadlocal-in-java/"/>
+    <updated>2016-03-13T20:21:00+08:00</updated>
+    <id>http://droidyue.com/blog/2016/03/13/learning-threadlocal-in-java</id>
+    <content type="html"><![CDATA[<p>提到ThreadLocal，有些Android或者Java程序员可能有所陌生，可能会提出种种问题，它是做什么的，是不是和线程有关，怎么使用呢？等等问题，本文将总结一下我对ThreadLocal的理解和认识，希望让大家理解ThreadLocal更加透彻一些。</p>
+
+<!--more-->
+
+
+<h2>ThreadLocal是什么</h2>
+
+<p>ThreadLocal是一个关于创建线程局部变量的类。</p>
+
+<p>通常情况下，我们创建的变量是可以被任何一个线程访问并修改的。而使用ThreadLocal创建的变量只能被当前线程访问，其他线程则无法访问和修改。</p>
+
+<h2>Global &amp;&amp; Local</h2>
+
+<p>上面的两个修饰看似矛盾，实则不然。</p>
+
+<ul>
+<li>Global 意思是在当前线程中，任何一个点都可以访问到ThreadLocal的值。</li>
+<li>Local 意思是该线程的ThreadLocal只能被该线程访问，一般情况下其他线程访问不到。</li>
+</ul>
+
+
+<h2>用法简介</h2>
+
+<h3>创建，支持泛型</h3>
+
+<p><code>java
+ThreadLocal&lt;String&gt; mStringThreadLocal = new ThreadLocal&lt;&gt;();
+</code></p>
+
+<h3>set方法</h3>
+
+<p><code>java
+mStringThreadLocal.set("droidyue.com");
+</code></p>
+
+<h3>get方法</h3>
+
+<p><code>java
+mStringThreadLocal.get();
+</code></p>
+
+<p>完整的使用示例
+```java
+private void testThreadLocal() {</p>
+
+<pre><code>Thread t = new Thread() {
+    ThreadLocal&lt;String&gt; mStringThreadLocal = new ThreadLocal&lt;&gt;();
+
+    @Override
+    public void run() {
+        super.run();
+        mStringThreadLocal.set("droidyue.com");
+        mStringThreadLocal.get();
+    }
+};
+
+t.start();
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>ThreadLocal初始值</h3>
+
+<p>为ThreadLocal设置默认的get初始值，需要重写<code>initialValue</code>方法，下面是一段代码，我们将默认值修改成了线程的名字
+```java
+ThreadLocal<String> mThreadLocal = new ThreadLocal<String>() {</p>
+
+<pre><code>@Override
+protected String initialValue() {
+    return Thread.currentThread().getName();
+}
+</code></pre>
+
+<p>};
+```</p>
+
+<h2>Android中的应用</h2>
+
+<p>在Android中，Looper类就是利用了ThreadLocal的特性，保证每个线程只存在一个Looper对象。
+```java
+static final ThreadLocal<Looper> sThreadLocal = new ThreadLocal<Looper>();
+private static void prepare(boolean quitAllowed) {</p>
+
+<pre><code>if (sThreadLocal.get() != null) {
+    throw new RuntimeException("Only one Looper may be created per thread");
+}
+sThreadLocal.set(new Looper(quitAllowed));
+</code></pre>
+
+<p>}
+```</p>
+
+<h2>如何实现</h2>
+
+<p>为了更好的掌握ThreadLocal，我认为了解其内部实现是很有必要的，这里我们以set方法从起始看一看ThreadLocal的实现原理。</p>
+
+<p>下面是ThreadLocal的set方法，大致意思为</p>
+
+<ul>
+<li>首先获取当前线程</li>
+<li>利用当前线程作为句柄获取一个ThreadLocalMap的对象</li>
+<li>如果上述ThreadLocalMap对象不为空，则设置值，否则创建这个ThreadLocalMap对象并设置值</li>
+</ul>
+
+
+<p>源码如下
+```java
+public void set(T value) {</p>
+
+<pre><code>Thread t = Thread.currentThread();
+ThreadLocalMap map = getMap(t);
+if (map != null)
+    map.set(this, value);
+else
+    createMap(t, value);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>下面是一个利用Thread对象作为句柄获取ThreadLocalMap对象的代码</p>
+
+<p>```java
+ThreadLocalMap getMap(Thread t) {</p>
+
+<pre><code>return t.threadLocals;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上面的代码获取的实际上是Thread对象的threadLocals变量，可参考下面代码
+```java
+class Thread implements Runnable {</p>
+
+<pre><code>/* ThreadLocal values pertaining to this thread. This map is maintained
+ * by the ThreadLocal class. */
+
+ThreadLocal.ThreadLocalMap threadLocals = null;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>而如果一开始设置，即ThreadLocalMap对象未创建，则新建ThreadLocalMap对象，并设置初始值。
+```java
+void createMap(Thread t, T firstValue) {</p>
+
+<pre><code>t.threadLocals = new ThreadLocalMap(this, firstValue);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>总结：实际上ThreadLocal的值是放入了当前线程的一个ThreadLocalMap实例中，所以只能在本线程中访问，其他线程无法访问。</p>
+
+<h2>对象存放在哪里</h2>
+
+<p>在Java中，栈内存归属于单个线程，每个线程都会有一个栈内存，其存储的变量只能在其所属线程中可见，即栈内存可以理解成线程的私有内存。而堆内存中的对象对所有线程可见。堆内存中的对象可以被所有线程访问。</p>
+
+<h3>问：那么是不是说ThreadLocal的实例以及其值存放在栈上呢？</h3>
+
+<p>其实不是，因为ThreadLocal实例实际上也是被其创建的类持有（更顶端应该是被线程持有）。而ThreadLocal的值其实也是被线程实例持有。</p>
+
+<p><strong>它们都是位于堆上，只是通过一些技巧将可见性修改成了线程可见。</strong></p>
+
+<p>关于堆和栈的比较，请参考<a href="http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/">Java中的堆和栈的区别</a></p>
+
+<h2>真的只能被一个线程访问么</h2>
+
+<p>既然上面提到了ThreadLocal只对当前线程可见，是不是说ThreadLocal的值只能被一个线程访问呢？</p>
+
+<p>使用InheritableThreadLocal可以实现多个线程访问ThreadLocal的值。</p>
+
+<p>如下，我们在主线程中创建一个InheritableThreadLocal的实例，然后在子线程中得到这个InheritableThreadLocal实例设置的值。</p>
+
+<p>```java
+private void testInheritableThreadLocal() {</p>
+
+<pre><code>final ThreadLocal threadLocal = new InheritableThreadLocal();
+threadLocal.set("droidyue.com");
+Thread t = new Thread() {
+    @Override
+    public void run() {
+        super.run();
+        Log.i(LOGTAG, "testInheritableThreadLocal =" + threadLocal.get());
+    }
+};
+
+t.start();
+</code></pre>
+
+<p>}
+<code>
+上面的代码输出的日志信息为
+</code>
+I/MainActivity( 5046): testInheritableThreadLocal =droidyue.com
+<code>
+使用InheritableThreadLocal可以将某个线程的ThreadLocal值在其子线程创建时传递过去。因为在线程创建过程中，有相关的处理逻辑。
+</code>java
+//Thread.java
+ private void init(ThreadGroup g, Runnable target, String name,</p>
+
+<pre><code>                  long stackSize, AccessControlContext acc) {
+    //code goes here
+    if (parent.inheritableThreadLocals != null)
+        this.inheritableThreadLocals =
+            ThreadLocal.createInheritedMap(parent.inheritableThreadLocals);
+    /* Stash the specified stack size in case the VM cares */
+    this.stackSize = stackSize;
+
+    /* Set thread ID */
+    tid = nextThreadID();
+</code></pre>
+
+<p>}
+```
+上面代码就是在线程创建的时候，复制父线程的inheritableThreadLocals的数据。</p>
+
+<h2>会导致内存泄露么</h2>
+
+<p>有网上讨论说ThreadLocal会导致内存泄露，原因如下</p>
+
+<ul>
+<li>首先ThreadLocal实例被线程的ThreadLocalMap实例持有，也可以看成被线程持有。</li>
+<li>如果应用使用了线程池，那么之前的线程实例处理完之后出于复用的目的依然存活</li>
+<li>所以，ThreadLocal设定的值被持有，导致内存泄露。</li>
+</ul>
+
+
+<p>上面的逻辑是清晰的，可是ThreadLocal并不会产生内存泄露，因为ThreadLocalMap做选择key的时候，并不是直接选择ThreadLocal实例，而是ThreadLocalMap实例的弱引用。
+```java
+static class ThreadLocalMap {</p>
+
+<p>/<em>*
+* The entries in this hash map extend WeakReference, using
+* its main ref field as the key (which is always a
+* ThreadLocal object).  Note that null keys (i.e. entry.get()
+* == null) mean that the key is no longer referenced, so the
+* entry can be expunged from table.  Such entries are referred to
+* as &ldquo;stale entries&rdquo; in the code that follows.
+</em>/</p>
+
+<pre><code>static class Entry extends WeakReference&lt;ThreadLocal&lt;?&gt;&gt; {
+    /** The value associated with this ThreadLocal. */
+    Object value;
+
+    Entry(ThreadLocal&lt;?&gt; k, Object v) {
+        super(k);
+        value = v;
+    }
+}
+</code></pre>
+
+<p>}
+```
+所以实际上从ThreadLocal设计角度来说是不会导致内存泄露的。</p>
+
+<h2>使用场景</h2>
+
+<ul>
+<li>实现单个线程单例以及单个线程上下文信息存储，比如交易id等</li>
+<li>实现线程安全，非线程安全的对象使用ThreadLocal之后就会变得线程安全，因为每个线程都会有一个对应的实例</li>
+<li>承载一些线程相关的数据，避免在方法中来回传递参数</li>
+</ul>
+
+
+<h2>参考文章</h2>
+
+<ul>
+<li><a href="http://tutorials.jenkov.com/java-concurrency/threadlocal.html">Java ThreadLocal</a></li>
+<li><a href="http://cs.oswego.edu/pipermail/concurrency-interest/2007-October/004456.html">Threadlocals and memory leaks in J2EE</a></li>
+<li><a href="http://veerasundar.com/blog/2010/11/java-thread-local-how-to-use-and-code-sample/">Java Thread Local – How to use and code sample</a></li>
+<li><a href="http://javarevisited.blogspot.hk/2012/05/how-to-use-threadlocal-in-java-benefits.html">ThreadLocal in Java &ndash; Example Program and Tutorial</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android签名相关知识整理]]></title>
@@ -835,310 +1120,6 @@ popupWindow.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
 <h2>demo源码</h2>
 
 <p><a href="https://github.com/androidyue/Navigation-Bar-Issue-Demo">Navigation Bar Issue Demo</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[关于Android中工作者线程的思考]]></title>
-    <link href="http://droidyue.com/blog/2015/12/20/worker-thread-in-android/"/>
-    <updated>2015-12-20T10:47:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/12/20/worker-thread-in-android</id>
-    <content type="html"><![CDATA[<h2>版权说明</h2>
-
-<p>本文为 InfoQ 中文站特供稿件，首发地址为：<a href="http://www.infoq.com/cn/articles/android-worker-thread">http://www.infoq.com/cn/articles/android-worker-thread</a> 如需转载，请与 InfoQ 中文站联系。</p>
-
-<h2>摘要</h2>
-
-<p>在Android开发过程中，我们经常使用工作者线程，如AsyncTask和线程池。然而我们经常使用的这些工作者线程存在哪些不易察觉的问题呢，关于工作者线程有哪些优化呢，文本将逐一介绍并回答这些问题。</p>
-
-<p>本文系2015 北京 GDG Devfest分享内容文章。</p>
-
-<p>在Android中，我们或多或少使用了工作者线程，比如Thread，AsyncTask，HandlerThread，甚至是自己创建的线程池，使用工作者线程我们可以将耗时的操作从主线程中移走。然而在Android系统中为什么存在工作者线程呢，常用的工作者线程有哪些不易察觉的问题呢，关于工作者线程有哪些优化的方面呢，本文将一一解答这些问题。</p>
-
-<!--more-->
-
-
-<h2>工作者线程的存在原因</h2>
-
-<ul>
-<li>因为Android的UI单线程模型，所有的UI相关的操作都需要在主线程(UI线程)执行</li>
-<li>Android中各大组件的生命周期回调都是位于主线程中，使得主线程的职责更重</li>
-<li>如果不使用工作者线程为主线程分担耗时的任务，会造成应用卡顿，严重时可能出现ANR(Application Not Responding),即程序未响应。</li>
-</ul>
-
-
-<p>因而，在Android中使用工作者线程显得势在必行，如一开始提到那样，在Android中工作者线程有很多，接下来我们将围绕AsyncTask，HandlerThread等深入研究。</p>
-
-<h2>AsyncTask</h2>
-
-<p>AsyncTask是Android框架提供给开发者的一个辅助类，使用该类我们可以轻松的处理异步线程与主线程的交互，由于其便捷性，在Android工程中，AsyncTask被广泛使用。然而AsyncTask并非一个完美的方案，使用它往往会存在一些问题。接下来将逐一列举AsyncTask不容易被开发者察觉的问题。</p>
-
-<h3>AsyncTask与内存泄露</h3>
-
-<p>内存泄露是Android开发中常见的问题，只要开发者稍有不慎就有可能导致程序产生内存泄露，严重时甚至可能导致OOM(OutOfMemory，即内存溢出错误)。AsyncTask也不例外，也有可能造成内存泄露。</p>
-
-<p>以一个简单的场景为例：
-在Activity中，通常我们这样使用AsyncTask
-```java
-//In Activity
-new AsyncTask&lt;String, Void, Void>() {</p>
-
-<pre><code>@Override
-protected Void doInBackground(String... params) {
-    //some code
-    return null;
-}
-</code></pre>
-
-<p>}.execute(&ldquo;hello world&rdquo;);
-<code>``
-上述代码使用的匿名内存类创建AsyncTask实例，然而在Java中，</code>非静态内存类会隐式持有外部类的实例引用`，上面例子AsyncTask创建于Activity中，因而会隐式持有Activity的实例引用。</p>
-
-<p>而在AsyncTask内部实现中,mFuture同样使用匿名内部类创建对象，而mFuture会作为执行任务加入到任务执行器中。
-```
-private final WorkerRunnable&lt;Params, Result> mWorker;
-public AsyncTask() {</p>
-
-<pre><code>mFuture = new FutureTask&lt;Result&gt;(mWorker) {
-    @Override
-    protected void done() {
-        //some code
-    }
-};
-</code></pre>
-
-<p>}
-<code>
-而mFuture加入任务执行器，实际上是放入了一个静态成员变量SERIAL_EXECUTOR指向的对象SerialExecutor的一个ArrayDeque类型的集合中。
-</code>java
-public static final Executor SERIAL_EXECUTOR = new SerialExecutor();
-private static class SerialExecutor implements Executor {</p>
-
-<pre><code>    final ArrayDeque&lt;Runnable&gt; mTasks = new ArrayDeque&lt;Runnable&gt;();
-
-public synchronized void execute(final Runnable r) {
-    mTasks.offer(new Runnable() {
-        public void run() {
-            //fake code
-            r.run();
-        }
-    });
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>当任务处于排队状态，则Activity实例引用被静态常量SERIAL_EXECUTOR 间接持有。</p>
-
-<p>在通常情况下，当设备发生屏幕旋转事件，当前的Activity被销毁，新的Activity被创建，以此完成对布局的重新加载。</p>
-
-<p>而本例中，当屏幕旋转时，处于排队的AsyncTask由于其对Activity实例的引用关系，导致这个Activity不能被销毁，其对应的内存不能被GC回收，因而就出现了内存泄露问题。</p>
-
-<p>关于如何避免内存泄露，我们可以使用静态内部类 + 弱引用的形式解决。</p>
-
-<h3>cancel的问题</h3>
-
-<p>AsyncTask作为任务，是支持调用者取消任务的，即允许我们使用AsyncTask.canncel()方法取消提交的任务。然而其实cancel并非真正的起作用。</p>
-
-<p>首先，我们看一下cancel方法：
-```java
-public final boolean cancel(boolean mayInterruptIfRunning) {</p>
-
-<pre><code>mCancelled.set(true);
-return mFuture.cancel(mayInterruptIfRunning);
-</code></pre>
-
-<p>}
-<code>``
-cancel方法接受一个boolean类型的参数，名称为</code>mayInterruptIfRunning`，意思是是否可以打断正在执行的任务。</p>
-
-<p>当我们调用cancel(false)，不打断正在执行的任务，对应的结果是</p>
-
-<ul>
-<li>处于doInBackground中的任务不受影响，继续执行</li>
-<li>任务结束时不会去调用<code>onPostExecute</code>方法，而是执行<code>onCancelled</code>方法</li>
-</ul>
-
-
-<p>当我们调用cancel(true)，表示打断正在执行的任务，会出现如下情况：</p>
-
-<ul>
-<li>如果doInBackground方法处于阻塞状态，如调用Thread.sleep,wait等方法，则会抛出InterruptedException。</li>
-<li>对于某些情况下，有可能无法打断正在执行的任务</li>
-</ul>
-
-
-<p>如下，就是一个cancel方法无法打断正在执行的任务的例子
-```
-AsyncTask&lt;String,Void,Void> task = new AsyncTask&lt;String, Void, Void>() {</p>
-
-<pre><code>@Override
-protected Void doInBackground(String... params) {
-    boolean loop = true;
-    while(loop) {
-        Log.i(LOGTAG, "doInBackground after interrupting the loop");
-    }
-    return null;
-}
-</code></pre>
-
-<p>}</p>
-
-<p>task.execute(&ldquo;hello world&rdquo;);
-try {</p>
-
-<pre><code>Thread.sleep(2000);//确保AsyncTask任务执行
-task.cancel(true);
-</code></pre>
-
-<p>} catch (InterruptedException e) {</p>
-
-<pre><code>e.printStackTrace();
-</code></pre>
-
-<p>}
-<code>``
-上面的例子，如果想要使cancel正常工作需要在循环中，需要在循环条件里面同时检测</code>isCancelled()`才可以。</p>
-
-<h3>串行带来的问题</h3>
-
-<p>Android团队关于AsyncTask执行策略进行了多次修改，修改大致如下：
-  * 自最初引入到Donut(1.6)之前，任务串行执行
-  * 从Donut到GINGERBREAD_MR1(2.3.4),任务被修改成了并行执行
-  * 从HONEYCOMB（3.0）至今，任务恢复至串行，但可以设置<code>executeOnExecutor()</code>实现并行执行。</p>
-
-<p>然而AsyncTask的串行实际执行起来是这样的逻辑</p>
-
-<ul>
-<li>由串行执行器控制任务的初始分发</li>
-<li>并行执行器一次执行单个任务，并启动下一个</li>
-</ul>
-
-
-<p>在AsyncTask中，并发执行器实际为ThreadPoolExecutor的实例，其CORE_POOL_SIZE为当前设备CPU数量+1，MAXIMUM_POOL_SIZE值为CPU数量的2倍 + 1。</p>
-
-<p>以一个四核手机为例，当我们持续调用AsyncTask任务过程中</p>
-
-<ul>
-<li>在AsyncTask线程数量小于CORE_POOL_SIZE(5个)时，会启动新的线程处理任务，不重用之前空闲的线程</li>
-<li>当数量超过CORE_POOL_SIZE(5个)，才开始重用之前的线程处理任务</li>
-</ul>
-
-
-<p>但是由于AsyncTask属于默认线性执行任务，导致并发执行器总是处于某一个线程工作的状态，因而造成了ThreadPool中其他线程的浪费。同时由于AsyncTask中并不存在allowCoreThreadTimeOut(boolean)的调用，所以ThreadPool中的核心线程即使处于空闲状态也不会销毁掉。</p>
-
-<h2>Executors</h2>
-
-<p>Executors是Java API中一个快速创建线程池的工具类，然而在它里面也是存在问题的。</p>
-
-<p>以Executors中获取一个固定大小的线程池方法为例
-```java
-public static ExecutorService newFixedThreadPool(int nThreads) {</p>
-
-<pre><code>return new ThreadPoolExecutor(nThreads, nThreads,0L, 
-    TimeUnit.MILLISECONDS,new LinkedBlockingQueue&lt;Runnable&gt;());
-</code></pre>
-
-<p>}
-```
-在上面代码实现中，CORE_POOL_SIZE和MAXIMUM_POOL_SIZE都是同样的值，如果把nThreads当成核心线程数，则无法保证最大并发，而如果当做最大并发线程数，则会造成线程的浪费。因而Executors这样的API导致了我们无法在最大并发数和线程节省上做到平衡。</p>
-
-<p>为了达到最大并发数和线程节省的平衡，建议自行创建ThreadPoolExecutor，根据业务和设备信息确定CORE_POOL_SIZE和MAXIMUM_POOL_SIZE的合理值。</p>
-
-<h2>HandlerThread</h2>
-
-<p>HandlerThread是Android中提供特殊的线程类，使用这个类我们可以轻松创建一个带有Looper的线程，同时利用Looper我们可以结合Handler实现任务的控制与调度。以Handler的post方法为例，我们可以封装一个轻量级的任务处理器
-```java
-private Handler mHandler;
-private LightTaskManager() {</p>
-
-<pre><code>HandlerThread workerThread = new HandlerThread("LightTaskThread");
-workerThread.start();
-mHandler = new Handler(workerThread.getLooper());
-</code></pre>
-
-<p>}</p>
-
-<p>public void post(Runnable run) {</p>
-
-<pre><code>mHandler.post(run);
-</code></pre>
-
-<p>}</p>
-
-<p>public void postAtFrontOfQueue(Runnable runnable) {</p>
-
-<pre><code>mHandler.postAtFrontOfQueue(runnable);
-</code></pre>
-
-<p>}</p>
-
-<p>public void postDelayed(Runnable runnable, long delay) {</p>
-
-<pre><code>mHandler.postDelayed(runnable, delay);
-</code></pre>
-
-<p>}</p>
-
-<p>public void postAtTime(Runnable runnable, long time) {</p>
-
-<pre><code>mHandler.postAtTime(runnable, time);
-</code></pre>
-
-<p>}
-```
-在本例中，我们可以按照如下规则提交任务</p>
-
-<ul>
-<li>post 提交优先级一般的任务</li>
-<li>postAtFrontOfQueue 将优先级较高的任务加入到队列前端</li>
-<li>postAtTime 指定时间提交任务</li>
-<li>postDelayed 延后提交优先级较低的任务</li>
-</ul>
-
-
-<p>上面的轻量级任务处理器利用HandlerThread的单一线程 + 任务队列的形式，可以处理类似本地IO（文件或数据库读取）的轻量级任务。在具体的处理场景下，可以参考如下做法：</p>
-
-<ul>
-<li>对于本地IO读取，并显示到界面，建议使用postAtFrontOfQueue</li>
-<li>对于本地IO写入，不需要通知界面，建议使用postDelayed</li>
-<li>一般操作，可以使用post</li>
-</ul>
-
-
-<h2>线程优先级调整</h2>
-
-<p>在Android应用中，将耗时任务放入异步线程是一个不错的选择，那么为异步线程调整应有的优先级则是一件锦上添花的事情。众所周知，线程的并行通过CPU的时间片切换实现，对线程优先级调整，最主要的策略就是降低异步线程的优先级，从而使得主线程获得更多的CPU资源。</p>
-
-<p>Android中的线程优先级和Linux系统进程优先级有些类似，其值都是从-20至19。其中Android中，开发者可以控制的优先级有：</p>
-
-<ul>
-<li><code>THREAD_PRIORITY_DEFAULT</code>，默认的线程优先级，值为0</li>
-<li><code>THREAD_PRIORITY_LOWEST</code>，最低的线程级别，值为19</li>
-<li><code>THREAD_PRIORITY_BACKGROUND</code> 后台线程建议设置这个优先级，值为10</li>
-<li><code>THREAD_PRIORITY_MORE_FAVORABLE</code> 相对<code>THREAD_PRIORITY_DEFAULT</code>稍微优先，值为-1</li>
-<li><code>THREAD_PRIORITY_LESS_FAVORABLE</code> 相对<code>THREAD_PRIORITY_DEFAULT</code>稍微落后一些，值为1</li>
-</ul>
-
-
-<p>为线程设置优先级也比较简单，通用的做法是在run方法体的开始部分加入下列代码
-<code>java
-android.os.Process.setThreadPriority(priority);
-</code></p>
-
-<p>通常设置优先级的规则如下：</p>
-
-<ul>
-<li>一般的工作者线程，设置成<code>THREAD_PRIORITY_BACKGROUND</code></li>
-<li>对于优先级很低的线程，可以设置<code>THREAD_PRIORITY_LOWEST</code></li>
-<li>其他特殊需求，视业务应用具体的优先级</li>
-</ul>
-
-
-<h2>总结</h2>
-
-<p>在Android中工作者线程如此普遍，然而潜在的问题也不可避免，建议在开发者使用工作者线程时，从工作者线程的数量和优先级等方面进行审视，做到较为合理的使用。</p>
 ]]></content>
   </entry>
   

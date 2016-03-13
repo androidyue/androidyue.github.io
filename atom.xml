@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-03-13T13:08:59+08:00</updated>
+  <updated>2016-03-13T20:23:48+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,371 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[理解Java中ThreadLocal]]></title>
+    <link href="http://droidyue.com/blog/2016/03/13/learning-threadlocal-in-java/"/>
+    <updated>2016-03-13T20:21:00+08:00</updated>
+    <id>http://droidyue.com/blog/2016/03/13/learning-threadlocal-in-java</id>
+    <content type="html"><![CDATA[<p>提到ThreadLocal，有些Android或者Java程序员可能有所陌生，可能会提出种种问题，它是做什么的，是不是和线程有关，怎么使用呢？等等问题，本文将总结一下我对ThreadLocal的理解和认识，希望让大家理解ThreadLocal更加透彻一些。</p>
+
+<!--more-->
+
+
+<h2>ThreadLocal是什么</h2>
+
+<p>ThreadLocal是一个关于创建线程局部变量的类。</p>
+
+<p>通常情况下，我们创建的变量是可以被任何一个线程访问并修改的。而使用ThreadLocal创建的变量只能被当前线程访问，其他线程则无法访问和修改。</p>
+
+<h2>Global &amp;&amp; Local</h2>
+
+<p>上面的两个修饰看似矛盾，实则不然。</p>
+
+<ul>
+<li>Global 意思是在当前线程中，任何一个点都可以访问到ThreadLocal的值。</li>
+<li>Local 意思是该线程的ThreadLocal只能被该线程访问，一般情况下其他线程访问不到。</li>
+</ul>
+
+
+<h2>用法简介</h2>
+
+<h3>创建，支持泛型</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">mStringThreadLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadLocal</span><span class="o">&lt;&gt;();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>set方法</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">mStringThreadLocal</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="s">&quot;droidyue.com&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>get方法</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">mStringThreadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>完整的使用示例</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testThreadLocal</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">Thread</span> <span class="n">t</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Thread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">mStringThreadLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadLocal</span><span class="o">&lt;&gt;();</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="nd">@Override</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+</span><span class='line'>            <span class="n">mStringThreadLocal</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="s">&quot;droidyue.com&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">mStringThreadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">t</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>ThreadLocal初始值</h3>
+
+<p>为ThreadLocal设置默认的get初始值，需要重写<code>initialValue</code>方法，下面是一段代码，我们将默认值修改成了线程的名字</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">mThreadLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">protected</span> <span class="n">String</span> <span class="nf">initialValue</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getName</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Android中的应用</h2>
+
+<p>在Android中，Looper类就是利用了ThreadLocal的特性，保证每个线程只存在一个Looper对象。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">static</span> <span class="kd">final</span> <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">Looper</span><span class="o">&gt;</span> <span class="n">sThreadLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">Looper</span><span class="o">&gt;();</span>
+</span><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">prepare</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">quitAllowed</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">sThreadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;Only one Looper may be created per thread&quot;</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="n">sThreadLocal</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="k">new</span> <span class="n">Looper</span><span class="o">(</span><span class="n">quitAllowed</span><span class="o">));</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>如何实现</h2>
+
+<p>为了更好的掌握ThreadLocal，我认为了解其内部实现是很有必要的，这里我们以set方法从起始看一看ThreadLocal的实现原理。</p>
+
+<p>下面是ThreadLocal的set方法，大致意思为</p>
+
+<ul>
+<li>首先获取当前线程</li>
+<li>利用当前线程作为句柄获取一个ThreadLocalMap的对象</li>
+<li>如果上述ThreadLocalMap对象不为空，则设置值，否则创建这个ThreadLocalMap对象并设置值</li>
+</ul>
+
+
+<p>源码如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">set</span><span class="o">(</span><span class="n">T</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">Thread</span> <span class="n">t</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">ThreadLocalMap</span> <span class="n">map</span> <span class="o">=</span> <span class="n">getMap</span><span class="o">(</span><span class="n">t</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">map</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span>
+</span><span class='line'>        <span class="n">map</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>        <span class="nf">createMap</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>下面是一个利用Thread对象作为句柄获取ThreadLocalMap对象的代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">ThreadLocalMap</span> <span class="nf">getMap</span><span class="o">(</span><span class="n">Thread</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">t</span><span class="o">.</span><span class="na">threadLocals</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码获取的实际上是Thread对象的threadLocals变量，可参考下面代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">Thread</span> <span class="kd">implements</span> <span class="n">Runnable</span> <span class="o">{</span>
+</span><span class='line'>    <span class="cm">/* ThreadLocal values pertaining to this thread. This map is maintained</span>
+</span><span class='line'><span class="cm">     * by the ThreadLocal class. */</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">ThreadLocal</span><span class="o">.</span><span class="na">ThreadLocalMap</span> <span class="n">threadLocals</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>而如果一开始设置，即ThreadLocalMap对象未创建，则新建ThreadLocalMap对象，并设置初始值。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kt">void</span> <span class="nf">createMap</span><span class="o">(</span><span class="n">Thread</span> <span class="n">t</span><span class="o">,</span> <span class="n">T</span> <span class="n">firstValue</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">t</span><span class="o">.</span><span class="na">threadLocals</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadLocalMap</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">firstValue</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>总结：实际上ThreadLocal的值是放入了当前线程的一个ThreadLocalMap实例中，所以只能在本线程中访问，其他线程无法访问。</p>
+
+<h2>对象存放在哪里</h2>
+
+<p>在Java中，栈内存归属于单个线程，每个线程都会有一个栈内存，其存储的变量只能在其所属线程中可见，即栈内存可以理解成线程的私有内存。而堆内存中的对象对所有线程可见。堆内存中的对象可以被所有线程访问。</p>
+
+<h3>问：那么是不是说ThreadLocal的实例以及其值存放在栈上呢？</h3>
+
+<p>其实不是，因为ThreadLocal实例实际上也是被其创建的类持有（更顶端应该是被线程持有）。而ThreadLocal的值其实也是被线程实例持有。</p>
+
+<p><strong>它们都是位于堆上，只是通过一些技巧将可见性修改成了线程可见。</strong></p>
+
+<p>关于堆和栈的比较，请参考<a href="http://droidyue.com/blog/2014/12/07/differences-between-stack-and-heap-in-java/">Java中的堆和栈的区别</a></p>
+
+<h2>真的只能被一个线程访问么</h2>
+
+<p>既然上面提到了ThreadLocal只对当前线程可见，是不是说ThreadLocal的值只能被一个线程访问呢？</p>
+
+<p>使用InheritableThreadLocal可以实现多个线程访问ThreadLocal的值。</p>
+
+<p>如下，我们在主线程中创建一个InheritableThreadLocal的实例，然后在子线程中得到这个InheritableThreadLocal实例设置的值。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testInheritableThreadLocal</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="n">ThreadLocal</span> <span class="n">threadLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="n">InheritableThreadLocal</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">threadLocal</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="s">&quot;droidyue.com&quot;</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">Thread</span> <span class="n">t</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Thread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="nd">@Override</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+</span><span class='line'>            <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testInheritableThreadLocal =&quot;</span> <span class="o">+</span> <span class="n">threadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">());</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">t</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码输出的日志信息为</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">(</span> <span class="mi">5046</span><span class="o">):</span> <span class="n">testInheritableThreadLocal</span> <span class="o">=</span><span class="n">droidyue</span><span class="o">.</span><span class="na">com</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用InheritableThreadLocal可以将某个线程的ThreadLocal值在其子线程创建时传递过去。因为在线程创建过程中，有相关的处理逻辑。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//Thread.java</span>
+</span><span class='line'> <span class="kd">private</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">(</span><span class="n">ThreadGroup</span> <span class="n">g</span><span class="o">,</span> <span class="n">Runnable</span> <span class="n">target</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span>
+</span><span class='line'>                      <span class="kt">long</span> <span class="n">stackSize</span><span class="o">,</span> <span class="n">AccessControlContext</span> <span class="n">acc</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="c1">//code goes here</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">parent</span><span class="o">.</span><span class="na">inheritableThreadLocals</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span>
+</span><span class='line'>            <span class="k">this</span><span class="o">.</span><span class="na">inheritableThreadLocals</span> <span class="o">=</span>
+</span><span class='line'>                <span class="n">ThreadLocal</span><span class="o">.</span><span class="na">createInheritedMap</span><span class="o">(</span><span class="n">parent</span><span class="o">.</span><span class="na">inheritableThreadLocals</span><span class="o">);</span>
+</span><span class='line'>        <span class="cm">/* Stash the specified stack size in case the VM cares */</span>
+</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">stackSize</span> <span class="o">=</span> <span class="n">stackSize</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="cm">/* Set thread ID */</span>
+</span><span class='line'>        <span class="n">tid</span> <span class="o">=</span> <span class="n">nextThreadID</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面代码就是在线程创建的时候，复制父线程的inheritableThreadLocals的数据。</p>
+
+<h2>会导致内存泄露么</h2>
+
+<p>有网上讨论说ThreadLocal会导致内存泄露，原因如下</p>
+
+<ul>
+<li>首先ThreadLocal实例被线程的ThreadLocalMap实例持有，也可以看成被线程持有。</li>
+<li>如果应用使用了线程池，那么之前的线程实例处理完之后出于复用的目的依然存活</li>
+<li>所以，ThreadLocal设定的值被持有，导致内存泄露。</li>
+</ul>
+
+
+<p>上面的逻辑是清晰的，可是ThreadLocal并不会产生内存泄露，因为ThreadLocalMap做选择key的时候，并不是直接选择ThreadLocal实例，而是ThreadLocalMap实例的弱引用。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">static</span> <span class="kd">class</span> <span class="nc">ThreadLocalMap</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">* The entries in this hash map extend WeakReference, using</span>
+</span><span class='line'><span class="cm">* its main ref field as the key (which is always a</span>
+</span><span class='line'><span class="cm">* ThreadLocal object).  Note that null keys (i.e. entry.get()</span>
+</span><span class='line'><span class="cm">* == null) mean that the key is no longer referenced, so the</span>
+</span><span class='line'><span class="cm">* entry can be expunged from table.  Such entries are referred to</span>
+</span><span class='line'><span class="cm">* as &quot;stale entries&quot; in the code that follows.</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'>    <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Entry</span> <span class="kd">extends</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">ThreadLocal</span><span class="o">&lt;?&gt;&gt;</span> <span class="o">{</span>
+</span><span class='line'>        <span class="cm">/** The value associated with this ThreadLocal. */</span>
+</span><span class='line'>        <span class="n">Object</span> <span class="n">value</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">Entry</span><span class="o">(</span><span class="n">ThreadLocal</span><span class="o">&lt;?&gt;</span> <span class="n">k</span><span class="o">,</span> <span class="n">Object</span> <span class="n">v</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kd">super</span><span class="o">(</span><span class="n">k</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">value</span> <span class="o">=</span> <span class="n">v</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>所以实际上从ThreadLocal设计角度来说是不会导致内存泄露的。</p>
+
+<h2>使用场景</h2>
+
+<ul>
+<li>实现单个线程单例以及单个线程上下文信息存储，比如交易id等</li>
+<li>实现线程安全，非线程安全的对象使用ThreadLocal之后就会变得线程安全，因为每个线程都会有一个对应的实例</li>
+<li>承载一些线程相关的数据，避免在方法中来回传递参数</li>
+</ul>
+
+
+<h2>参考文章</h2>
+
+<ul>
+<li><a href="http://tutorials.jenkov.com/java-concurrency/threadlocal.html">Java ThreadLocal</a></li>
+<li><a href="http://cs.oswego.edu/pipermail/concurrency-interest/2007-October/004456.html">Threadlocals and memory leaks in J2EE</a></li>
+<li><a href="http://veerasundar.com/blog/2010/11/java-thread-local-how-to-use-and-code-sample/">Java Thread Local – How to use and code sample</a></li>
+<li><a href="http://javarevisited.blogspot.hk/2012/05/how-to-use-threadlocal-in-java-benefits.html">ThreadLocal in Java &ndash; Example Program and Tutorial</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android签名相关知识整理]]></title>
@@ -4407,204 +4772,6 @@ cpu.rt_runtime_us用来设置cgroup中的任务可以最长获得CPU资源的时
 <p>Ben Evans是jClarity公司的CEO，jClarity是一家致力于Java和JVM性能分析研究的创业公司。除此之外他还是London Java Community的负责人之一并在Java Community Process Executive Committee有一席之地。他之前的项目有Google IPO性能测试，金融交易系统，90年代知名电影网站等。</p>
 
 <p><strong>查看英文原文：</strong><a href="Your%20Java%20Application%20Hostile%20to%20JIT%20Compilation?">Is Your Java Application Hostile to JIT Compilation?</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[剖析Android中进程与线程调度之nice]]></title>
-    <link href="http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice/"/>
-    <updated>2015-09-05T11:35:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice</id>
-    <content type="html"><![CDATA[<p>在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题，研究nice在Linux以及Android系统中的应用。</p>
-
-<!--more-->
-
-
-<h2>一些概念</h2>
-
-<ul>
-<li>进程 是计算机系统中，程序运行的实体，也是线程的容器。</li>
-<li>线程 是进程中实际执行单位，一个线程是程序执行流的最小单元。在一个进程中可以有多个线程存在。</li>
-</ul>
-
-
-<h2>nice与进程调度</h2>
-
-<p>Linux中，使用nice value（以下成为nice值）来设定一个进程的优先级，系统任务调度器根据nice值合理安排调度。</p>
-
-<ul>
-<li>nice的取值范围为-20到19。</li>
-<li>通常情况下，nice的默认值为0。视具体操作系统而定。</li>
-<li>nice的值越大，进程的优先级就越低，获得CPU调用的机会越少，nice值越小，进程的优先级则越高，获得CPU调用的机会越多。</li>
-<li>一个nice值为-20的进程优先级最高，nice值为19的进程优先级最低。</li>
-<li>父进程fork出来的子进程nice值与父进程相同。父进程renice，子进程nice值不会随之改变。</li>
-</ul>
-
-
-<h3>词源考究</h3>
-
-<p>nice这个命令的来源几乎没有资料提到，于是便尝试自己来推断一下。在诸如词霸，沪江等词典给出的意思均为<code>好的；美好的；可爱的；好心的，友好的</code>。而有道词典则稍微给出了一个其他词典没有的<code>和蔼的</code>。个人认为有道给出的这个比较合理。要想做到和蔼，就需要做到谦让，因此或多或少牺牲自己一点，成全他人。所以nice值越高，越和蔼，但是自己的优先级也会越低。</p>
-
-<h3>renice</h3>
-
-<p>对于一个新的进程我们可以按照下面的代码为一个进程设定nice值。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>nice -n 10 adb logcat
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>对于已经创建的进程，我们可以使用renice来修改nice值</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo renice -n 0 -p 24161
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>该命令需要使用root权限，-p对应的值为进程id。</p>
-
-<p>注意renice命令在Linux发行版中-n 的值应该为进程的目标优先级。而Mac下-n，则是代表对当前权限的增加值。
-比如在Mac下，讲一个进程的nice值由19改成10，可以这样操作<code>sudo renice -n -9  -p 24161</code>,这一点需要注意，避免掉进坑里。</p>
-
-<h3>Android中的nice</h3>
-
-<p>由于Android基于Linux Kernel，在Android中也存在nice值。但是一般情况下我们无法控制，原因如下：</p>
-
-<ul>
-<li>Android系统并不像其他Linux发行版那样便捷地使用nice命令操作。</li>
-<li>renice需要root权限，一般应用无法实现。</li>
-</ul>
-
-
-<h2>线程调度</h2>
-
-<p>虽然对于进程的优先级，我们无法控制，但是我们可以控制进程中的线程的优先级。在Android中有两种线程的优先级，一种为Android API版本，另一种是 Java 原生版本。</p>
-
-<h3>Android API</h3>
-
-<p>Android中的线程优先级别目前规定了如下，了解了进程优先级与nice值的关系，那么线程优先级与值之间的关系也就更加容易理解。</p>
-
-<ul>
-<li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
-<li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
-<li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
-<li>THREAD_PRIORITY_FOREGROUND 用户正在交互的UI线程，代码中无法设置该优先级，系统会按照情况调整到该优先级，值为-2。</li>
-<li>THREAD_PRIORITY_DISPLAY 也是与UI交互相关的优先级界别，但是要比THREAD_PRIORITY_FOREGROUND优先，代码中无法设置，由系统按照情况调整，值为-4。</li>
-<li>THREAD_PRIORITY_URGENT_DISPLAY 显示线程的最高级别，用来处理绘制画面和检索输入事件，代码中无法设置成该优先级。值为-8。</li>
-<li>THREAD_PRIORITY_AUDIO 声音线程的标准级别，代码中无法设置为该优先级，值为 -16。</li>
-<li>THREAD_PRIORITY_URGENT_AUDIO 声音线程的最高级别，优先程度较THREAD_PRIORITY_AUDIO要高。代码中无法设置为该优先级。值为-19。</li>
-<li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
-<li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
-</ul>
-
-
-<p>使用Android API为线程设置优先级也很简单，只需要在线程执行时调用android.os.Process.setThreadPriority方法即可。这种在线程运行时进行修改优先级，效果类似renice。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>new Thread <span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    @Override
-</span><span class='line'>    public void run<span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      super.run<span class="o">()</span>;
-</span><span class='line'>        android.os.Process.setThreadPriority<span class="o">(</span>Process.THREAD_PRIORITY_BACKGROUND<span class="o">)</span>;
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>.start<span class="o">()</span>;
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Java原生API</h3>
-
-<p>Java为Thread提供了三个级别的设置，</p>
-
-<ul>
-<li>MAX_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY，值为10。</li>
-<li>MIN_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_LOWEST，值为0。</li>
-<li>NORM_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_DEFAULT，值为5。</li>
-</ul>
-
-
-<p>使用setPriority我们可以为某个线程设置优先级，使用getPriority可以获得某个线程的优先级。</p>
-
-<p>在Android系统中，不建议使用Java原生的API，因为Android提供的API划分的级别更多，更适合在Android系统中进行设定细致的优先级。</p>
-
-<h2>注意</h2>
-
-<p>Android API的线程优先级和Java原生API的优先级是相对独立的，比如使用android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)后，使用Java原生API,Thread.getPriority()得到的值不会改变。如下面代码：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>new Thread<span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    @Override
-</span><span class='line'>    public void run<span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        super.run<span class="o">()</span>;
-</span><span class='line'>        Log.i<span class="o">(</span>LOGTAG, <span class="s2">&quot;Java Thread Priority Before=&quot;</span> + Thread.currentThread<span class="o">()</span>.getPriority<span class="o">())</span>;
-</span><span class='line'>        Process.setThreadPriority<span class="o">(</span>Process.THREAD_PRIORITY_LOWEST<span class="o">)</span>;
-</span><span class='line'>        Log.i<span class="o">(</span>LOGTAG, <span class="s2">&quot;Java Thread Priority=&quot;</span> + Thread.currentThread<span class="o">()</span>.getPriority<span class="o">())</span>;
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>.start<span class="o">()</span>;
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上述代码的运行日志为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>I/MainActivity<span class="o">(</span> 3679<span class="o">)</span>: Java Thread Priority <span class="nv">Before</span><span class="o">=</span>5
-</span><span class='line'>I/MainActivity<span class="o">(</span> 3679<span class="o">)</span>: Java Thread <span class="nv">Priority</span><span class="o">=</span>5
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>由于上面的这一点缺陷，导致我们在分析ANR trace时需要注意，在下面的ANR日志信息中，<code>prio=5</code>中proi的值对应的Java原生API的线程优先级。而<code>nice=-6</code>中的nice表示的Android API版本的线程优先级。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="s2">&quot;main&quot;</span> <span class="nv">prio</span><span class="o">=</span>5 <span class="nv">tid</span><span class="o">=</span>1 NATIVE
-</span><span class='line'>  | <span class="nv">group</span><span class="o">=</span><span class="s2">&quot;main&quot;</span> <span class="nv">sCount</span><span class="o">=</span>1 <span class="nv">dsCount</span><span class="o">=</span>0 <span class="nv">obj</span><span class="o">=</span>0x41690f18 <span class="nv">self</span><span class="o">=</span>0x4167e650
-</span><span class='line'>  | <span class="nv">sysTid</span><span class="o">=</span>1765 <span class="nv">nice</span><span class="o">=</span>-6 <span class="nv">sched</span><span class="o">=</span>0/0 <span class="nv">cgrp</span><span class="o">=</span>apps <span class="nv">handle</span><span class="o">=</span>1074196888
-</span><span class='line'>  | <span class="nv">state</span><span class="o">=</span>S <span class="nv">schedstat</span><span class="o">=(</span> 0 0 0 <span class="o">)</span> <span class="nv">utm</span><span class="o">=</span>5764 <span class="nv">stm</span><span class="o">=</span>3654 <span class="nv">core</span><span class="o">=</span>2
-</span><span class='line'>  <span class="c">#00  pc 00022624  /system/lib/libc.so (__futex_syscall3+8)</span>
-</span><span class='line'>  <span class="c">#01  pc 0000f054  /system/lib/libc.so (__pthread_cond_timedwait_relative+48)</span>
-</span><span class='line'>  <span class="c">#02  pc 0000f0b4  /system/lib/libc.so (__pthread_cond_timedwait+64)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>避免ANR</h2>
-
-<p>我在之前的文章<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>中提到使用WorkerThread处理耗时IO操作，同时将WorkerThread的优先级降低，对于耗时IO操作，比如读取数据库，文件等，我们可以设置该workerThread优先级为THREAD_PRIORITY_BACKGROUND，以此降低与主线程竞争的能力。</p>
-
-<h3>同系列文章</h3>
-
-<ul>
-<li><a href="http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups/?droid_refer=series">剖析Android中进程与线程调度之cgroups</a></li>
-</ul>
-
-
-<script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
-
-
-<script type="text/javascript">
-    showBookCopyright();
-</script>
-
-
-
 ]]></content>
   </entry>
   
