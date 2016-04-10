@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-04-08T07:42:21+08:00</updated>
+  <updated>2016-04-10T20:48:54+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,186 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[一个Android代码JIT友好度检测工具]]></title>
+    <link href="http://droidyue.com/blog/2016/04/10/jit-friendly-checker-for-android/"/>
+    <updated>2016-04-10T20:26:00+08:00</updated>
+    <id>http://droidyue.com/blog/2016/04/10/jit-friendly-checker-for-android</id>
+    <content type="html"><![CDATA[<p>利用周末的时间，写了一个检测Android代码JIT友好度的工具，取个名字为DroidJitChecker。希望可以帮助大家快速发现有坏味道的代码，并且及时修正。</p>
+
+<!--more-->
+
+
+<h2>名词解释</h2>
+
+<ul>
+<li>JIT：JIT全称Just-in-time compilation。意思为实时编译，是JVM中一种优化技术，对频繁调用并且符合条件的方法进行优化将字节码翻译成机器代码，提升执行效率。</li>
+<li>方法大小：每个方法的方法体实现都可用字节作为单位进行衡量，通常情况下，方法体越大，其方法大小也越大。</li>
+<li>JIT友好：通常方法体实现越小越简单，越对JIT编译友好。</li>
+</ul>
+
+
+<h2>这是什么</h2>
+
+<ul>
+<li>这是一个检测Android（目录组织结构）代码JIT友好度的工具</li>
+<li>该工具基于AdoptOpenJDK/jitwatch中的jarScan.sh进行组装</li>
+<li>输出结果支持html，便于在浏览器中查看</li>
+</ul>
+
+
+<h2>前提准备</h2>
+
+<ul>
+<li>所检测Android项目可以支持Gradle编译成功</li>
+<li>安装jitwatch套件</li>
+<li>ruby运行环境</li>
+</ul>
+
+
+<h2>安装</h2>
+
+<h3>安装jitwatch组件</h3>
+
+<p>获取代码</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git clone git@github.com:AdoptOpenJDK/jitwatch.git</span></code></pre></td></tr></table></div></figure>
+
+
+<p>编译<br/>
+进入上面的repo目录，采用以下三种方法之一即可</p>
+
+<p>ant</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ant clean compile test run</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Maven</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mvn clean compile test exec:java</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Gradle</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gradlew clean build run</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>配置</h2>
+
+<p>获取本repo的代码，并打开config.ini文件修改</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[setup]
+</span><span class='line'>jarScan = "/Users/androidyue/github/jitwatch/jarScan.sh"
+</span><span class='line'>maxMethodSize = 325
+</span><span class='line'>outputDir = "/tmp/DroidJitChecker/output_new/"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>修改说明</p>
+
+<ul>
+<li>jarScan 必须修改，修改成已经安装的的JarScan路径</li>
+<li>maxMethodSize 无需更改，如更改请谨慎</li>
+<li>输出目录，outputDir，建议修改为可以持续存在的目录</li>
+</ul>
+
+
+<h2>如何使用</h2>
+
+<p>使用比较简单，打开终端，执行如下语句</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>ruby jitChecker.rb your_android_project jarTask
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意：jarTask是一个将工程的java文件编译成jar包的任务，可以通过执行<code>./gradlew tasks</code>  查看，然后选择以jar开头的任务即可。</p>
+
+<h2>查看结果</h2>
+
+<ul>
+<li>检查结束后，会自动使用浏览器打开结果</li>
+<li>结果文件路径也会输出到终端</li>
+<li>结果文件名中包含了相关的jarTask信息，便于查找</li>
+<li>结果内容，依照方法的字节大小，从大到小降序排列</li>
+</ul>
+
+
+<p>一个典型的内容示例</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">MD4</span><span class="o">.</span><span class="na">mdfour64</span>
+</span><span class='line'>
+</span><span class='line'><span class="nl">Package:</span><span class="n">com</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">utils</span>
+</span><span class='line'><span class="nl">Parameters:</span><span class="kt">int</span><span class="o">[]</span>
+</span><span class='line'><span class="nl">ByteSize:</span><span class="mi">1129</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>MD4.mdfour64 对JIT不友好的方法及其所属类</li>
+<li>Package:com.app.utils 上述MD4所属的包</li>
+<li>Parameters:int[] mdfour64方法接受的参数</li>
+<li>ByteSize:1129 表示mdfour64方法持有的大小</li>
+</ul>
+
+
+<h2>如何解决</h2>
+
+<ul>
+<li>书写逻辑简单，职责单一的小方法</li>
+<li>书写逻辑简单，职责单一的小方法</li>
+<li>书写逻辑简单，职责单一的小方法</li>
+</ul>
+
+
+<h2>贡献代码</h2>
+
+<p>任何有帮助的建议都欢迎。</p>
+
+<p>以下代码贡献更收欢迎</p>
+
+<ul>
+<li>美化结果展示页面（HTML，CSS）</li>
+</ul>
+
+
+<h2>问题</h2>
+
+<h3>问：字节量大的方法一定要修改么，修改后就能JIT编译么</h3>
+
+<ul>
+<li>答：字节量大的方法建议修改，非强制，修改后不一定就能JIT编译，因为对JIT优化并不意味着JIT就编译该方法，还需要其他因素，比如该方法的调用频率。所以这是一个你情我愿的事情。</li>
+</ul>
+
+
+<h3>为什么用Ruby</h3>
+
+<ul>
+<li>答：有了idea时很纠结，因为不确定用什么语言实现，尤其是在Python和ruby之间，为此问了不少同学，最后“一意孤行”决定用Ruby了，不喜欢Python的强制对齐，超级喜欢Ruby的字符串模板。Ruby很简单，很人性化，相信你会喜欢的。</li>
+</ul>
+
+
+<h2>源码</h2>
+
+<ul>
+<li><a href="https://github.com/androidyue/DroidJitChecker">DroidJitChecker@Github</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[为终端设置Shadowsocks代理]]></title>
@@ -656,7 +836,7 @@
 <p>如果针对这个活动有任何问题，请联系我们的客服或者发送邮件到：
 <a href="mailto:study-jams-china@google.com">study-jams-china@google.com</a></p>
 
-<blockquote><p>顺便说一句，该课程字幕由谷创字幕组（前GDG字幕组）的热心志愿者翻译，如果你也想参与字幕组做 Google 技术课程的翻译，请联系：<a href="&#109;&#x61;&#105;&#x6c;&#x74;&#111;&#x3a;&#x6c;&#117;&#x63;&#104;&#x65;&#x6e;&#x67;&#64;&#103;&#x6f;&#111;&#x67;&#x6c;&#x65;&#46;&#x63;&#111;&#109;">&#108;&#x75;&#99;&#104;&#101;&#x6e;&#103;&#x40;&#x67;&#x6f;&#111;&#x67;&#108;&#101;&#x2e;&#99;&#111;&#x6d;</a> 如果能够附上一份可爱的简历，那就最好了。</p></blockquote>
+<blockquote><p>顺便说一句，该课程字幕由谷创字幕组（前GDG字幕组）的热心志愿者翻译，如果你也想参与字幕组做 Google 技术课程的翻译，请联系：<a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#108;&#x75;&#x63;&#x68;&#101;&#x6e;&#x67;&#64;&#x67;&#111;&#111;&#103;&#108;&#x65;&#x2e;&#99;&#111;&#x6d;">&#108;&#117;&#x63;&#x68;&#x65;&#110;&#x67;&#x40;&#x67;&#111;&#111;&#103;&#x6c;&#101;&#46;&#99;&#x6f;&#109;</a> 如果能够附上一份可爱的简历，那就最好了。</p></blockquote>
 
 <h2>微信公众号</h2>
 
@@ -4323,67 +4503,6 @@
 
 
 <p>后续发现新的有干货的歪果仁博客，会继续补充。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[程序员的逗比瞬间(第三季)]]></title>
-    <link href="http://droidyue.com/blog/2015/10/17/funny-programmer-season-three/"/>
-    <updated>2015-10-17T18:02:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/10/17/funny-programmer-season-three</id>
-    <content type="html"><![CDATA[<p>小黑屋里怎么能没有欢乐，苦逼的码农们，我要拯救不开心。</p>
-
-<!--more-->
-
-
-<h2>紧急修复线上的一个大bug</h2>
-
-<p><img src="http://ww3.sinaimg.cn/large/6a195423gw1ex4aby63xlg208c05s1ky.gif"></p>
-
-<h2>突然发现自己改的是线上代码，立马更正回来</h2>
-
-<p><img src="http://ww4.sinaimg.cn/large/6a195423gw1ex4ae1gie0g207f05q1kx.gif"></p>
-
-<h2>看到自己很久之前写的代码</h2>
-
-<p><img src="http://ww4.sinaimg.cn/large/6a195423gw1ex4af9zb07g20dw07tx6p.gif"></p>
-
-<h2>当读到市场人员写的技术文章，哈哈哈</h2>
-
-<p><img src="http://ww2.sinaimg.cn/large/6a195423gw1ex4agll4rag20cf0781ky.gif"></p>
-
-<h2>修改代码，发现自己当时没写注释</h2>
-
-<p><img src="http://ww1.sinaimg.cn/large/6a195423gw1ex4ahmttmgg20dw06vnol.gif"></p>
-
-<h2>撞见客户和市场在扯淡，于是我。。。</h2>
-
-<p><img src="http://ww4.sinaimg.cn/large/6a195423gw1ex4aik43u2g208705dnpd.gif"></p>
-
-<h2>得知某人修复一个bug居然提交了500多个文件</h2>
-
-<p><img src="http://ww2.sinaimg.cn/large/6a195423gw1ex4aje5emvg208w06oe82.gif"></p>
-
-<h2>没有经过分析就开始撸代码的后果</h2>
-
-<p><img src="http://ww4.sinaimg.cn/large/6a195423gw1ex4aknaaglg208c05fu10.gif"></p>
-
-<h2>原文参考</h2>
-
-<ul>
-<li><a href="http://howtodoinjava.com/2013/04/01/life-of-a-programmer-in-pictures-part-3/">http://howtodoinjava.com/2013/04/01/life-of-a-programmer-in-pictures-part-3/</a></li>
-</ul>
-
-
-<h2>程序员的逗比瞬间全系列</h2>
-
-<ul>
-<li><a href="http://droidyue.com/blog/2015/08/08/funny-programmer-season-one/?droid_refer=series">程序员的逗比瞬间（第一季）</a></li>
-<li><a href="http://droidyue.com/blog/2015/08/29/funny-programmer-season-two/?droid_refer=series">程序员的逗比瞬间（第二季）</a></li>
-<li><a href="http://droidyue.com/blog/2015/10/17/funny-programmer-season-three/?droid_refer=series">程序员的逗比瞬间（第三季）</a></li>
-<li><a href="http://droidyue.com/blog/2015/11/15/funny-programmer-finale/?droid_refer=series">程序员的逗比瞬间 最终番</a></li>
-</ul>
-
 ]]></content>
   </entry>
   
