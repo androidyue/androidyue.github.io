@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-04-26T22:10:28+08:00</updated>
+  <updated>2016-05-02T21:23:04+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,309 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[一些快速提高Android开发的脚本与技巧（终端篇）]]></title>
+    <link href="http://droidyue.com/blog/2016/05/02/android-development-bash-scripts/"/>
+    <updated>2016-05-02T21:09:00+08:00</updated>
+    <id>http://droidyue.com/blog/2016/05/02/android-development-bash-scripts</id>
+    <content type="html"><![CDATA[<p>正所谓“工欲善其事必先利其器”,一个好的工具或者技巧能让提升工作效率，起到事半功倍的效果。在这里斗胆列出一些窃以为一些可能快速提高Android日常开发的脚本，希望可以为大家提供一些好的工具，有帮助的思路。</p>
+
+<!--more-->
+
+
+<h2>打印Debug日志信息</h2>
+
+<p>该脚本打印了包含崩溃，异常，dalvikvm信息，严格模式和网页CONSOLE等信息。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/sh</span>
+</span><span class='line'><span class="c">#Explanations:</span>
+</span><span class='line'><span class="c"># System.err to grep stacktrace information of catched exceptions</span>
+</span><span class='line'><span class="c">#AndroidRuntime to grep stacktrace information of uncaughted runtime exceptions</span>
+</span><span class='line'><span class="c">#MessageQueue to grep exceptions happended during MessageQueue</span>
+</span><span class='line'><span class="c">#CONSOLE to grep console message releated with javascript console.info</span>
+</span><span class='line'><span class="c">#dalvikvm informations about dalvik vm</span>
+</span><span class='line'><span class="c">#StrictMode information about StrictMode warnings</span>
+</span><span class='line'>adb logcat |grep --color<span class="o">=</span>always -E <span class="s2">&quot;System.err|AndroidRuntime|MessageQueue|CONSOLE|W/Bundle|dalvikvm|StrictMode&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>查看详细及最新: <a href="https://github.com/androidyue/DroidScripts/blob/master/shell/debugInfo.sh">https://github.com/androidyue/DroidScripts/blob/master/shell/debugInfo.sh</a></p>
+
+<h2>打印某个应用的日志</h2>
+
+<p>以下脚本为打印某个应用的日志，思路是将包名转为进程ip，然后过滤进程id即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'><span class="c">#coding:utf-8</span>
+</span><span class='line'><span class="c">#This script is aimed to grep logs by application(User should input a packageName and then we look up for the process ids then separate logs by process ids).</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">os</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">sys</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">packageName</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">command</span> <span class="o">=</span> <span class="s">&quot;adb shell ps | grep </span><span class="si">%s</span><span class="s"> | awk &#39;{print $2}&#39;&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">packageName</span><span class="p">)</span>
+</span><span class='line'><span class="n">p</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+</span><span class='line'><span class="c">##for some applications,there are multiple processes,so we should get all the process id</span>
+</span><span class='line'><span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span class='line'><span class="n">filters</span> <span class="o">=</span> <span class="n">pid</span>
+</span><span class='line'><span class="k">while</span><span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="p">):</span>
+</span><span class='line'>    <span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">):</span>
+</span><span class='line'>        <span class="n">filters</span> <span class="o">=</span> <span class="n">filters</span> <span class="o">+</span>  <span class="s">&quot;|&quot;</span> <span class="o">+</span> <span class="n">pid</span>
+</span><span class='line'>        <span class="c">#print &#39;command = %s;filters=%s&#39;%(command, filters)</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">filters</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">)</span> <span class="p">:</span>
+</span><span class='line'>    <span class="n">cmd</span> <span class="o">=</span> <span class="s">&#39;adb logcat | grep --color=always -E &quot;</span><span class="si">%s</span><span class="s">&quot; &#39;</span><span class="o">%</span><span class="p">(</span><span class="n">filters</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用实例</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">logcatPkg</span><span class="o">.</span><span class="na">py</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">tester</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Git push快捷脚本</h2>
+
+<p>通常我们在做git push，我们的做法是<code>git push origin branch_name</code>，通常情况下branch_name即当前所在的分支。如下是一个简单的脚本，自动判断当前分支，你需要做的只是调用一下这个脚本即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'><span class="c"># coding=utf-8</span>
+</span><span class='line'><span class="kn">from</span> <span class="nn">subprocess</span> <span class="kn">import</span> <span class="n">Popen</span><span class="p">,</span><span class="n">PIPE</span><span class="p">,</span><span class="n">STDOUT</span>
+</span><span class='line'><span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">system</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">gpush</span><span class="p">():</span>
+</span><span class='line'>    <span class="n">branchColorRule</span> <span class="o">=</span> <span class="n">readFromShell</span><span class="p">(</span><span class="s">&#39;git config color.branch&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="s">&#39;always&#39;</span> <span class="o">==</span> <span class="n">branchColorRule</span><span class="p">):</span>
+</span><span class='line'>        <span class="n">system</span><span class="p">(</span><span class="s">&#39;git config color.branch auto&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">getBranch</span> <span class="o">=</span> <span class="s">&quot;git branch | sed -n &#39;/\* /s///p&#39;&quot;</span>
+</span><span class='line'>    <span class="n">gitBranch</span> <span class="o">=</span> <span class="n">readFromShell</span><span class="p">(</span><span class="n">getBranch</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">command</span> <span class="o">=</span> <span class="s">&#39;git push origin </span><span class="si">%s</span><span class="s">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">gitBranch</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">print</span> <span class="n">command</span>
+</span><span class='line'>    <span class="n">system</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="s">&#39;always&#39;</span> <span class="o">==</span> <span class="n">branchColorRule</span><span class="p">):</span>
+</span><span class='line'>        <span class="n">system</span><span class="p">(</span><span class="s">&#39;git config color.branch always&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">readFromShell</span><span class="p">(</span><span class="n">command</span><span class="p">):</span>
+</span><span class='line'>    <span class="n">p</span> <span class="o">=</span> <span class="n">Popen</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">stdin</span><span class="o">=</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">close_fds</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">result</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">result</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">gpush</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>查看详细：<a href="https://github.com/androidyue/DroidScripts/blob/master/python/gpush.py">https://github.com/androidyue/DroidScripts/blob/master/python/gpush.py</a></p>
+
+<h2>快速打开应用详情页</h2>
+
+<p>如下就是App详情页，使用这个页，我们可以卸载，强制停止，清除缓存，数据等操作。
+<img src="http://7xqzcv.com1.z0.glb.clouddn.com/app_details.jpg" alt="AppDetails" /></p>
+
+<p>使用这个脚本，我们可以快速地进入这个页面</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/sh </span>
+</span><span class='line'>adb shell am start  -a <span class="s2">&quot;android.settings.APPLICATION_DETAILS_SETTINGS&quot;</span> -d <span class="s2">&quot;package:$1&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bash clearAppData.sh com.droidyue.akoi
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>查看详细及最新: <a href="https://github.com/androidyue/DroidScripts/blob/master/shell/clearAppData.sh">https://github.com/androidyue/DroidScripts/blob/master/shell/clearAppData.sh</a></p>
+
+<h2>查找目录下的文件</h2>
+
+<p>Unix中有一个很棒的查找工具，就是find，使用find，我们可以很快速查找某个目录下的的文件，支持通配符查找。在Android项目中，我们可以查找apk文件，图片文件等，另外加上xargs会变得更加强大
+比如我们查找app目录下所有的apk文件，按照如下操作即可</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>find app/ -name *.apk
+</span><span class='line'><span class="c">##结果</span>
+</span><span class='line'>app/build/outputs/apk/app-debug-unaligned.apk
+</span><span class='line'>app/build/outputs/apk/app-debug.apk
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果我们查找到app目录下的所有apk文件，并删除，该怎么做呢，这时候就需要使用刚刚提到的xargs了</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>find app/ -name *.apk | xargs rm
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>xargs会将上一个命令的输出结果作为下一个命令的输入，如上操作就可以删除app目录下的所有apk文件。</p>
+
+<h2>全文查找</h2>
+
+<p>在Android中开发时，我们常常会遇到这样的问题，比如我们需要将一个内容为&#8221;Settings&#8221;的按钮调整padding，通常我的做法是这样的。</p>
+
+<p>方法一：</p>
+
+<ul>
+<li>查找内容为Settings的字符串的name</li>
+<li>然后根据得到的name查找所在的布局文件或代码文件</li>
+</ul>
+
+
+<p>方法二：</p>
+
+<ul>
+<li>使用DDMS的monitor查找view的id</li>
+<li>然后根据id查找所在的布局文件或代码文件</li>
+</ul>
+
+
+<p>总的来说，以上两种方法都需要用到文件的全文检索，通常我们可以使用Android Studio完成，但是个人倾向于使用Terminal。</p>
+
+<p>基本脚本如下，这是一个很通用的当前目录全文查找脚本。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>grep --ignore-case -E your_keyword . -R --color<span class="o">=</span>always -n
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上述命令对应的shell脚本为<a href="https://github.com/androidyue/DroidScripts/blob/master/shell/gfind.sh">gfind.sh</a></p>
+
+<p>另外，还有一个专门为Android优化的全文查找，较上面速度提升将近多个数量级。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>grep  -E <span class="nv">$1</span> --exclude-dir<span class="o">={</span>.git,lib,.gradle,.idea,build,captures<span class="o">}</span> --exclude<span class="o">={</span>*.png,*.jpg,*.jar<span class="o">}</span>  . -R --color<span class="o">=</span>always -n
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>脚本地址：<a href="https://github.com/androidyue/DroidScripts/blob/master/shell/gfindx.sh">gfindx.sh</a></p>
+
+<p>上面的脚本，排除了.git,lib,.gradle,.idea等文件夹下的文件，也排除了类似png,jpg,jar等文件的查找，大大加快了查找效率。</p>
+
+<p>上述两个脚本的使用方法，比如我们想要查找app下的，包含TextView的文件，如下即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">11</span><span class="o">:</span><span class="mi">44</span><span class="o">:</span><span class="mi">44</span><span class="o">-</span><span class="n">androidyue</span><span class="o">~/</span><span class="n">AndroidStudioProjects</span><span class="o">/</span><span class="n">AndroidGsonSample</span><span class="o">/</span><span class="n">app$</span> <span class="n">gfindx</span><span class="o">.</span><span class="na">sh</span> <span class="n">TextView</span>
+</span><span class='line'><span class="o">./</span><span class="n">src</span><span class="o">/</span><span class="n">main</span><span class="o">/</span><span class="n">res</span><span class="o">/</span><span class="n">layout</span><span class="o">/</span><span class="n">activity_main</span><span class="o">.</span><span class="na">xml</span><span class="o">:</span><span class="mi">9</span><span class="o">:</span>    <span class="o">&lt;</span><span class="n">TextView</span> <span class="nl">android:</span><span class="n">text</span><span class="o">=</span><span class="s">&quot;Hello World!&quot;</span> <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意：查找app目录，需要自行切换到app目录下然后进行查找。</p>
+
+<h2>查看当前的Activity</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">adb</span> <span class="n">shell</span> <span class="n">dumpsys</span> <span class="n">window</span> <span class="n">windows</span> <span class="o">|</span> <span class="n">grep</span> <span class="o">-</span><span class="n">E</span> <span class="err">&#39;</span><span class="n">mCurrentFocus</span><span class="o">|</span><span class="n">mFocusedApp</span><span class="err">&#39;</span> <span class="o">--</span><span class="n">color</span><span class="o">=</span><span class="n">always</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>完整脚本：<a href="https://github.com/androidyue/DroidScripts/blob/master/shell/dumpCurrentActivity.sh">dumpCurrentActivity.sh</a></p>
+
+<p>使用示例，如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">11</span><span class="o">:</span><span class="mi">54</span><span class="o">:</span><span class="mi">34</span><span class="o">-</span><span class="n">androidyue</span><span class="o">~/</span><span class="n">osc_git</span><span class="o">/</span><span class="n">shell_works</span> <span class="o">(</span><span class="n">master</span><span class="o">)</span><span class="n">$</span> <span class="n">dumpCurrentActivity</span><span class="o">.</span><span class="na">sh</span>
+</span><span class='line'>  <span class="n">mCurrentFocus</span><span class="o">=</span><span class="n">Window</span><span class="o">{</span><span class="n">f03392f</span> <span class="n">u0</span> <span class="n">com</span><span class="o">.</span><span class="na">netease</span><span class="o">.</span><span class="na">cloudmusic</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">netease</span><span class="o">.</span><span class="na">cloudmusic</span><span class="o">.</span><span class="na">activity</span><span class="o">.</span><span class="na">PlayerActivity</span><span class="o">}</span>
+</span><span class='line'>  <span class="n">mFocusedApp</span><span class="o">=</span><span class="n">AppWindowToken</span><span class="o">{</span><span class="n">ae8bba4</span> <span class="n">token</span><span class="o">=</span><span class="n">Token</span><span class="o">{</span><span class="n">d3a37</span> <span class="n">ActivityRecord</span><span class="o">{</span><span class="mi">19</span><span class="n">df1b36</span> <span class="n">u0</span> <span class="n">com</span><span class="o">.</span><span class="na">netease</span><span class="o">.</span><span class="na">cloudmusic</span><span class="o">/.</span><span class="na">activity</span><span class="o">.</span><span class="na">PlayerActivity</span> <span class="n">t11318</span><span class="o">}}}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>用好alias</h2>
+
+<p>在用终端时，如果我们经常使用cd命令到一个固定的文件目录下，这时候，我们就需要考虑做点事情来提高这种重复的效率了。</p>
+
+<p>比如我们经常执行这个操作</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">cd</span> <span class="o">~/</span><span class="n">Documents</span><span class="o">/</span><span class="n">Android</span><span class="o">/</span><span class="n">XXXX</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>简化提速的方法是使用alias，即为操作设置别名，在.bashrc文件加入</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">alias</span> <span class="n">cdProject</span><span class="o">=</span><span class="s">&quot;cd ~/Documents/Android/XXXX&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后执行<code>source ~/.bashrc</code>更新配置，从此以后使用cdProject就可以轻松切换了。</p>
+
+<p>以上就是关于一些简单的Android相关的脚本，终端是个好东西，希望大家可以好好利用，提升效率。</p>
+
+<h2>脚本仓库</h2>
+
+<p>上面的脚本基本都存放于<a href="https://github.com/androidyue/DroidScripts">https://github.com/androidyue/DroidScripts</a>，欢迎贡献。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[详解Java中的注解]]></title>
@@ -1477,7 +1780,7 @@
 <p>如果针对这个活动有任何问题，请联系我们的客服或者发送邮件到：
 <a href="mailto:study-jams-china@google.com">study-jams-china@google.com</a></p>
 
-<blockquote><p>顺便说一句，该课程字幕由谷创字幕组（前GDG字幕组）的热心志愿者翻译，如果你也想参与字幕组做 Google 技术课程的翻译，请联系：<a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#108;&#117;&#x63;&#104;&#x65;&#x6e;&#x67;&#64;&#x67;&#x6f;&#x6f;&#x67;&#108;&#101;&#x2e;&#x63;&#x6f;&#109;">&#x6c;&#x75;&#x63;&#x68;&#x65;&#110;&#103;&#64;&#x67;&#x6f;&#111;&#103;&#x6c;&#101;&#46;&#99;&#x6f;&#109;</a> 如果能够附上一份可爱的简历，那就最好了。</p></blockquote>
+<blockquote><p>顺便说一句，该课程字幕由谷创字幕组（前GDG字幕组）的热心志愿者翻译，如果你也想参与字幕组做 Google 技术课程的翻译，请联系：<a href="&#x6d;&#97;&#105;&#108;&#116;&#111;&#x3a;&#x6c;&#117;&#99;&#x68;&#x65;&#110;&#x67;&#64;&#x67;&#x6f;&#111;&#x67;&#108;&#101;&#46;&#99;&#111;&#x6d;">&#108;&#x75;&#x63;&#104;&#x65;&#x6e;&#103;&#x40;&#103;&#111;&#x6f;&#103;&#x6c;&#101;&#46;&#x63;&#111;&#109;</a> 如果能够附上一份可爱的简历，那就最好了。</p></blockquote>
 
 <h2>微信公众号</h2>
 
@@ -4437,257 +4740,6 @@
 
 
 <p>本文参考自<a href="http://howtodoinjava.com/2013/04/07/life-of-a-programmer-in-pictures-part-4/">http://howtodoinjava.com/2013/04/07/life-of-a-programmer-in-pictures-part-4/</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[详解 Android 中的 HandlerThread]]></title>
-    <link href="http://droidyue.com/blog/2015/11/08/make-use-of-handlerthread/"/>
-    <updated>2015-11-08T22:50:00+08:00</updated>
-    <id>http://droidyue.com/blog/2015/11/08/make-use-of-handlerthread</id>
-    <content type="html"><![CDATA[<p>HandlerThread是Android API提供的一个便捷的类，使用它我们可以快速的创建一个带有Looper的线程，有了Looper这个线程，我们又可以生成Handler，那么HandlerThread是什么，可以做什么呢，有哪些奇技淫巧可以被我们利用呢？</p>
-
-<!--more-->
-
-
-<h2>实现原理</h2>
-
-<p>在介绍原理之前，我们先使用普通的Thread来创建一个Handler，创建的过程大致如下：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">createManualThreadWithHandler</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>  <span class="k">new</span> <span class="nf">Thread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="nd">@Override</span>
-</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">());</span>
-</span><span class='line'>            <span class="n">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}.</span><span class="na">start</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>实现很简单，在目标线程内如下配置</p>
-
-<ul>
-<li>调用Looper.prepare 创建与当前线程绑定的Looper实例</li>
-<li>使用上面创建的Looper生成Handler实例</li>
-<li>调用Looper.loop()实现消息循环</li>
-</ul>
-
-
-<p>明白上面的实现步骤，HandlerThread的实现也就简单了，其实现为：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">mTid</span> <span class="o">=</span> <span class="n">Process</span><span class="o">.</span><span class="na">myTid</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
-</span><span class='line'>    <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">mLooper</span> <span class="o">=</span> <span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">();</span>
-</span><span class='line'>      <span class="n">notifyAll</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="n">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">mPriority</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">onLooperPrepared</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">mTid</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>确实很简单，无需赘述。</p>
-
-<h2>Handler原理</h2>
-
-<p>要理解Handler的原理，理解如下几个概念即可茅塞顿开。</p>
-
-<ul>
-<li>Message 意为消息，发送到Handler进行处理的对象，携带描述信息和任意数据。</li>
-<li>MessageQueue 意为消息队列，Message的集合。</li>
-<li>Looper 有着一个很难听的中文名字，消息泵，用来从MessageQueue中抽取Message，发送给Handler进行处理。</li>
-<li>Handler 处理Looper抽取出来的Message。</li>
-</ul>
-
-
-<h2>如何使用</h2>
-
-<p>HandlerThread使用起来很容易，首先需要进行初始化。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span> <span class="nf">LightTaskManager</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">HandlerThread</span> <span class="n">workerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HandlerThread</span><span class="o">(</span><span class="s">&quot;LightTaskThread&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">workerThread</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">(</span><span class="n">workerThread</span><span class="o">.</span><span class="na">getLooper</span><span class="o">());</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>注意：上面的<code>workerThread.start();</code>必须要执行。</p>
-
-<p>至于如何使用HandlerThread来执行任务，主要是调用Handler的API</p>
-
-<ul>
-<li>使用post方法提交任务，postAtFrontOfQueue将任务加入到队列前端，postAtTime指定时间提交任务，postDelayed延后提交任务。</li>
-<li>使用sendMessage方法可以发送消息，sendMessageAtFrontOfQueue将该消息放入消息队列前端，sendMessageAtTime 指定时间发送消息，sendMessageDelayed延后提交消息。</li>
-</ul>
-
-
-<p>通过包裹Handler API，我们可以实现如下代码(仅post相关方法):</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">post</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">run</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">post</span><span class="o">(</span><span class="n">run</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtFrontOfQueue</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtFrontOfQueue</span><span class="o">(</span><span class="n">runnable</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postDelayed</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">delay</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postDelayed</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">delay</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtTime</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">time</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtTime</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">time</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>控制优先级</h2>
-
-<p>了解到如何使用之外，关于HandlerThread的使用需要上升一个界别，那就是优化。这里的优化主要是合理调整HandlerThread的优先级。</p>
-
-<p>HandlerThread的默认优先级是<code>Process.THREAD_PRIORITY_DEFAULT</code>,具体值为0。线程的优先级的取值范围为-20到19。优先级高的获得的CPU资源更多，反之则越少。-20代表优先级最高，19最低。0位于中间位置，但是作为工作线程的HandlerThread没有必要设置这么高的优先级，因而需要我们降低其优先级。</p>
-
-<h3>可控制的优先级</h3>
-
-<ul>
-<li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
-<li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
-<li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
-<li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
-<li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
-</ul>
-
-
-<p>以上的这些优先级都是可以在程序中设置的，除此之外还有不可控的优先级均有系统进行自动调整。</p>
-
-<h3>如何修改权限</h3>
-
-<p>最通用的就是在run方法中，加入合理的设置优先级代码，比如</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Runnable</span> <span class="n">run</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Runnable</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">};</span>
-</span><span class='line'><span class="n">LightTaskManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">post</span><span class="o">(</span><span class="n">run</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上述方法不仅适用于HandlerThread，也可以适用于其他的线程。</p>
-
-<p>除此之外，HandlerThread的构造方法也提供了设置优先级的功能。用法如下：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">HandlerThread</span> <span class="n">workerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HandlerThread</span><span class="o">(</span><span class="s">&quot;LightTaskThread&quot;</span><span class="o">,</span> <span class="n">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>关于设置优先级，系统的AsyncTask已经开始进行了默认设置，将线程的优先级设置成THREAD_PRIORITY_BACKGROUND了。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="nf">AsyncTask</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mWorker</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WorkerRunnable</span><span class="o">&lt;</span><span class="n">Params</span><span class="o">,</span> <span class="n">Result</span><span class="o">&gt;()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">public</span> <span class="n">Result</span> <span class="nf">call</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">mTaskInvoked</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="n">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span>
-</span><span class='line'>            <span class="c1">//noinspection unchecked</span>
-</span><span class='line'>            <span class="n">Result</span> <span class="n">result</span> <span class="o">=</span> <span class="n">doInBackground</span><span class="o">(</span><span class="n">mParams</span><span class="o">);</span>
-</span><span class='line'>            <span class="n">Binder</span><span class="o">.</span><span class="na">flushPendingCommands</span><span class="o">();</span>
-</span><span class='line'>            <span class="k">return</span> <span class="nf">postResult</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">};</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>关于Android中线程的调度详情，请参考<a href="">剖析Android中进程与线程调度之nice</a></p>
-
-<h2>应用场景</h2>
-
-<p>我们可以使用HandlerThread处理本地IO读写操作（数据库，文件），因为本地IO操作大多数的耗时属于毫秒级别，对于单线程 + 异步队列的形式 不会产生较大的阻塞。因此在这个HandlerThread中不适合加入网络IO操作。</p>
-
-<p>对于本地IO读取操作，我们可以使用postAtFrontOfQueue方法，快速将读取操作加入队列前端执行，必要时返回给主线程更新UI。示例场景，从数据库中读取数据展现在ListView中。注意读取也是需要花费一定时间，推荐在数据展示之前有必要的用户可感知进度提示。</p>
-
-<p>对于本地IO写操作，根据具体情况，选择post或者postDelayed方法执行。比如SharedPreference commit，或者文件写入操作。</p>
 ]]></content>
   </entry>
   
