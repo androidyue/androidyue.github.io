@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2016-08-13T18:28:56+08:00</updated>
+  <updated>2016-08-14T20:54:29+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,1331 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[探究Android中的注解]]></title>
+    <link href="http://droidyue.com/blog/2016/08/14/android-annnotation/"/>
+    <updated>2016-08-14T20:42:00+08:00</updated>
+    <id>http://droidyue.com/blog/2016/08/14/android-annnotation</id>
+    <content type="html"><![CDATA[<p>本文系GDG Android Meetup分享内容总结文章</p>
+
+<p>注解是我们经常接触的技术,Java有注解,Android也有注解,本文将试图介绍Android中的注解,以及ButterKnife和Otto这些基于注解的库的一些工作原理.</p>
+
+<p>归纳而言,Android中的注解大概有以下好处</p>
+
+<ul>
+<li>提高我们的开发效率</li>
+<li>更早的发现程序的问题或者错误</li>
+<li>更好的增加代码的描述能力</li>
+<li>更加利于我们的一些规范约束</li>
+<li>提供解决问题的更优解</li>
+</ul>
+
+
+<!--more-->
+
+
+<h2>准备工作</h2>
+
+<p>默认情况下,Android中的注解包并没有包括在framework中,它独立成一个单独的包,通常我们需要引入这个包.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dependencies {
+</span><span class='line'>    compile 'com.android.support:support-annotations:22.2.0'
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是如果我们已经引入了<code>appcompat</code>则没有必要再次引用<code>support-annotations</code>,因为<code>appcompat</code>默认包含了对其引用.</p>
+
+<h2>替代枚举</h2>
+
+<p>在最早的时候,当我们想要做一些值得限定实现枚举的效果,通常是</p>
+
+<ul>
+<li>定义几个常量用于限定</li>
+<li>从上面的常量选取值进行使用</li>
+</ul>
+
+
+<p>一个比较描述上面问题的示例代码如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">COLOR_RED</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">COLOR_GREEN</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">COLOR_YELLOW</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">setColor</span><span class="o">(</span><span class="kt">int</span> <span class="n">color</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c1">//some code here</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="c1">//调用</span>
+</span><span class='line'><span class="n">setColor</span><span class="o">(</span><span class="n">COLOR_RED</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然而上面的还是有不尽完美的地方</p>
+
+<ul>
+<li><code>setColor(COLOR_RED)</code>与<code>setColor(0)</code>效果一样,而后者可读性很差,但却可以正常运行</li>
+<li>setColor方法可以接受枚举之外的值,比如<code>setColor(3)</code>,这种情况下程序可能出问题</li>
+</ul>
+
+
+<p>一个相对较优的解决方法就是使用Java中的Enum.使用枚举实现的效果如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// ColorEnum.java</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">enum</span> <span class="n">ColorEmun</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">RED</span><span class="o">,</span>
+</span><span class='line'>    <span class="n">GREEN</span><span class="o">,</span>
+</span><span class='line'>    <span class="n">YELLOW</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">setColorEnum</span><span class="o">(</span><span class="n">ColorEmun</span> <span class="n">colorEnum</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c1">//some code here</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">setColorEnum</span><span class="o">(</span><span class="n">ColorEmun</span><span class="o">.</span><span class="na">GREEN</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然而Enum也并非最佳,Enum因为其相比方案一的常量来说,占用内存相对大很多而受到曾经被Google列为不建议使用,为此Google特意引入了一些相关的注解来替代枚举.</p>
+
+<p>Android中新引入的替代枚举的注解有<code>IntDef</code>和<code>StringDef</code>,这里以<code>IntDef</code>做例子说明一下.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Colors</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@IntDef</span><span class="o">({</span><span class="n">RED</span><span class="o">,</span> <span class="n">GREEN</span><span class="o">,</span> <span class="n">YELLOW</span><span class="o">})</span>
+</span><span class='line'>    <span class="nd">@Retention</span><span class="o">(</span><span class="n">RetentionPolicy</span><span class="o">.</span><span class="na">SOURCE</span><span class="o">)</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="nd">@interface</span> <span class="n">LightColors</span><span class="o">{}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">RED</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">GREEN</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">YELLOW</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>声明必要的int常量</li>
+<li>声明一个注解为LightColors</li>
+<li>使用@IntDef修饰LightColors,参数设置为待枚举的集合</li>
+<li>使用@Retention(RetentionPolicy.SOURCE)指定注解仅存在与源码中,不加入到class文件中</li>
+</ul>
+
+
+<h2>Null相关的注解</h2>
+
+<p>和Null相关的注解有两个</p>
+
+<pre><code>@Nullable 注解的元素可以是Null
+@NonNull 注解的元素不能是Null
+</code></pre>
+
+<p>上面的两个可以修饰如下的元素</p>
+
+<ul>
+<li>成员属性</li>
+<li>方法参数</li>
+<li>方法的返回值</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Nullable</span>
+</span><span class='line'><span class="kd">private</span> <span class="n">String</span> <span class="nf">obtainReferrerFromIntent</span><span class="o">(</span><span class="nd">@NonNull</span> <span class="n">Intent</span> <span class="n">intent</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">intent</span><span class="o">.</span><span class="na">getStringExtra</span><span class="o">(</span><span class="s">&quot;apps_referrer&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>NonNull检测生效的条件</p>
+
+<ul>
+<li>显式传入null</li>
+<li>在调用方法之前已经判断了参数为null时</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">setReferrer</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span><span class="c1">//提示警告</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//不提示警告</span>
+</span><span class='line'><span class="n">String</span> <span class="n">referrer</span> <span class="o">=</span> <span class="n">getIntent</span><span class="o">().</span><span class="na">getStringExtra</span><span class="o">(</span><span class="s">&quot;apps_referrer&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">setReferrer</span><span class="o">(</span><span class="n">referrer</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//提示警告</span>
+</span><span class='line'><span class="n">String</span> <span class="n">referrer</span> <span class="o">=</span> <span class="n">getIntent</span><span class="o">().</span><span class="na">getStringExtra</span><span class="o">(</span><span class="s">&quot;apps_referrer&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="k">if</span> <span class="o">(</span><span class="n">referrer</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">setReferrer</span><span class="o">(</span><span class="n">referrer</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">setReferrer</span><span class="o">(</span><span class="nd">@NonNull</span> <span class="n">String</span> <span class="n">referrer</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c1">//some code here</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>区间范围注解</h2>
+
+<p>Android中的IntRange和FloatRange是两个用来限定区间范围的注解,</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kt">float</span> <span class="n">currentProgress</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">setCurrentProgress</span><span class="o">(</span><span class="nd">@FloatRange</span><span class="o">(</span><span class="n">from</span><span class="o">=</span><span class="mf">0.0f</span><span class="o">,</span> <span class="n">to</span><span class="o">=</span><span class="mf">1.0f</span><span class="o">)</span> <span class="kt">float</span> <span class="n">progress</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">currentProgress</span> <span class="o">=</span> <span class="n">progress</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果我们传入非法的值,如下所示</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">setCurrentProgress</span><span class="o">(</span><span class="mi">11</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>就会得到这样的错误</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Value</span> <span class="n">must</span> <span class="n">be</span> <span class="o">&gt;=</span><span class="mf">0.0</span> <span class="n">and</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="o">(</span><span class="n">was</span> <span class="mi">11</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>长度以及数组大小限制</h2>
+
+<p>限制字符串的长度</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">setKey</span><span class="o">(</span><span class="nd">@Size</span><span class="o">(</span><span class="mi">6</span><span class="o">)</span> <span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>限定数组集合的大小</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">setData</span><span class="o">(</span><span class="nd">@Size</span><span class="o">(</span><span class="n">max</span> <span class="o">=</span> <span class="mi">1</span><span class="o">)</span> <span class="n">String</span><span class="o">[]</span> <span class="n">data</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="n">setData</span><span class="o">(</span><span class="k">new</span> <span class="n">String</span><span class="o">[]{</span><span class="s">&quot;b&quot;</span><span class="o">,</span> <span class="s">&quot;a&quot;</span><span class="o">});</span><span class="c1">//error occurs</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>限定特殊的数组长度,比如3的倍数</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">setItemData</span><span class="o">(</span><span class="nd">@Size</span><span class="o">(</span><span class="n">multiple</span> <span class="o">=</span> <span class="mi">3</span><span class="o">)</span> <span class="n">String</span><span class="o">[]</span> <span class="n">data</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>权限相关</h2>
+
+<p>在Android中,有很多场景都需要使用权限,无论是Marshmallow之前还是之后的动态权限管理.都需要在manifest中进行声明,如果忘记了,则会导致程序崩溃.
+好在有一个注解能辅助我们避免这个问题.使用RequiresPermission注解即可.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@RequiresPermission</span><span class="o">(</span><span class="n">Manifest</span><span class="o">.</span><span class="na">permission</span><span class="o">.</span><span class="na">SET_WALLPAPER</span><span class="o">)</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">changeWallpaper</span><span class="o">(</span><span class="n">Bitmap</span> <span class="n">bitmap</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>资源注解</h2>
+
+<p>在Android中几乎所有的资源都可以有对应的资源id.比如获取定义的字符串,我们可以通过下面的方法</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="n">String</span> <span class="nf">getStringById</span><span class="o">(</span><span class="kt">int</span> <span class="n">stringResId</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">getResources</span><span class="o">().</span><span class="na">getString</span><span class="o">(</span><span class="n">stringResId</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用这个方法,我们可以很容易的获取到定义的字符串,但是这样的写法也存在着风险.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">getStringById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">mipmap</span><span class="o">.</span><span class="na">ic_launcher</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果我们在不知情或者疏忽情况下,传入这样的值,就会出现问题.
+但是如果我们使用资源相关的注解修饰了参数,就能很大程度上避免错误的情况.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="n">String</span> <span class="nf">getStringById</span><span class="o">(</span><span class="nd">@StringRes</span>  <span class="kt">int</span> <span class="n">stringResId</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">getResources</span><span class="o">().</span><span class="na">getString</span><span class="o">(</span><span class="n">stringResId</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在Android中资源注解如下所示</p>
+
+<ul>
+<li>AnimRes</li>
+<li>AnimatorRes</li>
+<li>AnyRes</li>
+<li>ArrayRes</li>
+<li>AttrRes</li>
+<li>BoolRes</li>
+<li>ColorRes</li>
+<li>DimenRes</li>
+<li>DrawableRes</li>
+<li>FractionRes</li>
+<li>IdRes</li>
+<li>IntegerRes</li>
+<li>InterpolatorRes</li>
+<li>LayoutRes</li>
+<li>MenuRes</li>
+<li>PluralsRes</li>
+<li>RawRes</li>
+<li>StringRes</li>
+<li>StyleRes</li>
+<li>StyleableRes</li>
+<li>TransitionRes</li>
+<li>XmlRes</li>
+</ul>
+
+
+<h2>Color值限定</h2>
+
+<p>上面部分提到了<code>ColorRes</code>,用来限定颜色资源id,这里我们将使用<code>ColorInt</code>,一个用来限定Color值的注解.
+在较早的TextView的setTextColor是这样实现的.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">setTextColor</span><span class="o">(</span><span class="kt">int</span> <span class="n">color</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">mTextColor</span> <span class="o">=</span> <span class="n">ColorStateList</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">color</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">updateTextColors</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然而上面的方法在调用时常常会出现这种情况</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">myTextView</span><span class="o">.</span><span class="na">setTextColor</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">color</span><span class="o">.</span><span class="na">colorAccent</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如上,如果传递过去的参数为color的资源id就会出现颜色取错误的问题,这个问题在过去还是比较严重的.好在<code>ColorInt</code>出现了,改变了这一问题.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">setTextColor</span><span class="o">(</span><span class="nd">@ColorInt</span> <span class="kt">int</span> <span class="n">color</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">mTextColor</span> <span class="o">=</span> <span class="n">ColorStateList</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">color</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">updateTextColors</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当我们再次传入Color资源值时,就会得到错误的提示.</p>
+
+<h2>CheckResult</h2>
+
+<p>这是一个关于返回结果的注解，用来注解方法，如果一个方法得到了结果，却没有使用这个结果，就会有错误出现，一旦出现这种错误，就说明你没有正确使用该方法。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@CheckResult</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">String</span> <span class="nf">trim</span><span class="o">(</span><span class="n">String</span> <span class="n">s</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="na">trim</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>线程相关</h2>
+
+<p>Android中提供了四个与线程相关的注解</p>
+
+<ul>
+<li>@UiThread,通常可以等同于主线程,标注方法需要在UIThread执行,比如View类就使用这个注解</li>
+<li>@MainThread 主线程,经常启动后创建的第一个线程</li>
+<li>@WorkerThread 工作者线程,一般为一些后台的线程,比如AsyncTask里面的doInBackground就是这样的.</li>
+<li>@BinderThread 注解方法必须要在BinderThread线程中执行,一般使用较少.</li>
+</ul>
+
+
+<p>一些示例</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">new</span> <span class="n">AsyncTask</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">,</span> <span class="n">Void</span><span class="o">,</span> <span class="n">Void</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="c1">//doInBackground is already annotated with @WorkerThread</span>
+</span><span class='line'>        <span class="nd">@Override</span>
+</span><span class='line'>        <span class="kd">protected</span> <span class="n">Void</span> <span class="nf">doInBackground</span><span class="o">(</span><span class="n">Void</span><span class="o">...</span> <span class="n">params</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">updateViews</span><span class="o">();</span><span class="c1">//error</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@UiThread</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">updateViews</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;updateViews ThreadInfo=&quot;</span> <span class="o">+</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">());</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意,这种情况下不会出现错误提示</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">new</span> <span class="nf">Thread</span><span class="o">(){</span>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">updateViews</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}.</span><span class="na">start</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>虽然updateViews会在一个新的工作者线程中执行,但是在compile时没有错误提示.</p>
+
+<p>因为它的判断依据是,如果updateView的线程注解(这里为@UiThread)和run(没有线程注解)不一致才会错误提示.如果run方法没有线程注解,则不提示.</p>
+
+<h2>CallSuper</h2>
+
+<p>重写的方法必须要调用super方法</p>
+
+<p>使用这个注解,我们可以强制方法在重写时必须调用父类的方法
+比如Application的<code>onCreate</code>,<code>onConfigurationChanged</code>等.</p>
+
+<h2>Keep</h2>
+
+<p>在Android编译生成APK的环节,我们通常需要设置minifyEnabled为true实现下面的两个效果</p>
+
+<ul>
+<li>混淆代码</li>
+<li>删除没有用的代码</li>
+</ul>
+
+
+<p>但是出于某一些目的,我们需要不混淆某部分代码或者不删除某处代码,除了配置复杂的Proguard文件之外,我们还可以使用@Keep注解
+.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Keep</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="nf">getBitmapWidth</span><span class="o">(</span><span class="n">Bitmap</span> <span class="n">bitmap</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">bitmap</span><span class="o">.</span><span class="na">getWidth</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>ButterKnife</h2>
+
+<p>ButterKnife是一个用来绑定View,资源和回调的提高效率的工具.作者为Jake Wharton.
+ButterKnife的好处</p>
+
+<ul>
+<li>使用BindView替代繁琐的findViewById和类型转换</li>
+<li>使用OnClick注解方法来替换显式声明的匿名内部类</li>
+<li>使用BindString,BindBool,BindDrawable等注解实现资源获取</li>
+</ul>
+
+
+<p>一个摘自Github的示例</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">ExampleActivity</span> <span class="kd">extends</span> <span class="n">Activity</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nd">@BindView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">user</span><span class="o">)</span> <span class="n">EditText</span> <span class="n">username</span><span class="o">;</span>
+</span><span class='line'>  <span class="nd">@BindView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">pass</span><span class="o">)</span> <span class="n">EditText</span> <span class="n">password</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@BindString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">login_error</span><span class="o">)</span> <span class="n">String</span> <span class="n">loginErrorMessage</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@OnClick</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">submit</span><span class="o">)</span> <span class="kt">void</span> <span class="n">submit</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c1">// TODO call server...</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="n">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">simple_activity</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">ButterKnife</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'>    <span class="c1">// TODO Use fields...</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>ButterKnife工作原理</h3>
+
+<p>以BindView注解使用为例,示例代码为</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="n">AppCompatActivity</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@BindView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">myTextView</span><span class="o">)</span>
+</span><span class='line'>    <span class="n">TextView</span> <span class="n">myTextView</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">ButterKnife</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>  1.程序在compile时,会根据注解自动生成两个类,这里为<strong>MainActivity_ViewBinder.class</strong>和<strong>MainActivity_ViewBinding.class</strong>  <br/>
+  2.当我们调用<code>ButterKnife.bind(this);</code>时,会查找当前类对应的ViewBinder类,并调用bind方法,这里会调用到<code>MainActiivty_ViewBinder.bind</code>方法.<br/>
+  3.MainActiivty_ViewBinder.bind方法实际上是调用了findViewById然后在进行类型转换,赋值给MainActivity的myTextView属性</p>
+
+<p>ButterKnife的bind方法</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">Unbinder</span> <span class="nf">bind</span><span class="o">(</span><span class="nd">@NonNull</span> <span class="n">Activity</span> <span class="n">target</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">getViewBinder</span><span class="o">(</span><span class="n">target</span><span class="o">).</span><span class="na">bind</span><span class="o">(</span><span class="n">Finder</span><span class="o">.</span><span class="na">ACTIVITY</span><span class="o">,</span> <span class="n">target</span><span class="o">,</span> <span class="n">target</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ButterKnife的<code>getViewBinder</code>和<code>findViewBinderForClass</code></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@NonNull</span> <span class="nd">@CheckResult</span> <span class="nd">@UiThread</span>
+</span><span class='line'>  <span class="kd">static</span> <span class="n">ViewBinder</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="nf">getViewBinder</span><span class="o">(</span><span class="nd">@NonNull</span> <span class="n">Object</span> <span class="n">target</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">targetClass</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="na">getClass</span><span class="o">();</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">debug</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;Looking up view binder for &quot;</span> <span class="o">+</span> <span class="n">targetClass</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">findViewBinderForClass</span><span class="o">(</span><span class="n">targetClass</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@NonNull</span> <span class="nd">@CheckResult</span> <span class="nd">@UiThread</span>
+</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="n">ViewBinder</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="nf">findViewBinderForClass</span><span class="o">(</span><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">cls</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="c1">//如果内存集合BINDERS中包含,则不再查找</span>
+</span><span class='line'>    <span class="n">ViewBinder</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="n">viewBinder</span> <span class="o">=</span> <span class="n">BINDERS</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">cls</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">viewBinder</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">debug</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;HIT: Cached in view binder map.&quot;</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">viewBinder</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="n">String</span> <span class="n">clsName</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">clsName</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">&quot;android.&quot;</span><span class="o">)</span> <span class="o">||</span> <span class="n">clsName</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">&quot;java.&quot;</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">debug</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;MISS: Reached framework class. Abandoning search.&quot;</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">NOP_VIEW_BINDER</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="c1">//noinspection TryWithIdenticalCatches Resolves to API 19+ only type.</span>
+</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">//使用反射创建实例</span>
+</span><span class='line'>      <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">viewBindingClass</span> <span class="o">=</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="n">clsName</span> <span class="o">+</span> <span class="s">&quot;_ViewBinder&quot;</span><span class="o">);</span>
+</span><span class='line'>      <span class="c1">//noinspection unchecked</span>
+</span><span class='line'>      <span class="n">viewBinder</span> <span class="o">=</span> <span class="o">(</span><span class="n">ViewBinder</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;)</span> <span class="n">viewBindingClass</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">debug</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;HIT: Loaded view binder class.&quot;</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="c1">//如果没有找到,对父类进行查找</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">debug</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;Not found. Trying superclass &quot;</span> <span class="o">+</span> <span class="n">cls</span><span class="o">.</span><span class="na">getSuperclass</span><span class="o">().</span><span class="na">getName</span><span class="o">());</span>
+</span><span class='line'>      <span class="n">viewBinder</span> <span class="o">=</span> <span class="n">findViewBinderForClass</span><span class="o">(</span><span class="n">cls</span><span class="o">.</span><span class="na">getSuperclass</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InstantiationException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;Unable to create view binder for &quot;</span> <span class="o">+</span> <span class="n">clsName</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IllegalAccessException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;Unable to create view binder for &quot;</span> <span class="o">+</span> <span class="n">clsName</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="c1">//加入内存集合,便于后续的查找</span>
+</span><span class='line'>    <span class="n">BINDERS</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">cls</span><span class="o">,</span> <span class="n">viewBinder</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">viewBinder</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>MainActivity_ViewBinder的反编译源码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="err">➜</span>  <span class="n">androidannotationsample</span> <span class="n">javap</span> <span class="o">-</span><span class="n">c</span> <span class="n">MainActivity_ViewBinder</span>
+</span><span class='line'><span class="nl">Warning:</span> <span class="n">Binary</span> <span class="n">file</span> <span class="n">MainActivity_ViewBinder</span> <span class="n">contains</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity_ViewBinder</span>
+</span><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;MainActivity_ViewBinder.java&quot;</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity_ViewBinder</span> <span class="kd">implements</span> <span class="n">butterknife</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">ViewBinder</span><span class="o">&lt;</span><span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity_ViewBinder</span><span class="o">();</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">1</span>                  <span class="c1">// Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>       <span class="mi">4</span><span class="o">:</span> <span class="k">return</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">butterknife</span><span class="o">.</span><span class="na">Unbinder</span> <span class="nf">bind</span><span class="o">(</span><span class="n">butterknife</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">Finder</span><span class="o">,</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">,</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">);</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">2</span>                  <span class="c1">// class com/example/admin/androidannotationsample/MainActivity_ViewBinding</span>
+</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">dup</span>
+</span><span class='line'>       <span class="mi">4</span><span class="o">:</span> <span class="n">aload_2</span>
+</span><span class='line'>       <span class="mi">5</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">aload_3</span>                           <span class="c1">// 创建ViewBinding实例</span>
+</span><span class='line'>       <span class="mi">7</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method com/example/admin/androidannotationsample/MainActivity_ViewBinding.&quot;&lt;init&gt;&quot;:(Lcom/example/admin/androidannotationsample/MainActivity;Lbutterknife/internal/Finder;Ljava/lang/Object;)V</span>
+</span><span class='line'>      <span class="mi">10</span><span class="o">:</span> <span class="n">areturn</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">butterknife</span><span class="o">.</span><span class="na">Unbinder</span> <span class="nf">bind</span><span class="o">(</span><span class="n">butterknife</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">Finder</span><span class="o">,</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">,</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">);</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>       <span class="mi">2</span><span class="o">:</span> <span class="n">aload_2</span>
+</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// class com/example/admin/androidannotationsample/MainActivity</span>
+</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">aload_3</span>                           <span class="c1">//调用上面的重载方法</span>
+</span><span class='line'>       <span class="mi">7</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method bind:(Lbutterknife/internal/Finder;Lcom/example/admin/androidannotationsample/MainActivity;Ljava/lang/Object;)Lbutterknife/Unbinder;</span>
+</span><span class='line'>      <span class="mi">10</span><span class="o">:</span> <span class="n">areturn</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>MainActivity_ViewBinding的反编译源码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="err">➜</span>  <span class="n">androidannotationsample</span> <span class="n">javap</span> <span class="o">-</span><span class="n">c</span> <span class="n">MainActivity_ViewBinding</span>
+</span><span class='line'><span class="nl">Warning:</span> <span class="n">Binary</span> <span class="n">file</span> <span class="n">MainActivity_ViewBinding</span> <span class="n">contains</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity_ViewBinding</span>
+</span><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;MainActivity_ViewBinding.java&quot;</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity_ViewBinding</span><span class="o">&lt;</span><span class="n">T</span> <span class="kd">extends</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">&gt;</span> <span class="kd">implements</span> <span class="n">butterknife</span><span class="o">.</span><span class="na">Unbinder</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">protected</span> <span class="n">T</span> <span class="n">target</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">androidannotationsample</span><span class="o">.</span><span class="na">MainActivity_ViewBinding</span><span class="o">(</span><span class="n">T</span><span class="o">,</span> <span class="n">butterknife</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">Finder</span><span class="o">,</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">);</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">1</span>                  <span class="c1">// Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>       <span class="mi">4</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>       <span class="mi">5</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">putfield</span>      <span class="err">#</span><span class="mi">2</span>                  <span class="c1">// Field target:Lcom/example/admin/androidannotationsample/MainActivity;</span>
+</span><span class='line'>       <span class="mi">9</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>      <span class="mi">10</span><span class="o">:</span> <span class="n">aload_2</span>
+</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="n">aload_3</span>                           <span class="c1">//调用Finder.findRequireViewAsType找到View,并进行类型转换,并复制给MainActivity中对一个的变量</span>
+</span><span class='line'>      <span class="mi">12</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// int 2131427412</span>
+</span><span class='line'>      <span class="mi">14</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// String field &#39;myTextView&#39;</span>
+</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// class android/widget/TextView</span>
+</span><span class='line'>                                            <span class="c1">// 内部实际调用了findViewById</span>
+</span><span class='line'>      <span class="mi">18</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Method butterknife/internal/Finder.findRequiredViewAsType:(Ljava/lang/Object;ILjava/lang/String;Ljava/lang/Class;)Ljava/lang/Object;</span>
+</span><span class='line'>      <span class="mi">21</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// class android/widget/TextView</span>
+</span><span class='line'>      <span class="mi">24</span><span class="o">:</span> <span class="n">putfield</span>      <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Field com/example/admin/androidannotationsample/MainActivity.myTextView:Landroid/widget/TextView;</span>
+</span><span class='line'>      <span class="mi">27</span><span class="o">:</span> <span class="k">return</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">unbind</span><span class="o">();</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">getfield</span>      <span class="err">#</span><span class="mi">2</span>                  <span class="c1">// Field target:Lcom/example/admin/androidannotationsample/MainActivity;</span>
+</span><span class='line'>       <span class="mi">4</span><span class="o">:</span> <span class="n">astore_1</span>
+</span><span class='line'>       <span class="mi">5</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">ifnonnull</span>     <span class="mi">19</span>
+</span><span class='line'>       <span class="mi">9</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// class java/lang/IllegalStateException</span>
+</span><span class='line'>      <span class="mi">12</span><span class="o">:</span> <span class="n">dup</span>
+</span><span class='line'>      <span class="mi">13</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">10</span>                 <span class="c1">// String Bindings already cleared.</span>
+</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">11</span>                 <span class="c1">// Method java/lang/IllegalStateException.&quot;&lt;init&gt;&quot;:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">18</span><span class="o">:</span> <span class="n">athrow</span>
+</span><span class='line'>      <span class="mi">19</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>      <span class="mi">20</span><span class="o">:</span> <span class="n">aconst_null</span>                       <span class="c1">// 解除绑定,设置对应的变量为null</span>
+</span><span class='line'>      <span class="mi">21</span><span class="o">:</span> <span class="n">putfield</span>      <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Field com/example/admin/androidannotationsample/MainActivity.myTextView:Landroid/widget/TextView;</span>
+</span><span class='line'>      <span class="mi">24</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>      <span class="mi">25</span><span class="o">:</span> <span class="n">aconst_null</span>
+</span><span class='line'>      <span class="mi">26</span><span class="o">:</span> <span class="n">putfield</span>      <span class="err">#</span><span class="mi">2</span>                  <span class="c1">// Field target:Lcom/example/admin/androidannotationsample/MainActivity;</span>
+</span><span class='line'>      <span class="mi">29</span><span class="o">:</span> <span class="k">return</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finder的源码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">package</span> <span class="n">butterknife</span><span class="o">.</span><span class="na">internal</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.app.Activity</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.app.Dialog</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.content.Context</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.support.annotation.IdRes</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.view.View</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@SuppressWarnings</span><span class="o">(</span><span class="s">&quot;UnusedDeclaration&quot;</span><span class="o">)</span> <span class="c1">// Used by generated code.</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">enum</span> <span class="n">Finder</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">VIEW</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@Override</span> <span class="kd">public</span> <span class="n">View</span> <span class="n">findOptionalView</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">((</span><span class="n">View</span><span class="o">)</span> <span class="n">source</span><span class="o">).</span><span class="na">findViewById</span><span class="o">(</span><span class="n">id</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span> <span class="kd">public</span> <span class="n">Context</span> <span class="n">getContext</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">((</span><span class="n">View</span><span class="o">)</span> <span class="n">source</span><span class="o">).</span><span class="na">getContext</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span> <span class="kd">protected</span> <span class="n">String</span> <span class="n">getResourceEntryName</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">final</span> <span class="n">View</span> <span class="n">view</span> <span class="o">=</span> <span class="o">(</span><span class="n">View</span><span class="o">)</span> <span class="n">source</span><span class="o">;</span>
+</span><span class='line'>      <span class="c1">// In edit mode, getResourceEntryName() is unsupported due to use of BridgeResources</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">view</span><span class="o">.</span><span class="na">isInEditMode</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;&lt;unavailable while editing&gt;&quot;</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">getResourceEntryName</span><span class="o">(</span><span class="n">source</span><span class="o">,</span> <span class="n">id</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">},</span>
+</span><span class='line'>  <span class="n">ACTIVITY</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@Override</span> <span class="kd">public</span> <span class="n">View</span> <span class="n">findOptionalView</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">((</span><span class="n">Activity</span><span class="o">)</span> <span class="n">source</span><span class="o">).</span><span class="na">findViewById</span><span class="o">(</span><span class="n">id</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span> <span class="kd">public</span> <span class="n">Context</span> <span class="n">getContext</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">(</span><span class="n">Activity</span><span class="o">)</span> <span class="n">source</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">},</span>
+</span><span class='line'>  <span class="n">DIALOG</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@Override</span> <span class="kd">public</span> <span class="n">View</span> <span class="n">findOptionalView</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">((</span><span class="n">Dialog</span><span class="o">)</span> <span class="n">source</span><span class="o">).</span><span class="na">findViewById</span><span class="o">(</span><span class="n">id</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span> <span class="kd">public</span> <span class="n">Context</span> <span class="n">getContext</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">((</span><span class="n">Dialog</span><span class="o">)</span> <span class="n">source</span><span class="o">).</span><span class="na">getContext</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">//查找对应的Finder,如上面的ACTIVITY, DIALOG, VIEW</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">abstract</span> <span class="n">View</span> <span class="nf">findOptionalView</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">final</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="n">findOptionalViewAsType</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">,</span> <span class="n">String</span> <span class="n">who</span><span class="o">,</span>
+</span><span class='line'>      <span class="n">Class</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">cls</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">View</span> <span class="n">view</span> <span class="o">=</span> <span class="n">findOptionalView</span><span class="o">(</span><span class="n">source</span><span class="o">,</span> <span class="n">id</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">castView</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="n">id</span><span class="o">,</span> <span class="n">who</span><span class="o">,</span> <span class="n">cls</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">final</span> <span class="n">View</span> <span class="nf">findRequiredView</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">,</span> <span class="n">String</span> <span class="n">who</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">View</span> <span class="n">view</span> <span class="o">=</span> <span class="n">findOptionalView</span><span class="o">(</span><span class="n">source</span><span class="o">,</span> <span class="n">id</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">view</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">view</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="n">getResourceEntryName</span><span class="o">(</span><span class="n">source</span><span class="o">,</span> <span class="n">id</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span><span class="s">&quot;Required view &#39;&quot;</span>
+</span><span class='line'>        <span class="o">+</span> <span class="n">name</span>
+</span><span class='line'>        <span class="o">+</span> <span class="s">&quot;&#39; with ID &quot;</span>
+</span><span class='line'>        <span class="o">+</span> <span class="n">id</span>
+</span><span class='line'>        <span class="o">+</span> <span class="s">&quot; for &quot;</span>
+</span><span class='line'>        <span class="o">+</span> <span class="n">who</span>
+</span><span class='line'>        <span class="o">+</span> <span class="s">&quot; was not found. If this view is optional add &#39;@Nullable&#39; (fields) or &#39;@Optional&#39;&quot;</span>
+</span><span class='line'>        <span class="o">+</span> <span class="s">&quot; (methods) annotation.&quot;</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">//来自ViewBinding的调用</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">final</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="n">findRequiredViewAsType</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">,</span> <span class="n">String</span> <span class="n">who</span><span class="o">,</span>
+</span><span class='line'>      <span class="n">Class</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">cls</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">View</span> <span class="n">view</span> <span class="o">=</span> <span class="n">findRequiredView</span><span class="o">(</span><span class="n">source</span><span class="o">,</span> <span class="n">id</span><span class="o">,</span> <span class="n">who</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">castView</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="n">id</span><span class="o">,</span> <span class="n">who</span><span class="o">,</span> <span class="n">cls</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">final</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="n">castView</span><span class="o">(</span><span class="n">View</span> <span class="n">view</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">,</span> <span class="n">String</span> <span class="n">who</span><span class="o">,</span> <span class="n">Class</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">cls</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="na">cast</span><span class="o">(</span><span class="n">view</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassCastException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="n">getResourceEntryName</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="n">id</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span><span class="s">&quot;View &#39;&quot;</span>
+</span><span class='line'>          <span class="o">+</span> <span class="n">name</span>
+</span><span class='line'>          <span class="o">+</span> <span class="s">&quot;&#39; with ID &quot;</span>
+</span><span class='line'>          <span class="o">+</span> <span class="n">id</span>
+</span><span class='line'>          <span class="o">+</span> <span class="s">&quot; for &quot;</span>
+</span><span class='line'>          <span class="o">+</span> <span class="n">who</span>
+</span><span class='line'>          <span class="o">+</span> <span class="s">&quot; was of the wrong type. See cause for more info.&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@SuppressWarnings</span><span class="o">(</span><span class="s">&quot;unchecked&quot;</span><span class="o">)</span> <span class="c1">// That&#39;s the point.</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">final</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="n">castParam</span><span class="o">(</span><span class="n">Object</span> <span class="n">value</span><span class="o">,</span> <span class="n">String</span> <span class="n">from</span><span class="o">,</span> <span class="kt">int</span> <span class="n">fromPos</span><span class="o">,</span> <span class="n">String</span> <span class="n">to</span><span class="o">,</span> <span class="kt">int</span> <span class="n">toPos</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">(</span><span class="n">T</span><span class="o">)</span> <span class="n">value</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassCastException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span><span class="s">&quot;Parameter #&quot;</span>
+</span><span class='line'>          <span class="o">+</span> <span class="o">(</span><span class="n">fromPos</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+</span><span class='line'>          <span class="o">+</span> <span class="s">&quot; of method &#39;&quot;</span>
+</span><span class='line'>          <span class="o">+</span> <span class="n">from</span>
+</span><span class='line'>          <span class="o">+</span> <span class="s">&quot;&#39; was of the wrong type for parameter #&quot;</span>
+</span><span class='line'>          <span class="o">+</span> <span class="o">(</span><span class="n">toPos</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+</span><span class='line'>          <span class="o">+</span> <span class="s">&quot; of method &#39;&quot;</span>
+</span><span class='line'>          <span class="o">+</span> <span class="n">to</span>
+</span><span class='line'>          <span class="o">+</span> <span class="s">&quot;&#39;. See cause for more info.&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">protected</span> <span class="n">String</span> <span class="nf">getResourceEntryName</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">,</span> <span class="nd">@IdRes</span> <span class="kt">int</span> <span class="n">id</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">getContext</span><span class="o">(</span><span class="n">source</span><span class="o">).</span><span class="na">getResources</span><span class="o">().</span><span class="na">getResourceEntryName</span><span class="o">(</span><span class="n">id</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="kd">abstract</span> <span class="n">Context</span> <span class="nf">getContext</span><span class="o">(</span><span class="n">Object</span> <span class="n">source</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Otto</h2>
+
+<p>Otto Bus 是一个专为Android改装的Event Bus,在很多项目中都有应用.由Square开源共享.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">EventBusTest</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;EventBusTest&quot;</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">Bus</span> <span class="n">mBus</span>  <span class="o">=</span> <span class="k">new</span> <span class="n">Bus</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">mBus</span><span class="o">.</span><span class="na">register</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">class</span> <span class="nc">NetworkChangedEvent</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Produce</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">NetworkChangedEvent</span> <span class="nf">sendNetworkChangedEvent</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="k">new</span> <span class="nf">NetworkChangedEvent</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Subscribe</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onNetworkChanged</span><span class="o">(</span><span class="n">NetworkChangedEvent</span> <span class="n">event</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onNetworkChanged event=&quot;</span> <span class="o">+</span> <span class="n">event</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Otto 的工作原理</h2>
+
+<ul>
+<li>使用@Produce和@Subscribe标记方法</li>
+<li>当调用bus.register方法,去检索注册对象的标记方法,并cache映射关系</li>
+<li>当post事件时,将事件与handler方法对应加入事件队列</li>
+<li>抽取事件队列,然后调用handler处理</li>
+</ul>
+
+
+<p>如下为对Otto如何利用注解的分析</p>
+
+<p>register的源码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">register</span><span class="o">(</span><span class="n">Object</span> <span class="n">object</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">object</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">NullPointerException</span><span class="o">(</span><span class="s">&quot;Object to register must not be null.&quot;</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="n">enforcer</span><span class="o">.</span><span class="na">enforce</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'>    <span class="c1">//查找object中的Subscriber</span>
+</span><span class='line'>    <span class="n">Map</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;&gt;</span> <span class="n">foundHandlersMap</span> <span class="o">=</span> <span class="n">handlerFinder</span><span class="o">.</span><span class="na">findAllSubscribers</span><span class="o">(</span><span class="n">object</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">for</span> <span class="o">(</span><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">type</span> <span class="o">:</span> <span class="n">foundHandlersMap</span><span class="o">.</span><span class="na">keySet</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;</span> <span class="n">handlers</span> <span class="o">=</span> <span class="n">handlersByType</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">type</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">handlers</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="c1">//concurrent put if absent</span>
+</span><span class='line'>        <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;</span> <span class="n">handlersCreation</span> <span class="o">=</span> <span class="k">new</span> <span class="n">CopyOnWriteArraySet</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;();</span>
+</span><span class='line'>        <span class="n">handlers</span> <span class="o">=</span> <span class="n">handlersByType</span><span class="o">.</span><span class="na">putIfAbsent</span><span class="o">(</span><span class="n">type</span><span class="o">,</span> <span class="n">handlersCreation</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">handlers</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">handlers</span> <span class="o">=</span> <span class="n">handlersCreation</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>      <span class="kd">final</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;</span> <span class="n">foundHandlers</span> <span class="o">=</span> <span class="n">foundHandlersMap</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">type</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(!</span><span class="n">handlers</span><span class="o">.</span><span class="na">addAll</span><span class="o">(</span><span class="n">foundHandlers</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;Object already registered.&quot;</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;&gt;</span> <span class="n">entry</span> <span class="o">:</span> <span class="n">foundHandlersMap</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">type</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">EventProducer</span> <span class="n">producer</span> <span class="o">=</span> <span class="n">producersByType</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">type</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">producer</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">producer</span><span class="o">.</span><span class="na">isValid</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;</span> <span class="n">foundHandlers</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="na">getValue</span><span class="o">();</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="n">EventHandler</span> <span class="n">foundHandler</span> <span class="o">:</span> <span class="n">foundHandlers</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="o">(!</span><span class="n">producer</span><span class="o">.</span><span class="na">isValid</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">break</span><span class="o">;</span>
+</span><span class='line'>          <span class="o">}</span>
+</span><span class='line'>          <span class="k">if</span> <span class="o">(</span><span class="n">foundHandler</span><span class="o">.</span><span class="na">isValid</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">dispatchProducerResultToHandler</span><span class="o">(</span><span class="n">foundHandler</span><span class="o">,</span> <span class="n">producer</span><span class="o">);</span>
+</span><span class='line'>          <span class="o">}</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>HandlerFinder源码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">interface</span> <span class="nc">HandlerFinder</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">Map</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">EventProducer</span><span class="o">&gt;</span> <span class="n">findAllProducers</span><span class="o">(</span><span class="n">Object</span> <span class="n">listener</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">Map</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;&gt;</span> <span class="n">findAllSubscribers</span><span class="o">(</span><span class="n">Object</span> <span class="n">listener</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">//Otto注解查找器</span>
+</span><span class='line'>  <span class="n">HandlerFinder</span> <span class="n">ANNOTATED</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HandlerFinder</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">EventProducer</span><span class="o">&gt;</span> <span class="n">findAllProducers</span><span class="o">(</span><span class="n">Object</span> <span class="n">listener</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">AnnotatedHandlerFinder</span><span class="o">.</span><span class="na">findAllProducers</span><span class="o">(</span><span class="n">listener</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;&gt;</span> <span class="n">findAllSubscribers</span><span class="o">(</span><span class="n">Object</span> <span class="n">listener</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">AnnotatedHandlerFinder</span><span class="o">.</span><span class="na">findAllSubscribers</span><span class="o">(</span><span class="n">listener</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>具体查找实现</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/** This implementation finds all methods marked with a {@link Subscribe} annotation. */</span>
+</span><span class='line'>  <span class="kd">static</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;&gt;</span> <span class="n">findAllSubscribers</span><span class="o">(</span><span class="n">Object</span> <span class="n">listener</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">listenerClass</span> <span class="o">=</span> <span class="n">listener</span><span class="o">.</span><span class="na">getClass</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">Map</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;&gt;</span> <span class="n">handlersInMethod</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;&gt;();</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">Map</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">Method</span><span class="o">&gt;&gt;</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">SUBSCRIBERS_CACHE</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">listenerClass</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">==</span> <span class="n">methods</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">methods</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">Method</span><span class="o">&gt;&gt;();</span>
+</span><span class='line'>      <span class="n">loadAnnotatedSubscriberMethods</span><span class="o">(</span><span class="n">listenerClass</span><span class="o">,</span> <span class="n">methods</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(!</span><span class="n">methods</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">Class</span><span class="o">&lt;?&gt;,</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">Method</span><span class="o">&gt;&gt;</span> <span class="n">e</span> <span class="o">:</span> <span class="n">methods</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">Set</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;</span> <span class="n">handlers</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashSet</span><span class="o">&lt;</span><span class="n">EventHandler</span><span class="o">&gt;();</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="n">Method</span> <span class="n">m</span> <span class="o">:</span> <span class="n">e</span><span class="o">.</span><span class="na">getValue</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">handlers</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">EventHandler</span><span class="o">(</span><span class="n">listener</span><span class="o">,</span> <span class="n">m</span><span class="o">));</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">handlersInMethod</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">getKey</span><span class="o">(),</span> <span class="n">handlers</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">handlersInMethod</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上就是关于Android中注解的一些总结,文章部分内容参考自 <a href="http://tools.android.com/tech-docs/support-annotations">Support Annotations</a> ,希望能帮助大家对注解有基础的认识,并运用到实际的日常开发之中.</p>
+
+<p>参考文章:</p>
+
+<ul>
+<li><a href="http://tools.android.com/tech-docs/support-annotations">http://tools.android.com/tech-docs/support-annotations</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[如何在Android中避免创建不必要的对象]]></title>
@@ -4639,7 +5964,7 @@ x.clone().equals(x)  也返回true，但也不是必须的</p></blockquote>
 <p>如果针对这个活动有任何问题，请联系我们的客服或者发送邮件到：
 <a href="mailto:study-jams-china@google.com">study-jams-china@google.com</a></p>
 
-<blockquote><p>顺便说一句，该课程字幕由谷创字幕组（前GDG字幕组）的热心志愿者翻译，如果你也想参与字幕组做 Google 技术课程的翻译，请联系：<a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#108;&#117;&#x63;&#x68;&#x65;&#x6e;&#x67;&#64;&#x67;&#x6f;&#x6f;&#103;&#x6c;&#x65;&#x2e;&#x63;&#111;&#109;">&#x6c;&#117;&#99;&#104;&#101;&#x6e;&#x67;&#64;&#103;&#111;&#111;&#x67;&#108;&#x65;&#x2e;&#x63;&#111;&#109;</a> 如果能够附上一份可爱的简历，那就最好了。</p></blockquote>
+<blockquote><p>顺便说一句，该课程字幕由谷创字幕组（前GDG字幕组）的热心志愿者翻译，如果你也想参与字幕组做 Google 技术课程的翻译，请联系：<a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#58;&#x6c;&#x75;&#x63;&#104;&#x65;&#110;&#103;&#64;&#x67;&#111;&#111;&#x67;&#108;&#x65;&#x2e;&#99;&#x6f;&#109;">&#108;&#117;&#99;&#x68;&#x65;&#110;&#x67;&#x40;&#103;&#x6f;&#111;&#x67;&#x6c;&#x65;&#46;&#99;&#x6f;&#x6d;</a> 如果能够附上一份可爱的简历，那就最好了。</p></blockquote>
 
 <h2>微信公众号</h2>
 
@@ -5736,504 +7061,6 @@ x.clone().equals(x)  也返回true，但也不是必须的</p></blockquote>
 <li>再次感谢我的御用设计师 大麦 帮我制作logo。</li>
 </ul>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[聊一聊Android 6.0的运行时权限]]></title>
-    <link href="http://droidyue.com/blog/2016/01/17/understanding-marshmallow-runtime-permission/"/>
-    <updated>2016-01-17T20:40:00+08:00</updated>
-    <id>http://droidyue.com/blog/2016/01/17/understanding-marshmallow-runtime-permission</id>
-    <content type="html"><![CDATA[<p>Android 6.0，代号棉花糖，自发布伊始，其主要的特征运行时权限就很受关注。因为这一特征不仅改善了用户对于应用的使用体验，还使得应用开发者在实践开发中需要做出改变。</p>
-
-<p>没有深入了解运行时权限的开发者通常会有很多疑问，比如什么是运行时权限，哪些是运行时的权限，我的应用是不是会在6.0系统上各种崩溃呢，如何才能支持运行时权限机制呢。本文讲尝试回答这一些问题，希望读者阅读完成之后，都能找到较为完美的答案。</p>
-
-<!--more-->
-
-
-<h2>权限一刀切</h2>
-
-<p>在6.0以前的系统，都是权限一刀切的处理方式，<strong>只要用户安装，Manifest申请的权限都会被赋予，并且安装后权限也撤销不了</strong>。<br/>
-这种情况下，当我们从Google Play安装一个应用，在安装之前会得到这样的权限提示信息。</p>
-
-<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/pre-marshmallow-permission.jpg" alt="Permission" /></p>
-
-<p>当上述对话框弹出后，用户只有两种选择：</p>
-
-<ul>
-<li>我信任你，即使有敏感权限</li>
-<li>你一个**应用，要这个权限干嘛，我还是不安装了。</li>
-</ul>
-
-
-<p>所以，这种一刀切的处理方式还是有弊端的，我们没有办法只允许某些权限或者拒绝某些权限。</p>
-
-<h2>棉花糖运行时权限</h2>
-
-<p>从棉花糖开始，Android系统引入了新的权限机制，即本文要讲的运行时权限。</p>
-
-<p>何为运行时权限呢？举个栗子，以某个需要拍照的应用为例，当运行时权限生效时，其Camera权限不是在安装后赋予，而是在应用运行的时候进行请求权限（比如当用户按下”相机拍照“按钮后）看到的效果则是这样的</p>
-
-<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/marshmallow-permission.png" alt="Requesting Camera Permission" /></p>
-
-<p>接下来，对于Camera权限的处理完全权交给用户。是不是有点像苹果系统的处理呢，不要说这是抄袭，暂且称为师夷长技以制夷。</p>
-
-<h2>权限的分组</h2>
-
-<p>Android中有很多权限，但并非所有的权限都是敏感权限，于是6.0系统就对权限进行了分类，一般为下述几类</p>
-
-<ul>
-<li>正常(Normal Protection)权限</li>
-<li>危险(Dangerous)权限</li>
-<li>特殊(Particular)权限</li>
-<li>其他权限（一般很少用到）</li>
-</ul>
-
-
-<h2>正常权限</h2>
-
-<p>正常权限具有如下的几个特点</p>
-
-<ul>
-<li>对用户隐私没有较大影响或者不会打来安全问题。</li>
-<li>安装后就赋予这些权限，<strong>不需要显示提醒用户，用户也不能取消这些权限</strong>。</li>
-</ul>
-
-
-<h3>正常权限列表</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">ACCESS_LOCATION_EXTRA_COMMANDS</span>
-</span><span class='line'><span class="n">ACCESS_NETWORK_STATE</span>
-</span><span class='line'><span class="n">ACCESS_NOTIFICATION_POLICY</span>
-</span><span class='line'><span class="n">ACCESS_WIFI_STATE</span>
-</span><span class='line'><span class="n">BLUETOOTH</span>
-</span><span class='line'><span class="n">BLUETOOTH_ADMIN</span>
-</span><span class='line'><span class="n">BROADCAST_STICKY</span>
-</span><span class='line'><span class="n">CHANGE_NETWORK_STATE</span>
-</span><span class='line'><span class="n">CHANGE_WIFI_MULTICAST_STATE</span>
-</span><span class='line'><span class="n">CHANGE_WIFI_STATE</span>
-</span><span class='line'><span class="n">DISABLE_KEYGUARD</span>
-</span><span class='line'><span class="n">EXPAND_STATUS_BAR</span>
-</span><span class='line'><span class="n">GET_PACKAGE_SIZE</span>
-</span><span class='line'><span class="n">INTERNET</span>
-</span><span class='line'><span class="n">KILL_BACKGROUND_PROCESSES</span>
-</span><span class='line'><span class="n">MODIFY_AUDIO_SETTINGS</span>
-</span><span class='line'><span class="n">NFC</span>
-</span><span class='line'><span class="n">READ_SYNC_SETTINGS</span>
-</span><span class='line'><span class="n">READ_SYNC_STATS</span>
-</span><span class='line'><span class="n">RECEIVE_BOOT_COMPLETED</span>
-</span><span class='line'><span class="n">REORDER_TASKS</span>
-</span><span class='line'><span class="n">REQUEST_INSTALL_PACKAGES</span>
-</span><span class='line'><span class="n">SET_TIME_ZONE</span>
-</span><span class='line'><span class="n">SET_WALLPAPER</span>
-</span><span class='line'><span class="n">SET_WALLPAPER_HINTS</span>
-</span><span class='line'><span class="n">TRANSMIT_IR</span>
-</span><span class='line'><span class="n">USE_FINGERPRINT</span>
-</span><span class='line'><span class="n">VIBRATE</span>
-</span><span class='line'><span class="n">WAKE_LOCK</span>
-</span><span class='line'><span class="n">WRITE_SYNC_SETTINGS</span>
-</span><span class='line'><span class="n">SET_ALARM</span>
-</span><span class='line'><span class="n">INSTALL_SHORTCUT</span>
-</span><span class='line'><span class="n">UNINSTALL_SHORTCUT</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上述的权限基本设计的是关于网络，蓝牙，时区，快捷方式等方面，只要在Manifest指定了这些权限，就会被授予，并且不能撤销。</p>
-
-<h2>特殊权限</h2>
-
-<p>这里讲特殊权限提前讲一下，因为这个相对来说简单一些。</p>
-
-<p>特殊权限，顾名思义，就是一些特别敏感的权限，在Android系统中，主要由两个</p>
-
-<ul>
-<li>SYSTEM_ALERT_WINDOW，设置悬浮窗，进行一些黑科技</li>
-<li>WRITE_SETTINGS  修改系统设置</li>
-</ul>
-
-
-<p>关于上面两个特殊权限的授权，做法是使用<code>startActivityForResult</code>启动授权界面来完成。</p>
-
-<h3>请求SYSTEM_ALERT_WINDOW</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">REQUEST_CODE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span>  <span class="kt">void</span> <span class="nf">requestAlertWindowPermission</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">Intent</span> <span class="n">intent</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="o">(</span><span class="n">Settings</span><span class="o">.</span><span class="na">ACTION_MANAGE_OVERLAY_PERMISSION</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">intent</span><span class="o">.</span><span class="na">setData</span><span class="o">(</span><span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="s">&quot;package:&quot;</span> <span class="o">+</span> <span class="n">getPackageName</span><span class="o">()));</span>
-</span><span class='line'>    <span class="n">startActivityForResult</span><span class="o">(</span><span class="n">intent</span><span class="o">,</span> <span class="n">REQUEST_CODE</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onActivityResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">requestCode</span><span class="o">,</span> <span class="kt">int</span> <span class="n">resultCode</span><span class="o">,</span> <span class="n">Intent</span> <span class="n">data</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">super</span><span class="o">.</span><span class="na">onActivityResult</span><span class="o">(</span><span class="n">requestCode</span><span class="o">,</span> <span class="n">resultCode</span><span class="o">,</span> <span class="n">data</span><span class="o">);</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">requestCode</span> <span class="o">==</span> <span class="n">REQUEST_CODE</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">Settings</span><span class="o">.</span><span class="na">canDrawOverlays</span><span class="o">(</span><span class="k">this</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onActivityResult granted&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上述代码需要注意的是</p>
-
-<ul>
-<li>使用Action <code>Settings.ACTION_MANAGE_OVERLAY_PERMISSION</code>启动隐式Intent</li>
-<li>使用<code>"package:" + getPackageName()</code>携带App的包名信息</li>
-<li>使用<code>Settings.canDrawOverlays</code>方法判断授权结果</li>
-</ul>
-
-
-<h3>请求WRITE_SETTINGS</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">REQUEST_CODE_WRITE_SETTINGS</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">requestWriteSettings</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">Intent</span> <span class="n">intent</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="o">(</span><span class="n">Settings</span><span class="o">.</span><span class="na">ACTION_MANAGE_WRITE_SETTINGS</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">intent</span><span class="o">.</span><span class="na">setData</span><span class="o">(</span><span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="s">&quot;package:&quot;</span> <span class="o">+</span> <span class="n">getPackageName</span><span class="o">()));</span>
-</span><span class='line'>    <span class="n">startActivityForResult</span><span class="o">(</span><span class="n">intent</span><span class="o">,</span> <span class="n">REQUEST_CODE_WRITE_SETTINGS</span> <span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onActivityResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">requestCode</span><span class="o">,</span> <span class="kt">int</span> <span class="n">resultCode</span><span class="o">,</span> <span class="n">Intent</span> <span class="n">data</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">super</span><span class="o">.</span><span class="na">onActivityResult</span><span class="o">(</span><span class="n">requestCode</span><span class="o">,</span> <span class="n">resultCode</span><span class="o">,</span> <span class="n">data</span><span class="o">);</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">requestCode</span> <span class="o">==</span> <span class="n">REQUEST_CODE_WRITE_SETTINGS</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">Settings</span><span class="o">.</span><span class="na">System</span><span class="o">.</span><span class="na">canWrite</span><span class="o">(</span><span class="k">this</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onActivityResult write settings granted&quot;</span> <span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上述代码需要注意的是</p>
-
-<ul>
-<li>使用Action <code>Settings.ACTION_MANAGE_WRITE_SETTINGS</code> 启动隐式Intent</li>
-<li>使用<code>"package:" + getPackageName()</code>携带App的包名信息</li>
-<li>使用<code>Settings.System.canWrite</code>方法检测授权结果</li>
-</ul>
-
-
-<p>注意：关于这两个特殊权限，一般不建议应用申请。</p>
-
-<h2>危险权限</h2>
-
-<p>危险权限实际上才是运行时权限主要处理的对象，这些权限可能引起隐私问题或者影响其他程序运行。Android中的危险权限可以归为以下几个分组：</p>
-
-<ul>
-<li>CALENDAR</li>
-<li>CAMERA</li>
-<li>CONTACTS</li>
-<li>LOCATION</li>
-<li>MICROPHONE</li>
-<li>PHONE</li>
-<li>SENSORS</li>
-<li>SMS</li>
-<li>STORAGE</li>
-</ul>
-
-
-<p>各个权限分组与其具体的权限，可以参考下图：</p>
-
-<p><img src="http://ww4.sinaimg.cn/large/6a195423jw1ezwpc11cs0j20hr0majwm.jpg" alt="Permission Groups and detailed permissions" /></p>
-
-<h2>必须要支持运行时权限么</h2>
-
-<p>目前应用实际上是可以不需要支持运行时权限的，但是最终肯定还是需要支持的，只是时间问题而已。</p>
-
-<p>想要不支持运行时权限机制很简单，只需要将<code>targetSdkVersion</code>设置低于23就可以了，意思是告诉系统，我还没有完全在API 23（6.0）上完全搞定，不要给我启动新的特性。</p>
-
-<h2>不支持运行时权限会崩溃么</h2>
-
-<p>可能会，但不是那种一上来就噼里啪啦崩溃不断的那种。</p>
-
-<p>如果你的应用将<code>targetSdkVersion</code>设置低于23，那么在6.0的系统上不会为这个应用开启运行时权限机制，即按照以前的一刀切方式处理。</p>
-
-<h3>然而有点糟糕的是</h3>
-
-<p>6.0系统提供了一个应用权限管理界面，界面长得是这样的</p>
-
-<p><img src="http://ww2.sinaimg.cn/large/6a195423jw1ezwqnmjhcdj20u01hc40k.jpg" width="300"></p>
-
-<p>既然是可以管理，用户就能取消权限，当一个不支持运行时权限的应用某项权限被取消时</p>
-
-<p><img src="http://ww4.sinaimg.cn/large/6a195423jw1ezwqaftmpgj20u01hc77e.jpg" width="300"></p>
-
-<p>系统会弹出一个对话框提醒撤销的危害，如果用户执意撤销，会带来如下的反应</p>
-
-<ul>
-<li>如果你的程序正在运行，则会被杀掉。</li>
-<li>当你的应用再次运行时，可能出现崩溃</li>
-</ul>
-
-
-<p>为什么会可能崩溃的，比如下面这段代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">TelephonyManager</span> <span class="n">telephonyManager</span> <span class="o">=</span> <span class="o">(</span><span class="n">TelephonyManager</span><span class="o">)</span><span class="n">getSystemService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">TELEPHONY_SERVICE</span><span class="o">);</span>
-</span><span class='line'><span class="n">String</span> <span class="n">deviceId</span> <span class="o">=</span> <span class="n">telephonyManager</span><span class="o">.</span><span class="na">getDeviceId</span><span class="o">();</span>
-</span><span class='line'><span class="k">if</span> <span class="o">(</span><span class="n">deviceId</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">mLastDeviceId</span><span class="o">))</span> <span class="o">{</span><span class="c1">//This may cause NPE</span>
-</span><span class='line'>  <span class="c1">//do something</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>如果用户撤消了获取DeviceId的权限，那么再次运行时,deviceId就是null，如果程序后续处理不当，就会出现崩溃。</p>
-
-<h2>该来的还得来</h2>
-
-<p>6.0的运行时权限，我们最终都是要支持的，通常我们需要使用如下的API</p>
-
-<ul>
-<li><strong>int checkSelfPermission(String permission)</strong> 用来检测应用是否已经具有权限</li>
-<li><strong>void requestPermissions(String[] permissions, int requestCode)</strong>  进行请求单个或多个权限</li>
-<li><strong>void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)</strong> 用户对请求作出响应后的回调</li>
-</ul>
-
-
-<p>以一个请求Camera权限为例</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onClick</span><span class="o">(</span><span class="n">View</span> <span class="n">v</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(!(</span><span class="n">checkSelfPermission</span><span class="o">(</span><span class="n">Manifest</span><span class="o">.</span><span class="na">permission</span><span class="o">.</span><span class="na">CAMERA</span><span class="o">)</span> <span class="o">==</span> <span class="n">PackageManager</span><span class="o">.</span><span class="na">PERMISSION_GRANTED</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">requestCameraPermission</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">REQUEST_PERMISSION_CAMERA_CODE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">requestCameraPermission</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">requestPermissions</span><span class="o">(</span><span class="k">new</span> <span class="n">String</span><span class="o">[]{</span><span class="n">Manifest</span><span class="o">.</span><span class="na">permission</span><span class="o">.</span><span class="na">CAMERA</span><span class="o">},</span> <span class="n">REQUEST_PERMISSION_CAMERA_CODE</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onRequestPermissionsResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">requestCode</span><span class="o">,</span> <span class="n">String</span><span class="o">[]</span> <span class="n">permissions</span><span class="o">,</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">grantResults</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">super</span><span class="o">.</span><span class="na">onRequestPermissionsResult</span><span class="o">(</span><span class="n">requestCode</span><span class="o">,</span> <span class="n">permissions</span><span class="o">,</span> <span class="n">grantResults</span><span class="o">);</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">requestCode</span> <span class="o">==</span> <span class="n">REQUEST_PERMISSION_CAMERA_CODE</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kt">int</span> <span class="n">grantResult</span> <span class="o">=</span> <span class="n">grantResults</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
-</span><span class='line'>        <span class="kt">boolean</span> <span class="n">granted</span> <span class="o">=</span> <span class="n">grantResult</span> <span class="o">==</span> <span class="n">PackageManager</span><span class="o">.</span><span class="na">PERMISSION_GRANTED</span><span class="o">;</span>
-</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onRequestPermissionsResult granted=&quot;</span> <span class="o">+</span> <span class="n">granted</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>通常情况下，我们会得到这样的一个对话框</p>
-
-<p><img src="http://ww1.sinaimg.cn/large/6a195423jw1ezwtttfjp1j20u01hc0vr.jpg" width="300"></p>
-
-<p><strong>当用户选择允许，我们就可以在onRequestPermissionsResult方法中进行响应的处理，比如打开摄像头</strong><br/>
-<strong>当用户拒绝，你的应用可能就开始危险了</strong></p>
-
-<p>当我们再次尝试申请权限时，弹出的对话框和之前有点不一样了，主要表现为多了一个checkbox。如下图</p>
-
-<p><img src="http://ww1.sinaimg.cn/large/6a195423jw1ezwtz1ljjgj20u01hcad8.jpg" width="300"></p>
-
-<p>当用户勾选了”不再询问“拒绝后，你的程序基本这个权限就Game Over了。</p>
-
-<p>不过，你还有一丝希望，那就是再出现上述的对话框之前做一些说明信息，比如你使用这个权限的目的（一定要坦白）。</p>
-
-<p>shouldShowRequestPermissionRationale这个API可以帮我们判断接下来的对话框是否包含”不再询问“选择框。</p>
-
-<h3>一个标准的流程</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">if</span> <span class="o">(!(</span><span class="n">checkSelfPermission</span><span class="o">(</span><span class="n">Manifest</span><span class="o">.</span><span class="na">permission</span><span class="o">.</span><span class="na">READ_CONTACTS</span><span class="o">)</span> <span class="o">==</span> <span class="n">PackageManager</span><span class="o">.</span><span class="na">PERMISSION_GRANTED</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">shouldShowRequestPermissionRationale</span><span class="o">(</span><span class="n">Manifest</span><span class="o">.</span><span class="na">permission</span><span class="o">.</span><span class="na">READ_CONTACTS</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Toast</span><span class="o">.</span><span class="na">makeText</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="s">&quot;Please grant the permission this time&quot;</span><span class="o">,</span> <span class="n">Toast</span><span class="o">.</span><span class="na">LENGTH_LONG</span><span class="o">).</span><span class="na">show</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="n">requestReadContactsPermission</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onClick granted&quot;</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>如何批量申请</h3>
-
-<p>批量申请权限很简单，只需要字符串数组放置多个权限即可。如请求代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">REQUEST_CODE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">requestMultiplePermissions</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">String</span><span class="o">[]</span> <span class="n">permissions</span> <span class="o">=</span> <span class="o">{</span><span class="n">Manifest</span><span class="o">.</span><span class="na">permission</span><span class="o">.</span><span class="na">WRITE_EXTERNAL_STORAGE</span><span class="o">,</span> <span class="n">Manifest</span><span class="o">.</span><span class="na">permission</span><span class="o">.</span><span class="na">READ_PHONE_STATE</span><span class="o">};</span>
-</span><span class='line'>    <span class="n">requestPermissions</span><span class="o">(</span><span class="n">permissions</span><span class="o">,</span> <span class="n">REQUEST_CODE</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>对应的界面效果是
-<img src="http://ww2.sinaimg.cn/large/6a195423jw1ezxulzbeu2j20iq0ggt9y.jpg" alt="Multiple Requesting Permissions" /></p>
-
-<p>注意：间隔较短的多个权限申请建议设置成单次多个权限申请形式，避免弹出多个对话框，造成不太好的视觉效果。</p>
-
-<h3>申请这么多权限岂不是很累</h3>
-
-<p>其实你不需要每个权限都去显式申请，举一个例子，如果你的应用授权了读取联系人的权限，那么你的应用也是被赋予了写入联系人的权限。因为读取联系人和写入联系人这两个权限都属于联系人权限分组，所以一旦组内某个权限被允许，该组的其他权限也是被允许的。</p>
-
-<h2>注意事项</h2>
-
-<h3>API问题</h3>
-
-<p>由于checkSelfPermission和requestPermissions从API 23才加入，低于23版本，需要在运行时判断 或者使用Support Library v4中提供的方法</p>
-
-<ul>
-<li>ContextCompat.checkSelfPermission</li>
-<li>ActivityCompat.requestPermissions</li>
-<li>ActivityCompat.shouldShowRequestPermissionRationale</li>
-</ul>
-
-
-<h3>多系统问题</h3>
-
-<p>当我们支持了6.0必须也要支持4.4，5.0这些系统，所以需要在很多情况下，需要有两套处理。比如Camera权限</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">if</span> <span class="o">(</span><span class="n">isMarshmallow</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">requestPermission</span><span class="o">();</span><span class="c1">//然后在回调中处理</span>
-</span><span class='line'><span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">useCamera</span><span class="o">();</span><span class="c1">//低于6.0直接使用Camera</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>两个权限</h2>
-
-<p>运行时权限对于应用影响比较大的权限有两个，他们分别是</p>
-
-<ul>
-<li>READ_PHONE_STATE</li>
-<li>WRITE_EXTERNAL_STORAGE/READ_EXTERNAL_STORAGE</li>
-</ul>
-
-
-<p>其中READ_PHONE_STATE用来获取deviceID，即IMEI号码。这是很多统计依赖计算设备唯一ID的参考。如果新的权限导致读取不到，避免导致统计的异常。建议在完全支持运行时权限之前，将对应的值写入到App本地数据中，对于新安装的，可以采取其他策略减少对统计的影响。</p>
-
-<p>WRITE_EXTERNAL_STORAGE/READ_EXTERNAL_STORAGE这两个权限和外置存储（即sdcard）有关，对于下载相关的应用这一点还是比较重要的，我们应该尽可能的说明和引导用户授予该权限。</p>
-
-<h2>些许建议</h2>
-
-<ul>
-<li>不要使用多余的权限，新增权限时要慎重</li>
-<li>使用Intent来替代某些权限，如拨打电话（和你的产品经理PK去吧）</li>
-<li>对于使用权限获取的某些值，比如deviceId，尽量本地存储，下次访问直接使用本地的数据值</li>
-<li>注意，由于用户可以撤销某些权限，所以不要使用应用本地的标志位来记录是否获取到某权限。</li>
-</ul>
-
-
-<h2>注意</h2>
-
-<p>即使支持了运行时权限，也要在Manifest声明，因为市场应用会根据这个信息和硬件设备进行匹配，决定你的应用是否在该设备上显示。</p>
-
-<h2>是否支持运行时权限</h2>
-
-<p>个人觉得Marshmallow的运行时权限对于用户来说绝对是一个好东西，但是目前想要支持需要做的事情还是比较多的。</p>
-
-<p>对于一个有很多依赖的宿主应用，想要做到支持还是有一些工作量的，因为你的权限申请受制于依赖。</p>
-
-<p>建议在短期内暂时可以不考虑支持该运行时权限机制,等时机成熟或者简单易用的第三方库完善之后再支持也未尝不可。</p>
 ]]></content>
   </entry>
   
