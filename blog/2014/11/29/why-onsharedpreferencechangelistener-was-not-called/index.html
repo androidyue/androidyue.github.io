@@ -1,0 +1,595 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Google为何这样设计OnSharedPreferenceChangeListener - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Google为何这样设计OnSharedPreferenceChangeListener Nov 29th, 2014 之前使用OnSharedPreferenceChangeListener，遇到了点小问题，就是有些时候OnSharedPreferenceChangeListener没有被触发 &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://7jpolu.com1.z0.glb.clouddn.com/touch_icon.png"/>
+  
+  <link rel="canonical" href="http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called">
+  <link href="http://7jpolu.com1.z0.glb.clouddn.com/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="http://7jpncc.com1.z0.glb.clouddn.com/ad.js"></script>
+  <script src="http://7jpncc.com1.z0.glb.clouddn.com/modernizr-2.0.js"></script>
+  <script src="http://7jpncc.com1.z0.glb.clouddn.com/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
+      function setCookie(name,value,days) {
+          if (days) {
+              var date = new Date();
+              date.setTime(date.getTime()+(days*24*60*60*1000));
+              var expires = "; expires="+date.toGMTString();
+          }
+          else var expires = "";
+          document.cookie = name+"="+value+expires+"; path=/";
+      }
+
+      function eraseCookie(name) {
+          setCookie(name,"",-1);
+      }
+
+
+      function readCookie(name) {
+          var nameEQ = name + "=";
+          var ca = document.cookie.split(';');
+          for(var i=0;i < ca.length;i++) {
+              var c = ca[i];
+              while (c.charAt(0)==' ') c = c.substring(1,c.length);
+              if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+          }
+          return null;
+      }
+
+      function loadJsNormally(jsUrl) {
+          document.write('<script type="text/javascript" charset="utf-8" src="'+ jsUrl +'"></scr'+'ipt>');
+      }
+
+      function loadJsWithoutCache(jsUrl) {
+          jsUrl = jsUrl + '?v=' + +Math.random();
+          loadJsNormally(jsUrl);
+      }
+
+      
+      var droidyueNoCacheLoading = 'droidyue.no-cache';
+
+      function isNoCacheLoadingEnabled() {
+          return readCookie(droidyueNoCacheLoading) != null;
+      }
+
+      var noCacheLoading = isNoCacheLoadingEnabled();
+
+      function enableNoCacheLoading() {
+          setCookie(droidyueNoCacheLoading, 1, 365);
+      }
+
+      function disableNoCacheLoading() {
+          eraseCookie(droidyueNoCacheLoading);
+      }
+
+
+      function loadJs(jsUrl) {
+          if (noCacheLoading) {
+              loadJsWithoutCache(jsUrl);
+          } else {
+              loadJsNormally(jsUrl);
+          }
+      }
+      loadJs('http://7xr25o.com1.z0.glb.clouddn.com/blogutils.js');
+  </script>
+  <script type="text/javascript"  charset="utf-8">
+		loadJs("http://7xr25o.com1.z0.glb.clouddn.com/book_rec_base.js");
+  </script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="http://7jpncc.com1.z0.glb.clouddn.com/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="http://7xr25o.com1.z0.glb.clouddn.com/trackurl_maker.js" charset="utf-8"></script>
+  <script type="text/javascript"  charset="utf-8">
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/remote_head.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/best_posts_data_source.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/common_book_data_source.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/program_book_data_source.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/android_book_data.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/java_book_data.js");
+  </script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation">
+<form action="http://google.com/search" method="get"  target="_blank">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="搜索" />
+    <input type=hidden name=domains value="droidyue.com">
+    <input type=hidden name=sitesearch value="droidyue.com">
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">首页</a></li>
+  <li><a href="/ninki">干货铺子</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/reading/">读书</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/cooperate">合作</a></li>
+  <li><a href="/donate/">Donate</a></li>
+  <li><a href="/subscribe/">RSS</a></li>
+  <li><a href="/gfriends">好基友</a></li>
+  <li><a href="/neitui/">内推</a></li>
+  <li><a href="/fuli/index.html">福利</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Google为何这样设计OnSharedPreferenceChangeListener</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-29T16:41:00+08:00" pubdate data-updated="true">Nov 29<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>之前使用OnSharedPreferenceChangeListener，遇到了点小问题，就是有些时候OnSharedPreferenceChangeListener没有被触发。最近花了点时间研究了一下，小做整理。本文将会介绍监听器不被触发的原因，解决方法，以及其中隐含的一些技术细节。</p>
+
+<!--more-->
+
+
+<h2>问题再现</h2>
+
+<p>OnSharedPreferenceChangeListener是Android中SharedPreference文件发生变化的监听器。通常我们想要进行监听，会实现如下的代码。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">())</span>
+</span><span class='line'>      <span class="o">.</span><span class="na">registerOnSharedPreferenceChangeListener</span><span class="o">(</span><span class="k">new</span> <span class="n">OnSharedPreferenceChangeListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="nd">@Override</span>
+</span><span class='line'>      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSharedPreferenceChanged</span><span class="o">(</span>
+</span><span class='line'>          <span class="n">SharedPreferences</span> <span class="n">sharedPreferences</span><span class="o">,</span> <span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testOnSharedPreferenceChangedWrong key =&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">});</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这种写法看上去没有什么问题，而且很多时候开始几次onSharedPreferenceChanged方法也可以被调用。但是过一段时间（简单demo不容易出现，但是使用DDMS中的gc会立刻导致接下来的问题），你会发现前面的方法突然不再被调用，进而影响到程序的处理。</p>
+
+<h2>原因剖析</h2>
+
+<p>简而言之，就是你注册的监听器被移除掉了。<br/>
+首先我们先了解一下registerOnSharedPreferenceChangeListener注册的实现。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">final</span> <span class="n">WeakHashMap</span><span class="o">&lt;</span><span class="n">OnSharedPreferenceChangeListener</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">mListeners</span> <span class="o">=</span>
+</span><span class='line'>            <span class="k">new</span> <span class="n">WeakHashMap</span><span class="o">&lt;</span><span class="n">OnSharedPreferenceChangeListener</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;();</span>
+</span><span class='line'><span class="c1">//some code goes here</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="n">More</span> <span class="o">...</span><span class="na">registerOnSharedPreferenceChangeListener</span><span class="o">(</span><span class="n">OnSharedPreferenceChangeListener</span> <span class="n">listener</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">synchronized</span><span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">mListeners</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">listener</span><span class="o">,</span> <span class="n">mContent</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>从上面的代码可以得知，一个OnSharedPreferenceChangeListener对象实际上是放到了一个WeakHashMap的容器中，执行完示例中的onCreate方法，这个监听器对象很快就会成为垃圾回收的目标，由于放在WeakHashMap中作为key不会阻止垃圾回收，所以当监听器对象被回收之后，这个监听器也会从mListeners中移除。所以就造成了onSharedPreferenceChanged不会被调用。</p>
+
+<p>关于WeakHashMap相关，请阅读<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">译文：理解Java中的弱引用</a>进而更多了解。</p>
+
+<h2>如何解决</h2>
+
+<h3>改为对象成员变量（推荐）</h3>
+
+<p>将监听器作为Activity的一个成员变量，在Activity的onResume进行注册，在onPause时进行注销。推荐在这两个Activity生命周期中进行处理，尤其是当SharedPreference值发生变化后，对Activity展示的UI进行处理操作的情况。这种方法是最推荐的解决方案。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">OnSharedPreferenceChangeListener</span> <span class="n">mListener</span> <span class="o">=</span> <span class="k">new</span> <span class="n">OnSharedPreferenceChangeListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSharedPreferenceChanged</span><span class="o">(</span>
+</span><span class='line'>      <span class="n">SharedPreferences</span> <span class="n">sharedPreferences</span><span class="o">,</span> <span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;instance variable key=&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@Override</span>
+</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onResume</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">()).</span><span class="na">registerOnSharedPreferenceChangeListener</span><span class="o">(</span><span class="n">mListener</span><span class="o">);</span>
+</span><span class='line'>  <span class="kd">super</span><span class="o">.</span><span class="na">onResume</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@Override</span>
+</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onPause</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">PreferenceManager</span><span class="o">.</span><span class="na">getDefaultSharedPreferences</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">()).</span><span class="na">unregisterOnSharedPreferenceChangeListener</span><span class="o">(</span><span class="n">mListener</span><span class="o">);</span>
+</span><span class='line'>  <span class="kd">super</span><span class="o">.</span><span class="na">onPause</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>改为静态变量（不推荐）</h3>
+
+<p>如下，将一个指向匿名的内部类对象的变量sListener使用static修饰，这个内部类对象则不会持有外部类的引用。<br/>
+但是这种做法并不推荐，因为一个静态变量和与外部实例不相关，我们很难和外部实例进行一些操作。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="n">OnSharedPreferenceChangeListener</span> <span class="n">sListener</span> <span class="o">=</span> <span class="k">new</span> <span class="n">OnSharedPreferenceChangeListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSharedPreferenceChanged</span><span class="o">(</span>
+</span><span class='line'>      <span class="n">SharedPreferences</span> <span class="n">sharedPreferences</span><span class="o">,</span> <span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;static variable key=&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>为什么这样设计</h2>
+
+<p>可能会有人认为这是系统设计的猫腻或者bug，其实不然，这正是Android设计人员的高明之处。</p>
+
+<p>正如我们示例的代码一样，将一个（隐式的）局部变量添加到监听器容器中，如果该容器只是一个普通的HashMap，这样会导致内存泄露，因为该容器还有局部变量指向的对象，该对象又隐式持有外部Activity的对象，导致Activity无法被销毁。关于非静态内部类持有隐式持有外部类引用，请参考<a href="http://droidyue.com/blog/2014/10/02/the-private-modifier-in-java/">细话Java：&#8221;失效&#8221;的private修饰符</a></p>
+
+<p>除此之外，因为局部变量无法在其所在方法外部访问，这样就导致了我们只可以使用方法中使用局部变量就行注册，在合适的时机却无法使用局部变量进行注销。</p>
+
+<h2>三本帮助深入研究Java的书</h2>
+
+<ul>
+<li><a href="http://www.amazon.cn/gp/product/0137142528/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=0137142528&amp;linkCode=as2&amp;tag=droidyue-23">Java Performance</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011F7WU4&amp;linkCode=as2&amp;tag=droidyue-23">Java编程思想(第4版)</a></li>
+<li><a href="http://www.amazon.cn/gp/product/B001PTGR52/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B001PTGR52&amp;linkCode=as2&amp;tag=droidyue-23">Sun 公司核心技术丛书:Effective Java中文版(第2版)</a></li>
+</ul>
+
+</div>
+
+
+  <script type="text/javascript"  charset="utf-8">
+	loadJs("http://7xr25o.com1.z0.glb.clouddn.com/vote_tips.js");
+  </script>
+  
+  <div id="post_rec"></div>
+  <br/>
+  <center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
+  <center><img class="no_boarder_class"  style="max-Width:100%" src="http://7jpolu.com1.z0.glb.clouddn.com/wechat_gongzhonghao_droidyue.com.jpg"></center>
+
+  <script type="text/javascript"  charset="utf-8">
+	loadJs('http://7xr25o.com1.z0.glb.clouddn.com/random_recommend.js');
+</script>
+<script type="text/javascript" charset="utf-8">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-29T16:41:00+08:00" pubdate data-updated="true">Nov 29<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/11/23/block-web-resource-in-webview/" title="Previous Post: Android中WebView拦截替换网络请求数据">&laquo; Android中WebView拦截替换网络请求数据</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/11/29/custom-toast-like-tencent-news-app/" title="Next Post: 仿腾讯新闻样式的Toast">仿腾讯新闻样式的Toast &raquo;</a>
+        
+    </p>
+
+	<!-- JiaThis Button BEGIN -->
+
+<!-- JiaThis Button END -->
+
+
+<script type="text/javascript" charset="utf-8">
+$.getScript('http://7xr25o.com1.z0.glb.clouddn.com/post_end_rec_changable.js?v=' + Date.now());
+</script>
+  </footer>
+  </article>
+
+
+  <section>
+   <!-- JiaThis Button BEGIN -->
+<div class="jiathis_style_32x32">
+	<a class="jiathis_button_tsina"></a>
+	<a class="jiathis_button_weixin"></a>
+	<a class="jiathis_button_googleplus"></a>
+	<a class="jiathis_button_fb"></a>
+	<a class="jiathis_button_twitter"></a>
+	<a class="jiathis_button_ydnote"></a>
+	<a href="http://www.jiathis.com/share?uid=1728662" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	<a class="jiathis_counter_style"></a>
+</div>
+<br/>
+<!--高速版-->
+<div id="SOHUCS" sid="/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called"></div>
+<script charset="utf-8" type="text/javascript" src="http://changyan.sohu.com/upload/changyan.js" ></script>
+<script type="text/javascript">
+    window.changyan.api.config({
+        appid: 'cyrU6w9cI',
+        conf: 'prod_0d366f76b04261efa2b407c3b62edd9f'
+    });
+</script>       
+<script type="text/javascript" charset="utf-8" src="http://changyan.itc.cn/js/??lib/jquery.js,changyan.labs.js?appid=cyrU6w9cI"></script>
+
+  </section>
+
+
+<link href="http://7xr25o.com1.z0.glb.clouddn.com/remote.css"  rel="stylesheet" type="text/css">
+<script type="text/javascript" charset="utf-8" src="http://7xr25o.com1.z0.glb.clouddn.com/post_end_attentions.js"></script>
+	<script type="text/javascript">var jd_union_unid="331185104",jd_ad_ids="506:6",jd_union_pid="CMy+kaX+KhDQ9/WdARoAIPySgPEBKgA=";var jd_width=760;var jd_height=90;var jd_union_euid="";var p="ABQPVhxTFwYXNwpfBkgyTUMIRmtKRk9aZV8ETVxNNwpfBkgyb3QeUxt%2BVUhnEWksfAN1UBZmPUl2VAtZK1kTChEBVRhaFDIQBVUbUhECEwJlKwRRX083HnVaJV1WWggrWxAEFAZUE10SAxMBUytaJTIi";</script><script type="text/javascript" charset="utf-8" src="//u.x.jd.com/static/js/auto.js"></script>
+	
+</div>
+
+<aside class="sidebar">
+  
+    <html>
+	<h4 align="center">读书推荐</h4>
+	<script type="text/javascript" charset="utf-8">
+		loadJs('http://7xr25o.com1.z0.glb.clouddn.com/real_recommend.js');
+	</script>
+	<p align="center" style="font-size:50%;"></p>
+</html>
+<script type="text/javascript">
+	loadJs('http://7xr25o.com1.z0.glb.clouddn.com/right_image_rec.js');
+</script>
+<script type="text/javascript" src="http://7xr25o.com1.z0.glb.clouddn.com/notice.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/11/29/dive-into-enum/">关于Java中枚举Enum的深入剖析</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/11/23/memory-leaks-in-android/">系统剖析Android中的内存泄漏</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/11/14/be-careful-using-getsystemservice/">Android内存泄漏：谨慎使用getSystemService</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/10/31/google-chrome-costs-a-lot-of-memory/">解决Mac下Chrome发热严重的问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/10/24/notes-for-an-android-qa/">记一场 Android 技术答疑</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/09/11/using-viewstub-in-android-to-improve-layout-performance/">Android中使用ViewStub提高布局性能</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/09/05/dp-vs-sp-in-android/">两分钟理解Android中SP与DP的区别</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/08/22/before-you-buy-raspberry-pi/">树莓派入手指南</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/08/14/android-annnotation/">探究Android中的注解</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/08/01/avoid-creating-unnecesssary-objects-in-android/">如何在Android中避免创建不必要的对象</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/07/10/understanding-android-obfuscated-code-by-proguard/">读懂 Android 中的代码混淆</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/06/19/how-to-write-an-awesome-post/">程序员怎样才能写出一篇好的技术文章</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/06/05/cutom-view-padding-and-drawcontent/">自定义View：Padding与绘制内容</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/05/22/use-checkstyle-for-better-code-style/">Android代码规范利器： Checkstyle</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/05/15/dive-into-java-clone/">探究Java中的克隆</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" charset="utf-8">
+	loadJs("http://7xr25o.com1.z0.glb.clouddn.com/blogroll_data_source.js");
+</script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript"  charset="utf-8">
+	loadJs("http://7xr25o.com1.z0.glb.clouddn.com/friend_links.js");
+</script>
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2016 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> 云存储提供方： 
+	  <a href="http://www.qiniu.com/">
+	      <img src="http://7jpolu.com1.z0.glb.clouddn.com/qiniu_bottom_real.jpg" alt="qiniu">
+	  </a>
+	  
+	  <a href="https://www.upyun.com/">
+	      <img src="http://7jpolu.com1.z0.glb.clouddn.com/upaiyun.png" alt="UPYUN">
+	  
+	  </a>
+  </span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+<script type="text/javascript" charset="utf-8">
+	loadJs('http://7xr25o.com1.z0.glb.clouddn.com/baidu_analytics.js');
+</script> 
+
+<script type="text/javascript">
+var jiathis_config = {data_track_clickback:'true'};
+</script>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1341450790773388" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+<script type="text/javascript">
+	var url = "http://onionos.com:8080/report_visitor?landUrl=" + window.btoa(document.location.href) + "&refer=" + window.btoa(document.referrer) + "&ua=" + window.btoa(navigator.userAgent);
+	loadJsNormally(url);
+</script>
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://7jpncc.com1.z0.glb.clouddn.com/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>

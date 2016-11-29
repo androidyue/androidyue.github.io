@@ -1,0 +1,716 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="利用周末的时间，写了一个检测Android代码JIT友好度的工具，取个名字为DroidJitChecker。希望可以帮助大家快速发现有坏味道的代码，并且及时修正。 ">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="http://7jpolu.com1.z0.glb.clouddn.com/touch_icon.png"/>
+  
+  <link rel="canonical" href="http://droidyue.com/blog/page/3">
+  <link href="http://7jpolu.com1.z0.glb.clouddn.com/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="http://7jpncc.com1.z0.glb.clouddn.com/ad.js"></script>
+  <script src="http://7jpncc.com1.z0.glb.clouddn.com/modernizr-2.0.js"></script>
+  <script src="http://7jpncc.com1.z0.glb.clouddn.com/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
+      function setCookie(name,value,days) {
+          if (days) {
+              var date = new Date();
+              date.setTime(date.getTime()+(days*24*60*60*1000));
+              var expires = "; expires="+date.toGMTString();
+          }
+          else var expires = "";
+          document.cookie = name+"="+value+expires+"; path=/";
+      }
+
+      function eraseCookie(name) {
+          setCookie(name,"",-1);
+      }
+
+
+      function readCookie(name) {
+          var nameEQ = name + "=";
+          var ca = document.cookie.split(';');
+          for(var i=0;i < ca.length;i++) {
+              var c = ca[i];
+              while (c.charAt(0)==' ') c = c.substring(1,c.length);
+              if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+          }
+          return null;
+      }
+
+      function loadJsNormally(jsUrl) {
+          document.write('<script type="text/javascript" charset="utf-8" src="'+ jsUrl +'"></scr'+'ipt>');
+      }
+
+      function loadJsWithoutCache(jsUrl) {
+          jsUrl = jsUrl + '?v=' + +Math.random();
+          loadJsNormally(jsUrl);
+      }
+
+      
+      var droidyueNoCacheLoading = 'droidyue.no-cache';
+
+      function isNoCacheLoadingEnabled() {
+          return readCookie(droidyueNoCacheLoading) != null;
+      }
+
+      var noCacheLoading = isNoCacheLoadingEnabled();
+
+      function enableNoCacheLoading() {
+          setCookie(droidyueNoCacheLoading, 1, 365);
+      }
+
+      function disableNoCacheLoading() {
+          eraseCookie(droidyueNoCacheLoading);
+      }
+
+
+      function loadJs(jsUrl) {
+          if (noCacheLoading) {
+              loadJsWithoutCache(jsUrl);
+          } else {
+              loadJsNormally(jsUrl);
+          }
+      }
+      loadJs('http://7xr25o.com1.z0.glb.clouddn.com/blogutils.js');
+  </script>
+  <script type="text/javascript"  charset="utf-8">
+		loadJs("http://7xr25o.com1.z0.glb.clouddn.com/book_rec_base.js");
+  </script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="http://7jpncc.com1.z0.glb.clouddn.com/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="http://7xld7n.com1.z0.glb.clouddn.com/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="http://7xr25o.com1.z0.glb.clouddn.com/trackurl_maker.js" charset="utf-8"></script>
+  <script type="text/javascript"  charset="utf-8">
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/remote_head.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/best_posts_data_source.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/common_book_data_source.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/program_book_data_source.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/android_book_data.js");
+      loadJs("http://7xr25o.com1.z0.glb.clouddn.com/java_book_data.js");
+  </script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation">
+<form action="http://google.com/search" method="get"  target="_blank">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="搜索" />
+    <input type=hidden name=domains value="droidyue.com">
+    <input type=hidden name=sitesearch value="droidyue.com">
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">首页</a></li>
+  <li><a href="/ninki">干货铺子</a></li>
+  <li><a href="/blog/archives">存档</a></li>
+  <li><a href="/reading/">读书</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/cooperate">合作</a></li>
+  <li><a href="/donate/">Donate</a></li>
+  <li><a href="/subscribe/">RSS</a></li>
+  <li><a href="/gfriends">好基友</a></li>
+  <li><a href="/neitui/">内推</a></li>
+  <li><a href="/fuli/index.html">福利</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/04/10/jit-friendly-checker-for-android/">一个Android代码JIT友好度检测工具</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-04-10T20:26:00+08:00" pubdate data-updated="true">Apr 10<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>利用周末的时间，写了一个检测Android代码JIT友好度的工具，取个名字为DroidJitChecker。希望可以帮助大家快速发现有坏味道的代码，并且及时修正。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/04/10/jit-friendly-checker-for-android/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/04/04/set-shadowsocks-proxy-for-terminal/">为终端设置Shadowsocks代理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-04-04T20:34:00+08:00" pubdate data-updated="true">Apr 4<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>做开发的同学，应该都会经常接触终端，有些时候我们在终端会做一些网络操作，比如下载gradle包等，由于一些你懂我也懂的原因，某些网络操作不是那么理想，这时候我们就需要设置代理来自由地访问网络。</p>
+
+<p>Shadowsocks是我们常用的代理工具，它使用socks5协议，而终端很多工具目前只支持http和https等协议，对socks5协议支持不够好，所以我们为终端设置shadowsocks的思路就是将socks协议转换成http协议，然后为终端设置即可。仔细想想也算是适配器模式的一种现实应用吧。</p>
+
+<p>想要进行转换，需要借助工具，这里我们采用比较知名的polipo来实现。polipo是一个轻量级的缓存web代理程序。闲话休叙，让我们开始动手吧。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/04/04/set-shadowsocks-proxy-for-terminal/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/03/28/android-leakcanary/">Android内存泄漏检测利器：LeakCanary</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-03-28T07:02:00+08:00" pubdate data-updated="true">Mar 28<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>是什么？</h2>
+
+<p>一言以蔽之：LeakCanary是一个<strong>傻瓜化</strong>并且可视化的内存泄露分析工具</p>
+
+<h2>为什么需要LeakCanary？</h2>
+
+<p>因为它简单，易于发现问题，人人可参与。</p>
+
+<ul>
+<li>简单：只需设置一段代码即可，打开应用运行一下就能够发现内存泄露。而MAT分析需要Heap Dump，获取文件，手动分析等多个步骤。</li>
+<li>易于发现问题：在手机端即可查看问题即引用关系，而MAT则需要你分析，找到Path To GC Roots等关系。</li>
+<li>人人可参与：开发人员，测试测试，产品经理基本上只要会用App就有可能发现问题。而传统的MAT方式，只有部分开发者才有精力和能力实施。</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/03/28/android-leakcanary/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/03/24/google-study-jams/">Google Study Jams:30天入门 Android 开发， Google 与你一起圆梦</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-03-24T22:07:00+08:00" pubdate data-updated="true">Mar 24<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><img src="http://ww2.sinaimg.cn/large/8a41f469jw1f27y2nqh6ij21cw0iw77t.jpg" alt="StudyJams" /></p>
+
+<blockquote><p>这里向技术小黑屋的各位读者推荐一个活动，Google Study Jams，它是Google官方推出的一个活动，目的是帮助大家更好地入门Android。不管你是零基础的小白，还是中学生，亦或者是有经验的开发者，你都可以加入，学习，合作，分享。强烈推荐这个活动，参加进来一起和小伙伴们交流，学习，进步吧。</p></blockquote>
+
+<p>Android 设备已经随处可见，你想尝试一下在 Android 设备上的开发和创新吗？快来跟随 Google 的步伐，一起学习 Android 入门课吧！</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/03/24/google-study-jams/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/03/13/learning-threadlocal-in-java/">理解Java中的ThreadLocal</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-03-13T20:21:00+08:00" pubdate data-updated="true">Mar 13<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>提到ThreadLocal，有些Android或者Java程序员可能有所陌生，可能会提出种种问题，它是做什么的，是不是和线程有关，怎么使用呢？等等问题，本文将总结一下我对ThreadLocal的理解和认识，希望让大家理解ThreadLocal更加透彻一些。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/03/13/learning-threadlocal-in-java/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/03/06/summary-of-android-signing/">Android签名相关知识整理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-03-06T16:17:00+08:00" pubdate data-updated="true">Mar 6<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>不止一次有用到Android签名相关的知识，每次都几乎从零开始在Google上搜索找，不想在继续这样了，找了个时间好好整理了一下自己用到的一些碎片知识，于是乎放到这里，一是备忘，二是帮助别人。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/03/06/summary-of-android-signing/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/02/28/an-easy-tool-to-upload-file-to-qiniu-especially-for-octopress/">一个简易小工具，七牛Uploader for Octopress</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-02-28T17:15:00+08:00" pubdate data-updated="true">Feb 28<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>春节假期，带着电脑回家，蹭着邻居的网，除夕晚上用ruby写了一个简单的工具。安利一下，广而告之。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/02/28/an-easy-tool-to-upload-file-to-qiniu-especially-for-octopress/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/02/21/thinking-of-getting-the-current-activity-in-android/">关于获取当前Activity的一些思考</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-02-21T20:53:00+08:00" pubdate data-updated="true">Feb 21<span>st</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在Android开发过程中，我们有时候需要获取当前的Activity实例，比如弹出Dialog操作，必须要用到这个。关于如何实现由很多种思路，这其中有的简单，有的复杂，这里简单总结一下个人的一些经验吧。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/02/21/thinking-of-getting-the-current-activity-in-android/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/01/31/my-first-chrome-extension/">我的首个Chrome扩展发布了</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-01-31T17:50:00+08:00" pubdate data-updated="true">Jan 31<span>st</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>忙活了有一段时间，零零散散的写了一个Chrome扩展。这里发发一篇文章安利一下。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/01/31/my-first-chrome-extension/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/4/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/2/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <html>
+	<h4 align="center">读书推荐</h4>
+	<script type="text/javascript" charset="utf-8">
+		loadJs('http://7xr25o.com1.z0.glb.clouddn.com/real_recommend.js');
+	</script>
+	<p align="center" style="font-size:50%;"></p>
+</html>
+<script type="text/javascript">
+	loadJs('http://7xr25o.com1.z0.glb.clouddn.com/right_image_rec.js');
+</script>
+<script type="text/javascript" src="http://7xr25o.com1.z0.glb.clouddn.com/notice.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/11/29/dive-into-enum/">关于Java中枚举Enum的深入剖析</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/11/23/memory-leaks-in-android/">系统剖析Android中的内存泄漏</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/11/14/be-careful-using-getsystemservice/">Android内存泄漏：谨慎使用getSystemService</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/10/31/google-chrome-costs-a-lot-of-memory/">解决Mac下Chrome发热严重的问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/10/24/notes-for-an-android-qa/">记一场 Android 技术答疑</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/09/11/using-viewstub-in-android-to-improve-layout-performance/">Android中使用ViewStub提高布局性能</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/09/05/dp-vs-sp-in-android/">两分钟理解Android中SP与DP的区别</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/08/22/before-you-buy-raspberry-pi/">树莓派入手指南</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/08/14/android-annnotation/">探究Android中的注解</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/08/01/avoid-creating-unnecesssary-objects-in-android/">如何在Android中避免创建不必要的对象</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/07/10/understanding-android-obfuscated-code-by-proguard/">读懂 Android 中的代码混淆</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/06/19/how-to-write-an-awesome-post/">程序员怎样才能写出一篇好的技术文章</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/06/05/cutom-view-padding-and-drawcontent/">自定义View：Padding与绘制内容</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/05/22/use-checkstyle-for-better-code-style/">Android代码规范利器： Checkstyle</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="http://droidyue.com/blog/2016/05/15/dive-into-java-clone/">探究Java中的克隆</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" charset="utf-8">
+	loadJs("http://7xr25o.com1.z0.glb.clouddn.com/blogroll_data_source.js");
+</script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript"  charset="utf-8">
+	loadJs("http://7xr25o.com1.z0.glb.clouddn.com/friend_links.js");
+</script>
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2016 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> 云存储提供方： 
+	  <a href="http://www.qiniu.com/">
+	      <img src="http://7jpolu.com1.z0.glb.clouddn.com/qiniu_bottom_real.jpg" alt="qiniu">
+	  </a>
+	  
+	  <a href="https://www.upyun.com/">
+	      <img src="http://7jpolu.com1.z0.glb.clouddn.com/upaiyun.png" alt="UPYUN">
+	  
+	  </a>
+  </span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+<script type="text/javascript" charset="utf-8">
+	loadJs('http://7xr25o.com1.z0.glb.clouddn.com/baidu_analytics.js');
+</script> 
+
+<script type="text/javascript">
+var jiathis_config = {data_track_clickback:'true'};
+</script>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1341450790773388" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+<script type="text/javascript">
+	var url = "http://onionos.com:8080/report_visitor?landUrl=" + window.btoa(document.location.href) + "&refer=" + window.btoa(document.referrer) + "&ua=" + window.btoa(navigator.userAgent);
+	loadJsNormally(url);
+</script>
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="http://7jpncc.com1.z0.glb.clouddn.com/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+</body>
+</html>
