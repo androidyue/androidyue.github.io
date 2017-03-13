@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2017-03-13T22:20:13+08:00</updated>
+  <updated>2017-03-13T22:36:14+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,219 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android中一个简单有用的发现性能问题的方法]]></title>
+    <link href="http://droidyue.com/blog/2017/03/13/a-small-trick-to-detect-time-consuming-task/"/>
+    <updated>2017-03-13T21:57:00+08:00</updated>
+    <id>http://droidyue.com/blog/2017/03/13/a-small-trick-to-detect-time-consuming-task</id>
+    <content type="html"><![CDATA[<p>在Android中，性能优化是我们持之不懈的工作。这其中，在主线程执行耗时的任务，可能会导致界面卡顿，甚至是ANR（程序未响应）。当然Android提供了很多优秀的工具，比如StrictMode，Method Tracing等，便于我们检测问题。</p>
+
+<p>这里，本文将介绍一个更加简单有效的方法。相比StrictMode来说更加便于发现问题，相比Method Tracing来说更加容易操作。</p>
+
+<!--more-->
+
+
+<p>首先，我们有这样一个程序代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
+</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">writeContentToFile</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">writeContentToFile</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">File</span> <span class="n">log</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="n">Environment</span><span class="o">.</span><span class="na">getExternalStorageDirectory</span><span class="o">(),</span> <span class="s">&quot;Log.txt&quot;</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">Writer</span> <span class="n">outWriter</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">outWriter</span> <span class="o">=</span> <span class="k">new</span> <span class="n">BufferedWriter</span><span class="o">(</span><span class="k">new</span> <span class="n">FileWriter</span><span class="o">(</span><span class="n">log</span><span class="o">.</span><span class="na">getAbsolutePath</span><span class="o">(),</span> <span class="kc">false</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">outWriter</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="k">new</span> <span class="n">Date</span><span class="o">().</span><span class="na">toString</span><span class="o">());</span>
+</span><span class='line'>        <span class="n">outWriter</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="s">&quot; : \n&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">outWriter</span><span class="o">.</span><span class="na">flush</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">outWriter</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">outWriter</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class='line'>            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码需要优化，因为</p>
+
+<ul>
+<li>writeContentToFile 是一个本地文件写操作，比较耗时</li>
+<li>而writeContentToFile 这个方法却放在了主线程中，必然会阻塞主线程其他的工作顺利执行。</li>
+</ul>
+
+
+<p>上面介绍StrictMode和Method Traing都可以检测这个问题，这里我们我们用一个更简单的方法</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkWorkerThread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">boolean</span> <span class="n">isMainThread</span> <span class="o">=</span> <span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">()</span> <span class="o">==</span> <span class="n">Looper</span><span class="o">.</span><span class="na">getMainLooper</span><span class="o">();</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">isMainThread</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">BuildConfig</span><span class="o">.</span><span class="na">DEBUG</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;Do not do time-consuming work in the Main thread&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这段方法有几点注意的。</p>
+
+<ul>
+<li>主线程判断，使用<code>Looper.myLooper() == Looper.getMainLooper()</code>可以准确判断当前线程是否为主线程。</li>
+<li>BuildConfig.DEBUG 条件控制，只有在debug环境下抛出异常，给予开发者明显的提示。当然也可以使用自定义的是否抛出异常的逻辑</li>
+<li>如果当前线程不是主线程，那么就被认为是工作者线程。</li>
+</ul>
+
+
+<p>比如上面的方法加入checkWorkerThread检查</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">writeContentToFile</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">checkWorkerThread</span><span class="o">();</span>
+</span><span class='line'>    <span class="c1">//代码省略，具体实现参考上面</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>再次执行程序，会曝出异常。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Unable</span> <span class="n">to</span> <span class="n">start</span> <span class="n">activity</span> <span class="n">ComponentInfo</span><span class="o">{</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">}:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Do</span> <span class="n">not</span> <span class="k">do</span> <span class="n">time</span><span class="o">-</span><span class="n">consuming</span> <span class="n">work</span> <span class="n">in</span> <span class="n">the</span> <span class="n">Main</span> <span class="n">thread</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2664</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2733</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="n">$900</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">187</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1584</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">111</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">194</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5869</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">372</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1019</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">814</span><span class="o">)</span>
+</span><span class='line'> <span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Do</span> <span class="n">not</span> <span class="k">do</span> <span class="n">time</span><span class="o">-</span><span class="n">consuming</span> <span class="n">work</span> <span class="n">in</span> <span class="n">the</span> <span class="n">Main</span> <span class="n">thread</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">checkWorkerThread</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">34</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">writeContentToFile</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">40</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">27</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="n">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6127</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="n">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1123</span><span class="o">)</span>
+</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2617</span><span class="o">)</span>
+</span><span class='line'>          <span class="o">...</span> <span class="mi">10</span> <span class="n">more</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过分析crash stacktrace 我们可以很轻松的发现问题的根源并解决。</p>
+
+<h2>哪些方法需要加上检查</h2>
+
+<ul>
+<li>本地IO读写</li>
+<li>网络操作</li>
+<li>Bitmap相关的缩放等</li>
+<li>其他耗时的任务</li>
+</ul>
+
+
+<h2>如何选择工作者线程</h2>
+
+<p>Android中的工作者线程API有很多，简单的有Thread,AsyncTask，也有ThreadPool，HandlerThread等。关于如何选择，可以参考这篇文章。<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F12%2F20%2Fworker-thread-in-android%2F">关于Android中工作者线程的思考</a></p>
+
+<h2>对比</h2>
+
+<ul>
+<li>StrictMode 是一把利器，但是检测的东西很多，打印出来的日志可能也有很多，查找定位问题可能不如文章的方法方便。</li>
+<li>Method Tracing，需要刻意并时不时进行设置start和stop操作，文章的方法，可以说是一劳永逸。</li>
+</ul>
+
+
+<h2>检测会不会有性能问题</h2>
+
+<ul>
+<li>理论上是不会的，通常这个检测的代价要远远比耗时任务要小很多。</li>
+<li>如果想进一步优化的，可以在编译期屏蔽这个方法的调用，即assumenosideeffects，具体可以参考<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F11%2F01%2Fthinking-about-android-log%2F">关于Android Log的一些思考</a>中的编译期屏蔽 的内容。</li>
+</ul>
+
+
+<h2>延伸阅读</h2>
+
+<ul>
+<li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F11%2F08%2Fmake-use-of-handlerthread%2F">详解 Android 中的 HandlerThread</a></li>
+<li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F09%2F26%2Fandroid-tuning-tool-strictmode%2F">Android性能调优利器StrictMode</a></li>
+<li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2014%2F07%2F12%2Fcheck-main-thread-in-android-chinese-edition%2F">Android中检测当前是否为主线程</a></li>
+<li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F07%2F18%2Fanr-in-android%2F">说说Android中的ANR</a></li>
+</ul>
+
+
+<p>当你刚刚写完一个方法时，考虑这一下这个方法会不会很耗时，如果耗时，不妨增加一个线程的check。注意，一定要加载debug版，不要影响到线上的用户。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Java性能调优之容器扩容问题]]></title>
@@ -5973,678 +6186,6 @@ ButterKnife的好处</p>
 
 
 <p>上面的一些知识就是关于Android中如何避免创建多余对象的总结.欢迎提出意见和观点,共同进步.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[读懂 Android 中的代码混淆]]></title>
-    <link href="http://droidyue.com/blog/2016/07/10/understanding-android-obfuscated-code-by-proguard/"/>
-    <updated>2016-07-10T20:19:00+08:00</updated>
-    <id>http://droidyue.com/blog/2016/07/10/understanding-android-obfuscated-code-by-proguard</id>
-    <content type="html"><![CDATA[<p>在Android开发工作中，我们都或多或少接触过代码混淆。比如我们想要集成某个SDK，往往需要做一些排除混淆的操作。</p>
-
-<p>本文为本人的一些实践总结，介绍一些混淆的知识和注意事项。希望可以帮助大家更好的学习和使用代码混淆。</p>
-
-<!--more-->
-
-
-<h2>什么是混淆</h2>
-
-<p>关于混淆维基百科上该词条的解释为</p>
-
-<blockquote><p>代码混淆（Obfuscated code）亦称花指令，是将计算机程序的代码，转换成一种功能上等价，但是难于阅读和理解的形式的行为。</p></blockquote>
-
-<p>代码混淆影响到的元素有</p>
-
-<ul>
-<li>类名</li>
-<li>变量名</li>
-<li>方法名</li>
-<li>包名</li>
-<li>其他元素</li>
-</ul>
-
-
-<h2>混淆的目的</h2>
-
-<p>混淆的目的是为了<strong>加大反编译的成本</strong>,但是并不能彻底防止反编译.</p>
-
-<h2>如何开启混淆</h2>
-
-<ul>
-<li>通常我们需要找到项目路径下app目录下的build.gradle文件</li>
-<li>找到minifyEnabled这个配置,然后设置为true即可.</li>
-</ul>
-
-
-<p>一个简单的示例如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">buildTypes</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">release</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">minifyEnabled</span> <span class="kc">true</span>
-</span><span class='line'>            <span class="n">proguardFiles</span> <span class="nf">getDefaultProguardFile</span><span class="o">(</span><span class="err">&#39;</span><span class="n">proguard</span><span class="o">-</span><span class="n">android</span><span class="o">.</span><span class="na">txt</span><span class="err">&#39;</span><span class="o">),</span> <span class="err">&#39;</span><span class="n">proguard</span><span class="o">-</span><span class="n">rules</span><span class="o">.</span><span class="na">pro</span><span class="err">&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>proguard是什么</h2>
-
-<p>Java官网对Proguard的定义</p>
-
-<blockquote><p>ProGuard is a free Java class file shrinker, optimizer, obfuscator, and preverifier. It detects and removes unused classes, fields, methods, and attributes. It optimizes bytecode and removes unused instructions. It renames the remaining classes, fields, and methods using short meaningless names. Finally, it preverifies the processed code for Java 6 or higher, or for Java Micro Edition.</p></blockquote>
-
-<ul>
-<li>Proguard是一个集文件压缩,优化,混淆和校验等功能的工具</li>
-<li>它检测并删除无用的类,变量,方法和属性</li>
-<li>它优化字节码并删除无用的指令.</li>
-<li>它通过将类名,变量名和方法名重命名为无意义的名称实现混淆效果.</li>
-<li>最后它还校验处理后的代码</li>
-</ul>
-
-
-<h2>混淆的常见配置</h2>
-
-<h3>-keep</h3>
-
-<p>Keep用来保留Java的元素不进行混淆. keep有很多变种,他们一般都是</p>
-
-<ul>
-<li>-keep</li>
-<li>-keepclassmembers</li>
-<li>-keepclasseswithmembers</li>
-</ul>
-
-
-<h4>一些例子</h4>
-
-<p>保留某个包下面的类以及子包</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">keep</span> <span class="kd">public</span> <span class="kd">class</span> <span class="nc">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">com</span><span class="o">.</span><span class="na">widget</span><span class="o">.**</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>保留所有类中使用otto的public方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="err">#</span> <span class="n">Otto</span>
-</span><span class='line'><span class="o">-</span><span class="n">keepclassmembers</span> <span class="kd">class</span> <span class="err">** {</span>
-</span><span class='line'>    <span class="nd">@com.squareup.otto.Subscribe</span> <span class="kd">public</span> <span class="o">*;</span>
-</span><span class='line'>    <span class="nd">@com.squareup.otto.Produce</span> <span class="kd">public</span> <span class="o">*;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>保留Contants类的BOOK_NAME属性</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">keepclassmembers</span> <span class="kd">class</span> <span class="nc">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Constants</span> <span class="o">{</span>
-</span><span class='line'>     <span class="kd">public</span> <span class="kd">static</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="n">BOOK_NAME</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>更多关于Proguard keep使用,可以参考<a href="http://proguard.sourceforge.net/">官方文档</a></p>
-
-<h3>-dontwarn</h3>
-
-<p>dontwarn是一个和keep可以说是形影不离,尤其是处理引入的library时.</p>
-
-<p>引入的library可能存在一些无法找到的引用和其他问题,在build时可能会发出警告,如果我们不进行处理,通常会导致build中止.因此为了保证build继续,我们需要使用dontwarn处理这些我们无法解决的library的警告.</p>
-
-<p>比如关闭Twitter sdk的警告,我们可以这样做</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">dontwarn</span> <span class="n">com</span><span class="o">.</span><span class="na">twitter</span><span class="o">.</span><span class="na">sdk</span><span class="o">.**</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其他混淆相关的介绍,都可以通过访问官方文档获取.</p>
-
-<h2>哪些不应该混淆</h2>
-
-<h3>反射中使用的元素</h3>
-
-<p>如果一些被混淆使用的元素(属性,方法,类,包名等)进行了混淆,可能会出现问题,如NoSuchFiledException或者NoSuchMethodException等.</p>
-
-<p>比如下面的示例源码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//Constants.java</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Constants</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span>  <span class="n">String</span> <span class="n">BOOK_NAME</span> <span class="o">=</span> <span class="s">&quot;book_name&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//MainActivity.java</span>
-</span><span class='line'><span class="n">Field</span> <span class="n">bookNameField</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'><span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">String</span> <span class="n">fieldName</span> <span class="o">=</span> <span class="s">&quot;BOOK_NAME&quot;</span><span class="o">;</span>
-</span><span class='line'>    <span class="n">bookNameField</span> <span class="o">=</span> <span class="n">Constants</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getField</span><span class="o">(</span><span class="n">fieldName</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;bookNameField=&quot;</span> <span class="o">+</span> <span class="n">bookNameField</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">NoSuchFieldException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>如果上面的Constants类进行了混淆,那么上面的语句就可能抛出<code>NoSuchFieldException</code>.</p>
-
-<p>想要验证,我们需要看一看混淆的映射文件,文件名为<code>mapping.txt</code>,该文件保存着混淆前后的映射关系.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Constants</span> <span class="o">-&gt;</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">a</span><span class="o">:</span>
-</span><span class='line'>    <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="n">BOOK_NAME</span> <span class="o">-&gt;</span> <span class="n">a</span>
-</span><span class='line'>    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">init</span><span class="o">&gt;()</span> <span class="o">-&gt;</span> <span class="o">&lt;</span><span class="n">init</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">clinit</span><span class="o">&gt;()</span> <span class="o">-&gt;</span> <span class="o">&lt;</span><span class="n">clinit</span><span class="o">&gt;</span>
-</span><span class='line'><span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">MainActivity</span> <span class="o">-&gt;</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">:</span>
-</span><span class='line'>    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">init</span><span class="o">&gt;()</span> <span class="o">-&gt;</span> <span class="o">&lt;</span><span class="n">init</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Bundle</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">onCreate</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>从映射文件中,我们可以看到</p>
-
-<ul>
-<li><code>Constants</code>类被重命名为<code>a</code>.</li>
-<li>Constants类的<code>BOOK_NAME</code>重命名了<code>a</code></li>
-</ul>
-
-
-<p>然后,我们对APK文件进行反编译一探究竟.推荐一下这个在线反编译工具 <a href="http://www.javadecompilers.com/apk">http://www.javadecompilers.com/apk</a></p>
-
-<p>注意,使用jadx decompiler后,会重新命名,正如下面注释<code>/* renamed from: com.example.admin.proguardsample.a */</code>所示.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/* renamed from: com.example.admin.proguardsample.a */</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">C0314a</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">String</span> <span class="n">f1712a</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">static</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">f1712a</span> <span class="o">=</span> <span class="s">&quot;book_name&quot;</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>而MainActivity的翻译后的对应的源码为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;MainActivity&quot;</span><span class="o">,</span> <span class="s">&quot;bookNameField=&quot;</span> <span class="o">+</span> <span class="n">C0314a</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getField</span><span class="o">(</span><span class="s">&quot;BOOK_NAME&quot;</span><span class="o">));</span>
-</span><span class='line'><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">NoSuchFieldException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>MainActivity中反射获取的属性名称依然是<code>BOOK_NAME</code>,而对应的类已经没有了这个属性名,所以会抛出NoSuchFieldException.</p>
-
-<p><strong>注意</strong>，如果上面的filedName使用字面量或者字符串常量，即使混淆也不会出现NoSuchFieldException异常。因为这两种情况下，混淆可以感知外界对filed的引用，已经在调用出替换成了混淆后的名称。</p>
-
-<h3>GSON的序列化与反序列化</h3>
-
-<p>GSON是一个很好的工具,使用它我们可以轻松的实现序列化和反序列化.但是当它一旦遇到混淆,就需要我们注意了.</p>
-
-<p>一个简单的类Item,用来处理序列化和反序列化</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Item</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">String</span> <span class="n">name</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">int</span> <span class="n">id</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>序列化的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Item</span> <span class="n">toSerializeItem</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Item</span><span class="o">();</span>
-</span><span class='line'><span class="n">toSerializeItem</span><span class="o">.</span><span class="na">id</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
-</span><span class='line'><span class="n">toSerializeItem</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="s">&quot;Apple&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">serializedText</span> <span class="o">=</span> <span class="n">gson</span><span class="o">.</span><span class="na">toJson</span><span class="o">(</span><span class="n">toSerializeItem</span><span class="o">);</span>
-</span><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testGson serializedText=&quot;</span> <span class="o">+</span> <span class="n">serializedText</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>开启混淆之后的日志输出结果</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">I</span><span class="o">/</span><span class="nl">MainActivity:</span> <span class="n">testGson</span> <span class="n">serializedText</span><span class="o">={</span><span class="s">&quot;a&quot;</span><span class="o">:</span><span class="s">&quot;Apple&quot;</span><span class="o">,</span><span class="s">&quot;b&quot;</span><span class="o">:</span><span class="mi">2</span><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>属性名已经改变了,变成了没有意思的名称,对我们后续的某些处理是很麻烦的.</p>
-
-<p>反序列化的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Gson</span> <span class="n">gson</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Gson</span><span class="o">();</span>
-</span><span class='line'><span class="n">Item</span> <span class="n">item</span> <span class="o">=</span> <span class="n">gson</span><span class="o">.</span><span class="na">fromJson</span><span class="o">(</span><span class="s">&quot;{\&quot;id\&quot;:1, \&quot;name\&quot;:\&quot;Orange\&quot;}&quot;</span><span class="o">,</span> <span class="n">Item</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
-</span><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testGson item.id=&quot;</span> <span class="o">+</span> <span class="n">item</span><span class="o">.</span><span class="na">id</span> <span class="o">+</span> <span class="s">&quot;;item.name=&quot;</span> <span class="o">+</span> <span class="n">item</span><span class="o">.</span><span class="na">name</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>对应的日志结果是</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">I</span><span class="o">/</span><span class="nl">MainActivity:</span> <span class="n">testGson</span> <span class="n">item</span><span class="o">.</span><span class="na">id</span><span class="o">=</span><span class="mi">0</span><span class="o">;</span><span class="n">item</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="kc">null</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>可见,混淆之后,反序列化的属性值设置都失败了.</p>
-
-<h4>为什么呢?</h4>
-
-<ul>
-<li>因为反序列化创建对象本质还是利用反射,会根据json字符串的key作为属性名称,value则对应属性值.</li>
-</ul>
-
-
-<h4>如何解决</h4>
-
-<ul>
-<li>将序列化和反序列化的类排除混淆</li>
-<li>使用<code>@SerializedName</code>注解字段</li>
-</ul>
-
-
-<p>@SerializedName(parameter)通过注解属性实现了</p>
-
-<ul>
-<li>序列化的结果中,指定该属性key为parameter的值.</li>
-<li>反序列化生成的对象中,用来匹配key与parameter并赋予属性值.</li>
-</ul>
-
-
-<p>一个简单的用法为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Item</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@SerializedName</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">)</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">String</span> <span class="n">name</span><span class="o">;</span>
-</span><span class='line'>    <span class="nd">@SerializedName</span><span class="o">(</span><span class="s">&quot;id&quot;</span><span class="o">)</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">int</span> <span class="n">id</span><span class="o">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>枚举也不要混淆</h3>
-
-<p>枚举是Java 5 中引入的一个很便利的特性,可以很好的替代之前的常量形式.</p>
-
-<p>枚举使用起来很简单,如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">enum</span> <span class="n">Day</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">MONDAY</span><span class="o">,</span>
-</span><span class='line'>    <span class="n">TUESDAY</span><span class="o">,</span>
-</span><span class='line'>    <span class="n">WEDNESDAY</span><span class="o">,</span>
-</span><span class='line'>    <span class="n">THURSDAY</span><span class="o">,</span>
-</span><span class='line'>    <span class="n">FRIDAY</span><span class="o">,</span>
-</span><span class='line'>    <span class="n">SATURDAY</span><span class="o">,</span>
-</span><span class='line'>    <span class="n">SUNDAY</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>这里我们这样使用枚举</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Day</span> <span class="n">day</span> <span class="o">=</span> <span class="n">Day</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="s">&quot;monday&quot;</span><span class="o">);</span>
-</span><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testEnum day=&quot;</span> <span class="o">+</span> <span class="n">day</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>运行上面的的代码,通常情况下是没有问题的,是否说明枚举就可以混淆呢?</p>
-
-<p><strong>其实不是</strong>.</p>
-
-<p>为什么没有问题呢,因为默认的<a href="https://android.googlesource.com/platform/sdk/+/android-4.1.2_r2/files/proguard-android.txt">Proguard配置</a>已经处理了枚举相关的keep操作.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="err">#</span> <span class="n">For</span> <span class="n">enumeration</span> <span class="n">classes</span><span class="o">,</span> <span class="n">see</span> <span class="nl">http:</span><span class="c1">//proguard.sourceforge.net/manual/examples.html#enumerations</span>
-</span><span class='line'><span class="o">-</span><span class="n">keepclassmembers</span> <span class="kd">enum</span> <span class="o">*</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">**[]</span> <span class="n">values</span><span class="o">();</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">**</span> <span class="n">valueOf</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>如果我们手动去掉这条keep配置,再次运行,一个这样的异常会从天而降.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="nl">Process:</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">,</span> <span class="nl">PID:</span> <span class="mi">17246</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">AssertionError</span><span class="o">:</span> <span class="n">impossible</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Enum</span><span class="n">$1</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="n">Enum</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">45</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Enum</span><span class="n">$1</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="n">Enum</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">36</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">libcore</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">BasicLruCache</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">BasicLruCache</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">54</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Enum</span><span class="o">.</span><span class="na">getSharedConstants</span><span class="o">(</span><span class="n">Enum</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">211</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Enum</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">Enum</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">191</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">(</span><span class="n">Unknown</span> <span class="n">Source</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">j</span><span class="o">(</span><span class="n">Unknown</span> <span class="n">Source</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">Unknown</span> <span class="n">Source</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="n">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6237</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="n">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1107</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2369</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2476</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.-</span><span class="n">wrap11</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1344</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">148</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5417</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">726</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">616</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">NoSuchMethodException</span><span class="o">:</span> <span class="n">values</span> <span class="o">[]</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Class</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="n">Class</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">624</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Class</span><span class="o">.</span><span class="na">getDeclaredMethod</span><span class="o">(</span><span class="n">Class</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">586</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Enum</span><span class="n">$1</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="n">Enum</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">41</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="o">...</span> <span class="mi">19</span> <span class="n">more</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>好玩的事情来了,我们看一看为什么会抛出这个异常</p>
-
-<p>1.首先,一个枚举类会生成一个对应的类文件,这里是Day.class.
-这里类里面包含什么呢,看一下反编译的结果</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="err">➜</span>  <span class="n">proguardsample</span> <span class="n">javap</span>  <span class="n">Day</span>
-</span><span class='line'><span class="nl">Warning:</span> <span class="n">Binary</span> <span class="n">file</span> <span class="n">Day</span> <span class="n">contains</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span>
-</span><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;Day.java&quot;</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="kd">extends</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Enum</span><span class="o">&lt;</span><span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="n">MONDAY</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="n">TUESDAY</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="n">WEDNESDAY</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="n">THURSDAY</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="n">FRIDAY</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="n">SATURDAY</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="n">SUNDAY</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span><span class="o">[]</span> <span class="nf">values</span><span class="o">();</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="nf">valueOf</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">);</span>
-</span><span class='line'>  <span class="kd">static</span> <span class="o">{};</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>枚举实际是创建了一个继承自java.lang.Enum的类</li>
-<li>java代码中的枚举类型最后转换成类中的static final属性</li>
-<li>多出了两个方法,values()和valueOf().</li>
-<li>values方法返回定义的枚举类型的数组集合,即从MONDAY到SUNDAY这7个类型.</li>
-</ul>
-
-
-<p>2.找寻崩溃轨迹
-其中Day.valueOf(String)内部会调用Enum.valueOf(Class,String)方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Day</span> <span class="nf">valueOf</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">);</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// class com/example/admin/proguardsample/Day</span>
-</span><span class='line'>       <span class="mi">2</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Enum.valueOf:(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// class com/example/admin/proguardsample/Day</span>
-</span><span class='line'>       <span class="mi">9</span><span class="o">:</span> <span class="n">areturn</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>而Enum的valueOf方法会间接调用Day.values()方法,具体步骤是</p>
-
-<ul>
-<li>Enum.value调用Class.enumConstantDirectory方法获取String到枚举的映射</li>
-<li>Class.enumConstantDirectory方法调用Class.getEnumConstantsShared获取当前的枚举类型</li>
-<li>Class.getEnumConstantsShared方法使用反射调用values来获取枚举类型的集合.</li>
-</ul>
-
-
-<p>混淆之后,values被重新命名,所以会发生<code>NoSuchMethodException</code>.</p>
-
-<p>关于调用轨迹,感兴趣的可以自己研究一下源码,不难.</p>
-
-<h3>四大组件不建议混淆</h3>
-
-<p>Android中四大组件我们都很常用,这些组件不能被混淆的原因为</p>
-
-<ul>
-<li> 四大组件声明必须在manifest中注册,如果混淆后类名更改,而混淆后的类名没有在manifest注册,是不符合Android组件注册机制的.</li>
-<li> 外部程序可能使用组件的字符串类名,如果类名混淆,可能导致出现异常</li>
-</ul>
-
-
-<h3>注解不能混淆</h3>
-
-<p>注解在Android平台中使用的越来越多,常用的有ButterKnife和Otto.很多场景下注解被用作在运行时反射确定一些元素的特征.</p>
-
-<p>为了保证注解正常工作,我们不应该对注解进行混淆.Android工程默认的混淆配置已经包含了下面保留注解的配置</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">keepattributes</span> <span class="o">*</span><span class="n">Annotation</span><span class="o">*</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>关于注解,可以阅读这篇文章了解.<a href="http://droidyue.com/blog/2016/04/24/look-into-java-annotation/">详解Java中的注解</a></p>
-
-<h2>其他不该混淆的</h2>
-
-<ul>
-<li>jni调用的java方法</li>
-<li>java的native方法</li>
-<li>js调用java的方法</li>
-<li>第三方库不建议混淆</li>
-<li>其他和反射相关的一些情况</li>
-</ul>
-
-
-<h2>stacktrace的恢复</h2>
-
-<p>Proguard混淆带来了很多好处,但是也会导致我们收集到的崩溃的stacktrace变得更加难以读懂,好在有补救的措施,这里就介绍一个工具,retrace,用来将混淆后的stacktrace还原成混淆之前的信息.</p>
-
-<h3>retrace脚本</h3>
-
-<p>Android 开发环境默认带着retrace脚本,一般情况下路径为<code>./tools/proguard/bin/retrace.sh</code></p>
-
-<h3>mapping映射表</h3>
-
-<p>Proguard进行混淆之后,会生成一个映射表,文件名为mapping.txt,我们可以使用find工具在Project下查找</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">find</span> <span class="o">.</span> <span class="o">-</span><span class="n">name</span> <span class="n">mapping</span><span class="o">.</span><span class="na">txt</span>
-</span><span class='line'><span class="o">./</span><span class="n">app</span><span class="o">/</span><span class="n">build</span><span class="o">/</span><span class="n">outputs</span><span class="o">/</span><span class="n">mapping</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="n">mapping</span><span class="o">.</span><span class="na">txt</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>一个崩溃stacktrace信息</h3>
-
-<p>一个原始的崩溃信息是这样的.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">AndroidRuntime</span><span class="o">(</span><span class="mi">24006</span><span class="o">):</span> <span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">NullPointerException</span><span class="o">:</span> <span class="n">Attempt</span> <span class="n">to</span> <span class="n">invoke</span> <span class="n">virtual</span> <span class="n">method</span> <span class="err">&#39;</span><span class="kt">int</span> <span class="n">android</span><span class="o">.</span><span class="na">graphics</span><span class="o">.</span><span class="na">Bitmap</span><span class="o">.</span><span class="na">getWidth</span><span class="o">()</span><span class="err">&#39;</span> <span class="n">on</span> <span class="n">a</span> <span class="kc">null</span> <span class="n">object</span> <span class="n">reference</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">AndroidRuntime</span><span class="o">(</span><span class="mi">24006</span><span class="o">):</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">(</span><span class="n">Utils</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">10</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">AndroidRuntime</span><span class="o">(</span><span class="mi">24006</span><span class="o">):</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">22</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">AndroidRuntime</span><span class="o">(</span><span class="mi">24006</span><span class="o">):</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="n">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6106</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">AndroidRuntime</span><span class="o">(</span><span class="mi">24006</span><span class="o">):</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="n">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1123</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">AndroidRuntime</span><span class="o">(</span><span class="mi">24006</span><span class="o">):</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2566</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">AndroidRuntime</span><span class="o">(</span><span class="mi">24006</span><span class="o">):</span>    <span class="o">...</span> <span class="mi">10</span> <span class="n">more</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>对上面的信息处理,去掉<code>E/AndroidRuntime(24006):</code>这些字符串retrace才能正常工作.得到的字符串是</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">NullPointerException</span><span class="o">:</span> <span class="n">Attempt</span> <span class="n">to</span> <span class="n">invoke</span> <span class="n">virtual</span> <span class="n">method</span> <span class="err">&#39;</span><span class="kt">int</span> <span class="n">android</span><span class="o">.</span><span class="na">graphics</span><span class="o">.</span><span class="na">Bitmap</span><span class="o">.</span><span class="na">getWidth</span><span class="o">()</span><span class="err">&#39;</span> <span class="n">on</span> <span class="n">a</span> <span class="kc">null</span> <span class="n">object</span> <span class="n">reference</span>
-</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">(</span><span class="n">Utils</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">10</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">22</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="n">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6106</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="n">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1123</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2566</span><span class="o">)</span>
-</span><span class='line'><span class="o">...</span> <span class="mi">10</span> <span class="n">more</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>将上面的stacktrace保存成一个文本文件,比如名称为<code>npe_stacktrace.txt</code>.</p>
-
-<p>开搞</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">tools</span><span class="o">/</span><span class="n">proguard</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">retrace</span><span class="o">.</span><span class="na">sh</span>   <span class="o">/</span><span class="n">Users</span><span class="o">/</span><span class="n">admin</span><span class="o">/</span><span class="n">Downloads</span><span class="o">/</span><span class="n">ProguardSample</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">build</span><span class="o">/</span><span class="n">outputs</span><span class="o">/</span><span class="n">mapping</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="n">mapping</span><span class="o">.</span><span class="na">txt</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">npe_stacktrace</span><span class="o">.</span><span class="na">txt</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>得到的易读的stacktrace是</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">NullPointerException</span><span class="o">:</span> <span class="n">Attempt</span> <span class="n">to</span> <span class="n">invoke</span> <span class="n">virtual</span> <span class="n">method</span> <span class="err">&#39;</span><span class="kt">int</span> <span class="n">android</span><span class="o">.</span><span class="na">graphics</span><span class="o">.</span><span class="na">Bitmap</span><span class="o">.</span><span class="na">getWidth</span><span class="o">()</span><span class="err">&#39;</span> <span class="n">on</span> <span class="n">a</span> <span class="kc">null</span> <span class="n">object</span> <span class="n">reference</span>
-</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">Utils</span><span class="o">.</span><span class="na">int</span> <span class="nf">getBitmapWidth</span><span class="o">(</span><span class="n">android</span><span class="o">.</span><span class="na">graphics</span><span class="o">.</span><span class="na">Bitmap</span><span class="o">)(</span><span class="n">Utils</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">10</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">admin</span><span class="o">.</span><span class="na">proguardsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Bundle</span><span class="o">)(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">22</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="n">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6106</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="n">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1123</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2566</span><span class="o">)</span>
-</span><span class='line'><span class="o">...</span> <span class="mi">10</span> <span class="n">more</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>注意:为了更加容易和高效分析stacktrace,建议保留SourceFile和LineNumber属性</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">keepattributes</span> <span class="n">SourceFile</span><span class="o">,</span><span class="n">LineNumberTable</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>关于混淆,我的一些个人经验总结就是这些.希望可以对大家有所帮助.</p>
 ]]></content>
   </entry>
   
