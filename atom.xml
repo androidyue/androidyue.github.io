@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="http://droidyue.com/atom.xml" rel="self"/>
   <link href="http://droidyue.com/"/>
-  <updated>2017-05-21T19:47:08+08:00</updated>
+  <updated>2017-07-18T06:52:21+08:00</updated>
   <id>http://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,143 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kotlin中的单例模式]]></title>
+    <link href="http://droidyue.com/blog/2017/07/17/singleton-in-kotlin/"/>
+    <updated>2017-07-17T22:03:00+08:00</updated>
+    <id>http://droidyue.com/blog/2017/07/17/singleton-in-kotlin</id>
+    <content type="html"><![CDATA[<p>在编程中，我们都应该接触到设计模式，无论是从时间总结，亦或者是从书上习得后尝试使用。这其中单例模式，是我们编程过程中很常见，也很简单的一种设计模式。我曾经写过一篇比较通用的关于该模式的文章，即<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F01%2F11%2Flooking-into-singleton%2F">单例这种设计模式</a>。</p>
+
+<p>目前，随着Google钦定Kotlin为Android 开发官方语言，Kotlin的学习热潮也应声而起。本文尝试讲解单例模式在Kotlin的具体实现和应用。希望能够对大家学习使用Kotlin有所帮助。</p>
+
+<!--more-->
+
+
+<h2>超简版单例</h2>
+
+<p>Kotlin引入了一个叫做object的类型，用来很容易的实现单例模式。如下面的代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">object</span> <span class="n">SimpleSington</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">fun</span> <span class="nf">test</span><span class="o">()</span> <span class="o">{}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="c1">//在Kotlin里调用</span>
+</span><span class='line'><span class="n">SimpleSington</span><span class="o">.</span><span class="na">test</span><span class="o">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//在Java中调用</span>
+</span><span class='line'><span class="n">SimpleSington</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">.</span><span class="na">test</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这个版本的实现，其实是个语法糖（Kotlin漫山遍野都是语法糖）。其真正的实现类似于这样</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">SimpleSington</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">SimpleSington</span> <span class="n">INSTANCE</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="kd">private</span> <span class="nf">SimpleSington</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">INSTANCE</span> <span class="o">=</span> <span class="o">(</span><span class="n">SimpleSington</span><span class="o">)</span><span class="k">this</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="kd">static</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">new</span> <span class="nf">SimpleSington</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因而Kotlin这个超简版单例实现省去了</p>
+
+<ul>
+<li>显式声明静态instance变量</li>
+<li>将构造函数private化处理</li>
+</ul>
+
+
+<h3>关于调用时注意</h3>
+
+<p>这段单例代码在Kotlin中使用很简单，即</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">SimpleSington</span><span class="o">.</span><span class="na">test</span><span class="o">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是在Java和Kotlin混编时，Java代码中调用则需要注意，使用如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">SimpleSington</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">.</span><span class="na">test</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其实在Kotlin中调用单例本质上还是涉及到了INSTANCE这个变量，只是为了简化，隐藏了一些细节。</p>
+
+<p>object类型的单例模式，本质上是饿汉式加载，即在类加载的时候创建单例。它可能存在的问题有</p>
+
+<ul>
+<li>如果构造方法中存在过多的处理，会导致加载这个类时比较慢，可能引起性能问题。</li>
+<li>如果使用饿汉式的话，只进行了类的装载，并没有实质的调用，会造成资源的浪费。</li>
+</ul>
+
+
+<h2>懒汉式加载</h2>
+
+<p>针对饿汉式的潜在问题，我们可以使用懒汉式来解决，即将实例初始化放在开始使用之前。Kotlin版的懒汉式加载代码如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">LazySingleton</span> <span class="kd">private</span> <span class="nf">constructor</span><span class="o">(){</span>
+</span><span class='line'>    <span class="n">companion</span> <span class="n">object</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">val</span> <span class="nl">instance:</span> <span class="n">LazySingleton</span> <span class="n">by</span> <span class="n">lazy</span> <span class="o">{</span> <span class="n">LazySingleton</span><span class="o">()</span> <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>显式声明构造方法为private</li>
+<li>companion object用来在class内部声明一个对象</li>
+<li>LazySingleton的实例instance 通过lazy来实现懒汉式加载</li>
+<li>lazy默认情况下是线程安全的，这就可以避免多个线程同时访问生成多个实例的问题</li>
+</ul>
+
+
+<h2>该用哪个版本</h2>
+
+<p>关于如何选择饿汉式还是懒汉式，通常应该从两方面考虑</p>
+
+<ul>
+<li>实例初始化的性能和资源占用</li>
+<li>编写的效率和简洁</li>
+</ul>
+
+
+<p>对于实例初始化花费时间较少，并且内存占用较低的话，应该使用object形式的饿汉式加载。否则使用懒汉式。</p>
+
+<p>关于单例的更多知识和问题，请参考阅读<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F01%2F11%2Flooking-into-singleton%2F">单例这种设计模式</a></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[如何看待 Kotlin 成为 Android 官方支持开发语言？]]></title>
@@ -4881,241 +5018,6 @@
 <p>处理内存泄漏问题，不仅要解决掉，更应该善于整理总结，做到后续编码中主动避免。</p>
 
 <p>本文是我在droidcon beijing 2016和 GDG Beijing Devfest所做分享的文章总结版。如有问题，欢迎指出。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android内存泄漏：谨慎使用getSystemService]]></title>
-    <link href="http://droidyue.com/blog/2016/11/14/be-careful-using-getsystemservice/"/>
-    <updated>2016-11-14T20:58:00+08:00</updated>
-    <id>http://droidyue.com/blog/2016/11/14/be-careful-using-getsystemservice</id>
-    <content type="html"><![CDATA[<p>Android中有很多服务，比如PowerManager,AlarmManager，NotificationManager等，通常使用起来也很方便，就是使用Context.getSystemService方法来获得。</p>
-
-<p>一次在公司开发项目开发中，突然LeakCanary弹出了一个内存泄漏的通知栏，不好，内存泄漏发生了。原因竟是和getSystemService有关。</p>
-
-<p>为了排除干扰因素，我们使用一个简单的示例代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="n">AppCompatActivity</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="n">PowerManager</span> <span class="n">powerManager</span><span class="o">;</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">powerManager</span> <span class="o">=</span> <span class="o">(</span><span class="n">PowerManager</span><span class="o">)</span><span class="n">getSystemService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<!--more-->
-
-
-<p>当退出MainActivity时，得到了LeakCanary的内存泄漏报告。如下图。
-<img src="http://7jpolu.com1.z0.glb.clouddn.com/device-2016-11-04-081558_compressed.png" alt="http://7jpolu.com1.z0.glb.clouddn.com/device-2016-11-04-081558_compressed.png" /></p>
-
-<p>奇怪了，为什么PowerManager会持有Activity的实例呢，按照理解，PowerManager应该是持有Application的Context对象的。</p>
-
-<p>因此，我们有必要对PowerManager的源码分析一下</p>
-
-<p>1.PowerManager会持有一个Context实例，具体使用Activity还是Application的Context取决于调用者。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">final</span> <span class="n">Context</span> <span class="n">mContext</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">final</span> <span class="n">IPowerManager</span> <span class="n">mService</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">final</span> <span class="n">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="cm">/**</span>
-</span><span class='line'><span class="cm">     * {@hide}</span>
-</span><span class='line'><span class="cm">     */</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="nf">PowerManager</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">,</span> <span class="n">IPowerManager</span> <span class="n">service</span><span class="o">,</span> <span class="n">Handler</span> <span class="n">handler</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">mContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
-</span><span class='line'>        <span class="n">mService</span> <span class="o">=</span> <span class="n">service</span><span class="o">;</span>
-</span><span class='line'>        <span class="n">mHandler</span> <span class="o">=</span> <span class="n">handler</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>2.负责缓存服务的实现在ContextImpl.java文件中</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// The system service cache for the system services that are cached per-ContextImpl.</span>
-</span><span class='line'>    <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">mServiceCache</span> <span class="o">=</span> <span class="n">SystemServiceRegistry</span><span class="o">.</span><span class="na">createServiceCache</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>而Activity通过ContextImpl提供的setOuterContext方法设置mOuterContext</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">final</span> <span class="kt">void</span> <span class="nf">setOuterContext</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mOuterContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>因此Activity与ContextImpl的关系如下图
-<img src="http://7jpolu.com1.z0.glb.clouddn.com/QQ20161108-0.png" alt="http://7jpolu.com1.z0.glb.clouddn.com/QQ20161108-0.png" /></p>
-
-<p>SystemServiceRegistry.java中获取PowerManager的实现。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">registerService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">,</span> <span class="n">PowerManager</span><span class="o">.</span><span class="na">class</span><span class="o">,</span>
-</span><span class='line'>                <span class="k">new</span> <span class="n">CachedServiceFetcher</span><span class="o">&lt;</span><span class="n">PowerManager</span><span class="o">&gt;()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="n">PowerManager</span> <span class="nf">createService</span><span class="o">(</span><span class="n">ContextImpl</span> <span class="n">ctx</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">IBinder</span> <span class="n">b</span> <span class="o">=</span> <span class="n">ServiceManager</span><span class="o">.</span><span class="na">getService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span>
-</span><span class='line'>                <span class="n">IPowerManager</span> <span class="n">service</span> <span class="o">=</span> <span class="n">IPowerManager</span><span class="o">.</span><span class="na">Stub</span><span class="o">.</span><span class="na">asInterface</span><span class="o">(</span><span class="n">b</span><span class="o">);</span>
-</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="n">service</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                    <span class="n">Log</span><span class="o">.</span><span class="na">wtf</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;Failed to get power manager service.&quot;</span><span class="o">);</span>
-</span><span class='line'>                <span class="o">}</span>
-</span><span class='line'>                <span class="k">return</span> <span class="k">new</span> <span class="nf">PowerManager</span><span class="o">(</span><span class="n">ctx</span><span class="o">.</span><span class="na">getOuterContext</span><span class="o">(),</span>
-</span><span class='line'>                        <span class="n">service</span><span class="o">,</span> <span class="n">ctx</span><span class="o">.</span><span class="na">mMainThread</span><span class="o">.</span><span class="na">getHandler</span><span class="o">());</span>
-</span><span class='line'>            <span class="o">}});</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>创建具体的服务的实现为core/java/android/app/SystemServiceRegistry.java</p>
-
-<h2>如何解决</h2>
-
-<h3>不使用静态持有PowerManager</h3>
-
-<p>因为static是一个很容易和内存泄漏产生关联的因素</p>
-
-<ul>
-<li>static变量与类的生命周期相同</li>
-<li>类的生命周期等同于类加载器</li>
-<li>类加载器通常和进程的生命周期一致</li>
-</ul>
-
-
-<p>所以通过去除static可以保证变量周期和Activity实例相同。这样就不会产生内存泄漏问题。</p>
-
-<h3>使用ApplicationContext</h3>
-
-<p>除了上面的方法之外，传入Application的Context而不是Activity Context也可以解决问题。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">PowerManager</span> <span class="n">powerManager</span> <span class="o">=</span> <span class="o">(</span><span class="n">PowerManager</span><span class="o">)</span><span class="n">getApplicationContext</span><span class="o">().</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>是不是都要使用Application Context？</h2>
-
-<p>然而并非如此</p>
-
-<p>以Activity为例，一些和UI相关的服务已经优先进行了处理</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="n">Object</span> <span class="nf">getSystemService</span><span class="o">(</span><span class="nd">@ServiceName</span> <span class="nd">@NonNull</span> <span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">getBaseContext</span><span class="o">()</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span>
-</span><span class='line'>                <span class="s">&quot;System services not available to Activities before onCreate()&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">WINDOW_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mWindowManager</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">SEARCH_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">ensureSearchManager</span><span class="o">();</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mSearchManager</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ContextThemeWrapper也优先处理了LayoutManager服务</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="n">Object</span> <span class="nf">getSystemService</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">LAYOUT_INFLATER_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">mInflater</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">mInflater</span> <span class="o">=</span> <span class="n">LayoutInflater</span><span class="o">.</span><span class="na">from</span><span class="o">(</span><span class="n">getBaseContext</span><span class="o">()).</span><span class="na">cloneInContext</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mInflater</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">getBaseContext</span><span class="o">().</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>那到底该用哪个Context</h2>
-
-<ul>
-<li>如果服务和UI相关，则用Activity</li>
-<li>如果是类似ALARM_SERVICE,CONNECTIVITY_SERVICE建议有限选用Application Context</li>
-<li>如果出现出现了内存泄漏，排除问题，可以考虑使用Application Context</li>
-</ul>
-
-
-<p>如需了解更多关于Context的内存泄漏，请阅读</p>
-
-<ul>
-<li><a href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a></li>
-</ul>
-
-
-<p>所以，当我们再次使用getSystemService时要慎重考虑这样的问题。</p>
 ]]></content>
   </entry>
   
