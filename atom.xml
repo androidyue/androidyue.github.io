@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2018-01-31T22:13:46+08:00</updated>
+  <updated>2018-03-11T20:47:10+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,101 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android基于坐标对View进行模拟点击事件]]></title>
+    <link href="https://droidyue.com/blog/2018/03/11/simulate-view-click-by-x-and-y/"/>
+    <updated>2018-03-11T20:30:00+08:00</updated>
+    <id>https://droidyue.com/blog/2018/03/11/simulate-view-click-by-x-and-y</id>
+    <content type="html"><![CDATA[<p>在Android中，我们对于View进行模拟点击事件，很容易，比如调用<code>View.performClick</code>即可。</p>
+
+<p>但是有些时候，我们想要更加精细的点击，比如View的某一区域或者某一点进行点击。比如下面的例子。</p>
+
+<!--more-->
+
+
+<p><img src="https://asset.droidyue.com/image/simulate_view_click.png" alt="https://asset.droidyue.com/image/simulate_view_click.png" /></p>
+
+<p>上面是一个WebView加载了一个视频，我们必须手动点一下播放按钮才能让视频播放，当然我们想要的最好是如下的自动播放效果（进入界面后，自动播放视频）</p>
+
+<p><img src="https://asset.droidyue.com/image/simulate_view_click_by_x.y.gif" alt="https://asset.droidyue.com/image/simulate_view_click_by_x.y.gif" /></p>
+
+<p>当然方法有很多，比如通过javascript调用视频元素的click事件。在这里我们暂不对该方法进行细究。本文旨在提供一种解决问题的可行方法。</p>
+
+<p>其实我们可以通过View.dispatchTouchEvent就能解决，因为一个click事件可以理解成一个Action_down和一个Action_up MotionEvent的组合，所以实现起来如下即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">fun</span> <span class="nf">simulateTouchEvent</span><span class="o">(</span><span class="nl">view:</span> <span class="n">View</span><span class="o">,</span> <span class="nl">x:</span> <span class="n">Float</span><span class="o">,</span> <span class="nl">y:</span> <span class="n">Float</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">val</span> <span class="n">downTime</span> <span class="o">=</span> <span class="n">SystemClock</span><span class="o">.</span><span class="na">uptimeMillis</span><span class="o">()</span>
+</span><span class='line'>   <span class="n">val</span> <span class="n">eventTime</span> <span class="o">=</span> <span class="n">SystemClock</span><span class="o">.</span><span class="na">uptimeMillis</span><span class="o">()</span> <span class="o">+</span> <span class="mi">100</span>
+</span><span class='line'>   <span class="n">val</span> <span class="n">metaState</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>   <span class="n">val</span> <span class="n">motionEvent</span> <span class="o">=</span> <span class="n">MotionEvent</span><span class="o">.</span><span class="na">obtain</span><span class="o">(</span><span class="n">downTime</span><span class="o">,</span> <span class="n">eventTime</span><span class="o">,</span>
+</span><span class='line'>           <span class="n">MotionEvent</span><span class="o">.</span><span class="na">ACTION_DOWN</span><span class="o">,</span> <span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">,</span> <span class="n">metaState</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">view</span><span class="o">.</span><span class="na">dispatchTouchEvent</span><span class="o">(</span><span class="n">motionEvent</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">val</span> <span class="n">upEvent</span> <span class="o">=</span> <span class="n">MotionEvent</span><span class="o">.</span><span class="na">obtain</span><span class="o">(</span><span class="n">downTime</span> <span class="o">+</span> <span class="mi">1000</span><span class="o">,</span> <span class="n">eventTime</span> <span class="o">+</span> <span class="mi">1000</span><span class="o">,</span>
+</span><span class='line'>           <span class="n">MotionEvent</span><span class="o">.</span><span class="na">ACTION_UP</span><span class="o">,</span> <span class="n">x</span><span class="o">,</span><span class="n">y</span><span class="o">,</span> <span class="n">metaState</span><span class="o">)</span>
+</span><span class='line'>   <span class="n">view</span><span class="o">.</span><span class="na">dispatchTouchEvent</span><span class="o">(</span><span class="n">upEvent</span><span class="o">)</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>关于坐标位置的选择，仔细分析你会发现，上面的视频的播放按钮其实是有特点的，播放按钮始终处于WebView的中心，即模拟的点击可以是WebView.getWidth/2和WebView.height/2这个点。</p>
+
+<p>为了便于测试和验证模拟事件的成功，我们可以增加OnTouchListener进行验证，如下代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">webview</span><span class="o">?.</span><span class="na">setOnTouchListener</span> <span class="o">{</span> <span class="n">v</span><span class="o">,</span> <span class="n">event</span> <span class="o">-&gt;</span>
+</span><span class='line'>   <span class="n">debugMessage</span><span class="o">(</span><span class="s">&quot;onTouchListener x=${event.x};y=${event.y}&quot;</span><span class="o">)</span>
+</span><span class='line'>   <span class="kc">false</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对于例子中的何时出发模拟事件，我们可以在WebView网页加载完成的时候实现，即</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">webview</span><span class="o">?.</span><span class="na">webViewClient</span> <span class="o">=</span> <span class="n">object</span> <span class="o">:</span> <span class="n">WebViewClient</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onPageFinished</span><span class="o">(</span><span class="nl">view:</span> <span class="n">WebView</span><span class="o">?,</span> <span class="nl">url:</span> <span class="n">String</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="kd">super</span><span class="o">.</span><span class="na">onPageFinished</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="n">url</span><span class="o">)</span>
+</span><span class='line'>       <span class="n">webview</span><span class="o">?.</span><span class="na">post</span> <span class="o">{</span>
+</span><span class='line'>           <span class="n">webview</span><span class="o">?.</span><span class="na">let</span> <span class="o">{</span>
+</span><span class='line'>               <span class="n">simulateTouchEvent</span><span class="o">(</span><span class="n">it</span><span class="o">,</span> <span class="n">it</span><span class="o">.</span><span class="na">width</span> <span class="o">/</span> <span class="mi">2</span><span class="n">f</span><span class="o">,</span> <span class="n">it</span><span class="o">.</span><span class="na">height</span> <span class="o">/</span> <span class="mi">2</span><span class="n">f</span><span class="o">)</span>
+</span><span class='line'>           <span class="o">}</span>
+</span><span class='line'>       <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>基于坐标对View进行模拟点击的代码示例完整版，请访问  <a href="https://github.com/androidyue/SimulateViewClickByXandY">https://github.com/androidyue/SimulateViewClickByXandY</a></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[关于应用Kotlin后的编译速度问题]]></title>
@@ -4144,104 +4239,6 @@
 <p>参与地址： <a href="https://www.zhihu.com/lives/796775894273363968">https://www.zhihu.com/lives/796775894273363968</a></p>
 
 <p>结尾，希望更多的程序员拿起笔来，写写博客，Let&rsquo;s make a difference.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[我的2016年总结]]></title>
-    <link href="https://droidyue.com/blog/2017/01/01/my-2016-summary/"/>
-    <updated>2017-01-01T13:08:00+08:00</updated>
-    <id>https://droidyue.com/blog/2017/01/01/my-2016-summary</id>
-    <content type="html"><![CDATA[<p>岁末年初，辞旧迎新，这一年转瞬即逝，2016年里经历了很多，虽不及大书特写，但还是有必要记录一下，以作日后回顾。</p>
-
-<!--more-->
-
-
-<h3>读书</h3>
-
-<p>2016年，由于更换了工作，通勤方式由原来的公交转为了地铁。于是重拾了已经吃灰多年的PaperWhite。</p>
-
-<p>这一年读了十几本书，抽取一些简单列举</p>
-
-<ul>
-<li>朴素真实的传记,非鸡汤的《褚时健传》</li>
-<li>读完让人“中毒”的《断舍离》</li>
-<li>年度最火的东野圭吾的《解忧杂货店》</li>
-<li>简约不简单的历史书 《你一定爱读的极简欧洲史》</li>
-<li>浅显易懂的科普书籍 《计算机是怎样跑起来的》</li>
-<li>硅谷IT科技公司的史书 《浪潮之巅》</li>
-<li>关于Linux创始人的传记 《只是为了好玩:Linux之父林纳斯自传》</li>
-<li>欧洲文学史上第一部现实主义巨著《十日谈》</li>
-<li>研究日本民族可得不读的《菊与刀》</li>
-<li>日式美学，川端康成诺奖作品《雪国》</li>
-<li>清纯，略带忧伤的完美爱情范本 《伊豆的舞女》</li>
-<li>冯梦龙的劝人行善的白话小说 《喻世明言》</li>
-<li>一场颠覆诡异的西游记解读之旅，一部颠覆你对西游记认知的书籍。《煮酒探西游》</li>
-</ul>
-
-
-<p>更多详细的读书列表，请访问<a href="http://droidyue.com/reading/">读书</a></p>
-
-<p>新的2017年，希望可以继续保持读书的习惯，读取更多的好书，迎接更强大的自己。</p>
-
-<h3>结婚</h3>
-
-<p>2016年10月2号，完成了一件人生大事，我结婚了。</p>
-
-<blockquote><p>彼此相恋将近四载，</p>
-
-<p>跑完了爱情马拉松。</p>
-
-<p>我变成了她的老公，</p>
-
-<p>她变成了我的老婆。</p></blockquote>
-
-<p>作为一个木讷的程序，肉麻兮兮的话我总是不太会说。</p>
-
-<blockquote><p>只愿此生长长久久，彼此相依。</p></blockquote>
-
-<h3>个人的分享</h3>
-
-<p>这一年，在线上和线下做了几场分享：</p>
-
-<ul>
-<li>stuq线上的主题分享<a href="http://droidyue.com/blog/2016/08/01/avoid-creating-unnecesssary-objects-in-android/">《如何在Android中避免创建不必要的对象》</a>和<a href="http://droidyue.com/blog/2016/10/24/notes-for-an-android-qa/">相关答疑</a>。</li>
-<li>GDG Beijing Android Meetup 线下分享<a href="http://droidyue.com/blog/2016/08/14/android-annnotation/">《探究Android中的注解》</a></li>
-<li>Droidcon Beijing 2016 线下分享<a href="http://droidyue.com/blog/2016/11/23/memory-leaks-in-android/">《Memory Leaks In Android》</a></li>
-<li>GDG Beijing Devfest 再次线下分享了和droidcon北京相同的主题。</li>
-<li>创建了我的第一个知乎Live,<a href="https://www.zhihu.com/lives/796775894273363968">程序员如何写好一篇技术文章？</a>，即将开讲。</li>
-</ul>
-
-
-<h3>日本</h3>
-
-<p>作为蜜月旅行，选择了东瀛日本作为目的地。</p>
-
-<p>从初中开始自学日语，再到大学选修日语课，不断的看日剧，毕业之后工作中仍然坚持刷题，终于一举通过了日本语等级考试，虽然level不高。因而去日本旅游也算是实现了自己多年的期盼之一。</p>
-
-<p>客观的讲，日本确实是一个很美好的国度：</p>
-
-<ul>
-<li>在日本的街道上，你几乎听不到汽车鸣笛</li>
-<li>自来水拧开可以直接喝</li>
-<li>无时无刻无处不在的微笑</li>
-<li>很少有垃圾桶，环境却异常干净</li>
-</ul>
-
-
-<p>然而，我始终觉得自己可能只是一个游客，无论我学习了日语，研究了很多日本历史，可能也许我这辈子也只可能在国内。这或许就是为什么人相信宿命论的缘由吧。</p>
-
-<blockquote><p>过完这一年，感觉自己的责任更重了，</p>
-
-<p>有了家庭，需要考虑的事情远远要多了起来。</p>
-
-<p>年龄大了，需要做事更加沉稳，不再意气用事</p>
-
-<p>时间在马不停蹄地走，人亦要前进。</p>
-
-<p>不忘初心，方得始终。</p>
-
-<p>以上。</p></blockquote>
 ]]></content>
   </entry>
   
