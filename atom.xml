@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2018-05-12T12:04:06+08:00</updated>
+  <updated>2018-05-15T21:36:57+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,108 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[谁来检查方法参数合法性]]></title>
+    <link href="https://droidyue.com/blog/2018/05/15/who-should-be-responsible-for-checking-parameter/"/>
+    <updated>2018-05-15T21:31:00+08:00</updated>
+    <id>https://droidyue.com/blog/2018/05/15/who-should-be-responsible-for-checking-parameter</id>
+    <content type="html"><![CDATA[<p>我们在编程中的函数或者是方法，大多数都是有参数的。参数对于方法来说是很重要的输入数据，传入的参数值的合法性影响着方法的稳定性，严重时甚至可能导致崩溃问题的出现。</p>
+
+<!--more-->
+
+
+<p>比如这段代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">Book</span> <span class="n">book</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>   <span class="k">new</span> <span class="nf">Main</span><span class="o">().</span><span class="na">buy</span><span class="o">(</span><span class="n">book</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">buy</span><span class="o">(</span><span class="n">Book</span> <span class="n">book</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">book</span><span class="o">.</span><span class="na">getPrice</span><span class="o">());</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码在执行起来会导致空指针异常，其实解决起来也挺简单，就是做一些非空的检查，比如这样,在调用处进行校验</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">Book</span> <span class="n">book</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">book</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="k">new</span> <span class="nf">Main</span><span class="o">().</span><span class="na">buy</span><span class="o">(</span><span class="n">book</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>或者是这样在方法定义的时候处理</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">buy</span><span class="o">(</span><span class="n">Book</span> <span class="n">book</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">book</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">book</span><span class="o">.</span><span class="na">getPrice</span><span class="o">());</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>就这个案例而言，两者都可以，但是有没有什么规范呢</p>
+
+<p>其实还是有一些约定的
+如果方法是public,protected等这样被外部可调用的时候，方法定义时需要进行值的合法性检验，因为无法确保外部始终传递合法的参数值。
+对于内部的private等可见性等，则不是必需的，因为内部调用相对是可控更高的。</p>
+
+<p>除此之外，我们在JavaDoc注释也需要同步跟进，比如</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">* bub a book</span>
+</span><span class='line'><span class="cm">* @param book could be null</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">buy</span><span class="o">(</span><span class="n">Book</span> <span class="n">book</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">book</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">book</span><span class="o">.</span><span class="na">getPrice</span><span class="o">());</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们通过增加<code>@param book could be null</code>就可以告诉调用者，不用做合法性检查，方法内部已经处理了。这种方式对开发者还是比较友善的。此外我们也可以使用@Nullable或者@NonNull来表明当前参数的检查职责归属。</p>
+
+<p>至此我们也理清了检查方法参数合法性的责任归属，欢迎评论交流。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android中实现用户无感知处理后台崩溃]]></title>
@@ -3741,351 +3843,6 @@
 <p>通过本文的介绍，我们对于ArrayMap应该有了一个比较深入的了解。虽然ArrayMap是Android系统中HashMap的一种替代，但是我们在使用时也要注意选择适宜的场景，切莫一概而论。</p>
 
 <p>嗨，我是小广告：欢迎参加我的知乎Live <a href="https://www.zhihu.com/lives/802899577341620224">《我学安卓的那些套路》</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[关于 Android 应用多进程的整理]]></title>
-    <link href="https://droidyue.com/blog/2017/01/15/android-multiple-processes-summary/"/>
-    <updated>2017-01-15T20:38:00+08:00</updated>
-    <id>https://droidyue.com/blog/2017/01/15/android-multiple-processes-summary</id>
-    <content type="html"><![CDATA[<p>在计算机操作系统中，进程是进行资源分配和调度的基本单位。这对于基于Linux内核的Android系统也不例外。在Android的设计中，一个应用默认有一个(主)进程。但是我们通过配置可以实现一个应用对应多个进程。</p>
-
-<p>本文将试图对于Android中应用多进程做一些整理总结。</p>
-
-<!--more-->
-
-
-<h2>android:process</h2>
-
-<ul>
-<li>应用实现多进程需要依赖于android:process这个属性</li>
-<li>适用元素：Application, Activity, BroadcastReceiver, Service, ContentProvider。</li>
-<li>通常情况下，这个属性的值应该是&#8221;:&ldquo;开头。表示这个进程是应用私有的。无法在在跨应用之间共用。</li>
-<li>如果该属性值以小写字母开头，表示这个进程为全局进程。可以被多个应用共用。（文章结尾会探讨这个问题）</li>
-</ul>
-
-
-<p>一个应用 android:process 简单示例</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;activity</span> <span class="na">android:name=</span><span class="s">&quot;.MusicPlayerActivity&quot;</span> <span class="na">android:process=</span><span class="s">&quot;:music&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nt">&lt;activity</span> <span class="na">android:name=</span><span class="s">&quot;.AnotherActivity&quot;</span> <span class="na">android:process=</span><span class="s">&quot;droidyue.com&quot;</span><span class="nt">/&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>应用多进程有什么好处</h2>
-
-<h3>增加App可用内存</h3>
-
-<p>在Android中，默认情况下系统会为每个App分配一定大小的内存。比如从最早的16M到后面的32M或者48M等。具体的内存大小取决于硬件和系统版本。</p>
-
-<p>这些有限的内存对于普通的App还算是够用，但是对于展示大量图片的应用来说，显得实在是捉襟见肘。</p>
-
-<p>仔细研究一下，你会发现原来系统的这个限制是作用于进程的(毕竟进程是作为资源分配的基本单位)。意思就是说，如果一个应用实现多个进程，那么这个应用可以获得更多的内存。</p>
-
-<p>于是，增加App可用内存成了应用多进程的重要原因。</p>
-
-<h3>独立于主进程</h3>
-
-<p>除了增加App可用内存之外，确保使用多进程，可以独立于主进程，确保某些任务的执行和完成。</p>
-
-<p>举一个简单的例子，之前的一个项目存在退出的功能，其具体实现为杀掉进程。为了保证某些统计数据上报正常，不受当前进程退出的影响，我们可以使用独立的进程来完成。</p>
-
-<h2>多进程的不足与缺点</h2>
-
-<h3>数据共享问题</h3>
-
-<ul>
-<li>由于处于不同的进程导致了数据无法共享内容，无论是static变量还是单例模式的实现。</li>
-<li>SharedPreferences 还没有增加对多进程的支持。</li>
-<li>跨进程共享数据可以通过Intent,Messenger，AIDL等。</li>
-</ul>
-
-
-<h3>SQLite容易被锁</h3>
-
-<ul>
-<li>由于每个进程可能会使用各自的SQLOpenHelper实例，如果两个进程同时对数据库操作，则会发生SQLiteDatabaseLockedException等异常。</li>
-<li>解决方法：可以使用ContentProvider来实现或者使用其他存储方式。</li>
-</ul>
-
-
-<h3>不必要的初始化</h3>
-
-<ul>
-<li>多进程之后，每个进程在创建的时候，都会执行自己的Application.onCreate方法。</li>
-<li>通常情况下，onCreate中包含了我们很多业务相关的初始化，更重要的这其中没有做按照进程按需初始化，即每个进程都会执行全部的初始化。</li>
-<li>按需初始化需要根据当前进程名称，进行最小需要的业务初始化。</li>
-<li>按需初始化可以选择简单的if else判断，也可以结合工厂模式</li>
-</ul>
-
-
-<p>一些简单的代码示例</p>
-
-<h4>获取当前的进程名</h4>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">String</span> <span class="nf">getCurrentProcessName</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">String</span> <span class="n">currentProcName</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">;</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">pid</span> <span class="o">=</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">myPid</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">ActivityManager</span> <span class="n">manager</span> <span class="o">=</span> <span class="o">(</span><span class="n">ActivityManager</span><span class="o">)</span> <span class="k">this</span><span class="o">.</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">ACTIVITY_SERVICE</span><span class="o">);</span>
-</span><span class='line'>    <span class="k">for</span> <span class="o">(</span><span class="n">ActivityManager</span><span class="o">.</span><span class="na">RunningAppProcessInfo</span> <span class="n">processInfo</span> <span class="o">:</span> <span class="n">manager</span><span class="o">.</span><span class="na">getRunningAppProcesses</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">processInfo</span><span class="o">.</span><span class="na">pid</span> <span class="o">==</span> <span class="n">pid</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">currentProcName</span> <span class="o">=</span> <span class="n">processInfo</span><span class="o">.</span><span class="na">processName</span><span class="o">;</span>
-</span><span class='line'>            <span class="k">break</span><span class="o">;</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">currentProcName</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>基本的进程初始化类</h4>
-
-<p>这个类用来每个进程共用的业务初始化逻辑。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">AppInitialization</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@CallSuper</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onAppCreate</span><span class="o">(</span><span class="n">Application</span> <span class="n">application</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;AppInitialization&quot;</span><span class="o">,</span> <span class="s">&quot;onAppCreate is being executed.&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>工厂模式的应用</h4>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">AppInitFactory</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">AppInitialization</span> <span class="nf">getAppInitialization</span><span class="o">(</span><span class="n">String</span> <span class="n">processName</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">AppInitialization</span> <span class="n">appInitialization</span><span class="o">;</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">processName</span><span class="o">.</span><span class="na">endsWith</span><span class="o">(</span><span class="s">&quot;:game&quot;</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">appInitialization</span> <span class="o">=</span> <span class="k">new</span> <span class="n">GameAppInitialization</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">processName</span><span class="o">.</span><span class="na">endsWith</span><span class="o">(</span><span class="s">&quot;:music&quot;</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">appInitialization</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MusicAppInitialization</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">appInitialization</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AppInitialization</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">appInitialization</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">static</span> <span class="kd">class</span> <span class="nc">GameAppInitialization</span> <span class="kd">extends</span> <span class="n">AppInitialization</span> <span class="o">{</span>
-</span><span class='line'>        <span class="nd">@Override</span>
-</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onAppCreate</span><span class="o">(</span><span class="n">Application</span> <span class="n">application</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="kd">super</span><span class="o">.</span><span class="na">onAppCreate</span><span class="o">(</span><span class="n">application</span><span class="o">);</span>
-</span><span class='line'>            <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;GameAppInitialization&quot;</span><span class="o">,</span> <span class="s">&quot;onAppCreate is being executed.&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">static</span> <span class="kd">class</span> <span class="nc">MusicAppInitialization</span> <span class="kd">extends</span> <span class="n">AppInitialization</span> <span class="o">{</span>
-</span><span class='line'>        <span class="nd">@Override</span>
-</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onAppCreate</span><span class="o">(</span><span class="n">Application</span> <span class="n">application</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="kd">super</span><span class="o">.</span><span class="na">onAppCreate</span><span class="o">(</span><span class="n">application</span><span class="o">);</span>
-</span><span class='line'>            <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;MusicAppInitialization&quot;</span><span class="o">,</span> <span class="s">&quot;onAppCreate is being executed.&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>具体的调用时的代码</h4>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyApplication</span> <span class="kd">extends</span> <span class="n">Application</span><span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;MyApplication&quot;</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">();</span>
-</span><span class='line'>        <span class="n">String</span> <span class="n">currentProcessName</span> <span class="o">=</span> <span class="n">getCurrentProcessName</span><span class="o">();</span>
-</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onCreate currentProcessName=&quot;</span> <span class="o">+</span> <span class="n">currentProcessName</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">AppInitialization</span> <span class="n">appInitialization</span> <span class="o">=</span> <span class="n">AppInitFactory</span><span class="o">.</span><span class="na">getAppInitialization</span><span class="o">(</span><span class="n">currentProcessName</span><span class="o">);</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">appInitialization</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">appInitialization</span><span class="o">.</span><span class="na">onAppCreate</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>是否需要多进程</h2>
-
-<p>判断是否需要多进程，需要视具体情况而定。</p>
-
-<h3>内存限制</h3>
-
-<ul>
-<li>研究内存占用居高不下的原因</li>
-<li>如果是由内存泄漏导致，尝试解决来降低内存占用</li>
-<li>如有必要，可以通过配置<a href="http://droidyue.com/blog/2015/08/01/dive-into-android-large-heap/">largeHeap</a>尝试解决</li>
-</ul>
-
-
-<p>除了内存限制之外，还需要考虑是否真的需要独立于主进程来执行某些操作。</p>
-
-<h2>关于android:process的其他问题</h2>
-
-<p>在android:process部分我们提到，如果这个属性值以小写字母开头，那么就是全局的进程，可以被其他应用共用。</p>
-
-<p>所谓的共用，指的是不同的App的组件运行在同一个指定的进程中。</p>
-
-<h3>准备条件</h3>
-
-<p>受制于Android系统的安全机制，我们需要做到以下两个准备条件才可以。</p>
-
-<ul>
-<li>这个应用使用同样的签名</li>
-<li>两个应用指定同一个android:sharedUserId的值</li>
-</ul>
-
-
-<h3>具体示例</h3>
-
-<p>第一个App的Manifest文件，AnotherActivity运行在名为droidyue.com的进程中。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;manifest</span> <span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-</span><span class='line'>          <span class="na">package=</span><span class="s">&quot;com.droidyue.androidmutipleprocesssample&quot;</span>
-</span><span class='line'>        <span class="na">android:sharedUserId=</span><span class="s">&quot;droidyue.com&quot;</span>
-</span><span class='line'>    <span class="nt">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;application</span>
-</span><span class='line'>            <span class="na">android:name=</span><span class="s">&quot;.MyApplication&quot;</span>
-</span><span class='line'>            <span class="na">android:allowBackup=</span><span class="s">&quot;true&quot;</span>
-</span><span class='line'>            <span class="na">android:icon=</span><span class="s">&quot;@mipmap/ic_launcher&quot;</span>
-</span><span class='line'>            <span class="na">android:label=</span><span class="s">&quot;@string/app_name&quot;</span>
-</span><span class='line'>            <span class="na">android:supportsRtl=</span><span class="s">&quot;true&quot;</span>
-</span><span class='line'>            <span class="na">android:theme=</span><span class="s">&quot;@style/AppTheme&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="nt">&lt;activity</span> <span class="na">android:name=</span><span class="s">&quot;.AnotherActivity&quot;</span> <span class="na">android:process=</span><span class="s">&quot;droidyue.com&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/application&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nt">&lt;/manifest&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>第二个App的Manifest文件，SecondActivity运行在名为droidyue.com的进程中。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;manifest</span> <span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-</span><span class='line'>    <span class="na">package=</span><span class="s">&quot;com.example.jishuxiaoheiwu.accessfromanotherprocess&quot;</span>
-</span><span class='line'>    <span class="na">android:sharedUserId=</span><span class="s">&quot;droidyue.com&quot;</span>
-</span><span class='line'>    <span class="nt">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;application</span>
-</span><span class='line'>        <span class="na">android:allowBackup=</span><span class="s">&quot;true&quot;</span>
-</span><span class='line'>        <span class="na">android:icon=</span><span class="s">&quot;@mipmap/ic_launcher&quot;</span>
-</span><span class='line'>        <span class="na">android:label=</span><span class="s">&quot;@string/app_name&quot;</span>
-</span><span class='line'>        <span class="na">android:supportsRtl=</span><span class="s">&quot;true&quot;</span>
-</span><span class='line'>        <span class="na">android:theme=</span><span class="s">&quot;@style/AppTheme&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;activity</span> <span class="na">android:name=</span><span class="s">&quot;.SecondActivity&quot;</span>
-</span><span class='line'>            <span class="na">android:process=</span><span class="s">&quot;droidyue.com&quot;</span>
-</span><span class='line'>            <span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/application&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nt">&lt;/manifest&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上面的AnotherActivity和SecondActivity会运行在一个名为droidyue.com的进程中，尽管他们位于不同的App中。</p>
-
-<p>但是这种共用进程的方式会引发很多问题，不太建议大家使用。</p>
-
-<p>以上就是我关于Android中多进程的一些浅显的研究，如有问题，欢迎指正。</p>
 ]]></content>
   </entry>
   
