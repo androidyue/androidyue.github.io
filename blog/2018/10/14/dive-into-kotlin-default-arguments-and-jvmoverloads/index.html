@@ -1,0 +1,788 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>有点意思的Kotlin的默认参数与JVMOverloads - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="有点意思的Kotlin的默认参数与JVMOverloads Oct 14th, 2018 在Java中，当我们定义一个类的时候，总会出现一些变量是必须要填写的，而另一些是可选的。比如像下面这样，我们定一个Person类，其中name是必须填写的，而性别sex和isChinese可选， &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="/images/touch_icon.png"/>
+  
+  <link rel="canonical" href="https://droidyue.com/blog/2018/10/14/dive-into-kotlin-default-arguments-and-jvmoverloads">
+  <link href="/images/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/ad.js"></script>
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
+      function setCookie(name,value,days) {
+          if (days) {
+              var date = new Date();
+              date.setTime(date.getTime()+(days*24*60*60*1000));
+              var expires = "; expires="+date.toGMTString();
+          }
+          else var expires = "";
+          document.cookie = name+"="+value+expires+"; path=/";
+      }
+
+      function eraseCookie(name) {
+          setCookie(name,"",-1);
+      }
+
+
+      function readCookie(name) {
+          var nameEQ = name + "=";
+          var ca = document.cookie.split(';');
+          for(var i=0;i < ca.length;i++) {
+              var c = ca[i];
+              while (c.charAt(0)==' ') c = c.substring(1,c.length);
+              if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+          }
+          return null;
+      }
+
+      function loadJsNormally(jsUrl) {
+          document.write('<script type="text/javascript" charset="utf-8" src="'+ jsUrl +'"></scr'+'ipt>');
+      }
+
+      function loadJsWithoutCache(jsUrl) {
+          jsUrl = jsUrl + '?v=' + +Math.random();
+          loadJsNormally(jsUrl);
+      }
+
+      
+      var droidyueNoCacheLoading = 'droidyue.no-cache';
+
+      function isNoCacheLoadingEnabled() {
+          return readCookie(droidyueNoCacheLoading) != null;
+      }
+
+      var noCacheLoading = isNoCacheLoadingEnabled();
+
+      function enableNoCacheLoading() {
+          setCookie(droidyueNoCacheLoading, 1, 365);
+      }
+
+      function disableNoCacheLoading() {
+          eraseCookie(droidyueNoCacheLoading);
+      }
+
+
+      function loadJs(jsUrl) {
+          if (noCacheLoading) {
+              loadJsWithoutCache(jsUrl);
+          } else {
+              loadJsNormally(jsUrl);
+          }
+      }
+  </script>
+  <script type="text/javascript" charset="utf-8" src="/javascripts/blogutils.js"></script>
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/book_rec_base.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="/stylesheets/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="/stylesheets/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="/javascripts/trackurl_maker.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/common_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/program_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/android_book_data.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/java_book_data.js" charset="utf-8"></script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation">
+<form action="https://google.com/search" method="get"  target="_blank">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="搜索" />
+    <input type=hidden name=domains value="droidyue.com">
+    <input type=hidden name=sitesearch value="droidyue.com">
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">首页</a></li>
+  <li><a href="/ninki/">干货铺子</a></li>
+  <li><a href="/blog/archives/">存档</a></li>
+  <li><a href="/reading/">读书</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/cooperate/">合作</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/gfriends/">好基友</a></li>
+  <li><a href="/neitui/">内推</a></li>
+  <li><a href="/fuli/index.html">福利</a></li>
+  <li><a href="/links/">友链</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">有点意思的Kotlin的默认参数与JVMOverloads</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-10-14T19:18:00+08:00" pubdate data-updated="true">Oct 14<span>th</span>, 2018</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在Java中，当我们定义一个类的时候，总会出现一些变量是必须要填写的，而另一些是可选的。比如像下面这样，我们定一个Person类，其中name是必须填写的，而性别sex和isChinese可选，如果不填写就直接使用默认值。</p>
+
+<!--more-->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Person</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="nf">Person</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{}</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="nf">Person</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="kt">int</span> <span class="n">sex</span><span class="o">)</span> <span class="o">{}</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="nf">Person</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">isChinese</span><span class="o">){}</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="nf">Person</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="kt">int</span> <span class="n">sex</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">isChinese</span><span class="o">)</span> <span class="o">{}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当仅仅只有这两个可选参数时，上述的情况还好很多，可是当新增了其他的属性的时候，我们需要实现更多的构造方法重载。这在Java中更加容易出现telescoping constructor的问题,进而影响我们的开发效率和代码可读性。</p>
+
+<p>在Kotlin中，这种问题得到了很好的解决。这便是要提到的方法的默认参数，其实这个很简单，在其他的语言也是支持的。</p>
+
+<p>便于大家理解，我们先看一看默认参数是什么，下面是一个Book的类和它的构造方法（Kotlin代码）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nf">Book</span><span class="o">(</span><span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span><span class="o">,</span> <span class="n">val</span> <span class="nl">isChineseBook:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="o">,</span>
+</span><span class='line'>          <span class="n">val</span> <span class="nl">hasMultipleAuthor:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">,</span> <span class="n">val</span> <span class="nl">isPopular:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">,</span>
+</span><span class='line'>           <span class="n">val</span> <span class="nl">isForChildren:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">)</span> <span class="o">{</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们在调用的时候可以按照如下的Kotlin代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">1</span> <span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book0&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="mi">2</span> <span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book1&quot;</span><span class="o">,</span> <span class="n">isForChildren</span> <span class="o">=</span> <span class="kc">false</span><span class="o">)</span>
+</span><span class='line'><span class="mi">3</span> <span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book2&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+</span><span class='line'><span class="mi">4</span> <span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book3&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+</span><span class='line'><span class="mi">5</span> <span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book4&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+</span><span class='line'><span class="mi">6</span> <span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book5&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们可以根据自己的需要填写必要的参数值，当然也可以像第1行<code>Book("Book1", isForChildren = false)</code> 不按照顺序填写参数也是可以的，这是一个很赞的特性，能很大程度上增强代码的可读性。</p>
+
+<p>但是Kotlin的这一特性，只应用于Kotlin代码调用的场景，如果是在Java代码中，我们还是必须要填写完整的参数。这一点着实令人沮丧。不过还在有一个解决办法，那就是使用@JvmOverloads注解，示例如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">People</span> <span class="nd">@JvmOverloads</span> <span class="n">constructor</span><span class="o">(</span><span class="n">val</span> <span class="nl">name:</span> <span class="n">String</span><span class="o">,</span> <span class="n">val</span> <span class="nl">sex:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="o">,</span> <span class="n">val</span> <span class="nl">isChinese:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在Java中调用示例效果</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//call constructor with JVMOverloads</span>
+</span><span class='line'><span class="n">People</span> <span class="n">people</span> <span class="o">=</span> <span class="k">new</span> <span class="n">People</span><span class="o">(</span><span class="s">&quot;&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">People</span> <span class="n">people1</span> <span class="o">=</span> <span class="k">new</span> <span class="n">People</span><span class="o">(</span><span class="s">&quot;&quot;</span><span class="o">,</span> <span class="mi">0</span><span class="o">);</span>
+</span><span class='line'><span class="n">People</span> <span class="n">people2</span> <span class="o">=</span> <span class="k">new</span> <span class="n">People</span><span class="o">(</span><span class="s">&quot;&quot;</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>那么JvmOverloads是如何工作的呢？</p>
+
+<p>其实@JvmOverloads的作用就是告诉编译器，自动生成多个该方法的重载。因为我们通过反编译分析即可验证</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@JvmOverloads</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">People</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="kt">int</span> <span class="n">sex</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">isChinese</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Intrinsics</span><span class="o">.</span><span class="na">checkParameterIsNotNull</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="s">&quot;name&quot;</span><span class="o">);</span>
+</span><span class='line'>  <span class="kd">super</span><span class="o">();</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">sex</span> <span class="o">=</span> <span class="n">sex</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">isChinese</span> <span class="o">=</span> <span class="n">isChinese</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// $FF: synthetic method</span>
+</span><span class='line'><span class="nd">@JvmOverloads</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">People</span><span class="o">(</span><span class="n">String</span> <span class="n">var1</span><span class="o">,</span> <span class="kt">int</span> <span class="n">var2</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var3</span><span class="o">,</span> <span class="kt">int</span> <span class="n">var4</span><span class="o">,</span> <span class="n">DefaultConstructorMarker</span> <span class="n">var5</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var4</span> <span class="o">&amp;</span> <span class="mi">2</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var2</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var4</span> <span class="o">&amp;</span> <span class="mi">4</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var3</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">this</span><span class="o">(</span><span class="n">var1</span><span class="o">,</span> <span class="n">var2</span><span class="o">,</span> <span class="n">var3</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@JvmOverloads</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">People</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="kt">int</span> <span class="n">sex</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">sex</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="o">(</span><span class="n">DefaultConstructorMarker</span><span class="o">)</span><span class="kc">null</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@JvmOverloads</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">People</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="mi">6</span><span class="o">,</span> <span class="o">(</span><span class="n">DefaultConstructorMarker</span><span class="o">)</span><span class="kc">null</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意，上面的重载方法并没有按照组合来生成，比如<code>public People(@NotNull String name, int sex, boolean isChinese)</code>,因为这样也是出于可读性来考虑和避免潜在方法签名冲突问题。</p>
+
+<p>最后，我们来研究一下Kotlin中默认参数的实现原理。因为这里面存在着一些程序设计的巧妙之处。</p>
+
+<p>这里我们还是使用刚刚提到的Book这个类</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nf">Book</span><span class="o">(</span><span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span><span class="o">,</span> <span class="n">val</span> <span class="nl">isChineseBook:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="o">,</span>
+</span><span class='line'>          <span class="n">val</span> <span class="nl">hasMultipleAuthor:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">,</span> <span class="n">val</span> <span class="nl">isPopular:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">,</span>
+</span><span class='line'>           <span class="n">val</span> <span class="nl">isForChildren:</span> <span class="n">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过反编译，我们得到了一些类似这样的代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="nf">Book</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">isChineseBook</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">hasMultipleAuthor</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">isPopular</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">isForChildren</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Intrinsics</span><span class="o">.</span><span class="na">checkParameterIsNotNull</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="s">&quot;name&quot;</span><span class="o">);</span>
+</span><span class='line'>  <span class="kd">super</span><span class="o">();</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">isChineseBook</span> <span class="o">=</span> <span class="n">isChineseBook</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">hasMultipleAuthor</span> <span class="o">=</span> <span class="n">hasMultipleAuthor</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">isPopular</span> <span class="o">=</span> <span class="n">isPopular</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">isForChildren</span> <span class="o">=</span> <span class="n">isForChildren</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// $FF: synthetic method</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">Book</span><span class="o">(</span><span class="n">String</span> <span class="n">var1</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var2</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var3</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var4</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var5</span><span class="o">,</span> <span class="kt">int</span> <span class="n">var6</span><span class="o">,</span> <span class="n">DefaultConstructorMarker</span> <span class="n">var7</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var6</span> <span class="o">&amp;</span> <span class="mi">2</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var2</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var6</span> <span class="o">&amp;</span> <span class="mi">4</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var3</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var6</span> <span class="o">&amp;</span> <span class="mi">8</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var4</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var6</span> <span class="o">&amp;</span> <span class="mi">16</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var5</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">this</span><span class="o">(</span><span class="n">var1</span><span class="o">,</span> <span class="n">var2</span><span class="o">,</span> <span class="n">var3</span><span class="o">,</span> <span class="n">var4</span><span class="o">,</span> <span class="n">var5</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>是不是有点不一样，它只生成了两个构造方法，而不是所谓的多个参数组合的构造方法。更有意思的是，当我们这样调用时</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book0&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book2&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+</span><span class='line'><span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book3&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+</span><span class='line'><span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book4&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+</span><span class='line'><span class="n">Book</span><span class="o">(</span><span class="s">&quot;Book5&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其对应的字节码反编译成java是</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">new</span> <span class="nf">Book</span><span class="o">(</span><span class="s">&quot;Book0&quot;</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="mi">30</span><span class="o">,</span> <span class="o">(</span><span class="n">DefaultConstructorMarker</span><span class="o">)</span><span class="kc">null</span><span class="o">);</span>
+</span><span class='line'><span class="k">new</span> <span class="nf">Book</span><span class="o">(</span><span class="s">&quot;Book2&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="mi">28</span><span class="o">,</span> <span class="o">(</span><span class="n">DefaultConstructorMarker</span><span class="o">)</span><span class="kc">null</span><span class="o">);</span>
+</span><span class='line'><span class="k">new</span> <span class="nf">Book</span><span class="o">(</span><span class="s">&quot;Book3&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="mi">24</span><span class="o">,</span> <span class="o">(</span><span class="n">DefaultConstructorMarker</span><span class="o">)</span><span class="kc">null</span><span class="o">);</span>
+</span><span class='line'><span class="k">new</span> <span class="nf">Book</span><span class="o">(</span><span class="s">&quot;Book4&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="mi">16</span><span class="o">,</span> <span class="o">(</span><span class="n">DefaultConstructorMarker</span><span class="o">)</span><span class="kc">null</span><span class="o">);</span>
+</span><span class='line'><span class="k">new</span> <span class="nf">Book</span><span class="o">(</span><span class="s">&quot;Book5&quot;</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们会注意到上面有很多数字，比如30,14,28,24,16等。那么这些数字是怎么生成的呢？</p>
+
+<p>对于构造方法的每个参数，</p>
+
+<ul>
+<li>都有一个位置，即方法声明时所在的位置，我们这里使用i代替表示。注意该从0开始，</li>
+<li>每个参数有一个mask值，该值为2的i次方，比如第0个位置的参数的mask值为1，第1个位置的mask值为2，以此类推。</li>
+<li>如果在调用时，编译器检测到某些参数没有调用，就将这些参数的mask值，求和，便生成了我们上面提到的数字。</li>
+</ul>
+
+
+<p>具体示例如下</p>
+
+<p><img src="https://asset.droidyue.com/image/kotlin_jvm_overloads.png" alt="https://asset.droidyue.com/image/kotlin_jvm_overloads.png" /></p>
+
+<p>比如Book(&ldquo;Book0&rdquo;)我们传递了第一个参数，所以最后的30 就是由 2 + 4 + 8 + 16 这些缺失的位置的mask值计算得出来的。</p>
+
+<p>知道了，mask值的生成规则，就便于我们理解编译器生成的构造方法了。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// $FF: synthetic method</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">Book</span><span class="o">(</span><span class="n">String</span> <span class="n">var1</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var2</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var3</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var4</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">var5</span><span class="o">,</span> <span class="kt">int</span> <span class="n">var6</span><span class="o">,</span> <span class="n">DefaultConstructorMarker</span> <span class="n">var7</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var6</span> <span class="o">&amp;</span> <span class="mi">2</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var2</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var6</span> <span class="o">&amp;</span> <span class="mi">4</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var3</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var6</span> <span class="o">&amp;</span> <span class="mi">8</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var4</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="o">((</span><span class="n">var6</span> <span class="o">&amp;</span> <span class="mi">16</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">var5</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">this</span><span class="o">(</span><span class="n">var1</span><span class="o">,</span> <span class="n">var2</span><span class="o">,</span> <span class="n">var3</span><span class="o">,</span> <span class="n">var4</span><span class="o">,</span> <span class="n">var5</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其实这个构造方法就是根据根据mask判断，某个位置的参数是否在调用时进行了赋值，如果没有赋值则进行设置默认值操作。</p>
+
+<p>这种使用mask或者flag的方法其实很巧，减少了一些不必要的重载方法的生成。对于我们以后处理类似的问题，提供了一些不过的思路和参考价值。</p>
+</div>
+
+
+  <p>
+  我的博客即将搬运同步至腾讯云+社区，邀请大家一同入驻：<a href="https://cloud.tencent.com/developer/support-plan?invite_code=2t07a740wrok0">https://cloud.tencent.com/developer/support-plan?invite_code=2t07a740wrok0</a>
+  </p>
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/vote_tips.js"></script>
+
+  <script type="text/javascript">var jd_union_pid="1287526995";var jd_union_euid="";</script><script type="text/javascript" src="//ads-union.jd.com/static/js/union.js"></script>
+
+  
+  <div id="post_rec"></div>
+  <br/>
+  
+  <h2>我的知乎 Live 推荐</h2>
+<ul>
+	<li><a href="https://www.zhihu.com/lives/802899577341620224">我学安卓的那些套路</a></li>
+	<li><a href="https://www.zhihu.com/lives/796775894273363968">程序员如何写好一篇技术文章？</a></li>
+</ul>
+
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/random_recommend.js">
+</script>
+<script type="text/javascript" charset="utf-8">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-10-14T19:18:00+08:00" pubdate data-updated="true">Oct 14<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/10/07/dive-into-kotlins-local-function/" title="Previous Post: 探究Kotlin的局部方法">&laquo; 探究Kotlin的局部方法</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/10/21/how-jvm-handle-exceptions/" title="Next Post: 详解JVM如何处理异常">详解JVM如何处理异常 &raquo;</a>
+        
+    </p>
+    
+
+
+
+	<!-- JiaThis Button BEGIN -->
+
+<!-- JiaThis Button END -->
+
+
+<script type="text/javascript" charset="utf-8" src="https://js.droidyue.com/post_end_rec_changable.js"></script>
+  </footer>
+  </article>
+
+
+  <section>
+   <div class="social-share"></div>
+
+<!--  css & js -->
+<link rel="stylesheet" href="https://js.droidyue.com/share.js/css/share.min.css">
+<script src="https://js.droidyue.com/share.js/js/social-share.min.js"></script>
+<br/>
+<div id="disqus_thread"></div>
+<script>
+
+/**
+*  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+*  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+/*
+var disqus_config = function () {
+this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+};
+*/
+(function() { // DON'T EDIT BELOW THIS LINE
+var d = document, s = d.createElement('script');
+s.src = 'https://androidyue.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+  </section>
+
+
+<link href="/stylesheets/remote.css"  rel="stylesheet" type="text/css">
+<script type="text/javascript" charset="utf-8" src="/javascripts/post_end_attentions.js"></script>
+	<script type="text/javascript">var jd_union_unid="331185104",jd_ad_ids="506:6",jd_union_pid="CKzIoJOULBDQ9/WdARoAIM779qcEKgA=";var jd_width=760;var jd_height=90;var jd_union_euid="";var p="AhIDUx5dHQsbA2VEH0hfIlgRRgYlXVZaCCsfSlpMWGVEH0hfIlNdbht3SXF4NkRYaUdvDjVaPmVVaWdZF2sVAhYBURhZFAYaN1cZWxULFgdUHmslXVZaCCsQewMiWBFGBiUCFgdTGFkTBhQAUx5TJQMiN2U%3D";</script><script type="text/javascript" charset="utf-8" src="//u-x.jd.com/static/js/auto.js"></script>
+	
+</div>
+
+<aside class="sidebar">
+  
+    <html>
+	<p align="center">空间与SSL证书赞助商广告</p>
+	<a href="https://www.upyun.com/products/prismcdn?utm_source=droidyue&utm_medium=banner&utm_campaign=prismcdn&utm_content=0510"><img src="https://asset.droidyue.com/image/droidyue-upyun_prism.png" class="no_boarder_class" style="max-Width:100%"></a>
+
+	<script type="text/javascript" src="https://asset.droidyue.com/javascript/qr_images.js"></script>
+	
+	<p align="center">小米智能家居组合套餐</p>
+	<a href="https://union-click.jd.com/jdc?d=tXELKB"><img class="no_boarder_class" style="max-Width:100%" src="https://asset.droidyue.com/image/xiaomi_zhineng_jiaju_taocan.jpg" ></a>
+	
+</html>
+<script type="text/javascript">
+	loadJs('/javascripts/right_image_rec.js');
+</script>
+<script type="text/javascript" src="/javascripts/notice.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/10/21/how-jvm-handle-exceptions/">详解JVM如何处理异常</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/10/14/dive-into-kotlin-default-arguments-and-jvmoverloads/">有点意思的Kotlin的默认参数与JVMOverloads</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/10/07/dive-into-kotlins-local-function/">探究Kotlin的局部方法</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/07/23/a-briefing-looking-at-weakhashmap/">浅析WeakHashMap</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/07/16/variable-localname-might-not-have-been-initialized/">为什么局部变量需要显式设置初始化值</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/07/10/android-dot-content-dot-res-dot-assetmanager-dot-finalize-timed-out-after-10-seconds/">AssetManager.finalize() Timed Out After 10 Seconds分析</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/07/01/kuan-dai-ti-su-ji/">宽带提速记</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/05/15/who-should-be-responsible-for-checking-parameter/">谁来检查方法参数合法性</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/04/01/do-not-bother-the-user-when-app-crash-in-a-background-state/">Android中实现用户无感知处理后台崩溃</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/03/17/qiangpozheng/">关于改善强迫症的一些方法</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/03/11/simulate-view-click-by-x-and-y/">Android基于坐标对View进行模拟点击事件</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/01/31/how-to-speed-up-kotlin-compilation/">关于应用Kotlin后的编译速度问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2018/01/23/the-first-time-my-blog-was-hacked/">网站第一次被黑的记录</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2017/11/05/dive-into-kotlin-constants/">Kotlin中常量的探究</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2017/10/22/to-way-to-learning-android/">我学习Android的一些套路</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" charset="utf-8">
+	loadJs("/javascripts/blogroll_data_source.js");
+</script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+<h3>广告一条街</h3>
+<script type="text/javascript">var jd_union_unid="331185104",jd_ad_ids="520:6",jd_union_pid="CLOMnZOULBDQ9/WdARoAIPCF9qcEKgA=";var jd_width=250;var jd_height=250;var jd_union_euid="";var p="AhIDUx5cEAsSA2VEH0hfIlgRRgYlXVZaCCsfSlpMWGVEH0hfIkYBTy9wZUBjN0k5EkMbfRVEBW9ec3dZF2sVAhYBURhZFAYaN1cZWxULFgdUHmslXVZaCCsQewMiWBFGBiUCFgdTGFkTBhIPXRheJQMiN2U%3D";</script><script type="text/javascript" charset="utf-8" src="//u-x.jd.com/static/js/auto.js"></script>
+<br/>
+<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
+<center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
+  
+</aside>
+
+
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> 云存储提供方： 
+	  <a href="https://console.upyun.com/register/?invite=Hkw6NeiBZ">
+	      <img src="https://www.upyun.com/static/90X45.png" alt="UPYUN">
+	  
+	  </a>
+  </span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+<script type="text/javascript" charset="utf-8" src="/javascripts//baidu_analytics.js">
+</script> 
+
+<script type="text/javascript">
+var jiathis_config = {data_track_clickback:'true'};
+</script>
+
+<script type="text/javascript" src="/javascripts/toastr.min.js"></script>
+<link href="/stylesheets/toastr.min_v1.css" rel="stylesheet"/>
+<div id="toast"></div>
+<script type="text/javascript">
+	loadJsWithoutCache("https://asset.droidyue.com/javascript/rec_dialog.js");
+</script>
+
+<script type="text/javascript">
+/* 	var url = "http://onionos.com:8080/report_visitor?landUrl=" + window.btoa(document.location.href) + "&refer=" + window.btoa(document.referrer) + "&ua=" + window.btoa(navigator.userAgent);
+	loadJsNormally(url);*/
+</script></footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="/javascripts/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+  </div>
+</body>
+</html>
