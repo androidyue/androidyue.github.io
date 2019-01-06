@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2019-01-05T20:39:33+08:00</updated>
+  <updated>2019-01-06T21:43:03+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,314 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[JVM 如何处理未捕获异常]]></title>
+    <link href="https://droidyue.com/blog/2019/01/06/how-java-handle-uncaught-exceptions/"/>
+    <updated>2019-01-06T21:18:00+08:00</updated>
+    <id>https://droidyue.com/blog/2019/01/06/how-java-handle-uncaught-exceptions</id>
+    <content type="html"><![CDATA[<p>继之前的文章 <a href="https://droidyue.com/blog/2018/10/21/how-jvm-handle-exceptions/">详解JVM如何处理异常</a>，今天再次发布一篇比较关联的文章，如题目可知，今天聊一聊在JVM中线程遇到未捕获异常的问题，其中涉及到线程如何处理未捕获异常和一些内容介绍。</p>
+
+<!--more-->
+
+
+<h2>什么是未捕获异常</h2>
+
+<p>未捕获异常指的是我们在方法体中没有使用try-catch捕获的异常，比如下面的例子</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">testUncaughtException</span><span class="o">(</span><span class="n">String</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">arg</span><span class="o">.</span><span class="na">length</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ArithmeticException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码很有可能发生如下情况</p>
+
+<ul>
+<li>如果方法参数arg传递null，会出现NullPointerException</li>
+<li>如果参数arg传递内容为空的字符串(&ldquo;&rdquo;)，会出现ArithmeticException</li>
+</ul>
+
+
+<p>对于上面的问题，我们不难发现</p>
+
+<ul>
+<li>上面可能出现的NullPointerException和ArithmeticException都属于Unchecked Exceptions</li>
+<li>而ArithmeticException被我们人为try-catch捕获了，它不符合本文对于未捕获异常的定义</li>
+<li>NullPointerException 由于我们没有catch住，就变成了我们要聊的未捕获异常</li>
+<li>另外，未捕获异常实际是Unchecked Exceptions的子集</li>
+</ul>
+
+
+<h2>UncaughtExceptionHandler 是什么</h2>
+
+<ul>
+<li>它是线程遇到未捕获异常的一个处理者接口</li>
+<li>它包含一个方法<code>void uncaughtException(Thread t, Throwable e);</code> 用来处理接收处理异常发生后的操作，比如收集崩溃信息并上报等</li>
+<li>可以通过 实例方法 <code>Thread.setUncaughtExceptionHandler</code> 为某一个Thread实例设置未捕获异常处理者</li>
+<li>也可以通过 静态方法 <code>Thread.setDefaultUncaughtExceptionHandler</code> 设置所有Thread实例的未捕获异常处理者</li>
+</ul>
+
+
+<h2>ThreadGroup 是什么</h2>
+
+<ul>
+<li>ThreadGroup 是线程的集合</li>
+<li>ThreadGroup 也可以包含子ThreadGroup</li>
+<li>除了初始的ThreadGroup 之外，每个ThreadGroup都有一个父 ThreadGroup</li>
+<li>ThreadGroup 自身实现了Thread.UncaughtExceptionHandler，用来相应处理其内部的线程和ThreadGroup发生未捕获异常。</li>
+</ul>
+
+
+<h2>未捕获异常处理者 设置指南</h2>
+
+<p><img src="https://asset.droidyue.com/image/2019_first_half/how_to_set_uncaught_exceptions.png" alt="how to set uncaught exception handler" /></p>
+
+<h2>线程发生了未捕获异常，JVM怎么处理</h2>
+
+<h3>分发Throwable实例</h3>
+
+<p>当线程A中出现了未捕获异常时，JVM会调用线程A的<code>dispatchUncaughtException(Throwable)</code>方法</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Dispatch an uncaught exception to the handler. This method is</span>
+</span><span class='line'><span class="cm"> * intended to be called only by the JVM.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">dispatchUncaughtException</span><span class="o">(</span><span class="n">Throwable</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">getUncaughtExceptionHandler</span><span class="o">().</span><span class="na">uncaughtException</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>获取未捕获异常处理者</h3>
+
+<ul>
+<li>每个线程会有一个变量(uncaughtExceptionHandler)来保存未捕获异常的处理者</li>
+<li>在线程需要确定Throwable分发目标的处理者时，优先获取当前线程中uncaughtExceptionHandler变量</li>
+<li>如果出问题线程的uncaughtExceptionHandler为null（即没有显式设置异常处理者），则使用自己所在的ThreadGroup来作为未捕获异常处理者。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Returns the handler invoked when this thread abruptly terminates</span>
+</span><span class='line'><span class="cm"> * due to an uncaught exception. If this thread has not had an</span>
+</span><span class='line'><span class="cm"> * uncaught exception handler explicitly set then this thread&#39;s</span>
+</span><span class='line'><span class="cm"> * &lt;tt&gt;ThreadGroup&lt;/tt&gt; object is returned, unless this thread</span>
+</span><span class='line'><span class="cm"> * has terminated, in which case &lt;tt&gt;null&lt;/tt&gt; is returned.</span>
+</span><span class='line'><span class="cm"> * @since 1.5</span>
+</span><span class='line'><span class="cm"> * @return the uncaught exception handler for this thread</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">UncaughtExceptionHandler</span> <span class="nf">getUncaughtExceptionHandler</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">uncaughtExceptionHandler</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">?</span>
+</span><span class='line'>        <span class="n">uncaughtExceptionHandler</span> <span class="o">:</span> <span class="n">group</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>如果Throwable分发给ThreadGroup</h4>
+
+<ul>
+<li>ThreadGroup会尝试转给它的父ThreadGroup（如果存在的话）</li>
+<li>如果上面没有找到对应的ThreadGroup，则尝试获取<code>Thread.getDefaultUncaughtExceptionHandler()</code>并分发</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * Called by the Java Virtual Machine when a thread in this</span>
+</span><span class='line'><span class="cm">     * thread group stops because of an uncaught exception, and the thread</span>
+</span><span class='line'><span class="cm">     * does not have a specific {@link Thread.UncaughtExceptionHandler}</span>
+</span><span class='line'><span class="cm">     * installed.</span>
+</span><span class='line'><span class="cm">     * &lt;p&gt;</span>
+</span><span class='line'><span class="cm">     * The &lt;code&gt;uncaughtException&lt;/code&gt; method of</span>
+</span><span class='line'><span class="cm">     * &lt;code&gt;ThreadGroup&lt;/code&gt; does the following:</span>
+</span><span class='line'><span class="cm">     * &lt;ul&gt;</span>
+</span><span class='line'><span class="cm">     * &lt;li&gt;If this thread group has a parent thread group, the</span>
+</span><span class='line'><span class="cm">     *     &lt;code&gt;uncaughtException&lt;/code&gt; method of that parent is called</span>
+</span><span class='line'><span class="cm">     *     with the same two arguments.</span>
+</span><span class='line'><span class="cm">     * &lt;li&gt;Otherwise, this method checks to see if there is a</span>
+</span><span class='line'><span class="cm">     *     {@linkplain Thread#getDefaultUncaughtExceptionHandler default</span>
+</span><span class='line'><span class="cm">     *     uncaught exception handler} installed, and if so, its</span>
+</span><span class='line'><span class="cm">     *     &lt;code&gt;uncaughtException&lt;/code&gt; method is called with the same</span>
+</span><span class='line'><span class="cm">     *     two arguments.</span>
+</span><span class='line'><span class="cm">     * &lt;li&gt;Otherwise, this method determines if the &lt;code&gt;Throwable&lt;/code&gt;</span>
+</span><span class='line'><span class="cm">     *     argument is an instance of {@link ThreadDeath}. If so, nothing</span>
+</span><span class='line'><span class="cm">     *     special is done. Otherwise, a message containing the</span>
+</span><span class='line'><span class="cm">     *     thread&#39;s name, as returned from the thread&#39;s {@link</span>
+</span><span class='line'><span class="cm">     *     Thread#getName getName} method, and a stack backtrace,</span>
+</span><span class='line'><span class="cm">     *     using the &lt;code&gt;Throwable&lt;/code&gt;&#39;s {@link</span>
+</span><span class='line'><span class="cm">     *     Throwable#printStackTrace printStackTrace} method, is</span>
+</span><span class='line'><span class="cm">     *     printed to the {@linkplain System#err standard error stream}.</span>
+</span><span class='line'><span class="cm">     * &lt;/ul&gt;</span>
+</span><span class='line'><span class="cm">     * &lt;p&gt;</span>
+</span><span class='line'><span class="cm">     * Applications can override this method in subclasses of</span>
+</span><span class='line'><span class="cm">     * &lt;code&gt;ThreadGroup&lt;/code&gt; to provide alternative handling of</span>
+</span><span class='line'><span class="cm">     * uncaught exceptions.</span>
+</span><span class='line'><span class="cm">     *</span>
+</span><span class='line'><span class="cm">     * @param   t   the thread that is about to exit.</span>
+</span><span class='line'><span class="cm">     * @param   e   the uncaught exception.</span>
+</span><span class='line'><span class="cm">     * @since   JDK1.0</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">uncaughtException</span><span class="o">(</span><span class="n">Thread</span> <span class="n">t</span><span class="o">,</span> <span class="n">Throwable</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">parent</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">parent</span><span class="o">.</span><span class="na">uncaughtException</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">Thread</span><span class="o">.</span><span class="na">UncaughtExceptionHandler</span> <span class="n">ueh</span> <span class="o">=</span>
+</span><span class='line'>                <span class="n">Thread</span><span class="o">.</span><span class="na">getDefaultUncaughtExceptionHandler</span><span class="o">();</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">ueh</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">ueh</span><span class="o">.</span><span class="na">uncaughtException</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(!(</span><span class="n">e</span> <span class="k">instanceof</span> <span class="n">ThreadDeath</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">.</span><span class="na">print</span><span class="o">(</span><span class="s">&quot;Exception in thread \&quot;&quot;</span>
+</span><span class='line'>                                 <span class="o">+</span> <span class="n">t</span><span class="o">.</span><span class="na">getName</span><span class="o">()</span> <span class="o">+</span> <span class="s">&quot;\&quot; &quot;</span><span class="o">);</span>
+</span><span class='line'>                <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>将上面的处理流程做成图的形式，就是下图所示</p>
+
+<p><img src="https://asset.droidyue.com/image/2019_first_half/UncaughtExceptionProcess.png" alt="Uncaught exception process" /></p>
+
+<p>注：上述图片来自<a href="https://www.javamex.com/tutorials/exceptions/exceptions_uncaught_handler.shtml">https://www.javamex.com/tutorials/exceptions/exceptions_uncaught_handler.shtml</a></p>
+
+<h2>Questions</h2>
+
+<h3>初始的ThreadGroup是什么</h3>
+
+<p>上面提到了初始的ThreadGroup没有父ThreadGroup，是主线程所在的ThreadGroup么？</p>
+
+<p>这个问题，我们可以通过这样一段代码验证</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">dumpThreadGroups</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">ThreadGroup</span> <span class="n">threadGroup</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getThreadGroup</span><span class="o">();</span>
+</span><span class='line'>    <span class="k">while</span><span class="o">(</span><span class="n">threadGroup</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;dumpThreadGroups threadGroup=&quot;</span> <span class="o">+</span> <span class="n">threadGroup</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
+</span><span class='line'>        <span class="n">threadGroup</span> <span class="o">=</span> <span class="n">threadGroup</span><span class="o">.</span><span class="na">getParent</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行该方法对应的输出是</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">dumpThreadGroups</span> <span class="n">threadGroup</span><span class="o">=</span><span class="n">main</span>
+</span><span class='line'><span class="n">dumpThreadGroups</span> <span class="n">threadGroup</span><span class="o">=</span><span class="n">system</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因此我们可以发现，初始的ThreadGroup是一个叫做system的ThreadGroup，而不是main ThreadGroup</p>
+
+<h3>setDefaultUncaughtExceptionHandler 设置的一定会被调用到么</h3>
+
+<p>这其实是一个很好的问题，答案是不一定会被调用，因为可能存在以下的情况</p>
+
+<ul>
+<li>出问题的线程设置了对应的UncaughtExcpetionHandler，优先响应分发到这个Handler</li>
+<li>出问题的线程所在的ThreadGroup包括其祖先ThreadGroup 重写了uncaughtException 也可能造成线程默认的Handler无法被调用</li>
+<li>出问题的线程重写了dispatchUncaughtException 可能性较小</li>
+<li>出问题的线程重写了getUncaughtExceptionHandler 可能性较小</li>
+</ul>
+
+
+<h2>参考声明</h2>
+
+<ul>
+<li><a href="https://www.javamex.com/tutorials/exceptions/exceptions_uncaught_handler.shtml">How uncaught exceptions are handled</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[JVM 中的守护线程]]></title>
@@ -3521,77 +3829,6 @@
 <p>做个比较现实的比拟，Java就像是一趟从我的家乡保定开往北京西的耗时将近2个小时甚至更长的普通列车，而Kotlin则是那趟仅需40分钟就能到达的高铁。通常的人都会选择高铁，因为它节省了时间和提高了体验。这个时间和体验对应编程中的，我想应该是高效率和高可读性，可维护性的代码。</p>
 
 <p>现在好了，有了Google的支持，Kotlin转Android相信在不久的将来就会全面展开。篡改Python的一句名言“人生苦短，我用Kotlin”，这样一个高效实用的语言应该会被越来越多的团队所接受，并应用到开发生产中。当然也希望在国内环境下大放异彩。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[一个简单实用的Android调试应用技巧]]></title>
-    <link href="https://droidyue.com/blog/2017/05/14/a-little-but-useful-debug-skill_for_android/"/>
-    <updated>2017-05-14T20:37:00+08:00</updated>
-    <id>https://droidyue.com/blog/2017/05/14/a-little-but-useful-debug-skill_for_android</id>
-    <content type="html"><![CDATA[<p>在应用开发中，我们常常会进行日志打印或者debug调试，以此来分析运行时的一些信息，便于发现bug和问题。Android Studio的Debug功能很好用，但是有时候有些情况下，就显得不是那么快捷和便利。</p>
-
-<!--more-->
-
-
-<p>比如</p>
-
-<ul>
-<li>我们调试的点在应用一打开的时候，很靠前，例如Application的onCreate方法中，以至于我们不能足够快的设置进程为debug模式</li>
-<li>虽然上面的情况可以通过Android Studio的debug运行来解决，但是如果项目很大的话，运行起来也会比较耽误时间</li>
-</ul>
-
-
-<p>那么怎么解决上面的问题呢，其实只需要执行一行命令即可</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">adb</span> <span class="n">shell</span> <span class="n">am</span> <span class="n">set</span><span class="o">-</span><span class="n">debug</span><span class="o">-</span><span class="n">app</span> <span class="o">-</span><span class="n">w</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">jishuxiaoheiwu</span><span class="o">.</span><span class="na">appdebugsample</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
-
-<p>其中</p>
-
-<ul>
-<li>set-debug-app 用来应用为debug模式</li>
-<li>-w 意思为wait，在进程启动的时候，等待debugger进行连接</li>
-<li><code>com.example.jishuxiaoheiwu.appdebugsample</code> 代表想要调试的应用的包名或ApplicationId</li>
-</ul>
-
-
-<p>执行上面的命令，当我们再次启动目标应用时，会得到这样的画面</p>
-
-<p><img src="http://7jpolu.com1.z0.glb.clouddn.com/android_waiting_for_debugger_dialog.png" alt="Android Waiting For Debugger Dialog" /></p>
-
-<p>然后，我们就会有足够的时间，来使用Run&mdash;> Attach Debugger to Android Process 来绑定进程debug。  绑定后对话框消失，下次启动就是正常的启动（没有上面的对话框了）</p>
-
-<p>那么一次debug不一定能解决问题，多次调试则在所难免，那么每次都要执行这个命令么？</p>
-
-<p>答案是可以，但是有更好的方式。即</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">adb</span> <span class="n">shell</span> <span class="n">am</span> <span class="n">set</span><span class="o">-</span><span class="n">debug</span><span class="o">-</span><span class="n">app</span> <span class="o">-</span><span class="n">w</span> <span class="o">--</span><span class="n">persistent</span>  <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">jishuxiaoheiwu</span><span class="o">.</span><span class="na">appdebugsample</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上面的代码和之前有所不同，表现在一个&mdash;persistent</p>
-
-<ul>
-<li>&mdash;persitent意思是持久的，意思是一直设置这个应用为调试模式，即每次开启（进程创建）都会弹出对话框，即使卸载再安装或者更新应用</li>
-</ul>
-
-
-<p>如果多次debug完成后，解决了问题，想要恢复正常的启动也很简单</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">adb</span> <span class="n">shell</span> <span class="n">am</span> <span class="n">clear</span><span class="o">-</span><span class="n">debug</span><span class="o">-</span><span class="n">app</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>这个调试的方法很简单，但是可能会节省我们很多的宝贵时间。希望可以帮助到各位开发同行。</p>
-
-<p>另外，当你的开发中遇到效率问题时，你需要做出思考，发觉更快捷的工作方式，而不是为了调试Application中onCreate方法中的代码，每次都点击Android Studio的debug按钮。</p>
 ]]></content>
   </entry>
   
