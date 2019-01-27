@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2019-01-21T20:09:30+08:00</updated>
+  <updated>2019-01-27T20:40:35+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,150 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[处理 WebView 与 ViewPager 滑动冲突]]></title>
+    <link href="https://droidyue.com/blog/2019/01/27/webview-javascript-scrolling-issue/"/>
+    <updated>2019-01-27T20:07:00+08:00</updated>
+    <id>https://droidyue.com/blog/2019/01/27/webview-javascript-scrolling-issue</id>
+    <content type="html"><![CDATA[<p>问题场景
+在项目的App中，有一个ViewPager，它内部包含了WebView，而内部的webview加载了一个可以滑动的网页。</p>
+
+<p>当我们在网页滑动的时候，会直接切换到下一个viewpager的页面，而不是优先响应webview的滑动。</p>
+
+<!--more-->
+
+
+<p>具体的效果如视频</p>
+
+<p><video style="width:50%"   controls>
+  <source src="https://asset.droidyue.com/video/web_scroll_bad.mp4" type="video/mp4">
+</video></p>
+
+<p>期待的示例效果
+<video style="width:50%"   controls>
+  <source src="https://asset.droidyue.com/video/web_scroll_good.mp4" type="video/mp4">
+</video></p>
+
+<h2>解决思路</h2>
+
+<p>其实思路还是比较简单，大概如下</p>
+
+<ul>
+<li>优先响应webview内部滑动</li>
+<li>如果webview内部滑动完成，则响应外部的滑动</li>
+</ul>
+
+
+<p>那么问题就来了，怎么判断webview内部滑动结束就是解决问题的关键了。</p>
+
+<p>解决问题的关键就在于WebView.onOverScrolled方法</p>
+
+<p><img src="https://asset.droidyue.com/image/overscrolled_webview.png" alt="WebView.onOverScrolled" /></p>
+
+<p>看了上面的文档，我们可能还是有一些疑惑，到底什么是overScroll。正所谓一图胜千言，看一下下图就知道了。</p>
+
+<p><img src="https://asset.droidyue.com/image/overscroll_effect.png" alt="Webview overscrolled effect" /></p>
+
+<p>上面红框的内容就是overScroll的效果，其实就是划过了的意思（英语中over有过的意思）</p>
+
+<p>了解了上面的信息，我们具体的实施办法也就有了。</p>
+
+<ul>
+<li>在WebView的onTouchEvent事件为ACTION_DOWN时，查找父视图是否是可以滑动的视图(如ViewPager)，如果是,则通过requestDisallowInterceptTouchEvent(true)调用，请求父视图不要拦截touchEvent</li>
+<li>如果WebView不再响应内部滑动（即onOverScrolled中clampedX或者clampedY值为true），我们再起调用requestDisallowInterceptTouchEvent(false)请求父视图恢复拦截处理touchEvent.</li>
+</ul>
+
+
+<p>核心代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">override</span> <span class="n">fun</span> <span class="nf">onTouchEvent</span><span class="o">(</span><span class="nl">event:</span> <span class="n">MotionEvent</span><span class="o">):</span> <span class="n">Boolean</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">event</span><span class="o">.</span><span class="na">action</span> <span class="o">==</span> <span class="n">MotionEvent</span><span class="o">.</span><span class="na">ACTION_DOWN</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">val</span> <span class="n">viewParent</span> <span class="o">=</span> <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+</span><span class='line'>       <span class="n">viewParent</span><span class="o">?.</span><span class="na">requestDisallowInterceptTouchEvent</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">onTouchEvent</span><span class="o">(</span><span class="n">event</span><span class="o">)</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">override</span> <span class="n">fun</span> <span class="nf">onOverScrolled</span><span class="o">(</span><span class="nl">scrollX:</span> <span class="n">Int</span><span class="o">,</span> <span class="nl">scrollY:</span> <span class="n">Int</span><span class="o">,</span> <span class="nl">clampedX:</span> <span class="n">Boolean</span><span class="o">,</span> <span class="nl">clampedY:</span> <span class="n">Boolean</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">dumpMessage</span><span class="o">(</span><span class="s">&quot;onOverScrolled scrollX=&quot;</span> <span class="o">+</span> <span class="n">scrollX</span> <span class="o">+</span> <span class="s">&quot;;scrollY=&quot;</span> <span class="o">+</span> <span class="n">scrollY</span>
+</span><span class='line'>           <span class="o">+</span> <span class="s">&quot;;clampedX=&quot;</span> <span class="o">+</span> <span class="n">clampedX</span> <span class="o">+</span> <span class="s">&quot;;clampedY=&quot;</span> <span class="o">+</span> <span class="n">clampedY</span><span class="o">)</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">clampedX</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">val</span> <span class="n">viewParent</span> <span class="o">=</span> <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+</span><span class='line'>       <span class="n">viewParent</span><span class="o">?.</span><span class="na">requestDisallowInterceptTouchEvent</span><span class="o">(</span><span class="kc">false</span><span class="o">)</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="kd">super</span><span class="o">.</span><span class="na">onOverScrolled</span><span class="o">(</span><span class="n">scrollX</span><span class="o">,</span> <span class="n">scrollY</span><span class="o">,</span> <span class="n">clampedX</span><span class="o">,</span> <span class="n">clampedY</span><span class="o">)</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">private</span> <span class="n">fun</span> <span class="nf">findViewParentIfNeeds</span><span class="o">(</span><span class="nl">tag:</span> <span class="n">View</span><span class="o">):</span> <span class="n">ViewParent</span><span class="o">?</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">val</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">tag</span><span class="o">.</span><span class="na">parent</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">parent</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="k">return</span> <span class="n">parent</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="k">return</span> <span class="nf">if</span> <span class="o">(</span><span class="n">parent</span> <span class="n">is</span> <span class="n">ViewPager</span> <span class="o">||</span>
+</span><span class='line'>           <span class="n">parent</span> <span class="n">is</span> <span class="n">AbsListView</span> <span class="o">||</span>
+</span><span class='line'>           <span class="n">parent</span> <span class="n">is</span> <span class="n">ScrollView</span> <span class="o">||</span>
+</span><span class='line'>           <span class="n">parent</span> <span class="n">is</span> <span class="n">HorizontalScrollView</span> <span class="o">||</span>
+</span><span class='line'>           <span class="n">parent</span> <span class="n">is</span> <span class="n">GridView</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">parent</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>       <span class="k">if</span> <span class="o">(</span><span class="n">parent</span> <span class="n">is</span> <span class="n">View</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>           <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="n">parent</span> <span class="n">as</span> <span class="n">View</span><span class="o">)</span>
+</span><span class='line'>       <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>           <span class="n">parent</span>
+</span><span class='line'>       <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>利用上面的代码，我们就能完美的解决水平滑动的问题，对于垂直纵向的问题，大家可以参考本文方法做类似实现。</p>
+
+<h2>示例代码</h2>
+
+<ul>
+<li><a href="https://github.com/androidyue/WebViewViewPagerScrollingIssue">https://github.com/androidyue/WebViewViewPagerScrollingIssue</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[聊一聊未捕获异常与进程退出的关联]]></title>
@@ -3719,143 +3863,6 @@
 
 
 <p>对于一个人来说，最理想的状态是处于“学习区”，学习具有适当挑战性的东西， 一段时间后，“学习区”会慢慢变为“舒适区”， “舒适区”越变越大， 而一部分的“恐慌区” 也会相应变成“学习区”。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Kotlin中的单例模式]]></title>
-    <link href="https://droidyue.com/blog/2017/07/17/singleton-in-kotlin/"/>
-    <updated>2017-07-17T22:03:00+08:00</updated>
-    <id>https://droidyue.com/blog/2017/07/17/singleton-in-kotlin</id>
-    <content type="html"><![CDATA[<p>在编程中，我们都应该接触到设计模式，无论是从时间总结，亦或者是从书上习得后尝试使用。这其中单例模式，是我们编程过程中很常见，也很简单的一种设计模式。我曾经写过一篇比较通用的关于该模式的文章，即<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F01%2F11%2Flooking-into-singleton%2F">单例这种设计模式</a>。</p>
-
-<p>目前，随着Google钦定Kotlin为Android 开发官方语言，Kotlin的学习热潮也应声而起。本文尝试讲解单例模式在Kotlin的具体实现和应用。希望能够对大家学习使用Kotlin有所帮助。</p>
-
-<!--more-->
-
-
-<h2>超简版单例</h2>
-
-<p>Kotlin引入了一个叫做object的类型，用来很容易的实现单例模式。如下面的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">object</span> <span class="n">SimpleSington</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">fun</span> <span class="nf">test</span><span class="o">()</span> <span class="o">{}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'><span class="c1">//在Kotlin里调用</span>
-</span><span class='line'><span class="n">SimpleSington</span><span class="o">.</span><span class="na">test</span><span class="o">()</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//在Java中调用</span>
-</span><span class='line'><span class="n">SimpleSington</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">.</span><span class="na">test</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>这个版本的实现，其实是个语法糖（Kotlin漫山遍野都是语法糖）。其真正的实现类似于这样</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">SimpleSington</span> <span class="o">{</span>
-</span><span class='line'>   <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">SimpleSington</span> <span class="n">INSTANCE</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="kd">private</span> <span class="nf">SimpleSington</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">INSTANCE</span> <span class="o">=</span> <span class="o">(</span><span class="n">SimpleSington</span><span class="o">)</span><span class="k">this</span><span class="o">;</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="kd">static</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">new</span> <span class="nf">SimpleSington</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>因而Kotlin这个超简版单例实现省去了</p>
-
-<ul>
-<li>显式声明静态instance变量</li>
-<li>将构造函数private化处理</li>
-</ul>
-
-
-<h3>关于调用时注意</h3>
-
-<p>这段单例代码在Kotlin中使用很简单，即</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">SimpleSington</span><span class="o">.</span><span class="na">test</span><span class="o">()</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>但是在Java和Kotlin混编时，Java代码中调用则需要注意，使用如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">SimpleSington</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">.</span><span class="na">test</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其实在Kotlin中调用单例本质上还是涉及到了INSTANCE这个变量，只是为了简化，隐藏了一些细节。</p>
-
-<p>object类型的单例模式，本质上是饿汉式加载，即在类加载的时候创建单例。它可能存在的问题有</p>
-
-<ul>
-<li>如果构造方法中存在过多的处理，会导致加载这个类时比较慢，可能引起性能问题。</li>
-<li>如果使用饿汉式的话，只进行了类的装载，并没有实质的调用，会造成资源的浪费。</li>
-</ul>
-
-
-<h2>懒汉式加载</h2>
-
-<p>针对饿汉式的潜在问题，我们可以使用懒汉式来解决，即将实例初始化放在开始使用之前。Kotlin版的懒汉式加载代码如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">LazySingleton</span> <span class="kd">private</span> <span class="nf">constructor</span><span class="o">(){</span>
-</span><span class='line'>    <span class="n">companion</span> <span class="n">object</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">val</span> <span class="nl">instance:</span> <span class="n">LazySingleton</span> <span class="n">by</span> <span class="n">lazy</span> <span class="o">{</span> <span class="n">LazySingleton</span><span class="o">()</span> <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>显式声明构造方法为private</li>
-<li>companion object用来在class内部声明一个对象</li>
-<li>LazySingleton的实例instance 通过lazy来实现懒汉式加载</li>
-<li>lazy默认情况下是线程安全的，这就可以避免多个线程同时访问生成多个实例的问题</li>
-</ul>
-
-
-<h2>该用哪个版本</h2>
-
-<p>关于如何选择饿汉式还是懒汉式，通常应该从两方面考虑</p>
-
-<ul>
-<li>实例初始化的性能和资源占用</li>
-<li>编写的效率和简洁</li>
-</ul>
-
-
-<p>对于实例初始化花费时间较少，并且内存占用较低的话，应该使用object形式的饿汉式加载。否则使用懒汉式。</p>
-
-<p>关于单例的更多知识和问题，请参考阅读<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F01%2F11%2Flooking-into-singleton%2F">单例这种设计模式</a></p>
 ]]></content>
   </entry>
   
