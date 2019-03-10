@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2019-03-10T17:28:23+08:00</updated>
+  <updated>2019-03-10T20:28:59+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,226 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[处理Retrofit MalformedJsonException报错]]></title>
+    <link href="https://droidyue.com/blog/2019/03/10/retrofit-json-convetor-error/"/>
+    <updated>2019-03-10T20:25:00+08:00</updated>
+    <id>https://droidyue.com/blog/2019/03/10/retrofit-json-convetor-error</id>
+    <content type="html"><![CDATA[<p>使用Retrofit配合GsonConverter，我们能很好地将网络响应内容转换成对应的对象。比如像下面这样。</p>
+
+<!--more-->
+
+
+<p>Retrofit网络接口方法</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">DroidNetwork</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@GET</span><span class="o">(</span><span class="s">&quot;/content/test.json&quot;</span><span class="o">)</span>
+</span><span class='line'>    <span class="n">Call</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;</span> <span class="nf">jsonData</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@GET</span><span class="o">(</span><span class="s">&quot;/content/helloworld.txt&quot;</span><span class="o">)</span>
+</span><span class='line'>    <span class="n">Call</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="nf">plainText</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对应的应用方法</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">val</span> <span class="n">retrofit</span> <span class="o">=</span> <span class="n">Retrofit</span><span class="o">.</span><span class="na">Builder</span><span class="o">()</span>
+</span><span class='line'>            <span class="o">.</span><span class="na">baseUrl</span><span class="o">(</span><span class="s">&quot;https://asset.droidyue.com/&quot;</span><span class="o">)</span>
+</span><span class='line'>            <span class="o">.</span><span class="na">addConverterFactory</span><span class="o">(</span><span class="n">GsonConverterFactory</span><span class="o">.</span><span class="na">create</span><span class="o">())</span>
+</span><span class='line'>            <span class="o">.</span><span class="na">build</span><span class="o">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">val</span> <span class="n">droidNetwork</span> <span class="o">=</span> <span class="n">retrofit</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="nl">DroidNetwork:</span><span class="o">:</span><span class="n">class</span><span class="o">.</span><span class="na">java</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">droidNetwork</span><span class="o">.</span><span class="na">jsonData</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="n">Callback</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="n">Throwable</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">t</span><span class="o">?.</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="n">Response</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;?)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">dumpMessage</span><span class="o">(</span><span class="s">&quot;onResponse content=${response?.body()}&quot;</span><span class="o">)</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">})</span>
+</span><span class='line'>
+</span><span class='line'>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的方法执行都很正常，可是执行这个方法的时候就会报错。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">droidNetwork</span><span class="o">.</span><span class="na">plainText</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="n">Callback</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="n">Throwable</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">Exception</span><span class="o">(</span><span class="s">&quot;causedByPlainText&quot;</span><span class="o">,</span> <span class="n">t</span><span class="o">)?.</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="n">Response</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;?)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">dumpMessage</span><span class="o">(</span><span class="s">&quot;onResponse content=${response}&quot;</span><span class="o">)</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="o">})</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>崩溃的信息如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Exception</span><span class="o">:</span> <span class="n">causedByPlainText</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">secoo</span><span class="o">.</span><span class="na">retrofitconvertor</span><span class="o">.</span><span class="na">MainActivity</span><span class="n">$doNetworkRequest$2</span><span class="o">.</span><span class="na">onFailure</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">kt</span><span class="o">:</span><span class="mi">41</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">ExecutorCallAdapterFactory</span><span class="n">$ExecutorCallbackCall$1$2</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ExecutorCallAdapterFactory</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">80</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">handleCallback</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">891</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">207</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">7470</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">RuntimeInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">RuntimeInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">524</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">958</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> <span class="n">Caused</span> <span class="nl">by:</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">MalformedJsonException</span><span class="o">:</span> <span class="n">Use</span> <span class="n">JsonReader</span><span class="o">.</span><span class="na">setLenient</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="n">to</span> <span class="n">accept</span> <span class="n">malformed</span> <span class="n">JSON</span> <span class="n">at</span> <span class="n">line</span> <span class="mi">1</span> <span class="n">column</span> <span class="mi">1</span> <span class="n">path</span> <span class="n">$</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">syntaxError</span><span class="o">(</span><span class="n">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1568</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">checkLenient</span><span class="o">(</span><span class="n">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1409</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">doPeek</span><span class="o">(</span><span class="n">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">593</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">peek</span><span class="o">(</span><span class="n">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">425</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">bind</span><span class="o">.</span><span class="na">TypeAdapters</span><span class="n">$16</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">TypeAdapters</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">393</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">bind</span><span class="o">.</span><span class="na">TypeAdapters</span><span class="n">$16</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">TypeAdapters</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">390</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">converter</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">convert</span><span class="o">(</span><span class="n">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">39</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">converter</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">convert</span><span class="o">(</span><span class="n">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">27</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">OkHttpCall</span><span class="o">.</span><span class="na">parseResponse</span><span class="o">(</span><span class="n">OkHttpCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">223</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">OkHttpCall</span><span class="n">$1</span><span class="o">.</span><span class="na">onResponse</span><span class="o">(</span><span class="n">OkHttpCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">121</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">okhttp3</span><span class="o">.</span><span class="na">RealCall</span><span class="n">$AsyncCall</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="n">RealCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">206</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">okhttp3</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">NamedRunnable</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">NamedRunnable</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">32</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">concurrent</span><span class="o">.</span><span class="na">ThreadPoolExecutor</span><span class="o">.</span><span class="na">runWorker</span><span class="o">(</span><span class="n">ThreadPoolExecutor</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1167</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">concurrent</span><span class="o">.</span><span class="na">ThreadPoolExecutor</span><span class="n">$Worker</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ThreadPoolExecutor</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">641</span><span class="o">)</span>
+</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Thread</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>原因其实很简单</p>
+
+<ul>
+<li> <a href="http://asset.droidyue.com/content/test.json">http://asset.droidyue.com/content/test.json</a> 是一个合法的json内容</li>
+<li> <a href="https://asset.droidyue.com/content/helloworld.txt">https://asset.droidyue.com/content/helloworld.txt</a> 是一个普通的文本，内容为<code>helloworld</code></li>
+<li> 因为上面的retrofit 对象 设置了GSONConvertor，会尝试默认将所有的内容转成对应的对象内容，故上面的普通文本就会失败报错。</li>
+</ul>
+
+
+<p>解决方法有两个</p>
+
+<ul>
+<li>修改服务器端的<a href="https://asset.droidyue.com/content/helloworld.txt">https://asset.droidyue.com/content/helloworld.txt</a> 为JSON内容</li>
+<li>调整客户端代码支持。</li>
+</ul>
+
+
+<p>这里我们介绍后者的处理方法，这里我们使用ResponseBody而不是之前的String，然后按照如下代码应用即可。</p>
+
+<p>接口代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@GET</span><span class="o">(</span><span class="s">&quot;/content/helloworld.txt&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="n">Call</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;</span> <span class="nf">plainTextAsResponseBody</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>应用代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">droidNetwork</span><span class="o">.</span><span class="na">plainTextAsResponseBody</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="n">Callback</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="n">Throwable</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">t</span><span class="o">?.</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="n">Response</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;?)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">dumpMessage</span><span class="o">(</span><span class="s">&quot;onResponse of plainTextAsResponseBody content=${response?.body()?.string()}&quot;</span><span class="o">)</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">})</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>附加内容</h2>
+
+<p>如果在某种情况下，我们只关心请求操作，而不关心响应内容，我们可以这样使用</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@GET</span><span class="o">(</span><span class="s">&quot;/content/helloworld.txt&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="n">Call</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;</span> <span class="nf">ignoreResult</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码相对更加高效，因为这里省略了将响应内容转成内存对象的过程。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[终端反编译字节码利器 CFR]]></title>
@@ -3444,170 +3664,6 @@
 <p>忍不住打个广告，由于我的又拍云初始容量有限，欢迎大家使用我的邀请链接注册  <a href="https://console.upyun.com/register/?invite=Hkw6NeiBZ">https://console.upyun.com/register/?invite=Hkw6NeiBZ</a>   注册并完成认证，赠送 61 元免费代金券。</p>
 
 <p>最后，对这段时间中招的同学表示歉意，以后小黑屋博客将更加安全有序运行，当然会逐步恢复之前的文章更新进度。感谢有你的支持。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Kotlin中常量的探究]]></title>
-    <link href="https://droidyue.com/blog/2017/11/05/dive-into-kotlin-constants/"/>
-    <updated>2017-11-05T20:53:00+08:00</updated>
-    <id>https://droidyue.com/blog/2017/11/05/dive-into-kotlin-constants</id>
-    <content type="html"><![CDATA[<p>在我们尝试使用Kotlin作为开发语言的时候，应该会想到在Kotlin中如何定义一个常量，就像Java中这样的代码一样</p>
-
-<!--more-->
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">double</span> <span class="n">PI</span> <span class="o">=</span> <span class="mf">3.14159265358979323846</span><span class="o">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>在Kotlin中，提供了两个简单的关键字，一个是var，另一个是val</p>
-
-<ul>
-<li>var 表示普通的可变的变量，可读和可写</li>
-<li>val 表示为只读的变量。相当于Java中用final修饰的变量</li>
-</ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">var</span> <span class="nl">title:</span> <span class="n">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">val</span> <span class="nl">id:</span> <span class="n">Long</span> <span class="o">=</span> <span class="mi">1L</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">fun</span> <span class="nf">test</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">title</span> <span class="o">=</span> <span class="s">&quot;Title set in test function&quot;</span>
-</span><span class='line'>    <span class="n">id</span> <span class="o">=</span> <span class="mi">111</span> <span class="c1">//compile error</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>因而使用val修饰的就是Kotlin的常量了吧</p>
-
-<p>相信很多人曾经误以为val就是Kotlin中的常量，然后并不是，比如下面的实现</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="nl">currentTimeMillis:</span> <span class="n">Long</span>
-</span><span class='line'>    <span class="n">get</span><span class="o">()</span> <span class="o">{</span><span class="k">return</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上面当我们每次访问<code>currentTimeMillis</code>得到的值是变化的，因而不是常量。</p>
-
-<h2>为什么呢</h2>
-
-<p>这是因为在Kotlin中，一个var会对应生成两个方法,即getter和setter方法，比如</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">var</span> <span class="nl">title:</span> <span class="n">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>生成的字节码会包含如下的两个方法和一个backing field</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="n">String</span> <span class="n">title</span><span class="o">;</span>
-</span><span class='line'><span class="nd">@Nullable</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="nf">getTitle</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">title</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">setTitle</span><span class="o">(</span><span class="nd">@Nullable</span> <span class="n">String</span> <span class="n">title</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">title</span> <span class="o">=</span> <span class="n">title</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>而对于val来说只会生成一个对应的get方法,比如</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="nl">id:</span> <span class="n">Long</span> <span class="o">=</span> <span class="mi">1L</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>生成的字节码会包含类似这样的方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">id</span> <span class="o">=</span> <span class="mi">1L</span><span class="o">;</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="nf">getId</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">id</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>如何才能生成真正的常量呢</h2>
-
-<p>想要实现真正的常量其实不难，方法有两种，一种是const，另一个使用@JvmField注解</p>
-
-<h3>const</h3>
-
-<p>const，顾名思义，就是常量的单词简写，使用它可以声明常量，不过仅限于在top-level和object中。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//top-level</span>
-</span><span class='line'><span class="kd">const</span> <span class="n">val</span> <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Kotlin&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//object中</span>
-</span><span class='line'><span class="kd">class</span> <span class="nc">DemoConstant</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">companion</span> <span class="n">object</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">const</span> <span class="n">val</span> <span class="n">subName</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>所谓的top-level就是位于代码文件的最外部，比如常见的类（非内部类和嵌套类）就是在top-level。意思是在结构上常量不属于任何的类，而是属于文件。</li>
-<li>object中可以指的是最外部的object也可以指的是companion object.</li>
-</ul>
-
-
-<h3>@JvmField</h3>
-
-<ul>
-<li>在val常量前面增加一个@JvmField就可以将它变成常量。</li>
-<li>其内部作用是抑制编译器生成相应的getter方法</li>
-<li>是用该注解修饰后则无法重写val的get方法</li>
-</ul>
-
-
-<p>示例如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@JvmField</span> <span class="n">val</span> <span class="n">NAME</span> <span class="o">=</span> <span class="err">&quot;</span><span class="mi">89757</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>关于Kotlin的常量研究，最有效的方法就是分析bytecode和反编译对比学习。关于如何学习Kotlin可以阅读本文  <a href="http://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></p>
 ]]></content>
   </entry>
   
