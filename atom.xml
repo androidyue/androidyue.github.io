@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2019-05-04T11:42:06+08:00</updated>
+  <updated>2019-05-04T19:17:49+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,271 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[防手抖开源之 Git 钩子]]></title>
+    <link href="https://droidyue.com/blog/2019/05/04/git-pre-push-hook/"/>
+    <updated>2019-05-04T19:12:00+08:00</updated>
+    <id>https://droidyue.com/blog/2019/05/04/git-pre-push-hook</id>
+    <content type="html"><![CDATA[<p>最近“从开源到跑路”的事件逐渐增多，给涉事企业造成了不小的损失。因而相关的防范工作显得愈发重要。</p>
+
+<p>客观而言，人为手动的防范显得原始和笨拙，好在git提供了相关的钩子方法，为我们这里的防范提供了可行性。</p>
+
+<p>这里我们以<code>git push</code> 命令对应的<code>pre-push</code>钩子为例，因为想要开源出去，这个命令通常是必须执行的。</p>
+
+<!--more-->
+
+
+<h2>编写git pre-hook</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/sh</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># An example hook script to verify what is about to be pushed.  Called by &quot;git</span>
+</span><span class='line'><span class="c"># push&quot; after it has checked the remote status, but before anything has been</span>
+</span><span class='line'><span class="c"># pushed.  If this script exits with a non-zero status nothing will be pushed.</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># This hook is called with the following parameters:</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># $1 -- Name of the remote to which the push is being done</span>
+</span><span class='line'><span class="c"># $2 -- URL to which the push is being done</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># If pushing without using a named remote those arguments will be equal.</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># Information about the commits which are being pushed is supplied as lines to</span>
+</span><span class='line'><span class="c"># the standard input in the form:</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c">#   &lt;local ref&gt; &lt;local sha1&gt; &lt;remote ref&gt; &lt;remote sha1&gt;</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># This sample shows how to prevent push of commits where the log message starts</span>
+</span><span class='line'><span class="c"># with &quot;WIP&quot; (work in progress).</span>
+</span><span class='line'>
+</span><span class='line'><span class="nv">remote</span><span class="o">=</span><span class="s2">&quot;$1&quot;</span>
+</span><span class='line'><span class="nv">url</span><span class="o">=</span><span class="s2">&quot;$2&quot;</span>
+</span><span class='line'><span class="nb">echo</span> <span class="nv">$url</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="o">[[</span> <span class="nv">$url</span> <span class="o">==</span> *<span class="s2">&quot;git@github.com&quot;</span>* <span class="o">]]</span>; <span class="k">then</span>
+</span><span class='line'><span class="k">    </span><span class="nb">echo</span> <span class="s2">&quot;github repo refused to push&quot;</span>
+</span><span class='line'>    <span class="nb">exit </span>1
+</span><span class='line'><span class="k">fi</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="o">[[</span> <span class="nv">$url</span> <span class="o">==</span> *<span class="s2">&quot;https://github.com&quot;</span>* <span class="o">]]</span>; <span class="k">then</span>
+</span><span class='line'><span class="k">    </span><span class="nb">echo</span> <span class="s2">&quot;github repo refused to push&quot;</span>
+</span><span class='line'>    <span class="nb">exit </span>1
+</span><span class='line'><span class="k">fi</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="nv">z40</span><span class="o">=</span>0000000000000000000000000000000000000000
+</span><span class='line'>
+</span><span class='line'><span class="k">while </span><span class="nb">read </span>local_ref local_sha remote_ref remote_sha
+</span><span class='line'><span class="k">do</span>
+</span><span class='line'><span class="k">  if</span> <span class="o">[</span> <span class="s2">&quot;$local_sha&quot;</span> <span class="o">=</span> <span class="nv">$z40</span> <span class="o">]</span>
+</span><span class='line'>  <span class="k">then</span>
+</span><span class='line'>      <span class="c"># Handle delete</span>
+</span><span class='line'>      :
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'><span class="k">      if</span> <span class="o">[</span> <span class="s2">&quot;$remote_sha&quot;</span> <span class="o">=</span> <span class="nv">$z40</span> <span class="o">]</span>
+</span><span class='line'>      <span class="k">then</span>
+</span><span class='line'>          <span class="c"># New branch, examine all commits</span>
+</span><span class='line'>          <span class="nv">range</span><span class="o">=</span><span class="s2">&quot;$local_sha&quot;</span>
+</span><span class='line'>      <span class="k">else</span>
+</span><span class='line'>          <span class="c"># Update to existing branch, examine new commits</span>
+</span><span class='line'>          <span class="nv">range</span><span class="o">=</span><span class="s2">&quot;$remote_sha..$local_sha&quot;</span>
+</span><span class='line'>      <span class="k">fi</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c"># Check for WIP commit</span>
+</span><span class='line'>      <span class="nv">commit</span><span class="o">=</span><span class="sb">`</span>git rev-list -n 1 --grep <span class="s1">&#39;^WIP&#39;</span> <span class="s2">&quot;$range&quot;</span><span class="sb">`</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">[</span> -n <span class="s2">&quot;$commit&quot;</span> <span class="o">]</span>
+</span><span class='line'>      <span class="k">then</span>
+</span><span class='line'><span class="k">          </span><span class="nb">echo</span> &gt;&amp;2 <span class="s2">&quot;Found WIP commit in $local_ref, not pushing&quot;</span>
+</span><span class='line'>          <span class="nb">exit </span>1
+</span><span class='line'>      <span class="k">fi</span>
+</span><span class='line'><span class="k">  fi</span>
+</span><span class='line'><span class="k">done</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">exit </span>0
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>拦截代码解释</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">remote</span><span class="o">=</span><span class="s2">&quot;$1&quot;</span>
+</span><span class='line'><span class="nv">url</span><span class="o">=</span><span class="s2">&quot;$2&quot;</span>
+</span><span class='line'><span class="nb">echo</span> <span class="nv">$url</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="o">[[</span> <span class="nv">$url</span> <span class="o">==</span> *<span class="s2">&quot;git@github.com&quot;</span>* <span class="o">]]</span>; <span class="k">then</span>
+</span><span class='line'><span class="k">    </span><span class="nb">echo</span> <span class="s2">&quot;github repo refused to push&quot;</span>
+</span><span class='line'>    <span class="nb">exit </span>1
+</span><span class='line'><span class="k">fi</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="o">[[</span> <span class="nv">$url</span> <span class="o">==</span> *<span class="s2">&quot;https://github.com&quot;</span>* <span class="o">]]</span>; <span class="k">then</span>
+</span><span class='line'><span class="k">    </span><span class="nb">echo</span> <span class="s2">&quot;github repo refused to push&quot;</span>
+</span><span class='line'>    <span class="nb">exit </span>1
+</span><span class='line'><span class="k">fi</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上述的代码</p>
+
+<ul>
+<li>拦截git协议的到github远程仓库的push请求</li>
+<li>拦截https协议的到github远程仓库的push请求</li>
+</ul>
+
+
+<p>除此之外，我们还可以做什么</p>
+
+<ul>
+<li>可以根据自身需要增加<code>git@gitee.com</code>等屏蔽</li>
+<li>根据需要，可以判定仓库名称来屏蔽。</li>
+<li>编写shell语句，实现更加复杂的拦截处理</li>
+</ul>
+
+
+<p>完整文件地址: <a href="https://asset.droidyue.com/content/pre-push">https://asset.droidyue.com/content/pre-push</a></p>
+
+<h2>针对单个Repo生效</h2>
+
+<p>将上述pre-push 放入项目的<code>.git/hooks/</code>下面即可</p>
+
+<h2>针对全局生效</h2>
+
+<p>git 2.9 开始支持
+设置全局git hook路径</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git config --global core.hooksPath  /Users/yourUserName/.git/hooks
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>将上述pre-push 放入<code>/Users/yourUserName/.git/hooks</code></p>
+
+<p>支持文件可执行权限</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>chmod a+x your_pre_push_hook_path
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>效果演示</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>xxx@bogon:/tmp/vim_katana<span class="o">(</span>master|✔<span class="o">)</span> % git push origin master
+</span><span class='line'>git@github.com:androidyue/vim_katana.git
+</span><span class='line'>github repo refused to push
+</span><span class='line'>error: failed to push some refs to <span class="s1">&#39;git@github.com:androidyue/vim_katana.git&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>效果有多少</h2>
+
+<p>防止恶意开源，并不能。只是理论上稍微提高了一点门槛。</p>
+
+<p>这是因为</p>
+
+<ul>
+<li>恶意开源者可能删除这些git钩子</li>
+<li>恶意开源者可以使用别的形式公开代码</li>
+</ul>
+
+
+<h2>它能做什么</h2>
+
+<ul>
+<li>如题所属，它是自身无意原因或者某些恶意中间环节导致开源的最后一道防线。</li>
+</ul>
+
+
+<p>源码安全无小事，事事需谨慎。</p>
+
+<h2>内容推荐</h2>
+
+<ul>
+<li><a href="https://droidyue.com/blog/2016/05/22/use-checkstyle-for-better-code-style/">pre-commit钩子实例</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kotlin 中的 Lambda 与 inline]]></title>
@@ -4626,65 +4891,6 @@
 <p>至此功能就基本实现了，相对之前硬邦邦的对话框，后台无干扰用户的默默杀掉进程要友好很多了。</p>
 
 <p>关于崩溃的文章，我还有一篇相关的，请移步这里<a href="https://droidyue.com/blog/2015/12/06/practise-about-crash-in-android/">Android处理崩溃的一些实践</a>查看。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[关于改善强迫症的一些方法]]></title>
-    <link href="https://droidyue.com/blog/2018/03/17/qiangpozheng/"/>
-    <updated>2018-03-17T14:35:00+08:00</updated>
-    <id>https://droidyue.com/blog/2018/03/17/qiangpozheng</id>
-    <content type="html"><![CDATA[<p>一直以来我都有强迫症，尤其是毕业工作后，明显地感觉更加严重了。经常反复确认水龙头有没有关，锁门后下楼梯，往往又要上来检查一下是否真的锁上。总是担心天然气气有没有关紧。如此种种，每一天在出门离家的时候都是最痛苦的时段。</p>
-
-<!--more-->
-
-
-<p>种种焦虑都是基于自己的某种相对极端的幻想，比如水龙头没有关的话，会使得家里甚至楼下被泡；门没有锁可能导致家里遭窃，重要东西丢失；天然气没有关好，结果更加严重。如此幻想反反复复，使得我心神不宁，倍感焦虑。</p>
-
-<p>为什么会有这些幻想？发自内心的声音告诉我，因为不想因为自己的疏忽导致代价较大甚至严重的后果。我的朋友们都说这是缺乏安全感的表现，我也很认同这一点。</p>
-
-<p>我记得最严重的一次就是最近，我已经乘坐地铁驶出好几站了，但是突然间在想有没有关窗户呢，犹豫了几分钟，我便做出了返程回家确认的决定，回家确认，窗户紧紧得锁着。于是便安心了，可是这一折腾，上班时间延误了30多分钟。内心也着实地痛苦。</p>
-
-<p>为什么当时明明关上窗户锁上门，过后就不记得了呢？关于原因的解释如下</p>
-
-<blockquote><p>认知心理学里有个词儿叫“瞬时记忆”，又叫“感觉登记”。意思是说，外部信息刺激到人的感官，就会在人的大脑里被暂时性的贮存，这种不是有意识去获得的就叫做瞬时记忆。它具有丰富的信息量，但是一般都是下意识、被动获得的，处于未经加工的原始状态。说白了就是，你的眼睛看见了，你的耳朵听见了，但是你没过脑子。没过脑子的这种记忆，保持时间很短，很容易丧失。而人的记忆又很容易受到身边所感知到的空间的影响，一旦所处的空间发生变化，记忆会进行一些重新建构。这就更容易把之前的瞬时记忆给丢了。因而哪怕是走下楼，就想不起来到底有没有做“锁门”这个重复无数次极其简单的动作的情况，再正常不过了。</p>
-
-<p>作者：子鸡
-链接：<a href="https://www.zhihu.com/question/20978967/answer/22998357">https://www.zhihu.com/question/20978967/answer/22998357</a>
-来源：知乎
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</p></blockquote>
-
-<p>后来慢慢地我发现了一些缓解症状的方法和技巧。</p>
-
-<h2>关于锁门</h2>
-
-<p>我找到了一个不错的技巧。那就是用微信拍一个10秒钟的关门小视频，然后发给文件传输助手。如下面的示例视频这样
-<video style="width:50%"   controls>
-  <source src="https://asset.droidyue.com/video/close_the_door_video.mp4" type="video/mp4">
-</video></p>
-
-<p>这样每次当自己记不起来的时候，就看看小视频就能确认了。</p>
-
-<h2>燃气灶</h2>
-
-<p>燃气灶这个一定要确保关闭，最开始都是打开以下，然后关闭听到“噔”的一声就放心了，但是这昂反复操作也不一定好，后来只要开关阀的指示标指向Off就算关闭。
-<img src="https://asset.droidyue.com/image/ranqizao_off.png" alt="https://asset.droidyue.com/image/ranqizao_off.png" /></p>
-
-<p>不过后来，我接触了一个更加智能的方法，比如关于是否锁门，我使用了小米的门窗传感器，如下图，颜值很正义。</p>
-
-<p><img src="https://asset.droidyue.com/image/xiaomi_menchuang_chuanganqi.jpg" alt="https://asset.droidyue.com/image/xiaomi_menchuang_chuanganqi.jpg" /></p>
-
-<p>可以准确的得到门的关闭状态。并且结合配套的多功能网关，可以实现，当某些条件下打开门，触发报警发声或者提醒用户。</p>
-
-<p>同样对于天然气，小米也有一个报警器，感觉还不错，和HoneyWell合作的，值得信赖。</p>
-
-<p><img src="https://asset.droidyue.com/image/tianranqi_baojing.jpg" alt="https://asset.droidyue.com/image/tianranqi_baojing.jpg" /></p>
-
-<p>小米传感器，天然气报警器购买地址: <a href="https://union-click.jd.com/jdc?d=OOBAKt">点击这里了解</a></p>
-
-<p>除此之外，从心理上来解决是另外的一种很有效的途径，有一本叫做<a href="https://amazon.cn/gp/product/B0028RYAJ0/ref=as_li_qf_asin_il_tl?ie=UTF8&amp;tag=droidyue-23&amp;creative=3200&amp;linkCode=as2&amp;creativeASIN=B0028RYAJ0&amp;linkId=6668c1886a6115ac55956f28ea0efd07">《走出强迫症：找回美丽的日子》</a>  的书，里面有很多案例，对于解决问题还是很有参考价值和帮助的。</p>
-
-<p>关于强迫症，我目前的办法就是这些，总的来说这样下来再也不会出现走出几公里，又回来检查的行为了。确实痛苦减轻了不少。</p>
 ]]></content>
   </entry>
   
