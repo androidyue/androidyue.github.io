@@ -1,0 +1,1058 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Kotlin编译调校之WarningsAsErrors - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Kotlin编译调校之WarningsAsErrors Aug 3rd, 2019 这之前的文章中，我们介绍过如果通过Kotlin编译器参数实现将所有的warnings按照errors对待，主要的实现方法是这样 1
+2
+3
+4
+//Code to be added
+kotlinOptions &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="/images/touch_icon.png"/>
+  
+  <link rel="canonical" href="https://droidyue.com/blog/2019/08/03/kotlinc-config-warnings-as-errors">
+  <link href="/images/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/ad.js"></script>
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
+      function setCookie(name,value,days) {
+          if (days) {
+              var date = new Date();
+              date.setTime(date.getTime()+(days*24*60*60*1000));
+              var expires = "; expires="+date.toGMTString();
+          }
+          else var expires = "";
+          document.cookie = name+"="+value+expires+"; path=/";
+      }
+
+      function eraseCookie(name) {
+          setCookie(name,"",-1);
+      }
+
+
+      function readCookie(name) {
+          var nameEQ = name + "=";
+          var ca = document.cookie.split(';');
+          for(var i=0;i < ca.length;i++) {
+              var c = ca[i];
+              while (c.charAt(0)==' ') c = c.substring(1,c.length);
+              if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+          }
+          return null;
+      }
+
+      function loadJsNormally(jsUrl) {
+          document.write('<script type="text/javascript" charset="utf-8" src="'+ jsUrl +'"></scr'+'ipt>');
+      }
+
+      function loadJsWithoutCache(jsUrl) {
+          jsUrl = jsUrl + '?v=' + +Math.random();
+          loadJsNormally(jsUrl);
+      }
+
+      
+      var droidyueNoCacheLoading = 'droidyue.no-cache';
+
+      function isNoCacheLoadingEnabled() {
+          return readCookie(droidyueNoCacheLoading) != null;
+      }
+
+      var noCacheLoading = isNoCacheLoadingEnabled();
+
+      function enableNoCacheLoading() {
+          setCookie(droidyueNoCacheLoading, 1, 365);
+      }
+
+      function disableNoCacheLoading() {
+          eraseCookie(droidyueNoCacheLoading);
+      }
+
+
+      function loadJs(jsUrl) {
+          if (noCacheLoading) {
+              loadJsWithoutCache(jsUrl);
+          } else {
+              loadJsNormally(jsUrl);
+          }
+      }
+  </script>
+  <script type="text/javascript" charset="utf-8" src="/javascripts/blogutils.js"></script>
+  <script src="//asset.droidyue.com/javascript/geektime_qr_images.js"></script>
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/book_rec_base.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="/stylesheets/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="/stylesheets/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="/javascripts/trackurl_maker.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="https://asset.droidyue.com/javascript/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/common_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/program_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/android_book_data.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/java_book_data.js" charset="utf-8"></script>
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+  (adsbygoogle = window.adsbygoogle || []).push({
+    google_ad_client: "ca-pub-6762344977202446",
+    enable_page_level_ads: true
+  });
+</script>
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation">
+<form action="https://google.com/search" method="get"  target="_blank">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="搜索" />
+    <input type=hidden name=domains value="droidyue.com">
+    <input type=hidden name=sitesearch value="droidyue.com">
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">首页</a></li>
+  <li><a href="/ninki/">干货铺子</a></li>
+  <li><a href="/blog/archives/">存档</a></li>
+  <li><a href="/reading/">读书</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/cooperate/">合作</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/gfriends/">好基友</a></li>
+  <li><a href="/neitui/">内推</a></li>
+  <li><a href="/fuli/index.html">福利</a></li>
+  <li><a href="/links/">友链</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <a href="https://gio.ren/w/AovVWjoz" target="_blank" title="https://gio.ren/w/AovVWjoz">
+
+	<img src="https://asset.droidyue.com/image/201908/kaikeba.png" class="no_boarder_class kaikeba" style="max-Width:100%">
+</a>
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Kotlin编译调校之WarningsAsErrors</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-08-03T14:21:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2019</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>这之前的文章中，我们介绍过如果通过Kotlin编译器参数实现将所有的warnings按照errors对待，主要的实现方法是这样</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>//Code to be added
+</span><span class='line'>kotlinOptions <span class="o">{</span>
+</span><span class='line'>    <span class="nv">allWarningsAsErrors</span> <span class="o">=</span> <span class="nb">true</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<!--more-->
+
+
+<p>那么问题可能就会被提出来，开启这一选项有什么好处呢，毕竟我需要修改很多文件。</p>
+
+<p>通常情况下，开启后的作用，我们可以归纳为如下</p>
+
+<ul>
+<li>发现更多的潜在问题和崩溃</li>
+<li>减少不必要的代码（变量，参数）</li>
+<li>发现不好的编码实践</li>
+<li>发现更多的API弃用问题</li>
+<li>最终增加代码的健壮性和优雅程度</li>
+</ul>
+
+
+<p>如下，我们会通过一些实践来说明一些问题</p>
+
+<h2>Nothing to Inline（作用不大的内联）</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;NOTHING_TO_INLINE&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="n">inline</span> <span class="k">fun</span> <span class="n">String</span><span class="p">?.</span><span class="n">isNotNullNorEmpty</span><span class="p">():</span> <span class="n">Boolean</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Expected performance impact of inlining </span>
+</span><span class='line'>    <span class="c1">// &#39;public inline fun String?.isNotNullNorEmpty(): Boolean </span>
+</span><span class='line'>    <span class="c1">// defined in com.example.warningsaserrorscases in file NothingToInlineWarnings.kt&#39;</span>
+</span><span class='line'>    <span class="c1">// is insignificant. </span>
+</span><span class='line'>    <span class="c1">// Inlining works best for functions with parameters of functional types</span>
+</span><span class='line'>    <span class="k">return</span> <span class="k">this</span> <span class="p">!=</span> <span class="k">null</span> <span class="p">&amp;&amp;</span> <span class="k">this</span><span class="p">.</span><span class="n">isNotEmpty</span><span class="p">()</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>Kotlin的inline关键字会将对应的方法内联到调用者的方法体，减少进栈出栈操作</li>
+<li>inline最好的场景是处理函数类型参数，比如lambda</li>
+<li>刻意的inline可能导致方法体膨胀，增大class文件大小。</li>
+<li>处理这种警告，建议是去除inline关键字</li>
+<li>如果执意inline时，使用<code>@Suppress("NOTHING_TO_INLINE")</code>压制编译器警告</li>
+</ul>
+
+
+<h2>INACCESSIBLE_TYPE(不可访问的类型)</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">RequestManager</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">RequestManager</span> <span class="n">sInstance</span> <span class="o">=</span> <span class="k">new</span> <span class="n">RequestManager</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">TimelineRequest</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="n">String</span> <span class="n">from</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">TimelineRequest</span> <span class="nf">getTimelineRequest</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="k">new</span> <span class="nf">TimelineRequest</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testInaccessibleType</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Type RequestManager.TimelineRequest! is inaccessible in this context</span>
+</span><span class='line'>    <span class="c1">// due to: private open class TimelineRequest defined</span>
+</span><span class='line'>    <span class="c1">// in com.example.warningsaserrorscases.RequestManager</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;INACCESSIBLE_TYPE&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">RequestManager</span><span class="p">.</span><span class="n">sInstance</span><span class="p">.</span><span class="n">timelineRequest</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>上述的<code>testInaccessibleType</code>无法访问<code>TimelineRequest</code>的属性和方法</li>
+<li>具体的解决办法，可以是设置<code>TimelineRequest</code>为public，而非private</li>
+<li>必要时可以使用<code>@Suppress("INACCESSIBLE_TYPE")</code>压制警告</li>
+</ul>
+
+
+<h2>UNCHECKED_CAST(未检查的类型转换)</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">Any</span><span class="p">.</span><span class="n">toType</span><span class="p">():</span> <span class="n">T</span><span class="p">?</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Unchecked cast: Any to T</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;UNCHECKED_CAST&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="k">this</span> <span class="k">as</span><span class="p">?</span> <span class="n">T</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>上面<code>this as? T</code>属于未检查的类型转换，可能在运行时抛出转换异常</li>
+<li>不推荐使用<code>@Suppress("UNCHECKED_CAST")</code>压制警告</li>
+<li>推荐使用reified方式处理</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//a better way</span>
+</span><span class='line'><span class="n">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="n">reified</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">Any</span><span class="p">.</span><span class="n">toType</span><span class="p">():</span> <span class="n">T</span><span class="p">?</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">if</span> <span class="p">(</span><span class="k">this</span> <span class="k">is</span> <span class="n">T</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">this</span>
+</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">null</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>WHEN_ENUM_CAN_BE_NULL_IN_JAVA(Enum 可能为null)</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testEnum1</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Enum argument can be null in Java, but exhaustive when contains no null branch</span>
+</span><span class='line'>    <span class="k">when</span><span class="p">(</span><span class="n">SeasonUtil</span><span class="p">.</span><span class="n">getCurrentSeason</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">Season</span><span class="p">.</span><span class="n">SPRING</span> <span class="p">-&gt;</span> <span class="n">println</span><span class="p">(</span><span class="s">&quot;Spring&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">Season</span><span class="p">.</span><span class="n">SUMMER</span> <span class="p">-&gt;</span> <span class="n">println</span><span class="p">(</span><span class="s">&quot;Summer&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">Season</span><span class="p">.</span><span class="n">FALL</span> <span class="p">-&gt;</span> <span class="n">println</span><span class="p">(</span><span class="s">&quot;Fall&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">Season</span><span class="p">.</span><span class="n">WINTER</span> <span class="p">-&gt;</span> <span class="n">println</span><span class="p">(</span><span class="s">&quot;Winter&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="c1">//else -&gt; println(&quot;unknown&quot;)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fun</span> <span class="nf">testEnum2</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Enum argument can be null in Java, but exhaustive when contains no null branch</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;WHEN_ENUM_CAN_BE_NULL_IN_JAVA&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">when</span><span class="p">(</span><span class="n">SeasonUtil</span><span class="p">.</span><span class="n">getCurrentSeason</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">Season</span><span class="p">.</span><span class="n">SPRING</span> <span class="p">-&gt;</span> <span class="n">println</span><span class="p">(</span><span class="s">&quot;Spring&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">Season</span><span class="p">.</span><span class="n">SUMMER</span> <span class="p">-&gt;</span> <span class="n">println</span><span class="p">(</span><span class="s">&quot;Summer&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">Season</span><span class="p">.</span><span class="n">FALL</span> <span class="p">-&gt;</span> <span class="n">println</span><span class="p">(</span><span class="s">&quot;Fall&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">Season</span><span class="p">.</span><span class="n">WINTER</span> <span class="p">-&gt;</span> <span class="n">println</span><span class="p">(</span><span class="s">&quot;Winter&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>上述的<code>SeasonUtil.getCurrentSeason()</code>可能为null</li>
+<li>建议增加<code>else -&gt; println("unknown")</code>处理when的缺省情况</li>
+<li>不建议使用<code>@Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")</code>压制警告</li>
+</ul>
+
+
+<h2>PARAMETER_NAME_CHANGED_ON_OVERRIDE(方法重写修改参数名)</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">interface</span> <span class="n">OnViewClickedListener</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fun</span> <span class="nf">onViewClicked</span><span class="p">(</span><span class="n">viewId</span><span class="p">:</span> <span class="n">Int</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fun</span> <span class="nf">testParameterNameChangedOnOverride</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// The corresponding parameter in the supertype &#39;OnViewClickedListener&#39;</span>
+</span><span class='line'>    <span class="c1">// is named &#39;viewId&#39;.</span>
+</span><span class='line'>    <span class="c1">// This may cause problems when calling this function with named arguments.</span>
+</span><span class='line'>    <span class="n">object</span> <span class="p">:</span> <span class="n">OnViewClickedListener</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">override</span> <span class="k">fun</span> <span class="nf">onViewClicked</span><span class="p">(</span><span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;PARAMETER_NAME_CHANGED_ON_OVERRIDE&quot;</span><span class="p">)</span> <span class="n">id</span><span class="p">:</span> <span class="n">Int</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">println</span><span class="p">(</span><span class="s">&quot;onViewClicked id=$id&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>出问题的情况是当我们使用具名变量指定参数值时，可能出问题。</li>
+<li>建议方法参数与源方法保持一致。</li>
+<li>不建议压制警告</li>
+</ul>
+
+
+<h2>Name shadowing（命名遮挡）</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testNameShadowing</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">run</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">//Name shadowed: message</span>
+</span><span class='line'>        <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;NAME_SHADOWING&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">message</span> <span class="p">=</span> <span class="s">&quot;Hello World&quot;</span>
+</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>当run方法后面的lambda中的message与<code>testNameShadowing</code>的message命名一致时，就发生了所谓的Name shadowing（命名遮挡）</li>
+<li>Name shadowing很容易导致问题，且排查起来不易察觉。</li>
+<li>建议主动通过命名差异来解决这个问题</li>
+<li>不建议压制警告</li>
+</ul>
+
+
+<h2>Uncessary cases (不必要的编码场景)</h2>
+
+<h3>UNNECESSARY_SAFE_CALL(不必要的安全调用)</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testUnnecessarySafeCall</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;UNNECESSARY_SAFE_CALL&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="n">message</span><span class="p">?.</span><span class="n">toIntOrNull</span><span class="p">())</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>上述的安全调用其实是显得多余，因为Kotlin内部会有<code>Intrinsics</code>做参数非空的与判断</li>
+<li>另外安全调用会增加if条件检查</li>
+<li>建议主动移不必要的安全调用</li>
+<li>不建议压制警告</li>
+</ul>
+
+
+<h3>SENSELESS_COMPARISON(无意义的比较)</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testSenselessComparison</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Condition &#39;message != null&#39; is always &#39;true&#39;</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;SENSELESS_COMPARISON&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">message</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>和前面的例子一样，这种检查是多余的，因为Kotlin内部会有<code>Intrinsics</code>做参数非空的与判断</li>
+<li>建议主动移除无意义的比较</li>
+<li>不建议压制警告</li>
+</ul>
+
+
+<h3>UNNECESSARY_NOT_NULL_ASSERTION（不需要的非空断言）</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testUncessaryNotNullAssertion</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Unnecessary non-null assertion (!!) on a non-null receiver</span>
+</span><span class='line'>    <span class="c1">// of type String</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;UNNECESSARY_NOT_NULL_ASSERTION&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="n">message</span><span class="p">!!.</span><span class="n">toIntOrNull</span><span class="p">())</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>这种断言是多余的，因为Kotlin内部会有<code>Intrinsics</code>做参数非空的与判断</li>
+<li>建议主动移除不需要的非空断言</li>
+<li>不建议压制警告</li>
+</ul>
+
+
+<h3>USELESS_IS_CHECK(没有用的实例类型检查)</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testUselessIsCheck</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Check for instance is always &#39;true&#39;</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;USELESS_IS_CHECK&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">message</span> <span class="k">is</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>没有意义的类型检查，因为Kotlin内部会有<code>Intrinsics</code>做参数非空的与判断</li>
+<li>建议主动移除不必要的检查</li>
+<li>不建议压制警告</li>
+</ul>
+
+
+<h3>VARIABLE_WITH_REDUNDANT_INITIALIZER(变量初始化多余)</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testVariableWithRedundantInitializer</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//Variable &#39;message&#39; initializer is redundant</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;VARIABLE_WITH_REDUNDANT_INITIALIZER&quot;</span><span class="p">)</span> <span class="k">var</span> <span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">message</span> <span class="p">=</span> <span class="n">System</span><span class="p">.</span><span class="n">currentTimeMillis</span><span class="p">().</span><span class="n">toString</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>建议手动移除多余的初始化</li>
+<li>不建议压制警告</li>
+</ul>
+
+
+<h2>Deprecation (方法弃用)</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testGetDrawable</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;DEPRECATION&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">context</span><span class="p">.</span><span class="n">resources</span><span class="p">.</span><span class="n">getDrawable</span><span class="p">(</span><span class="n">R</span><span class="p">.</span><span class="n">mipmap</span><span class="p">.</span><span class="n">ic_launcher</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>建议的方法是寻找替代弃用方法的其他方法，以getDrawable为例，我们可以使用</p>
+
+<ul>
+<li><code>ContextCompat.getDrawable(getActivity(), R.drawable.name);</code></li>
+<li><code>ResourcesCompat.getDrawable(getResources(), R.drawable.name, null);</code></li>
+<li><code>ResourcesCompat.getDrawable(getResources(), R.drawable.name, anotherTheme);</code></li>
+<li>必要时可以选择压制警告</li>
+</ul>
+
+
+<h2>unsued cases(开发者编码没有用到的情况)</h2>
+
+<h3>Parameter &lsquo;extra&rsquo; is never used(参数没有使用)</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">showMessage</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="n">extra</span><span class="p">:</span> <span class="n">String</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>解决方法</p>
+
+<ul>
+<li>移除extra参数</li>
+<li>方法中使用extra参数</li>
+<li>使用<code>@Suppress("UNUSED_PARAMETER")</code>压制警告</li>
+</ul>
+
+
+<h3>Parameter &lsquo;index&rsquo; is never used, could be renamed to _（匿名参数没有使用，可以使用占位符）</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">forEachList</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">listOf</span><span class="p">&lt;</span><span class="n">String</span><span class="p">&gt;(</span><span class="s">&quot;Hello&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">).</span><span class="n">forEachIndexed</span> <span class="p">{</span> <span class="n">index</span><span class="p">,</span> <span class="n">s</span> <span class="p">-&gt;</span>
+</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>将<code>index</code>改成占位符<code>_</code></li>
+<li>使用<code>@Suppress("UNUSED_ANONYMOUS_PARAMETER")</code>压制警告</li>
+</ul>
+
+
+<h2>Variable &lsquo;currentTimeStamp&rsquo; is never used(变量未使用)</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">unusedVariable</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;UNUSED_VARIABLE&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">currentTimeStamp</span> <span class="p">=</span> <span class="n">System</span><span class="p">.</span><span class="n">currentTimeMillis</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="s">&quot;unusedVariable&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>移除变量</li>
+<li>使用@Suppress压制警告</li>
+</ul>
+
+
+<h2>The expression is unused(表达式未使用)</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">test</span><span class="p">(</span><span class="n">status</span><span class="p">:</span> <span class="n">Int</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">when</span><span class="p">(</span><span class="n">status</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="m">1</span> <span class="p">-&gt;</span> <span class="s">&quot;First&quot;</span>
+</span><span class='line'>        <span class="m">2</span> <span class="p">-&gt;</span> <span class="s">&quot;Second&quot;</span>
+</span><span class='line'>        <span class="k">else</span> <span class="p">-&gt;</span> <span class="s">&quot;Else&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>移除不用的表达式</li>
+<li>使用<code>Suppress</code>压制警告</li>
+</ul>
+
+
+<h2>UNUSED_VALUE &amp;&amp; ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE (未使用的值，赋值后未使用的变量)</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testUnusedValue</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// The value &#39;&quot;Hello&quot;&#39; assigned to &#39;var message: String?</span>
+</span><span class='line'>    <span class="c1">// defined in com.example.warningsaserrorscases.test&#39; is never used</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE&quot;</span><span class="p">)</span> <span class="k">var</span> <span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
+</span><span class='line'>    <span class="n">@Suppress</span><span class="p">(</span><span class="s">&quot;UNUSED_VALUE&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">message</span> <span class="p">=</span> <span class="s">&quot;Hello&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>移除不用变量</li>
+<li>使用<code>Suppress</code>压制警告</li>
+</ul>
+
+
+<h2>关于@Suppress</h2>
+
+<ul>
+<li>不建议滥用，因优先考虑其他的更好的解决问题的方式</li>
+<li>及时使用一定要限定最小作用范围，通常的选择范围尽量限制在变量(variable)，参数(parameter)或者语句(statement)上。</li>
+<li>上面代码中出现了很多<code>@Suppress</code>主要目的是显示警告的名称，而不是提倡大家使用压制的方式处理警告。</li>
+</ul>
+
+
+<p>以上。</p>
+
+<h2>相关文章</h2>
+
+<ul>
+<li><a href="https://droidyue.com/blog/2019/07/21/configure-kotlin-compiler-options/">为 Kotlin 项目设置编译选项</a></li>
+<li><a href="https://droidyue.com/blog/2019/07/28/kotlin-reified-generics/">使用Kotlin Reified 让泛型更简单安全</a></li>
+<li><a href="https://droidyue.com/blog/categories/kotlin/">更多Kotlin优质内容</a></li>
+</ul>
+
+</div>
+
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/vote_tips.js"></script>
+  
+  <br/>
+  <script type="text/javascript">
+		var geekTimeLinkImageStr = "<a href='http://gk.link/a/104bk'><img src='https://asset.droidyue.com/image/geektime/jikeshijian.jpeg' class='no_boarder_class' style='max-Width:100%'></a><br/>"
+		document.write(geekTimeLinkImageStr)
+</script>
+  <div id="post_rec"></div>
+  <br/>
+  
+  <!-- 
+<script type="text/javascript"  charset="utf-8" src="/javascripts/random_recommend.js">
+</script>
+<script type="text/javascript" charset="utf-8">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+ -->
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-format="autorelaxed"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="4907659907"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-08-03T14:21:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/errors/'>Errors</a>, <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>, <a class='category' href='/blog/categories/kotlinc/'>Kotlinc</a>, <a class='category' href='/blog/categories/warnigns/'>Warnigns</a>, <a class='category' href='/blog/categories/compiler/'>compiler</a>, <a class='category' href='/blog/categories/bian-yi-qi/'>编译器</a>, <a class='category' href='/blog/categories/bian-yi-shi/'>编译时</a>, <a class='category' href='/blog/categories/jing-gao/'>警告</a>, <a class='category' href='/blog/categories/yun-xing-shi/'>运行时</a>, <a class='category' href='/blog/categories/cuo-wu/'>错误</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/07/28/kotlin-reified-generics/" title="Previous Post: 使用Kotlin reified 让泛型更简单安全">&laquo; 使用Kotlin reified 让泛型更简单安全</a>
+      
+      
+    </p>
+    
+
+
+
+	<!-- JiaThis Button BEGIN -->
+
+<!-- JiaThis Button END -->
+
+
+  </footer>
+  </article>
+
+
+  <section>
+   <link rel="stylesheet" href="https://asset.droidyue.com/gitalk/gitalk.css">
+<script src="https://asset.droidyue.com/gitalk/gitalk.min.js"></script>
+<div id="gitalk-container"></div>
+<script type="text/javascript">
+	var gitalk = new Gitalk({
+  		clientID: 'c6dab5d2becf02e6568f',
+  		clientSecret: '9541ee96975f1661eab6f69811d0730d348c6546',
+  		repo: 'comments_droidyuecom',
+  		owner: 'droidyuecom',
+  		admin: ['droidyuecom'],
+  		// Ensure uniqueness and length less than 50
+  		id: location.pathname.replace("/blog/", "").substring(0,50),      
+  		distractionFreeMode: false  // Facebook-like distraction free mode
+})
+
+gitalk.render('gitalk-container')
+</script>
+
+  </section>
+
+
+<link href="/stylesheets/remote.css"  rel="stylesheet" type="text/css">
+	
+	
+</div>
+
+<aside class="sidebar">
+  
+    <script type="text/javascript">
+	loadJs('/javascripts/right_image_rec.js');
+</script>
+<script type="text/javascript" src="/javascripts/notice.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/08/03/kotlinc-config-warnings-as-errors/">Kotlin编译调校之WarningsAsErrors</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/07/28/kotlin-reified-generics/">使用Kotlin Reified 让泛型更简单安全</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/07/21/configure-kotlin-compiler-options/">为 Kotlin 项目设置编译选项</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/07/14/search-bytecode-script-to-study-kotlin-better/">一个查找字节码更好研究Kotlin的脚本</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/06/30/fix-app-store-show-previous-apple-id/">修复应用无法通过App Store升级的问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/06/09/will-unclosed-stream-objects-cause-memory-leaks/">未关闭的文件流会引起内存泄露么？</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/06/02/file-descriptor-explained/">解读文件描述符</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/26/abbreviation-do-not-make-me-think/">浅谈编码中的缩写</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/20/books-gifts/">送书啦，Kotlin，Android、Flutter都有！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/19/do-and-dont-in-kotlin/">编写地道的 Kotlin 代码</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/12/kotlin-vs-flutter/">Kotlin 和 Flutter 对于开发者究竟意味着什么？</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/04/git-pre-push-hook/">防手抖开源之 Git 钩子</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/04/27/lambda-inline-noinline-crossinline/">Kotlin 中的 Lambda 与 Inline</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/03/24/cargo-cults-programming/">货物崇拜编程</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/03/17/slap-single-level-of-abstraction-principle/">聊一聊SLAP:单一抽象层级原则</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/03/10/retrofit-json-convetor-error/">处理Retrofit MalformedJsonException报错</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/02/24/decompile-class-file-command-line/">终端反编译字节码利器 CFR</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/01/27/webview-javascript-scrolling-issue/">处理 WebView 与 ViewPager 滑动冲突</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/01/21/thread-process-and-uncaught-exceptions/">聊一聊未捕获异常与进程退出的关联</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/01/13/resolve-charles-unknow-indicator-on-android-phones/">解决Android手机连接Charles Unknown问题</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" charset="utf-8">
+	loadJs("https://asset.droidyue.com/javascript/blogroll_data_source.js");
+</script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
+<center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center><html>
+	<!--ikbc keyboard-->
+	<script type="text/javascript">var jd_union_pid="1729339876";var jd_union_euid="";</script><script type="text/javascript" src="//ads-union.jd.com/static/js/union.js"></script>
+	<br/>
+
+	<script type="text/javascript">
+		for (var i = 0; i < 3 ; i++) {
+			document.write("<img class='no_boarder_class' style='max-Width:100%' src='" + geekTimeQrImages[i] + "'>");
+		};
+	</script>
+	
+	<br/>
+	
+	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_right_0 -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="2412800998"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+	
+</html>
+
+  
+</aside>
+
+
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> ；优质服务品牌： 
+	  <a href="https://onedrive.live.com/?invref=6b59396564b1963a&invscr=90">OneDrive</a>
+	  <a href="https://www.vultr.com/?ref=7819525-4F">Vultr VPS</a>
+	  <a href="https://m.do.co/c/3c4ff5a7ed39">Digital Ocean</a>
+	  <a href="https://promotion.aliyun.com/ntms/yunparter/invite.html?userCode=tagltim6">阿里云</a>
+  </span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+<script type="text/javascript" charset="utf-8" src="/javascripts//baidu_analytics.js">
+</script> 
+
+<script type="text/javascript">
+var jiathis_config = {data_track_clickback:'true'};
+</script>
+
+<script type="text/javascript" src="/javascripts/toastr.min.js"></script>
+<link href="/stylesheets/toastr.min_v1.css" rel="stylesheet"/>
+<div id="toast"></div>
+<script type="text/javascript">
+	loadJsWithoutCache("https://asset.droidyue.com/javascript/rec_dialog_new.js");
+</script>
+
+<script type="text/javascript">
+/* 	var url = "http://onionos.com:8080/report_visitor?landUrl=" + window.btoa(document.location.href) + "&refer=" + window.btoa(document.referrer) + "&ua=" + window.btoa(navigator.userAgent);
+	loadJsNormally(url);*/
+</script></footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="/javascripts/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+  </div>
+</body>
+</html>
