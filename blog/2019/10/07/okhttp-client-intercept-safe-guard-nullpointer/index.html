@@ -1,0 +1,769 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>一个小技巧提升 OkHttp 请求稳定性 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="一个小技巧提升 OkHttp 请求稳定性 Oct 7th, 2019 OkHttp是可以说是Android开发中，每个项目都必需依赖的网络库，我们可以很便捷高效的处理网络请求，极大的提升了编码效率。但是有时候，我们使用OkHttp也会遇到这样的问题 崩溃的stacktrace 1
+2
+3
+4
+5 &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="/images/touch_icon.png"/>
+  
+  <link rel="canonical" href="https://droidyue.com/blog/2019/10/07/okhttp-client-intercept-safe-guard-nullpointer">
+  <link href="/images/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/ad.js"></script>
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
+      function setCookie(name,value,days) {
+          if (days) {
+              var date = new Date();
+              date.setTime(date.getTime()+(days*24*60*60*1000));
+              var expires = "; expires="+date.toGMTString();
+          }
+          else var expires = "";
+          document.cookie = name+"="+value+expires+"; path=/";
+      }
+
+      function eraseCookie(name) {
+          setCookie(name,"",-1);
+      }
+
+
+      function readCookie(name) {
+          var nameEQ = name + "=";
+          var ca = document.cookie.split(';');
+          for(var i=0;i < ca.length;i++) {
+              var c = ca[i];
+              while (c.charAt(0)==' ') c = c.substring(1,c.length);
+              if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+          }
+          return null;
+      }
+
+      function loadJsNormally(jsUrl) {
+          document.write('<script type="text/javascript" charset="utf-8" src="'+ jsUrl +'"></scr'+'ipt>');
+      }
+
+      function loadJsWithoutCache(jsUrl) {
+          jsUrl = jsUrl + '?v=' + +Math.random();
+          loadJsNormally(jsUrl);
+      }
+
+      
+      var droidyueNoCacheLoading = 'droidyue.no-cache';
+
+      function isNoCacheLoadingEnabled() {
+          return readCookie(droidyueNoCacheLoading) != null;
+      }
+
+      var noCacheLoading = isNoCacheLoadingEnabled();
+
+      function enableNoCacheLoading() {
+          setCookie(droidyueNoCacheLoading, 1, 365);
+      }
+
+      function disableNoCacheLoading() {
+          eraseCookie(droidyueNoCacheLoading);
+      }
+
+
+      function loadJs(jsUrl) {
+          if (noCacheLoading) {
+              loadJsWithoutCache(jsUrl);
+          } else {
+              loadJsNormally(jsUrl);
+          }
+      }
+  </script>
+  <script type="text/javascript" charset="utf-8" src="/javascripts/blogutils.js"></script>
+  <script src="//asset.droidyue.com/javascript/geektime_qr_images.js"></script>
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/book_rec_base.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="/stylesheets/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="/stylesheets/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="/javascripts/trackurl_maker.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="https://asset.droidyue.com/javascript/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/common_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/program_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/android_book_data.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/java_book_data.js" charset="utf-8"></script>
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+  (adsbygoogle = window.adsbygoogle || []).push({
+    google_ad_client: "ca-pub-6762344977202446",
+    enable_page_level_ads: true
+  });
+</script>
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?a30bba1172841d3a4e162df23a9c5e0c";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+
+<!-- GrowingIO Analytics code version 2.1 -->
+<!-- Copyright 2015-2018 GrowingIO, Inc. More info available at http://www.growingio.com -->
+
+<script type='text/javascript'>
+!function(e,t,n,g,i){e[i]=e[i]||function(){(e[i].q=e[i].q||[]).push(arguments)},n=t.createElement("script"),tag=t.getElementsByTagName("script")[0],n.async=1,n.src=('https:'==document.location.protocol?'https://':'http://')+g,tag.parentNode.insertBefore(n,tag)}(window,document,"script","assets.giocdn.com/2.1/gio.js","gio");
+  gio('init','a9815ce3665ad534', {});
+
+//custom page code begin here
+
+//custom page code end here
+
+gio('send');
+
+</script>
+
+<!-- End GrowingIO Analytics code version: 2.1 -->
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation">
+<form action="https://google.com/search" method="get"  target="_blank">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="搜索" />
+    <input type=hidden name=domains value="droidyue.com">
+    <input type=hidden name=sitesearch value="droidyue.com">
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">首页</a></li>
+  <li><a href="/ninki/">干货铺子</a></li>
+  <li><a href="/blog/archives/">存档</a></li>
+  <li><a href="/reading/">读书</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/cooperate/">合作</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/gfriends/">好基友</a></li>
+  <li><a href="/neitui/">内推</a></li>
+  <li><a href="/fuli/index.html">福利</a></li>
+  <li><a href="/links/">友链</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <a href="https://gio.ren/w/AovVWjoz" target="_blank" title="https://gio.ren/w/AovVWjoz">
+
+	<img src="https://asset.droidyue.com/image/201908/kaikeba.png" class="no_boarder_class kaikeba" style="max-Width:100%">
+</a>
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">一个小技巧提升 OkHttp 请求稳定性</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-10-07T19:56:00+08:00" pubdate data-updated="true">Oct 7<span>th</span>, 2019</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>OkHttp是可以说是Android开发中，每个项目都必需依赖的网络库，我们可以很便捷高效的处理网络请求，极大的提升了编码效率。但是有时候，我们使用OkHttp也会遇到这样的问题</p>
+
+<h2>崩溃的stacktrace</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'> E AndroidRuntime: FATAL EXCEPTION: OkHttp Dispatcher
+</span><span class='line'> E AndroidRuntime: Process: com.example.okhttpexceptionsample, PID: 13564
+</span><span class='line'> E AndroidRuntime: java.lang.NullPointerException: blablabla
+</span><span class='line'> E AndroidRuntime:    at com.example.okhttpexceptionsample.MainActivity<span class="nv">$createNPEInterceptor$1</span>.intercept<span class="o">(</span>MainActivity.kt:61<span class="o">)</span>
+</span><span class='line'> E AndroidRuntime:    at okhttp3.internal.http.RealInterceptorChain.proceed<span class="o">(</span>RealInterceptorChain.kt:112<span class="o">)</span>
+</span><span class='line'> E AndroidRuntime:    at okhttp3.internal.http.RealInterceptorChain.proceed<span class="o">(</span>RealInterceptorChain.kt:87<span class="o">)</span>
+</span><span class='line'> E AndroidRuntime:    at okhttp3.RealCall.getResponseWithInterceptorChain<span class="o">(</span>RealCall.kt:184<span class="o">)</span>
+</span><span class='line'> E AndroidRuntime:    at okhttp3.RealCall<span class="nv">$AsyncCall</span>.run<span class="o">(</span>RealCall.kt:136<span class="o">)</span>
+</span><span class='line'> E AndroidRuntime:    at java.util.concurrent.ThreadPoolExecutor.runWorker<span class="o">(</span>ThreadPoolExecutor.java:1167<span class="o">)</span>
+</span><span class='line'> E AndroidRuntime:    at java.util.concurrent.ThreadPoolExecutor<span class="nv">$Worker</span>.run<span class="o">(</span>ThreadPoolExecutor.java:641<span class="o">)</span>
+</span><span class='line'> E AndroidRuntime:    at java.lang.Thread.run<span class="o">(</span>Thread.java:784<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<!--more-->
+
+
+<h2>为什么会崩溃</h2>
+
+<p>从上面的stacktrace，我们可以分析到，发生了NullPointerException。发生了崩溃。</p>
+
+<p>等等，我记得OkHttp有处理异常的情况呢。</p>
+
+<p>嗯，确实，OkHttp有处理异常的情况，比如发生异常会调用<code>onFailure</code>。比如下面的Callback的内容介绍。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">interface</span> <span class="n">Callback</span> <span class="p">{</span>
+</span><span class='line'>  <span class="cm">/**</span>
+</span><span class='line'><span class="cm">   * Called when the request could not be executed due to cancellation, a connectivity problem or</span>
+</span><span class='line'><span class="cm">   * timeout. Because networks can fail during an exchange, it is possible that the remote server</span>
+</span><span class='line'><span class="cm">   * accepted the request before the failure.</span>
+</span><span class='line'><span class="cm">   */</span>
+</span><span class='line'>  <span class="k">fun</span> <span class="nf">onFailure</span><span class="p">(</span><span class="n">call</span><span class="p">:</span> <span class="n">Call</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="n">IOException</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="cm">/**</span>
+</span><span class='line'><span class="cm">   * Called when the HTTP response was successfully returned by the remote server. The callback may</span>
+</span><span class='line'><span class="cm">   * proceed to read the response body with [Response.body]. The response is still live until its</span>
+</span><span class='line'><span class="cm">   * response body is [closed][ResponseBody]. The recipient of the callback may consume the response</span>
+</span><span class='line'><span class="cm">   * body on another thread.</span>
+</span><span class='line'><span class="cm">   *</span>
+</span><span class='line'><span class="cm">   * Note that transport-layer success (receiving a HTTP response code, headers and body) does not</span>
+</span><span class='line'><span class="cm">   * necessarily indicate application-layer success: `response` may still indicate an unhappy HTTP</span>
+</span><span class='line'><span class="cm">   * response code like 404 or 500.</span>
+</span><span class='line'><span class="cm">   */</span>
+</span><span class='line'>  <span class="n">@Throws</span><span class="p">(</span><span class="n">IOException</span><span class="p">::</span><span class="n">class</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">fun</span> <span class="nf">onResponse</span><span class="p">(</span><span class="n">call</span><span class="p">:</span> <span class="n">Call</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>是的，</p>
+
+<ul>
+<li>OkHttp只处理了IOException的情况，</li>
+<li>NullPointerException不是IOException的子类</li>
+</ul>
+
+
+<p>所以没有被处理,发生了崩溃。</p>
+
+<p>那么有没有办法解决，让这种崩溃不发生，对用户不进行干扰呢？其实是可以的。</p>
+
+<h2>使用Interceptor</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.okhttpexceptionsample</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">import</span> <span class="n">okhttp3</span><span class="p">.</span><span class="n">Interceptor</span>
+</span><span class='line'><span class="n">import</span> <span class="n">okhttp3</span><span class="p">.</span><span class="n">Response</span>
+</span><span class='line'><span class="n">import</span> <span class="n">java</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="n">IOException</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * 对于Interceptor的intercept中可能出现的Throwable包裹成IOExceptionWrapper，转成网络请求失败，而不是应用崩溃</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">class</span> <span class="nc">SafeGuardInterceptor</span> <span class="p">:</span> <span class="n">Interceptor</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">intercept</span><span class="p">(</span><span class="n">chain</span><span class="p">:</span> <span class="n">Interceptor</span><span class="p">.</span><span class="n">Chain</span><span class="p">):</span> <span class="n">Response</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">try</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">chain</span><span class="p">.</span><span class="n">proceed</span><span class="p">(</span><span class="n">chain</span><span class="p">.</span><span class="n">request</span><span class="p">())</span>
+</span><span class='line'>        <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">Throwable</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">throw</span> <span class="nf">IOExceptionWrapper</span><span class="p">(</span><span class="s">&quot;SafeGuarded when requesting ${chain.request().url}&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * 将chain.proceed处理中发生的Throwable包装成IOExceptionWrapper</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">class</span> <span class="nf">IOExceptionWrapper</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">?,</span> <span class="n">cause</span><span class="p">:</span> <span class="n">Throwable</span><span class="p">?)</span> <span class="p">:</span> <span class="n">IOException</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">cause</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码，我们将任何<code>Throwable</code>的转成<code>IOExceptionWrapper</code>（伪装成IOException），然后添加到OkHttpClient中</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">createOKHttpClient</span><span class="p">():</span> <span class="n">OkHttpClient</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">OkHttpClient</span><span class="p">.</span><span class="n">Builder</span><span class="p">()</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">addInterceptor</span><span class="p">(</span><span class="n">SafeGuardInterceptor</span><span class="p">())</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">build</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当我们再次执行有NPE的代码，日志就发生了改变(不再是崩溃的日志，而是异常的日志)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>  W System.err: com.example.okhttpexceptionsample.IOExceptionWrapper: <span class="nv">SafeGuarded</span><span class="o">=</span>blablabla
+</span><span class='line'>  W System.err:   at com.example.okhttpexceptionsample.SafeGuardInterceptor.intercept<span class="o">(</span>SafeGuardInterceptor.kt:12<span class="o">)</span>
+</span><span class='line'>  W System.err:   at okhttp3.internal.http.RealInterceptorChain.proceed<span class="o">(</span>RealInterceptorChain.kt:112<span class="o">)</span>
+</span><span class='line'>  W System.err:   at okhttp3.internal.http.RealInterceptorChain.proceed<span class="o">(</span>RealInterceptorChain.kt:87<span class="o">)</span>
+</span><span class='line'>  W System.err:   at okhttp3.RealCall.getResponseWithInterceptorChain<span class="o">(</span>RealCall.kt:184<span class="o">)</span>
+</span><span class='line'>  W System.err:   at okhttp3.RealCall<span class="nv">$AsyncCall</span>.run<span class="o">(</span>RealCall.kt:136<span class="o">)</span>
+</span><span class='line'>  W System.err:   at java.util.concurrent.ThreadPoolExecutor.runWorker<span class="o">(</span>ThreadPoolExecutor.java:1167<span class="o">)</span>
+</span><span class='line'>  W System.err:   at java.util.concurrent.ThreadPoolExecutor<span class="nv">$Worker</span>.run<span class="o">(</span>ThreadPoolExecutor.java:641<span class="o">)</span>
+</span><span class='line'>  W System.err:   at java.lang.Thread.run<span class="o">(</span>Thread.java:784<span class="o">)</span>
+</span><span class='line'>  W System.err: Caused by: java.lang.NullPointerException: blablabla
+</span><span class='line'>  W System.err:   at com.example.okhttpexceptionsample.MainActivity<span class="nv">$createNPEInterceptor$1</span>.intercept<span class="o">(</span>MainActivity.kt:61<span class="o">)</span>
+</span><span class='line'>  W System.err:   at okhttp3.internal.http.RealInterceptorChain.proceed<span class="o">(</span>RealInterceptorChain.kt:112<span class="o">)</span>
+</span><span class='line'>  W System.err:   at okhttp3.internal.http.RealInterceptorChain.proceed<span class="o">(</span>RealInterceptorChain.kt:87<span class="o">)</span>
+</span><span class='line'>  W System.err:   at com.example.okhttpexceptionsample.SafeGuardInterceptor.intercept<span class="o">(</span>SafeGuardInterceptor.kt:10<span class="o">)</span>
+</span><span class='line'>  W System.err:   ... 7 more
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上述需要注意两点</p>
+
+<ul>
+<li>添加的是Interceptor,而不是NetworkInterceptor</li>
+<li>顺序很重要,一定要放在第一个位置</li>
+</ul>
+
+
+<h2>这么做有什么问题</h2>
+
+<p>这么做，当然可以明显增强请求的稳定性和应用的崩溃率。但是是不是也有一些问题呢？比如</p>
+
+<ul>
+<li>将问题情况吞掉，不利于发现问题呢</li>
+</ul>
+
+
+<p>是的，确实可能存在上述的问题，但是我们可以利用下面的方式减轻或者解决问题</p>
+
+<ul>
+<li>只针对release情况应用SafeGuardInterceptor,这样便于debug情况下更容易发现</li>
+<li>针对不同的build variants进行配置，便于尽可能的小范围发现问题</li>
+<li>实行更加智能的动态开启策略。</li>
+</ul>
+
+
+<p>在软件工程中，很多决定都是trade-off的体现，具体的实施方案大家可以自行平衡选择。</p>
+</div>
+
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/vote_tips.js"></script>
+  
+  <br/>
+  <script type="text/javascript">
+		var geekTimeLinkImageStr = "<a href='http://gk.link/a/104bk'><img src='https://asset.droidyue.com/image/geektime/jikeshijian.jpeg' class='no_boarder_class' style='max-Width:100%'></a><br/>"
+		// document.write(geekTimeLinkImageStr)
+</script>
+  <div id="post_rec"></div>
+  <br/>
+  
+  <!-- 
+<script type="text/javascript"  charset="utf-8" src="/javascripts/random_recommend.js">
+</script>
+<script type="text/javascript" charset="utf-8">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+ -->
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-format="autorelaxed"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="4907659907"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-10-07T19:56:00+08:00" pubdate data-updated="true">Oct 7<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ioexception/'>IOException</a>, <a class='category' href='/blog/categories/interceptor/'>Interceptor</a>, <a class='category' href='/blog/categories/okhttp/'>OkHttp</a>, <a class='category' href='/blog/categories/beng-kui/'>崩溃</a>, <a class='category' href='/blog/categories/wen-ding-xing/'>稳定性</a>, <a class='category' href='/blog/categories/qing-qiu/'>请求</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/09/22/find-jar-file-by-package-name/" title="Previous Post: 根据包名查找 jar 包文件">&laquo; 根据包名查找 jar 包文件</a>
+      
+      
+    </p>
+    
+
+
+
+	<!-- JiaThis Button BEGIN -->
+
+<!-- JiaThis Button END -->
+
+
+  </footer>
+  </article>
+
+
+  <section>
+   <link rel="stylesheet" href="https://asset.droidyue.com/gitalk/gitalk.css">
+<script src="https://asset.droidyue.com/gitalk/gitalk.min.js"></script>
+<div id="gitalk-container"></div>
+<script type="text/javascript">
+	var gitalk = new Gitalk({
+  		clientID: 'c6dab5d2becf02e6568f',
+  		clientSecret: '9541ee96975f1661eab6f69811d0730d348c6546',
+  		repo: 'comments_droidyuecom',
+  		owner: 'droidyuecom',
+  		admin: ['droidyuecom'],
+  		// Ensure uniqueness and length less than 50
+  		id: location.pathname.replace("/blog/", "").substring(0,50),      
+  		distractionFreeMode: false  // Facebook-like distraction free mode
+})
+
+gitalk.render('gitalk-container')
+</script>
+<!--adsense ads after the comments-->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- after_comments -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="9009226797"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+  </section>
+
+
+<link href="/stylesheets/remote.css"  rel="stylesheet" type="text/css">
+	
+	
+</div>
+
+<aside class="sidebar">
+  
+    
+<script type="text/javascript">
+	loadJs('/javascripts/right_image_rec.js');
+</script>
+<script type="text/javascript" src="/javascripts/notice.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/10/07/okhttp-client-intercept-safe-guard-nullpointer/">一个小技巧提升 OkHttp 请求稳定性</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/09/22/find-jar-file-by-package-name/">根据包名查找 Jar 包文件</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/09/15/fix-grep-multiple-filter-issue-cache-size/">解决 Grep 的多次管道过滤问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/09/08/jvmmultifile-annotation-in-kotlin/">JvmMultifile 注解在 Kotlin 中的应用</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/09/01/jvm-name-annotations-kotlin/">JvmName 注解在 Kotlin 中的应用</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/08/25/kotlin-contract-between-developers-and-the-compiler/">Contract，开发者和 Kotlin 编译器之间的契约</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/08/18/faster-kapt/">简单几招提速 Kotlin Kapt编译</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/08/11/kotlin-compiler-intrinsics/">Kotlin编译与Intrinsics检查</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/08/03/kotlinc-config-warnings-as-errors/">Kotlin编译调校之WarningsAsErrors</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/07/28/kotlin-reified-generics/">使用Kotlin Reified 让泛型更简单安全</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/07/21/configure-kotlin-compiler-options/">为 Kotlin 项目设置编译选项</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/07/14/search-bytecode-script-to-study-kotlin-better/">一个查找字节码更好研究Kotlin的脚本</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/06/30/fix-app-store-show-previous-apple-id/">修复应用无法通过App Store升级的问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/06/09/will-unclosed-stream-objects-cause-memory-leaks/">未关闭的文件流会引起内存泄露么？</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/06/02/file-descriptor-explained/">解读文件描述符</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/26/abbreviation-do-not-make-me-think/">浅谈编码中的缩写</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/20/books-gifts/">送书啦，Kotlin，Android、Flutter都有！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/19/do-and-dont-in-kotlin/">编写地道的 Kotlin 代码</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/12/kotlin-vs-flutter/">Kotlin 和 Flutter 对于开发者究竟意味着什么？</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/05/04/git-pre-push-hook/">防手抖开源之 Git 钩子</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" charset="utf-8">
+	loadJs("https://asset.droidyue.com/javascript/blogroll_data_source.js");
+</script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
+<center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center><html>
+	<!--ikbc keyboard-->
+	<script type="text/javascript">var jd_union_pid="1729339876";var jd_union_euid="";</script><script type="text/javascript" src="//ads-union.jd.com/static/js/union.js"></script>
+	<br/>
+
+	<script type="text/javascript">
+		for (var i = 0; i < 3 ; i++) {
+			document.write("<img class='no_boarder_class' style='max-Width:100%' src='" + geekTimeQrImages[i] + "'>");
+		};
+	</script>
+	
+	<br/>
+	
+	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_right_0 -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="2412800998"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+	
+</html>
+
+  
+</aside>
+
+
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> ；优质服务品牌： 
+	  <a href="https://onedrive.live.com/?invref=6b59396564b1963a&invscr=90">OneDrive</a>
+	  <a href="https://www.vultr.com/?ref=7819525-4F">Vultr VPS</a>
+	  <a href="https://m.do.co/c/3c4ff5a7ed39">Digital Ocean</a>
+	  <a href="https://promotion.aliyun.com/ntms/yunparter/invite.html?userCode=tagltim6">阿里云</a>
+  </span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+
+<script type="text/javascript">
+var jiathis_config = {data_track_clickback:'true'};
+</script>
+
+<script type="text/javascript" src="/javascripts/toastr.min.js"></script>
+<link href="/stylesheets/toastr.min_v1.css" rel="stylesheet"/>
+<div id="toast"></div>
+<script type="text/javascript">
+	loadJsWithoutCache("https://asset.droidyue.com/javascript/rec_dialog_new.js");
+</script>
+
+<script type="text/javascript">
+/* 	var url = "http://onionos.com:8080/report_visitor?landUrl=" + window.btoa(document.location.href) + "&refer=" + window.btoa(document.referrer) + "&ua=" + window.btoa(navigator.userAgent);
+	loadJsNormally(url);*/
+</script>
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="/javascripts/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+  </div>
+</body>
+</html>
