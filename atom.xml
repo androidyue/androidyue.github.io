@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2019-10-13T19:17:57+08:00</updated>
+  <updated>2019-10-20T21:26:16+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,292 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android WebView 诊断与排查问题的方法和技巧]]></title>
+    <link href="https://droidyue.com/blog/2019/10/20/how-to-diagnose-webview-in-android/"/>
+    <updated>2019-10-20T21:13:00+08:00</updated>
+    <id>https://droidyue.com/blog/2019/10/20/how-to-diagnose-webview-in-android</id>
+    <content type="html"><![CDATA[<p>WebView，是安卓中很重要的一个组件，我们的应用中集成WebView后，可能会遇到各种各样的问题，这里简单介绍一些Android WebView 诊断与排查问题的方法，希望对于大家有这方面的问题的朋友有所帮助。</p>
+
+<!--more-->
+
+
+<h2>开启DiagnosableWebViewClient日志输出</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.droidyue.webview.webviewclient</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">net</span><span class="p">.</span><span class="n">http</span><span class="p">.</span><span class="n">SslError</span>
+</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">webkit</span><span class="p">.*</span>
+</span><span class='line'><span class="n">import</span> <span class="n">com</span><span class="p">.</span><span class="n">droidyue</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">debugMessage</span>
+</span><span class='line'><span class="n">import</span> <span class="n">com</span><span class="p">.</span><span class="n">droidyue</span><span class="p">.</span><span class="n">webview</span><span class="p">.</span><span class="n">ext</span><span class="p">.</span><span class="n">toSimpleString</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * 诊断（错误信息）的WebViewClient,会以日志输出形式输出错误信息，便于发现网页的问题</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="n">open</span> <span class="k">class</span> <span class="nc">DiagnosableWebViewClient</span> <span class="p">:</span> <span class="n">WebViewClient</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onReceivedError</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">WebView</span><span class="p">?,</span> <span class="n">errorCode</span><span class="p">:</span> <span class="n">Int</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="n">String</span><span class="p">?,</span> <span class="n">failingUrl</span><span class="p">:</span> <span class="n">String</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">onReceivedError</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">errorCode</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">failingUrl</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">debugMessage</span><span class="p">(</span><span class="s">&quot;onReceivedError&quot;</span><span class="p">,</span> <span class="s">&quot;errorCode&quot;</span><span class="p">,</span> <span class="n">errorCode</span><span class="p">,</span> <span class="s">&quot;description&quot;</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span>
+</span><span class='line'>            <span class="s">&quot;failingUrl&quot;</span><span class="p">,</span> <span class="n">failingUrl</span><span class="p">,</span> <span class="s">&quot;webview.info&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onReceivedError</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">WebView</span><span class="p">?,</span> <span class="n">request</span><span class="p">:</span> <span class="n">WebResourceRequest</span><span class="p">?,</span> <span class="n">error</span><span class="p">:</span> <span class="n">WebResourceError</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">onReceivedError</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">debugMessage</span><span class="p">(</span><span class="s">&quot;onReceivedError&quot;</span><span class="p">,</span> <span class="s">&quot;request&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">(),</span> <span class="s">&quot;error&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">(),</span>
+</span><span class='line'>            <span class="s">&quot;webview.info&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onSafeBrowsingHit</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">WebView</span><span class="p">?,</span> <span class="n">request</span><span class="p">:</span> <span class="n">WebResourceRequest</span><span class="p">?,</span> <span class="n">threatType</span><span class="p">:</span> <span class="n">Int</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">SafeBrowsingResponse</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">onSafeBrowsingHit</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">threatType</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">debugMessage</span><span class="p">(</span><span class="s">&quot;onSafeBrowsingHit&quot;</span><span class="p">,</span> <span class="s">&quot;request&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">(),</span> <span class="s">&quot;threatType&quot;</span><span class="p">,</span> <span class="n">threatType</span><span class="p">,</span>
+</span><span class='line'>            <span class="s">&quot;webview.info&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onReceivedHttpError</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">WebView</span><span class="p">?,</span> <span class="n">request</span><span class="p">:</span> <span class="n">WebResourceRequest</span><span class="p">?,</span> <span class="n">errorResponse</span><span class="p">:</span> <span class="n">WebResourceResponse</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">onReceivedHttpError</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">errorResponse</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">debugMessage</span><span class="p">(</span><span class="s">&quot;onReceivedHttpError&quot;</span><span class="p">,</span> <span class="s">&quot;request&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="s">&quot;errorResponse&quot;</span><span class="p">,</span> <span class="n">errorResponse</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">(),</span>
+</span><span class='line'>            <span class="s">&quot;webview.info&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onReceivedSslError</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">WebView</span><span class="p">?,</span> <span class="n">handler</span><span class="p">:</span> <span class="n">SslErrorHandler</span><span class="p">?,</span> <span class="n">error</span><span class="p">:</span> <span class="n">SslError</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">onReceivedSslError</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">handler</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">debugMessage</span><span class="p">(</span><span class="s">&quot;onReceivedSslError&quot;</span><span class="p">,</span> <span class="s">&quot;error&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="s">&quot;webview.info&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>举个例子</h3>
+
+<p>WebView页面出现了白屏，不展示任何内容，如下图</p>
+
+<p><img src="https://asset.droidyue.com/image/2019_09/hybrid_app_white_issue.png" alt="https://asset.droidyue.com/image/2019_09/hybrid_app_white_issue.png" /></p>
+
+<p>利用上面支持的内容，我们查看错误输出日志</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>D debugMessage: ConcreteWebViewClient;onReceivedSslError error primary error: 3 certificate: Issued to: <span class="nv">CN</span><span class="o">=</span>sni.cloudflaressl.com,O<span class="o">=</span>Cloudflare<span class="se">\,</span> Inc.,L<span class="o">=</span>San Francisco,ST<span class="o">=</span>CA,C<span class="o">=</span>US;
+</span><span class='line'>D debugMessage: Issued by: <span class="nv">C</span><span class="o">=</span>NZ,ST<span class="o">=</span>Auckland,L<span class="o">=</span>Auckland,O<span class="o">=</span>XK72 Ltd,OU<span class="o">=</span>https://charlesproxy.com/ssl,CN<span class="o">=</span>Charles Proxy CA <span class="o">(</span>4 Sep 2018<span class="se">\,</span> bogon<span class="o">)</span>;
+</span><span class='line'>D debugMessage:  on URL: https://droidyue.com/ webview.info <span class="nv">url</span><span class="o">=</span>https://droidyue.com/;originalUrl<span class="o">=</span>null
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过查找源码(SslError.java)我们了解到</p>
+
+<ul>
+<li>errorCode 为 3，代表证书不信任。</li>
+</ul>
+
+
+<p>这其中的缘由是</p>
+
+<ul>
+<li>我们在设备上安装的charles证书，属于用户添加的证书</li>
+<li>出于应用安全的目的，Android 7及之后默认不信任用户添加的证书(Android 7 之前是默认信任用户添加的证书)</li>
+<li>当我们将App的编译目标提到24及其以上，系统就会激活这一安全限制。</li>
+</ul>
+
+
+<p>所以，我们按照这篇文章<a href="https://droidyue.com/blog/2019/01/13/resolve-charles-unknow-indicator-on-android-phones/">解决Android手机连接Charles Unknown问题</a>的方案，允许App在debug版本下信任用户证书就可以解决问题了。</p>
+
+<h2>Console日志查看</h2>
+
+<p>比如，我们有这样一段Javascript代码处理console输出。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">console</span><span class="p">.</span><span class="nx">debug</span><span class="p">(</span><span class="s2">&quot;console.debug&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;console.log&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nx">console</span><span class="p">.</span><span class="nx">info</span><span class="p">(</span><span class="s2">&quot;console.info&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nx">console</span><span class="p">.</span><span class="nx">warn</span><span class="p">(</span><span class="s2">&quot;console.warn&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">&quot;console.error&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们使用</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>adb logcat | grep <span class="s2">&quot;chromium&quot;</span> --line-buffered --color<span class="o">=</span>always | grep CONSOLE --color<span class="o">=</span>always
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+可以过滤出WebView CONSOLE的日志输出</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'> I chromium: <span class="o">[</span>INFO:CONSOLE<span class="o">(</span>2<span class="o">)]</span> <span class="s2">&quot;console.debug&quot;</span>, <span class="nb">source</span>:  <span class="o">(</span>2<span class="o">)</span>
+</span><span class='line'> I chromium: <span class="o">[</span>INFO:CONSOLE<span class="o">(</span>3<span class="o">)]</span> <span class="s2">&quot;console.log&quot;</span>, <span class="nb">source</span>:  <span class="o">(</span>3<span class="o">)</span>
+</span><span class='line'> I chromium: <span class="o">[</span>INFO:CONSOLE<span class="o">(</span>4<span class="o">)]</span> <span class="s2">&quot;console.info&quot;</span>, <span class="nb">source</span>:  <span class="o">(</span>4<span class="o">)</span>
+</span><span class='line'> I chromium: <span class="o">[</span>INFO:CONSOLE<span class="o">(</span>5<span class="o">)]</span> <span class="s2">&quot;console.warn&quot;</span>, <span class="nb">source</span>:  <span class="o">(</span>5<span class="o">)</span>
+</span><span class='line'> I chromium: <span class="o">[</span>INFO:CONSOLE<span class="o">(</span>6<span class="o">)]</span> <span class="s2">&quot;console.error&quot;</span>, <span class="nb">source</span>:  <span class="o">(</span>6<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是这样也有一个不足，就是没有打印出Console的消息级别(都展示成了INFO:CONSOLE)。</p>
+
+<p>如果想要解决上面的不足或者自定义日志输出关键字的话，可以重写实现WebChromeClient的<code>onConsoleMessage</code>方法</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.droidyue.webview.chromeclient</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">webkit</span><span class="p">.</span><span class="n">ConsoleMessage</span>
+</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">webkit</span><span class="p">.</span><span class="n">WebChromeClient</span>
+</span><span class='line'><span class="n">import</span> <span class="n">com</span><span class="p">.</span><span class="n">droidyue</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">debugMessage</span>
+</span><span class='line'><span class="n">import</span> <span class="n">com</span><span class="p">.</span><span class="n">droidyue</span><span class="p">.</span><span class="n">webview</span><span class="p">.</span><span class="n">ext</span><span class="p">.</span><span class="n">toSimpleString</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">open</span> <span class="k">class</span> <span class="nc">DiagnosableChromeClient</span><span class="p">:</span> <span class="n">WebChromeClient</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onConsoleMessage</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">?,</span> <span class="n">lineNumber</span><span class="p">:</span> <span class="n">Int</span><span class="p">,</span> <span class="n">sourceID</span><span class="p">:</span> <span class="n">String</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">//不需要调用super方法</span>
+</span><span class='line'>        <span class="n">debugMessage</span><span class="p">(</span><span class="s">&quot;onConsoleMessage&quot;</span><span class="p">,</span> <span class="s">&quot;message&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="s">&quot;lineNumber&quot;</span><span class="p">,</span> <span class="n">lineNumber</span><span class="p">,</span> <span class="s">&quot;sourceID&quot;</span><span class="p">,</span> <span class="n">sourceID</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onConsoleMessage</span><span class="p">(</span><span class="n">consoleMessage</span><span class="p">:</span> <span class="n">ConsoleMessage</span><span class="p">?):</span> <span class="n">Boolean</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">debugMessage</span><span class="p">(</span><span class="s">&quot;onConsoleMessage&quot;</span><span class="p">,</span> <span class="s">&quot;message&quot;</span><span class="p">,</span> <span class="n">consoleMessage</span><span class="p">?.</span><span class="n">toSimpleString</span><span class="p">())</span>
+</span><span class='line'>        <span class="c1">//返回true，不再需要webview内部处理</span>
+</span><span class='line'>        <span class="k">return</span> <span class="k">true</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>D debugMessage: ConcreteWebChromeClient;onConsoleMessage message <span class="nv">messageLevel</span><span class="o">=</span>TIP;message<span class="o">=</span>console.debug;sourceId<span class="o">=</span>;<span class="nv">lineNumber</span><span class="o">=</span>1
+</span><span class='line'>D debugMessage: ConcreteWebChromeClient;onConsoleMessage message <span class="nv">messageLevel</span><span class="o">=</span>LOG;message<span class="o">=</span>console.log;sourceId<span class="o">=</span>;<span class="nv">lineNumber</span><span class="o">=</span>2
+</span><span class='line'>D debugMessage: ConcreteWebChromeClient;onConsoleMessage message <span class="nv">messageLevel</span><span class="o">=</span>LOG;message<span class="o">=</span>console.info;sourceId<span class="o">=</span>;<span class="nv">lineNumber</span><span class="o">=</span>3
+</span><span class='line'>D debugMessage: ConcreteWebChromeClient;onConsoleMessage message <span class="nv">messageLevel</span><span class="o">=</span>WARNING;message<span class="o">=</span>console.warn;sourceId<span class="o">=</span>;<span class="nv">lineNumber</span><span class="o">=</span>4
+</span><span class='line'>D debugMessage: ConcreteWebChromeClient;onConsoleMessage message <span class="nv">messageLevel</span><span class="o">=</span>ERROR;message<span class="o">=</span>console.error;sourceId<span class="o">=</span>;<span class="nv">lineNumber</span><span class="o">=</span>5
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>开启 WebView 远程调试</h2>
+
+<p>从Android Kitkat(4.4)开始，WebView 支持与Chrome 连接执行远程调试。</p>
+
+<p>开启很简单，如下代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="n">WebView</span><span class="p">.</span><span class="n">enableRemoteDebugging</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">Build</span><span class="p">.</span><span class="n">VERSION</span><span class="p">.</span><span class="n">SDK_INT</span> <span class="p">&gt;=</span> <span class="n">Build</span><span class="p">.</span><span class="n">VERSION_CODES</span><span class="p">.</span><span class="n">KITKAT</span> <span class="p">&amp;&amp;</span> <span class="n">BuildConfig</span><span class="p">.</span><span class="n">DEBUG</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">WebView</span><span class="p">.</span><span class="n">setWebContentsDebuggingEnabled</span><span class="p">(</span><span class="k">true</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但需要注意两点</p>
+
+<ul>
+<li>一定要限定运行设备大于等于4.4系统</li>
+<li>强烈建议限定在Debug编译(或等同条件)包下开启，不建议Release包也启用该功能</li>
+</ul>
+
+
+<p>配置完成后，启动App，打开Chrome，输入<code>chrome://inspect</code>
+<img src="https://asset.droidyue.com/image/2019_09/webview-debugging.png" alt="https://asset.droidyue.com/image/2019_09/webview-debugging.png" /></p>
+
+<p>可以调试的功能有</p>
+
+<ul>
+<li>审查元素</li>
+<li>执行Javascript</li>
+<li>查看网页资源</li>
+<li>进行性能分析</li>
+<li>其他功能</li>
+</ul>
+
+
+<p>具体内容可以访问<a href="https://developers.google.com/web/tools/chrome-devtools/remote-debugging/webviews">https://developers.google.com/web/tools/chrome-devtools/remote-debugging/webviews</a>了解。</p>
+
+<h2>推荐阅读</h2>
+
+<ul>
+<li><a href="https://droidyue.com/blog/categories/webview/">WebView分类文章</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[使用脚本批量替换文本内容]]></title>
@@ -6315,119 +6601,6 @@
 <p style="text-align: center;max-width: 100%;">
 <img src="https://asset.droidyue.com/image/2019_05/kotlin_hexin_biancheng.png" style="max-width: 100%;width: 100%;">
 </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Kotlin 和 Flutter 对于开发者究竟意味着什么？]]></title>
-    <link href="https://droidyue.com/blog/2019/05/12/kotlin-vs-flutter/"/>
-    <updated>2019-05-12T21:34:00+08:00</updated>
-    <id>https://droidyue.com/blog/2019/05/12/kotlin-vs-flutter</id>
-    <content type="html"><![CDATA[<p>本文系CSDN约稿，具体转载事宜请沟通CSDN。</p>
-
-<blockquote><p>作者 : 段建华<br/>
-责编 : 唐小引<br/>
-出品 : CSDN（ID：CSDNnews）</p></blockquote>
-
-<p>【CSDN 编者按】近些年来，编程语言流行度的变化其实不大，在 TIOBE 编程语言排行榜上，Java、C、C++ 固若金山，也就只有 Python 会攻城略地成为第四。在这 TOP3 之中，Java 以其非常优秀的普适性，可以用于前后端开发，再加上非常成熟的 JVM 虚拟机以及整个 Java 生态，让 Java 这个老大哥常年雄踞 TOP1，在 CSDN 的 Java 相关的文章之中，常有用户留言调侃“Java：你们随便争，反正我 Java 是第一”也可窥见一二。</p>
-
-<p>而从两年前 Google 正式宣布 Kotlin 成为 Android 官方支持的语言开始，对于“Kotlin 即将取代 Java”的讨论便甚嚣尘上从未停歇。彼时，Kotlin 这个诞生于 2011 年的小伙子让已经使用了 Java 多年的 Android 开发者们有了点不可言说的滋味。同时，在过去的数年之间，伴随着 Oracle 与 Google 纷争不止，业界“Oracle 要玩死 Java”之声亦是不绝于耳。</p>
-
-<!--more-->
-
-
-<p>Java 8 更新，Oracle 将“删除”按钮设置成了高亮</p>
-
-<p>2017 年，面对着 Kotlin 这个 Android 开发新贵，Realm 直接给出了一个预测，就是“到 2018 年底，在 Android 开发领域，Kotlin 将超越 Java，成为开发 Android 应用的第一语言”。</p>
-
-<p>如今，时间上虽然稍晚了几个月，但这份预测却成为了现实。</p>
-
-<p>那么，当今天 Google I/O 大会上，Kotlin 取代 Java 成为 Android App 开发的首选语言之时，对于我们移动开发者而言，究竟意味着什么？同时，当 Flutter 带着一统 App、Web、桌面及嵌入式开发之势而来之时，移动开发者该怎么办？对此，CSDN 特别邀请在国内 Android 圈子中较早研究 Kotlin 的段建华（@技术小黑屋）来解答目前开发者们最为关心的问题：为什么 Google 会越过 Java 让 Kotlin First？</p>
-
-<h2>采用 Kotlin 与 Oracle 版权有关系么？</h2>
-
-<p>其实可能没有关系。</p>
-
-<p>这场起自 2010 年的诉讼案，几经反转，曾一度惊动美国最高法院，从最初的专利和版权侵权到最后聚焦在 Google 是否合理使用了 Java 的 API。但是 Oracle 自始至终都不是在控告 Google 允许开发者使用 Java 来开发应用程序。</p>
-
-<p>而真正让 Kotlin 被 Google 采用的原因其实是 Kotlin 自身的优点，譬如安全、简洁、实用，以及与 Java 可交互良好等特点。除此之外，Kotlin 在相对很早的时候就在国外的知名公司用来开发 Android App，有着不错的氛围和环境，这也为其裂变发展贡献了不小的功劳。</p>
-
-<h2>Kotlin First 对于 Android 开发者究竟意味着什么？</h2>
-
-<p>首先对于 Google 来说，应该意味着更进一步地放弃 Java。这会导致更多的 Android 库出现对应的 Kotlin 实现，甚至可能是只有 Kotlin 版本，Android Studio IDE 也会出现更多的倾向于 Kotlin 的特性和支持等。结果可能会是 App 开发者进一步向 Kotlin 靠拢，而 Java 则相应地被进一步孤立。</p>
-
-<p>其次，对于 Android 开发者来说，当本届 I/O 大会 Google 宣布 Kotlin 作为 Android 首选开发语言那一刻，再次证明我们使用 Kotlin 是正确的。内心都是无比 Exciting，充盈着一种满满的被认可感，而这势必会让更多的 Android 开发者投向 Kotlin 的怀抱。</p>
-
-<p>同时，至关重要的是体现在业务上，对于管理者来说，会有更大的信心和更强的动力去推动团队完成从 Java 到 Kotlin 的转变。</p>
-
-<p>事实上，当前在 Android 研发的招聘中，大部分招聘 JD 都会包含希望求职者具备 Kotlin 编码能力的描述，而面试者的简历也会提到自己学习或者项目应用 Kotlin 等内容。</p>
-
-<p>并且，目前笔者从各种渠道了解到，大部分的公司都已经使用 Kotlin 作为首选开发语言，而且积极效果反馈明显。</p>
-
-<p>看完移动端，我们再看服务端，不同于 Java 在后端的良好表现。尽管就 Kotlin 来说，除了前文所述的优点之外，协程是一大吸引，但 Kotlin 在中后台开发人员中的流行度可能并不会像在 Android 上这么顺利，究其原因，主要还是：</p>
-
-<ul>
-<li>缺乏官方权威或大公司背书来提振威望；</li>
-<li>相关的框架需要进一步丰富；</li>
-</ul>
-
-
-<p>CSDN 编者注：对于这一点，在 CSDN《2018 &ndash; 2019 中国开发者调查报告》中，拥有十几年移动开发经验的轻芒联合创始人范怀宇对此表示：Java 的 Web 框架经过千锤百炼已经可以支撑足够大的并发，JVM 经过长年优化性能表现也非常出众，而 Java 的各类库、统一的编程模型、丰富的人才储备，可以满足各种场景的诉求。</p>
-
-<p>相应的中文社区和氛围需要增强。</p>
-
-<p>但无论如何，<strong>Kotlin 的确称得上是 Java 程序员近在咫尺的小确幸，你需要做的就是抓住它，不要错过</strong>。</p>
-
-<h2>Google 同推 Flutter 和 Kotlin，那么移动开发者该如何做选择？</h2>
-
-<p>我们再来看 Google 在移动端另一重推的框架，Flutter 自问世伊始便被寄予厚望，从开始的支持 Android 和 iOS 开发到现在的全平台（Mobile、Desktop、Web、Embedded），几近于真正地实现了数年来程序员梦寐以求的“Write once, run anywhere”的愿景。</p>
-
-<p>因此相对而言，Flutter 显得更加有诱惑力，因为它是一个跨平台开发的解决方案，我想这也是大多数人给出的答案。</p>
-
-<p>但是也有很多原因会导致你无法选用 Flutter，如下不完全列举：</p>
-
-<ul>
-<li>Flutter 需要使用 Dart 语言，没有第二语言。Dart 令人诟病的方面也不少；</li>
-<li>对现有技术投入较多导致沉默成本过大，甚至是难以负担；</li>
-<li>保守主义，避免过早地对某项技术投入资源；</li>
-<li>领域限制，Flutter 无法满足要求。</li>
-</ul>
-
-
-<p>Kotlin 的被钦定可以解读为 Android 开始逐渐放弃 Java 语言这个开发依赖，而 Flutter 的推出可以被理解成 Google 开始放弃 Android，迎接新操作系统 Google Fuchsia 的准备。</p>
-
-<p>出于综合考虑且必须二选一的情况下，建议你选择 Flutter，但是如果你有兴趣见识一种比 Java 更安全，更简洁，更实用，更优雅的语言的话，我也推荐你学一学 Kotlin。</p>
-
-<p>Flutter 很有前途，但 Kotlin 也会让你欲罢不能，这确实是一件麻烦事。</p>
-
-<h2>基于同时，对于我们所有技术人来说，一个非常头疼且不由得恐慌的问题，那便是如何应对日新月异的技术？</h2>
-
-<p>这可能是越来越多的以工程为主的开发者面临的问题，因为今天有 Kotlin 和 Flutter，明天或许就会冒出来 Gotlin、Hlutter 等新的技术。</p>
-
-<p>日新月异层出不穷，不断追求学习并不现实，反而有可能把自己搞的很累，甚至是产生负面效果。新技术固然可以学习，但是作为技术人，获得完善的素养显得更加意义深远。</p>
-
-<p>笔者认为一个技术人员想要具备完善的素养，需要朝着这些方向努力：</p>
-
-<ul>
-<li>夯实基础；</li>
-<li>学好英语；</li>
-<li>提升学习能力；</li>
-<li>坚持总结归纳问题的习惯；</li>
-<li>增强分析问题，解决问题的能力。</li>
-</ul>
-
-
-<p>一个技术人员能够走多远，靠的不是会某种技术，而是完善以上高质量的素养。</p>
-
-<h2>Kotlin 相关文章延伸阅读</h2>
-
-<ul>
-<li><a href="https://droidyue.com/blog/2018/01/31/how-to-speed-up-kotlin-compilation/">关于应用Kotlin后的编译速度问题</a></li>
-<li><a href="https://droidyue.com/blog/2017/05/21/my-opinion-of-kotlins-becoming-an-official-language-of-android/">如何看待 Kotlin 成为 Android 官方支持开发语言？</a></li>
-<li><a href="https://droidyue.com/blog/2017/05/18/why-do-i-turn-to-kotlin/">为什么我要改用Kotlin</a></li>
-<li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
-</ul>
 
 ]]></content>
   </entry>
