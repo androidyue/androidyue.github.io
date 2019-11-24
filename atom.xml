@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2019-11-17T21:51:30+08:00</updated>
+  <updated>2019-11-24T18:51:42+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,174 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[这可能是最好的 Android/Kotlin日志输出方法]]></title>
+    <link href="https://droidyue.com/blog/2019/11/24/smart-log-in-android-slash-kotlin/"/>
+    <updated>2019-11-24T18:40:00+08:00</updated>
+    <id>https://droidyue.com/blog/2019/11/24/smart-log-in-android-slash-kotlin</id>
+    <content type="html"><![CDATA[<p>在编程调试和定位问题的时候，日志是一个最常用的工具。比如输出一些信息，确定执行轨迹。今天我们这里简单聊一聊打印日志的一些分析。</p>
+
+<p>通常，我们进行日志输出的时候都会限定在debug包下执行，对于非debug包，我们就不输出日志。那么如果是非debug，不同的日志输出方式可能存在一定的性能问题，本文将通过几个版本来对比着方面的差异。</p>
+
+<!--more-->
+
+
+<h2>原始版</h2>
+
+<p>这可能是最原始的版本打印日志了，判断是否是debug，然后决定是否输出日志</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">debugLog</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">BuildConfig</span><span class="p">.</span><span class="n">DEBUG</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">Log</span><span class="p">.</span><span class="n">d</span><span class="p">(</span><span class="s">&quot;debugLog&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">testDebugLog</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">debugLog</span><span class="p">(</span><span class="s">&quot;getProperties &quot;</span> <span class="p">+</span> <span class="n">getProperties</span><span class="p">()?.</span><span class="n">joinToString</span><span class="p">())</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的问题</p>
+
+<ul>
+<li><code>testDebugLog</code> 需要执行<code>getProperties()</code>，这一步的性能不可预知</li>
+<li><code>testDebugLog</code> 内部存在字符串拼接</li>
+<li>如果拼接内容复杂，比如一个庞大的Object，会造成一定的开销</li>
+<li>综上所述，该实现如果在<code>非Debug条件下</code>存在一定的运行时开销</li>
+</ul>
+
+
+<h2>不拼接的版本</h2>
+
+<p>既然拼接会导致一些问题，那么下面的版本采用(调用处)不拼接的形式</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">debugMessage</span><span class="p">(</span><span class="n">vararg</span> <span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">BuildConfig</span><span class="p">.</span><span class="n">DEBUG</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">Log</span><span class="p">.</span><span class="n">d</span><span class="p">(</span><span class="s">&quot;debugMessage&quot;</span><span class="p">,</span> <span class="n">args</span><span class="p">.</span><span class="n">joinToString</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">testDebugMessage</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">debugMessage</span><span class="p">(</span><span class="s">&quot;getProperties&quot;</span><span class="p">,</span> <span class="n">getProperties</span><span class="p">())</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>仍然需要执行 <code>getProperties()</code>，这一步的性能不可预知</strong></li>
+<li>上面的代码使用了可变参数的形式处理message信息</li>
+<li>而可变参数内部实际采用了数组的形式，也就是上面的代码会在运行时生成一个数组，一个元素是<code>getProperties</code>,另一个元素是<code>getProperties()</code>的内容</li>
+<li>这个版本相对第一个版本要好一些（以极端情况看），但是<code>在非Debug条件下</code>仍然存在一定的运行时开销，不完美。</li>
+</ul>
+
+
+<h2>相对最完美的版本</h2>
+
+<p>这个版本是相对最好的实现，规避了非Debug环境下的字符串拼接和具体求值的操作</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">inline</span> <span class="k">fun</span> <span class="nf">smartMessage</span><span class="p">(</span><span class="n">lazyMessage</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="n">Any</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">BuildConfig</span><span class="p">.</span><span class="n">DEBUG</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">Log</span><span class="p">.</span><span class="n">d</span><span class="p">(</span><span class="s">&quot;smartMessage&quot;</span><span class="p">,</span> <span class="n">lazyMessage</span><span class="p">().</span><span class="n">toString</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">testSmartMessage</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">smartMessage</span> <span class="p">{</span>
+</span><span class='line'>        <span class="s">&quot;getProperties &quot;</span> <span class="p">+</span> <span class="n">getProperties</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>上面使用了Lambda表达式来生成message信息</li>
+</ul>
+
+
+<h3>如何巧妙地规避不必要的开销</h3>
+
+<p>当我们反编译Kotlin 代码 到 Java代码时，一切就清晰了。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testSmartMessage</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">$i$f$smartMessage</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">BuildConfig</span><span class="o">.</span><span class="na">DEBUG</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="n">String</span> <span class="n">var3</span> <span class="o">=</span> <span class="s">&quot;smartMessage&quot;</span><span class="o">;</span>
+</span><span class='line'>         <span class="kt">int</span> <span class="n">var2</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>         <span class="n">String</span> <span class="n">var4</span> <span class="o">=</span> <span class="s">&quot;getProperties &quot;</span> <span class="o">+</span> <span class="k">this</span><span class="o">.</span><span class="na">getProperties</span><span class="o">();</span>
+</span><span class='line'>         <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">var3</span><span class="o">,</span> <span class="n">String</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">var4</span><span class="o">));</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>之前的Lambda 由于采用了 inline 处理 会把<code>smartMessage</code> 提取到调用处<code>testSmartMessage</code></li>
+<li>上面的信息，都是确保了在<code>BuildConfig.DEBUG</code>成立时才执行，否则不执行</li>
+<li>上面的做法，利用了Kotlin的特性，就运行时可能存在的开销一下就移除了。</li>
+</ul>
+
+
+<h2>注意</h2>
+
+<ul>
+<li>smartMessage 建议只在 Kotlin 中调用，否则会生成实例，因为无法inline处理</li>
+</ul>
+
+
+<h2>相关阅读</h2>
+
+<ul>
+<li><a href="https://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">字符串拼接</a></li>
+<li><a href="https://droidyue.com/blog/2019/04/27/lambda-inline-noinline-crossinline/">Kotlin 中的 Lambda 与 Inline</a></li>
+<li><a href="https://droidyue.com/blog/2015/11/01/thinking-about-android-log/">关于Android Log的一些思考</a></li>
+<li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">如何反编译 Kotlin 代码</a></li>
+<li><a href="https://droidyue.com/blog/categories/kotlin/">更多Kotlin文章</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[简简单单对比encodeURI与encodeURIComponent]]></title>
@@ -5627,306 +5795,6 @@
 <ul>
 <li><a href="https://stackoverflow.com/questions/26541513/why-is-it-good-to-close-an-inputstream">https://stackoverflow.com/questions/26541513/why-is-it-good-to-close-an-inputstream</a></li>
 <li><a href="https://www.reddit.com/r/learnjava/comments/577769/why_do_you_need_to_close_streams/">https://www.reddit.com/r/learnjava/comments/577769/why_do_you_need_to_close_streams/</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[解读文件描述符]]></title>
-    <link href="https://droidyue.com/blog/2019/06/02/file-descriptor-explained/"/>
-    <updated>2019-06-02T20:28:00+08:00</updated>
-    <id>https://droidyue.com/blog/2019/06/02/file-descriptor-explained</id>
-    <content type="html"><![CDATA[<p>最近由于机缘巧合，结合最近工作中遇到的一些问题，深入了解了文件描述符(File Descriptor，简称FD，以下使用 FD 称谓)。预计会有两到三篇关于 FD 的文章陆续出来。首篇也就是这篇，作为基础篇，介绍一些关于通用 FD 的内容知识。</p>
-
-<!--more-->
-
-
-<h2>概念定义</h2>
-
-<ul>
-<li>文件描述符 是 用来访问资源(文件，输入输出设备等)的一种抽象指示符。</li>
-<li>文件描述符 是POSIX(Portable Operating System Interface)规范的组成部分</li>
-<li>文件描述符 通常是非负整数，C 语言中使用int类型。</li>
-</ul>
-
-
-<h3>FD 具体可以指向什么</h3>
-
-<ul>
-<li>文件/目录 files/directories</li>
-<li>输入输出源 input/output</li>
-<li>管道 pipes</li>
-<li>套接字 sockets</li>
-<li>其他 Unix 文件类型 other Unix files</li>
-</ul>
-
-
-<h2>系统默认的FDs</h2>
-
-<p>每一个 Unix 进程中，通常会有三个预制的 FD。它们分别是</p>
-
-<ul>
-<li>标准输入 Standard input</li>
-<li>标准输出 Standard output</li>
-<li>标准错误(输出) Standard error</li>
-</ul>
-
-
-<p>其对应的行为是</p>
-
-<ul>
-<li>标准输入 用于程序接受数据</li>
-<li>标准输出 用于程序输出数据</li>
-<li>标准错误 用于程序输出错误或者诊断信息</li>
-</ul>
-
-
-<h2>内部机制</h2>
-
-<h3>三张表</h3>
-
-<p><img src="https://asset.droidyue.com/image/2019_05/file-descriptor_table.jpg" alt="https://asset.droidyue.com/image/2019_05/file-descriptor_table.jpg" /></p>
-
-<p>如上图从左至右有三张表</p>
-
-<ul>
-<li>file descriptor table  归属于单个进程</li>
-<li>global file table(又称open file table)  归属于系统全局</li>
-<li>inode table 归属于系统全局</li>
-</ul>
-
-
-<h3>从一次文件打开说起</h3>
-
-<p>当我们尝试打开文件<code>/path/myfile.txt</code></p>
-
-<p>1.从inode table 中查找到对应的文件节点 <br/>
-2.根据用户代码<code>open</code>的一些参数（比如读写权限等）在open file table 中创建open file 节点<br/>
-3.将上一步的open file节点信息保存，在file descriptor table中创建 file descriptor<br/>
-4.返回上一步的file descriptor的索引位置，供应用读写等使用。</p>
-
-<p>备注：上述图片来自<a href="https://www.computerhope.com/jargon/f/file-descriptor.htm">https://www.computerhope.com/jargon/f/file-descriptor.htm</a></p>
-
-<h2>FD 数量限制</h2>
-
-<p>出于稳定系统性能和避免因为过多打开文件导致CPU和RAM占用居高的考虑，系统都会设置了一个最大可用的 FD 数量。</p>
-
-<p>FD上限值通常不小，一般应用很难达到。</p>
-
-<h3>限制类型</h3>
-
-<ul>
-<li>hard limit 由系统管理权限人员设定，是soft limit 可以设置的上限</li>
-<li>soft limit 当前用户设置，用来限定进程，通常小于（但不能超过）hard limit值。</li>
-</ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#查看soft limit 设置</span>
-</span><span class='line'>➜  /tmp <span class="nb">ulimit</span> -nS
-</span><span class='line'>4864
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="c">#查看 hard limit 设置</span>
-</span><span class='line'>➜  /tmp <span class="nb">ulimit</span> -nH
-</span><span class='line'>unlimited
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Questions</h2>
-
-<h3>进程退出与 FD 关系</h3>
-
-<p>因为file descriptor table 存在于 PCB (进程控制块，Process Control Block) 中，进程退出后所有的 FD都需要关闭处理掉。</p>
-
-<p>如下为<a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/_Exit.html#tag_16_01_08_02">POSIX文档</a></p>
-
-<blockquote><p>All of the file descriptors, directory streams, conversion descriptors, and message catalog descriptors open in the calling process shall be closed.</p></blockquote>
-
-<h3>同一路径 与 FD 关系</h3>
-
-<ul>
-<li>同一文件，多次打开，FD值不同</li>
-<li>同一文件，读写模式不同打开，FD值也不同</li>
-</ul>
-
-
-<h3>打开文件过多会怎样</h3>
-
-<ul>
-<li><code>open</code>返回值会出现<code>-1</code></li>
-<li>通常会导致进程无法进行，甚至是崩溃</li>
-</ul>
-
-
-<h2>示例验证代码</h2>
-
-<p>如下代码可以验证上述问题中的结论</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include&lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;sys/stat.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;fcntl.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;errno.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">printStandardFD</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">//input/output/error stream </span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s">%p</span><span class="se">\t\t\t</span><span class="s"> Terminal&#39;s input device</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">STDIN_FILENO</span><span class="p">,</span> <span class="n">stdin</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s">%p</span><span class="se">\t\t\t</span><span class="s"> Terminal&#39;s output device</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">STDOUT_FILENO</span><span class="p">,</span><span class="n">stdout</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s">%p</span><span class="se">\t\t\t</span><span class="s"> Terminal&#39;s error device</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">STDERR_FILENO</span><span class="p">,</span> <span class="n">stderr</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span> <span class="nf">printInputFD</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">afd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&quot;/tmp/a.txt&quot;</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="p">);</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">afd</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;error occurs %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s"> %p</span><span class="se">\t\t\t</span><span class="s"> File /tmp/a.txt</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">afd</span><span class="p">,</span> <span class="n">fdopen</span><span class="p">(</span><span class="n">afd</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">));</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">afd</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">printWriteFD</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&quot;/tmp/b.txt&quot;</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s"> %p</span><span class="se">\t\t\t</span><span class="s"> File /tmp/b.txt</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">));</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">testSamePathDifferentMode</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">readFd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&quot;/tmp/c.txt&quot;</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s"> %p</span><span class="se">\t\t\t</span><span class="s"> File /tmp/c.txt read </span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">readFd</span><span class="p">,</span> <span class="n">fdopen</span><span class="p">(</span><span class="n">readFd</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">));</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">writeFd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&quot;/tmp/c.txt&quot;</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s"> %p</span><span class="se">\t\t\t</span><span class="s"> File /tmp/c.txt write </span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">writeFd</span><span class="p">,</span> <span class="n">fdopen</span><span class="p">(</span><span class="n">writeFd</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">));</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">printPipeFD</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">pipeFds</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
-</span><span class='line'>    <span class="n">pipe</span><span class="p">(</span><span class="n">pipeFds</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s"> %p</span><span class="se">\t\t\t</span><span class="s"> Pipe&#39;s read end</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">pipeFds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fdopen</span><span class="p">(</span><span class="n">pipeFds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;r&quot;</span><span class="p">));</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\t\t\t</span><span class="s"> %p</span><span class="se">\t\t\t</span><span class="s"> Pipe&#39;s write end</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">pipeFds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">fdopen</span><span class="p">(</span><span class="n">pipeFds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;w&quot;</span><span class="p">));</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">tryToReachMaxFDs</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">while</span><span class="p">(</span><span class="mi">1</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">==</span> <span class="n">printInputFD</span><span class="p">())</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">scanChars</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kt">char</span> <span class="n">chr</span><span class="p">;</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Enter a character: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%c&quot;</span><span class="p">,</span><span class="o">&amp;</span><span class="n">chr</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(){</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Process File Descriptor table</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;-----------------------------------------------------</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Descriptor</span><span class="se">\t\t</span><span class="s"> Pointer</span><span class="se">\t\t</span><span class="s"> Description</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="n">printStandardFD</span><span class="p">();</span>
-</span><span class='line'>    <span class="n">printInputFD</span><span class="p">();</span>
-</span><span class='line'>    <span class="n">printWriteFD</span><span class="p">();</span>
-</span><span class='line'>    <span class="c1">//printPipeFD();</span>
-</span><span class='line'>    <span class="c1">//tryToReachMaxFDs();</span>
-</span><span class='line'>    <span class="c1">//testSamePathDifferentMode();</span>
-</span><span class='line'>    <span class="n">scanChars</span><span class="p">();</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>P.S.很多年不写C代码了。</p>
-
-<h2>References</h2>
-
-<ul>
-<li><a href="https://unix.stackexchange.com/questions/430365/what-happens-to-file-descriptors-when-the-process-is-killed">https://unix.stackexchange.com/questions/430365/what-happens-to-file-descriptors-when-the-process-is-killed</a></li>
-<li><a href="https://apple.lib.utah.edu/open-file-limits-on-os-x-what-they-are-why-increase-them-and-how-to-increase-them/">https://apple.lib.utah.edu/open-file-limits-on-os-x-what-they-are-why-increase-them-and-how-to-increase-them/</a></li>
-<li><a href="http://geekswing.com/geek/quickie-tutorial-ulimit-soft-limits-hard-limits-soft-stack-hard-stack/">http://geekswing.com/geek/quickie-tutorial-ulimit-soft-limits-hard-limits-soft-stack-hard-stack/</a></li>
-<li><a href="https://cseweb.ucsd.edu/classes/sp16/cse120-a/applications/ln/lecture15.html">https://cseweb.ucsd.edu/classes/sp16/cse120-a/applications/ln/lecture15.html</a></li>
-<li><a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/_Exit.html#tag_16_01_03_01">http://pubs.opengroup.org/onlinepubs/9699919799/functions/_Exit.html#tag_16_01_03_01</a></li>
-<li><a href="https://www.youtube.com/watch?v=KM5sRWAYqaw">File Descriptors Explained</a></li>
 </ul>
 
 ]]></content>
