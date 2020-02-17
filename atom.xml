@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2020-01-30T11:40:14+08:00</updated>
+  <updated>2020-02-17T14:22:18+00:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -14,9 +14,127 @@
 
   
   <entry>
+    <title type="html"><![CDATA[Android Webview 后台播放音视频实现]]></title>
+    <link href="https://droidyue.com/blog/2020/02/09/play-audio-or-video-background-in-webview-app-android/"/>
+    <updated>2020-02-09T20:49:00+00:00</updated>
+    <id>https://droidyue.com/blog/2020/02/09/play-audio-or-video-background-in-webview-app-android</id>
+    <content type="html"><![CDATA[<h2>问题</h2>
+
+<ul>
+<li>我们使用WebView播放音乐或视频（比如油管视频）</li>
+<li>前台播放一直很正常，但是比较费电</li>
+<li>进入后台后就会暂停播放</li>
+<li>所以需求就是我们想要App在后台时同样播放音视频</li>
+</ul>
+
+
+<!--more-->
+
+
+<h2>解决方法</h2>
+
+<ul>
+<li>重写onWindowVisibilityChanged方法，让网页任然感觉像是在前台执行。</li>
+</ul>
+
+
+<h2>关键代码</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">override</span> <span class="n">fun</span> <span class="nf">onWindowVisibilityChanged</span><span class="o">(</span><span class="nl">visibility:</span> <span class="n">Int</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onWindowVisibilityChanged</span><span class="o">(</span><span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;BackgroundMediaWebView&quot;</span><span class="o">,</span> <span class="s">&quot;onWindowVisibilityChanged &quot;</span> <span class="o">+</span>
+</span><span class='line'>                <span class="s">&quot;visibility=${toReadableVisibility(visibility)}&quot;</span><span class="o">)</span>
+</span><span class='line'>    <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>当App 进入后台（按Home键），visibility会变成Gone</li>
+<li>我们强制调用<code>super.onWindowVisibilityChanged(View.VISIBLE)</code>会保持WebView继续播放音视频</li>
+</ul>
+
+
+<h2>完整代码</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">webviewvisibilitychangedsample</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.content.Context</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.util.AttributeSet</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.util.Log</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.view.View</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.webkit.WebView</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">BackgroundMediaWebView</span> <span class="nd">@JvmOverloads</span> <span class="n">constructor</span><span class="o">(</span>
+</span><span class='line'>    <span class="nl">context:</span> <span class="n">Context</span><span class="o">,</span> <span class="nl">attrs:</span> <span class="n">AttributeSet</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span> <span class="nl">defStyleAttr:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'><span class="o">)</span> <span class="o">:</span> <span class="n">WebView</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">attrs</span><span class="o">,</span> <span class="n">defStyleAttr</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">fun</span> <span class="nf">onWindowVisibilityChanged</span><span class="o">(</span><span class="nl">visibility:</span> <span class="n">Int</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onWindowVisibilityChanged</span><span class="o">(</span><span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;BackgroundMediaWebView&quot;</span><span class="o">,</span> <span class="s">&quot;onWindowVisibilityChanged &quot;</span> <span class="o">+</span>
+</span><span class='line'>                <span class="s">&quot;visibility=${toReadableVisibility(visibility)}&quot;</span><span class="o">)</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">fun</span> <span class="nf">toReadableVisibility</span><span class="o">(</span><span class="nl">visibility:</span> <span class="n">Int</span><span class="o">):</span> <span class="n">String</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nf">when</span><span class="o">(</span><span class="n">visibility</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span> <span class="o">-&gt;</span> <span class="s">&quot;Visible&quot;</span>
+</span><span class='line'>            <span class="n">View</span><span class="o">.</span><span class="na">INVISIBLE</span> <span class="o">-&gt;</span> <span class="s">&quot;Invisible&quot;</span>
+</span><span class='line'>            <span class="n">View</span><span class="o">.</span><span class="na">GONE</span> <span class="o">-&gt;</span> <span class="s">&quot;Gone&quot;</span>
+</span><span class='line'>            <span class="k">else</span> <span class="o">-&gt;</span> <span class="s">&quot;Unknown&quot;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>完整示例项目</h2>
+
+<ul>
+<li><a href="https://github.com/androidyue/WebViewVisibilityChangedSample">https://github.com/androidyue/WebViewVisibilityChangedSample</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
     <title type="html"><![CDATA[Mac下实现超快捷切换DNS]]></title>
     <link href="https://droidyue.com/blog/2020/01/28/a-script-to-change-dns-on-mac-os/"/>
-    <updated>2020-01-28T14:39:00+08:00</updated>
+    <updated>2020-01-28T14:39:00+00:00</updated>
     <id>https://droidyue.com/blog/2020/01/28/a-script-to-change-dns-on-mac-os</id>
     <content type="html"><![CDATA[<p>在有些情况下，我们需要切换DNS来实现一些处理。但是频繁的进入设置-网络 的确很麻烦，于是再次朝着脚本的思路想了想，发现还是可以实现的。下面的脚本就能便捷的实现切换WIFI的DNS并验证。</p>
 
@@ -84,7 +202,7 @@
   <entry>
     <title type="html"><![CDATA[解决Checkstyle file name 异常的问题]]></title>
     <link href="https://droidyue.com/blog/2020/01/12/fix-checkstyle-file-name-issue/"/>
-    <updated>2020-01-12T20:44:00+08:00</updated>
+    <updated>2020-01-12T20:44:00+00:00</updated>
     <id>https://droidyue.com/blog/2020/01/12/fix-checkstyle-file-name-issue</id>
     <content type="html"><![CDATA[<p>Checkstyle是一款很棒的工具，用来发现很多编码风格的问题。还不了解的同学可以移步这里<a href="https://droidyue.com/blog/2016/05/22/use-checkstyle-for-better-code-style/">Android代码规范利器： Checkstyle</a>查看。</p>
 
@@ -147,7 +265,7 @@
   <entry>
     <title type="html"><![CDATA[Kotlin 处理位操作Flag 快捷方法]]></title>
     <link href="https://droidyue.com/blog/2020/01/05/kotlin-flag-extension-methods/"/>
-    <updated>2020-01-05T20:44:00+08:00</updated>
+    <updated>2020-01-05T20:44:00+00:00</updated>
     <id>https://droidyue.com/blog/2020/01/05/kotlin-flag-extension-methods</id>
     <content type="html"><![CDATA[<p>一般涉及到标记位相关的操作，我们都会使用位运算，无论你是从Java转到Kotlin，还是全新使用Kotlin，进行位运算处理Flag都会感到疑问，该怎么处理呢。</p>
 
@@ -256,7 +374,7 @@
   <entry>
     <title type="html"><![CDATA[创建Linux服务，轻松管理（自启动，恢复）进程]]></title>
     <link href="https://droidyue.com/blog/2019/12/29/create-a-linux-service-with-systemd/"/>
-    <updated>2019-12-29T20:08:00+08:00</updated>
+    <updated>2019-12-29T20:08:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/12/29/create-a-linux-service-with-systemd</id>
     <content type="html"><![CDATA[<p>有这样一个场景，在一台服务器上，我们想要启动一个简单的网络文件服务器，用来提供给内网的用户下载。</p>
 
@@ -567,7 +685,7 @@
   <entry>
     <title type="html"><![CDATA[RxHttp 一款让你眼前一亮的 Http 请求框架]]></title>
     <link href="https://droidyue.com/blog/2019/12/28/rxhttp-an-awesome-library-mixed-with-rxjava-and-okhttp/"/>
-    <updated>2019-12-28T15:15:00+08:00</updated>
+    <updated>2019-12-28T15:15:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/12/28/rxhttp-an-awesome-library-mixed-with-rxjava-and-okhttp</id>
     <content type="html"><![CDATA[<blockquote><p>本文系 RxHttp作者不怕天黑 向本博客投稿，并授权在本站发表。</p></blockquote>
 
@@ -2632,7 +2750,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[Kotlin 注解 第三篇 @JvmField 与 @JvmStatic]]></title>
     <link href="https://droidyue.com/blog/2019/12/22/kotlin-annotation-jvmfiled-and-jvmstatic-and-object/"/>
-    <updated>2019-12-22T20:44:00+08:00</updated>
+    <updated>2019-12-22T20:44:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/12/22/kotlin-annotation-jvmfiled-and-jvmstatic-and-object</id>
     <content type="html"><![CDATA[<p>本文是既 <a href="https://droidyue.com/blog/2019/09/01/jvm-name-annotations-kotlin/">JvmName 注解在 Kotlin 中的应用</a>和<a href="https://droidyue.com/blog/2019/09/08/jvmmultifile-annotation-in-kotlin/">JvmMultifile 注解在 Kotlin 中的应用</a>的第三篇关于 Kotlin的注解文章。</p>
 
@@ -2803,7 +2921,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[终端依赖者福利：终端也能实现翻译功能了]]></title>
     <link href="https://droidyue.com/blog/2019/12/15/translate-words-in-terminal/"/>
-    <updated>2019-12-15T19:41:00+08:00</updated>
+    <updated>2019-12-15T19:41:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/12/15/translate-words-in-terminal</id>
     <content type="html"><![CDATA[<p>一直是终端重度依赖，现在发现了一个终端翻译的工具，更加爱不释手。本文介绍一下一个终端可以实现的工具，trans。</p>
 
@@ -3134,7 +3252,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[Mac 下在终端直接查看图片]]></title>
     <link href="https://droidyue.com/blog/2019/12/08/display-img-in-ternimal/"/>
-    <updated>2019-12-08T20:02:00+08:00</updated>
+    <updated>2019-12-08T20:02:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/12/08/display-img-in-ternimal</id>
     <content type="html"><![CDATA[<p>在开发的过程中，我们通常会遇到这样的情况，就是我们需要根据图片的url地址查看其对应的内容，通常的做法就是把这个图片链接贴到浏览器。不过一直好奇，能不能再终端中直接展示，于是做了一些搜索，发现了对应的实现方式。</p>
 
@@ -3185,7 +3303,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[在 Android 中如何确定 App(Activity) 的启动者]]></title>
     <link href="https://droidyue.com/blog/2019/12/01/android-uid-process-name/"/>
-    <updated>2019-12-01T21:40:00+08:00</updated>
+    <updated>2019-12-01T21:40:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/12/01/android-uid-process-name</id>
     <content type="html"><![CDATA[<p>最近在帮忙定位一个问题，涉及到某个应用自动启动了，为了确定是谁调用的，使用如下的日志进行查看（注：为了简单考虑，下面的启动者为launcher）</p>
 
@@ -3387,7 +3505,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[这可能是最好的 Android/Kotlin日志输出方法]]></title>
     <link href="https://droidyue.com/blog/2019/11/24/smart-log-in-android-slash-kotlin/"/>
-    <updated>2019-11-24T18:40:00+08:00</updated>
+    <updated>2019-11-24T18:40:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/11/24/smart-log-in-android-slash-kotlin</id>
     <content type="html"><![CDATA[<p>在编程调试和定位问题的时候，日志是一个最常用的工具。比如输出一些信息，确定执行轨迹。今天我们这里简单聊一聊打印日志的一些分析。</p>
 
@@ -3555,7 +3673,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[简简单单对比encodeURI与encodeURIComponent]]></title>
     <link href="https://droidyue.com/blog/2019/11/17/encodeuri-vs-encodeuricomponent/"/>
-    <updated>2019-11-17T21:40:00+08:00</updated>
+    <updated>2019-11-17T21:40:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/11/17/encodeuri-vs-encodeuricomponent</id>
     <content type="html"><![CDATA[<p>encodeURI和encodeURIComponent 是两个很相近的方法，用来encode URI。但是他们之间也存在着细微的差异，如果不能很好的理解这个差异，可能会导致一些不必要的麻烦。本文将尝试用最简单的形式展示这个差异。</p>
 
@@ -3668,7 +3786,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[GapWorker导致RecyclerView视频播放声音残留问题]]></title>
     <link href="https://droidyue.com/blog/2019/11/11/gap-worker-issue/"/>
-    <updated>2019-11-11T20:59:00+08:00</updated>
+    <updated>2019-11-11T20:59:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/11/11/gap-worker-issue</id>
     <content type="html"><![CDATA[<p>场景描述</p>
 
@@ -3826,7 +3944,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[在终端使用脚本查看网站 SSL 证书信息]]></title>
     <link href="https://droidyue.com/blog/2019/10/27/view-ssl-certificate-in-terminal/"/>
-    <updated>2019-10-27T18:23:00+08:00</updated>
+    <updated>2019-10-27T18:23:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/10/27/view-ssl-certificate-in-terminal</id>
     <content type="html"><![CDATA[<p>之前遇到过一次赛门铁克很久的证书被Chrome弃用的问题，涉及到了查看证书。当然第一个大家会想到的是在浏览器中查看，但是总是感觉不够极客。后来摸索找到了终端查看网站证书的方法</p>
 
@@ -3997,7 +4115,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[Android WebView 诊断与排查问题的方法和技巧]]></title>
     <link href="https://droidyue.com/blog/2019/10/20/how-to-diagnose-webview-in-android/"/>
-    <updated>2019-10-20T21:13:00+08:00</updated>
+    <updated>2019-10-20T21:13:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/10/20/how-to-diagnose-webview-in-android</id>
     <content type="html"><![CDATA[<p>WebView，是安卓中很重要的一个组件，我们的应用中集成WebView后，可能会遇到各种各样的问题，这里简单介绍一些Android WebView 诊断与排查问题的方法，希望对于大家有这方面的问题的朋友有所帮助。</p>
 
@@ -4283,7 +4401,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[使用脚本批量替换文本内容]]></title>
     <link href="https://droidyue.com/blog/2019/10/13/replace-text-in-multiple-files-using-shell-script/"/>
-    <updated>2019-10-13T19:07:00+08:00</updated>
+    <updated>2019-10-13T19:07:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/10/13/replace-text-in-multiple-files-using-shell-script</id>
     <content type="html"><![CDATA[<p>很多时候，我们需要进行多个文件的查找并替换，虽然IDE有这样的可视化功能，但是偏爱终端的人还是想要尝试用脚本实现一把。如下是一个简单的脚本来实现多文件的查找替换处理。</p>
 
@@ -4370,7 +4488,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[一个小技巧提升 OkHttp 请求稳定性]]></title>
     <link href="https://droidyue.com/blog/2019/10/07/okhttp-client-intercept-safe-guard-nullpointer/"/>
-    <updated>2019-10-07T19:56:00+08:00</updated>
+    <updated>2019-10-07T19:56:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/10/07/okhttp-client-intercept-safe-guard-nullpointer</id>
     <content type="html"><![CDATA[<p>OkHttp是可以说是Android开发中，每个项目都必需依赖的网络库，我们可以很便捷高效的处理网络请求，极大的提升了编码效率。但是有时候，我们使用OkHttp也会遇到这样的问题</p>
 
@@ -4603,7 +4721,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[根据包名查找 jar 包文件]]></title>
     <link href="https://droidyue.com/blog/2019/09/22/find-jar-file-by-package-name/"/>
-    <updated>2019-09-22T21:19:00+08:00</updated>
+    <updated>2019-09-22T21:19:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/09/22/find-jar-file-by-package-name</id>
     <content type="html"><![CDATA[<p>很多时候，我们需要根据包名来查找一些依赖所在的jar包，比如我们想要查找<code>com.alipay</code>这个包及其文件所在的jar包。</p>
 
@@ -4743,7 +4861,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[解决 grep 的多次管道过滤问题]]></title>
     <link href="https://droidyue.com/blog/2019/09/15/fix-grep-multiple-filter-issue-cache-size/"/>
-    <updated>2019-09-15T20:50:00+08:00</updated>
+    <updated>2019-09-15T20:50:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/09/15/fix-grep-multiple-filter-issue-cache-size</id>
     <content type="html"><![CDATA[<p>在日常的开发过程中，我们利用<code>grep</code>可以方便快捷的查找感兴趣的日志内容，极大地提升了开发和排错效率。但是有时候，我们也会遇到一些问题，比如。</p>
 
@@ -4836,7 +4954,7 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
   <entry>
     <title type="html"><![CDATA[JvmMultifile 注解在 Kotlin 中的应用]]></title>
     <link href="https://droidyue.com/blog/2019/09/08/jvmmultifile-annotation-in-kotlin/"/>
-    <updated>2019-09-08T20:43:00+08:00</updated>
+    <updated>2019-09-08T20:43:00+00:00</updated>
     <id>https://droidyue.com/blog/2019/09/08/jvmmultifile-annotation-in-kotlin</id>
     <content type="html"><![CDATA[<p>接触过Kotlin之后，我们会利用其扩展方法特性创建很多便捷的方法来实现更好更快的编码。比如我们对于RxJava进行一些简单的扩展方法实现。</p>
 
@@ -5130,407 +5248,6 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
 <li><a href="https://droidyue.com/blog/2019/09/01/jvm-name-annotations-kotlin/">JvmName注解</a></li>
 <li><a href="https://droidyue.com/blog/2019/07/21/configure-kotlin-compiler-options/">kotlin编译器调校</a></li>
 <li><a href="https://droidyue.com/blog/categories/kotlin/">Kotlin更多文章</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[JvmName 注解在 Kotlin 中的应用]]></title>
-    <link href="https://droidyue.com/blog/2019/09/01/jvm-name-annotations-kotlin/"/>
-    <updated>2019-09-01T20:45:00+08:00</updated>
-    <id>https://droidyue.com/blog/2019/09/01/jvm-name-annotations-kotlin</id>
-    <content type="html"><![CDATA[<p>JvmName注解是Kotlin提供的一个可以变更编译器输出的注解，这里简单的介绍一下其使用规则。</p>
-
-<h2>应用在文件上</h2>
-
-<h3>未应用@JvmName</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">net</span><span class="p">.</span><span class="n">Uri</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="n">String</span><span class="p">.</span><span class="n">toUri</span><span class="p">():</span> <span class="n">Uri</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">Uri</span><span class="p">.</span><span class="n">parse</span><span class="p">(</span><span class="k">this</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<!--more-->
-
-
-<p>当我们在Java中调用上面的toUri方法时</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">StringExtKt</span><span class="o">.</span><span class="na">toUri</span><span class="o">(</span><span class="s">&quot;https://droidyue.com&quot;</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>生成的 class 文件名称为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>./app/build/tmp/kotlin-classes/debug/com/example/jvmannotationsample/StringExtKt.class
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>应用@JvmName</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">@file</span><span class="p">:</span><span class="n">JvmName</span><span class="p">(</span><span class="s">&quot;StringUtil&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">net</span><span class="p">.</span><span class="n">Uri</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="n">String</span><span class="p">.</span><span class="n">toUri</span><span class="p">():</span> <span class="n">Uri</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">Uri</span><span class="p">.</span><span class="n">parse</span><span class="p">(</span><span class="k">this</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>在Java中调用</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">StringUtil</span><span class="o">.</span><span class="na">toUri</span><span class="o">(</span><span class="s">&quot;https://droidyue.com&quot;</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>生成的 class 文件名为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>./app/build/tmp/kotlin-classes/debug/com/example/jvmannotationsample/StringUtil.class
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>作用在方法上</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample.jvm_name</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">@JvmName</span><span class="p">(</span><span class="s">&quot;isOK&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="k">fun</span> <span class="n">String</span><span class="p">.</span><span class="n">isValid</span><span class="p">():</span> <span class="n">Boolean</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">isNotEmpty</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>生成的对应的class 文件，我们可以看到方法名称已经修改了。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>javap -c ./app/build/tmp/kotlin-classes/debug/com/example/jvmannotationsample/jvm_name/OnMethodSampleKt.class
-</span><span class='line'>Compiled from <span class="s2">&quot;OnMethodSample.kt&quot;</span>
-</span><span class='line'>public final class com.example.jvmannotationsample.jvm_name.OnMethodSampleKt <span class="o">{</span>
-</span><span class='line'>  public static final boolean isOK<span class="o">(</span>java.lang.String<span class="o">)</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: aload_0
-</span><span class='line'>       1: ldc           <span class="c">#11                 // String $this$isValid</span>
-</span><span class='line'>       3: invokestatic  <span class="c">#17                 // Method kotlin/jvm/internal/Intrinsics.checkParameterIsNotNull:(Ljava/lang/Object;Ljava/lang/String;)V</span>
-</span><span class='line'>       6: aload_0
-</span><span class='line'>       7: checkcast     <span class="c">#19                 // class java/lang/CharSequence</span>
-</span><span class='line'>      10: astore_1
-</span><span class='line'>      11: iconst_0
-</span><span class='line'>      12: istore_2
-</span><span class='line'>      13: aload_1
-</span><span class='line'>      14: invokeinterface <span class="c">#23,  1           // InterfaceMethod java/lang/CharSequence.length:()I</span>
-</span><span class='line'>      19: ifle          26
-</span><span class='line'>      22: iconst_1
-</span><span class='line'>      23: goto          27
-</span><span class='line'>      26: iconst_0
-</span><span class='line'>      27: ireturn
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>所以，我们在Java代码中，可以这样调用</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">testJvmNameOnMethod</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">OnMethodSampleKt</span><span class="o">.</span><span class="na">isOK</span><span class="o">(</span><span class="s">&quot;&quot;</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>但是，我们在Kotlin代码中，还是只能使用<code>isValid</code>而不是<code>isOK</code></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testJvmNameOnMethod</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="s">&quot;&quot;</span><span class="p">.</span><span class="n">isValid</span><span class="p">()</span>
-</span><span class='line'><span class="c1">//    &quot;&quot;.isOK() unresolved reference</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>那么问题就奇怪了，生成的class里面的方法是<code>isOK</code>，怎么还能调用<code>isValid</code>呢？</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>javap -c ./app/build/tmp/kotlin-classes/debug/com/example/jvmannotationsample/jvm_name/KotlinPlaygroundKt.class
-</span><span class='line'>Compiled from <span class="s2">&quot;KotlinPlayground.kt&quot;</span>
-</span><span class='line'>public final class com.example.jvmannotationsample.jvm_name.KotlinPlaygroundKt <span class="o">{</span>
-</span><span class='line'>  public static final void testJvmNameOnMethod<span class="o">()</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: ldc           <span class="c">#8                  // String</span>
-</span><span class='line'>       2: invokestatic  <span class="c">#14                 // Method com/example/jvmannotationsample/jvm_name/OnMethodSampleKt.isOK:(Ljava/lang/String;)Z</span>
-</span><span class='line'>       5: pop
-</span><span class='line'>       6: <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>是的，Kotlin编译器将<code>isValid</code>在字节码层面又替换成了<code>isOK</code>。</p>
-
-<p>关于@JvmName作用到方法上，比较好的例子(来自Kotlin官网)是这样的</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">String</span><span class="p">&gt;.</span><span class="n">filterValid</span><span class="p">():</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">String</span><span class="p">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">Int</span><span class="p">&gt;.</span><span class="n">filterValid</span><span class="p">():</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">Int</span><span class="p">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>~/JVMAnnotationSample/app/src/main/java/com/example/jvmannotationsample/jvm_name/GenericList.kt: <span class="o">(</span>3, 1<span class="o">)</span>: Platform declaration clash: The following declarations have the same JVM signature <span class="o">(</span>filterValid<span class="o">(</span>Ljava/util/List;<span class="o">)</span>Ljava/util/List;<span class="o">)</span>:
-</span><span class='line'>    fun List&lt;Int&gt;.filterValid<span class="o">()</span>: List&lt;Int&gt; defined in com.example.jvmannotationsample.jvm_name in file GenericList.kt
-</span><span class='line'>    fun List&lt;String&gt;.filterValid<span class="o">()</span>: List&lt;String&gt; defined in com.example.jvmannotationsample.jvm_name in file GenericList.kt
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上面的两个方法声明会导致Kotlin编译出错，因为</p>
-
-<p>由于JVM对于泛型采取了类型擦除，<code>List&lt;Int&gt;.filterValid()</code>和<code>List&lt;String&gt;.filterValid()</code>实际上对应的都是<code>List.filterValid()</code></p>
-
-<p>所以，对应的解决方法</p>
-
-<ul>
-<li> 修改两个的方法名称，比如<code>List&lt;String&gt;.filterValid()</code>修改成<code>List&lt;String&gt;.filterValidString()</code>等</li>
-<li> 第二种就是使用@JvmName达到第一种方法的效果</li>
-</ul>
-
-
-<p>具体修改如下所示</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample.jvm_name</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">@JvmName</span><span class="p">(</span><span class="s">&quot;filterValidString&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="k">fun</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">String</span><span class="p">&gt;.</span><span class="n">filterValid</span><span class="p">():</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">String</span><span class="p">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">@JvmName</span><span class="p">(</span><span class="s">&quot;filterValidInt&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="k">fun</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">Int</span><span class="p">&gt;.</span><span class="n">filterValid</span><span class="p">():</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">Int</span><span class="p">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
-
-<h2>作用在属性上</h2>
-
-<p>除此之外，@JvmName还可以作用在属性上。比如</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample.jvm_name</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">@get</span><span class="p">:</span><span class="n">JvmName</span><span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="n">@set</span><span class="p">:</span><span class="n">JvmName</span><span class="p">(</span><span class="s">&quot;changeX&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="k">var</span> <span class="n">x</span><span class="p">:</span> <span class="n">Int</span> <span class="p">=</span> <span class="m">23</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>在Java中对应的调用</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">testJvmNameOnProperty</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">OnPropertiesSampleKt</span><span class="o">.</span><span class="na">changeX</span><span class="o">(</span><span class="mi">111</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">OnPropertiesSampleKt</span><span class="o">.</span><span class="na">x</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>在Kotlin中对应的调用</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testJvmNameOnProperty</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">x</span> <span class="p">=</span> <span class="m">1111</span>
-</span><span class='line'>    <span class="n">x</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>和作用在方法上一样，其实现原理一致，具体如下面的反编译代码可见一斑。</p>
-
-<p>Java调用处的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>javap -c ./app/build/tmp/kotlin-classes/debug/com/example/jvmannotationsample/jvm_name/OnPropertiesSampleKt.class
-</span><span class='line'>Compiled from <span class="s2">&quot;OnPropertiesSample.kt&quot;</span>
-</span><span class='line'>public final class com.example.jvmannotationsample.jvm_name.OnPropertiesSampleKt <span class="o">{</span>
-</span><span class='line'>  public static final int x<span class="o">()</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: getstatic     <span class="c">#11                 // Field x:I</span>
-</span><span class='line'>       3: ireturn
-</span><span class='line'>
-</span><span class='line'>  public static final void changeX<span class="o">(</span>int<span class="o">)</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: iload_0
-</span><span class='line'>       1: putstatic     <span class="c">#11                 // Field x:I</span>
-</span><span class='line'>       4: <span class="k">return</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">  </span>static <span class="o">{}</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: bipush        23
-</span><span class='line'>       2: putstatic     <span class="c">#11                 // Field x:I</span>
-</span><span class='line'>       5: <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Kotlin调用处的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>javap -c ./app/build/tmp/kotlin-classes/debug/com/example/jvmannotationsample/jvm_name/KotlinPlaygroundKt.class
-</span><span class='line'>Compiled from <span class="s2">&quot;KotlinPlayground.kt&quot;</span>
-</span><span class='line'>public final class com.example.jvmannotationsample.jvm_name.KotlinPlaygroundKt <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>  public static final void testJvmNameOnProperty<span class="o">()</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: sipush        1111
-</span><span class='line'>       3: invokestatic  <span class="c">#36                 // Method com/example/jvmannotationsample/jvm_name/OnPropertiesSampleKt.changeX:(I)V</span>
-</span><span class='line'>       6: invokestatic  <span class="c">#40                 // Method com/example/jvmannotationsample/jvm_name/OnPropertiesSampleKt.x:()I</span>
-</span><span class='line'>       9: pop
-</span><span class='line'>      10: <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>相关文章</h2>
-
-<ul>
-<li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
-<li><a href="https://droidyue.com/blog/categories/kotlin/">更多优质Kotlin文章</a></li>
 </ul>
 
 ]]></content>
