@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2020-03-31T22:20:56+08:00</updated>
+  <updated>2020-04-06T12:06:21+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,171 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[未合并分支不怕丢,一个脚本快速搞定]]></title>
+    <link href="https://droidyue.com/blog/2020/04/05/a-quick-script-to-view-all-unmerged-branches/"/>
+    <updated>2020-04-05T21:20:00+08:00</updated>
+    <id>https://droidyue.com/blog/2020/04/05/a-quick-script-to-view-all-unmerged-branches</id>
+    <content type="html"><![CDATA[<p>我们使用 git 作为 版本控制工具，极大的提高了效率，但是随着业务的增多和自身对于提交内容原子性的要求，往往会产生很多的分支，这就难免有时候，在发版的时候，某些分支被遗忘提交，造成功能丢失等问题。</p>
+
+<p>因而如果保证分支多而且不忘记合并，是一个我们需要解决的问题。</p>
+
+<ul>
+<li>单纯靠人为挨个去看，肯定是不行的</li>
+<li>如果有程序化处理就靠谱多了</li>
+</ul>
+
+
+<!--more-->
+
+
+<p>是的，git有一个这样的功能呢，比如我们想要查看是否有分支没有合并进入develop</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git branch --no-merged develop
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>是的，这能解决问题，但是比如我们迁出了预发布分支(pre_release)，有的分支合并到了pre_release(但没有合并到develop), 上面的查找就不太合适了。</p>
+
+<p>所以我们需要的是</p>
+
+<ul>
+<li>能进行基于多个分支未合并的分支去交集</li>
+<li>支持自定义的忽略某些分支出现在未合并分支列表</li>
+</ul>
+
+
+<p>于是有了下面的脚本</p>
+
+<h2>脚本内容</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class='line'><span class="c1"># encoding: utf-8</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">getUnmergedBranches</span><span class="p">(</span><span class="n">targetBranch</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="sb">`git branch --no-merged </span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="sb">`</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sr">/\n+/</span><span class="p">)</span><span class="o">.</span><span class="n">map</span> <span class="p">{</span> <span class="o">|</span><span class="n">e</span><span class="o">|</span> <span class="n">e</span><span class="o">.</span><span class="n">sub</span>  <span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span> <span class="p">}</span><span class="o">.</span><span class="n">map</span> <span class="p">{</span> <span class="o">|</span><span class="n">e</span><span class="o">|</span> <span class="n">e</span><span class="o">.</span><span class="n">strip</span> <span class="p">}</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">branchesUnmergedToPreRelease</span> <span class="o">=</span> <span class="n">getUnmergedBranches</span><span class="p">(</span><span class="s1">&#39;origin/pre_release&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">puts</span> <span class="p">(</span><span class="n">getUnmergedBranches</span><span class="p">(</span><span class="s1">&#39;origin/develop&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">branchesUnmergedToPreRelease</span><span class="p">)</span><span class="o">.</span><span class="n">select</span> <span class="p">{</span><span class="o">|</span><span class="n">branch</span><span class="o">|</span> <span class="o">!</span><span class="n">branch</span><span class="o">.</span><span class="n">start_with?</span> <span class="s2">&quot;unmerge_ignore_&quot;</span><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的脚本做的是</p>
+
+<ul>
+<li>获取未合并进入<code>origin/develop</code>的分支集合 A</li>
+<li>获取未合并进入<code>origin/pre_release</code>的分支集合 B</li>
+<li>对于上面的 分支集合 A 和 B 取交集 得到 分支集合 C</li>
+<li>在分支集合 C 中提出 自定义忽略分支（以<code>unmerge_ignore_</code>开头）</li>
+</ul>
+
+
+<h2>脚本使用示例</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~:/  ruby unmergedBranches.rb
+</span><span class='line'>checkstyle
+</span><span class='line'>error_prone
+</span><span class='line'>file_chooser_webview
+</span><span class='line'>image_loading
+</span><span class='line'>jduan_inter_webview_messaging
+</span><span class='line'>jduan_webview_client_refactor
+</span><span class='line'>migration_to_androidx
+</span><span class='line'>upgrade_gradle_1106
+</span><span class='line'>upgrade_gradle_3.2.0
+</span><span class='line'>upgrade_suppport_28.0.0
+</span><span class='line'>video_preload
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>忽略某个分支，不作为unmerged 分支内容</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class='line'><span class="c1"># encoding: utf-8</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="nb">puts</span> <span class="s2">&quot;Please input the branch to unmerge-ignore&quot;</span>
+</span><span class='line'><span class="n">targetBranch</span> <span class="o">=</span> <span class="nb">gets</span><span class="o">.</span><span class="n">chomp</span>
+</span><span class='line'><span class="nb">puts</span> <span class="s2">&quot;You want to ignore this branch:</span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="s2">, Are you sure? (input yes)&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">confirm</span> <span class="o">=</span> <span class="nb">gets</span><span class="o">.</span><span class="n">chomp</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">confirm</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">newBranchName</span> <span class="o">=</span> <span class="s2">&quot;unmerge_ignore_</span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="nb">system</span> <span class="s2">&quot;git branch -m </span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">newBranchName</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="nb">puts</span> <span class="s2">&quot;changed </span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="s2"> into </span><span class="si">#{</span><span class="n">newBranchName</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用上面的脚本，就能够以命令交互的形式忽略某个分支</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~:/ ruby ignoreBranchWhenUnmerged.rb
+</span><span class='line'>Please input the branch to unmerge-ignore
+</span><span class='line'>new_account_sys
+</span><span class='line'>You want to ignore this branch:new_account_sys, Are you sure? <span class="o">(</span>input yes<span class="o">)</span>
+</span><span class='line'>yes
+</span><span class='line'>changed new_account_sys into unmerge_ignore_new_account_sys
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上.</p>
+
+<h2>更多内容推荐</h2>
+
+<ul>
+<li><a href="https://droidyue.com/blog/categories/jiao-ben/">更多脚本高效工具</a></li>
+<li><a href="https://droidyue.com/ninki/">小黑屋优质内容</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[INSTALL PARSE FAILED UNEXPECTED EXCEPTION 问题]]></title>
@@ -3340,177 +3505,6 @@ RxHttp内部共提供了<code>23</code>个<code>asXXX</code>方法，其中：</
 <p>到这，RxHttp常用功能介绍完毕，你会发现，一切都是那么的美好，无论你是get、post、加密请求、自定义解析器，还是文件上传/下载/进度监听等等，皆遵循请求三部曲。特别是对<code>Response&lt;T&gt;</code>类型数据处理，可以说是天衣无缝，我们无需每次都判断code，直接就可以拿到T，简直了。。。</p>
 
 <p>最后，喜欢的，请给本文点个赞，如果可以，还请给个<a href="https://github.com/liujingxing/RxHttp">star</a>，创作不易，感激不尽。🙏🙏🙏</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Kotlin 注解 第三篇 @JvmField 与 @JvmStatic]]></title>
-    <link href="https://droidyue.com/blog/2019/12/22/kotlin-annotation-jvmfiled-and-jvmstatic-and-object/"/>
-    <updated>2019-12-22T20:44:00+08:00</updated>
-    <id>https://droidyue.com/blog/2019/12/22/kotlin-annotation-jvmfiled-and-jvmstatic-and-object</id>
-    <content type="html"><![CDATA[<p>本文是既 <a href="https://droidyue.com/blog/2019/09/01/jvm-name-annotations-kotlin/">JvmName 注解在 Kotlin 中的应用</a>和<a href="https://droidyue.com/blog/2019/09/08/jvmmultifile-annotation-in-kotlin/">JvmMultifile 注解在 Kotlin 中的应用</a>的第三篇关于 Kotlin的注解文章。</p>
-
-<p>介绍的内容比较简单，主要是包含了JvmField和JvmStatic两个。</p>
-
-<!--more-->
-
-
-<h3>@JvmField</h3>
-
-<p>示例代码声明</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">class</span> <span class="nf">Developer</span> <span class="p">(</span><span class="n">@JvmField</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">ide</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>使用@JvmField，我们在Java中调用的时候，可以直接使用属性名，而不是对应的getter方法。</p>
-
-<p>调用代码对比</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//test jvmField</span>
-</span><span class='line'><span class="n">Developer</span> <span class="n">developer</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Developer</span><span class="o">(</span><span class="s">&quot;Andy&quot;</span><span class="o">,</span> <span class="s">&quot;Android Studio&quot;</span><span class="o">);</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">developer</span><span class="o">.</span><span class="na">getIde</span><span class="o">());</span><span class="c1">// not using JvmField</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">developer</span><span class="o">.</span><span class="na">name</span><span class="o">);</span><span class="c1">// using JvmField</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>@JvmStatic</h3>
-
-<p>除此之外，对于静态属性和静态方法的实现，我们也可以使用@JvmStatic实现，</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">class</span> <span class="nc">Sample</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">companion</span> <span class="n">object</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">@JvmStatic</span>
-</span><span class='line'>        <span class="k">val</span> <span class="n">TAG_NAME</span> <span class="p">=</span> <span class="s">&quot;Sample&quot;</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">val</span> <span class="n">NON_STATIC_VALUE</span> <span class="p">=</span> <span class="s">&quot;non_static_value&quot;</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">@JvmStatic</span> <span class="k">fun</span> <span class="nf">callStatic</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">fun</span> <span class="nf">callNonStatic</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>调用代码如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//JVM static method</span>
-</span><span class='line'><span class="n">Sample</span><span class="o">.</span><span class="na">callStatic</span><span class="o">();</span>
-</span><span class='line'><span class="n">Sample</span><span class="o">.</span><span class="na">Companion</span><span class="o">.</span><span class="na">callNonStatic</span><span class="o">();</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">Sample</span><span class="o">.</span><span class="na">getTAG_NAME</span><span class="o">();</span>
-</span><span class='line'><span class="n">Sample</span><span class="o">.</span><span class="na">Companion</span><span class="o">.</span><span class="na">getNON_STATIC_VALUE</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Companion</h3>
-
-<p>Kotlin中我们可以借助<code>object</code>实现静态的形式，比如下面的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">class</span> <span class="nc">SomeClass</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">companion</span> <span class="n">object</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">fun</span> <span class="nf">getCommonProperties</span><span class="p">():</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">String</span><span class="p">&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="nf">emptyList</span><span class="p">()</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其实除此之外，我们还能命名companion的名称,如下代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.jvmannotationsample</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">class</span> <span class="nc">AnotherClass</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">companion</span> <span class="n">object</span> <span class="n">Assistant</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">fun</span> <span class="nf">scheduleSomething</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>调用代码示例</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//test companion</span>
-</span><span class='line'><span class="n">SomeClass</span><span class="o">.</span><span class="na">Companion</span><span class="o">.</span><span class="na">getCommonProperties</span><span class="o">();</span>
-</span><span class='line'><span class="n">AnotherClass</span><span class="o">.</span><span class="na">Assistant</span><span class="o">.</span><span class="na">scheduleSomething</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>相关文章推荐</h3>
-
-<ul>
-<li><a href="https://droidyue.com/blog/2019/09/01/jvm-name-annotations-kotlin/">JvmName注解</a></li>
-<li><a href="https://droidyue.com/blog/2019/09/08/jvmmultifile-annotation-in-kotlin/">JvmMultifile注解</a></li>
-<li><a href="https://droidyue.com/blog/2019/07/21/configure-kotlin-compiler-options/">Kotlin编译调校</a></li>
-<li><a href="https://droidyue.com/blog/categories/kotlin/">更多Kotlin文章</a></li>
-</ul>
-
 ]]></content>
   </entry>
   

@@ -1,0 +1,722 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>未合并分支不怕丢,一个脚本快速搞定 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="未合并分支不怕丢,一个脚本快速搞定 Apr 5th, 2020 我们使用 git 作为 版本控制工具，极大的提高了效率，但是随着业务的增多和自身对于提交内容原子性的要求，往往会产生很多的分支，这就难免有时候，在发版的时候，某些分支被遗忘提交，造成功能丢失等问题。 因而如果保证分支多而且不忘记合并 &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="/images/touch_icon.png"/>
+  
+  <link rel="canonical" href="https://droidyue.com/blog/2020/04/05/a-quick-script-to-view-all-unmerged-branches">
+  <link href="/images/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/ad.js"></script>
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
+      function setCookie(name,value,days) {
+          if (days) {
+              var date = new Date();
+              date.setTime(date.getTime()+(days*24*60*60*1000));
+              var expires = "; expires="+date.toGMTString();
+          }
+          else var expires = "";
+          document.cookie = name+"="+value+expires+"; path=/";
+      }
+
+      function eraseCookie(name) {
+          setCookie(name,"",-1);
+      }
+
+
+      function readCookie(name) {
+          var nameEQ = name + "=";
+          var ca = document.cookie.split(';');
+          for(var i=0;i < ca.length;i++) {
+              var c = ca[i];
+              while (c.charAt(0)==' ') c = c.substring(1,c.length);
+              if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+          }
+          return null;
+      }
+
+      function loadJsNormally(jsUrl) {
+          document.write('<script type="text/javascript" charset="utf-8" src="'+ jsUrl +'"></scr'+'ipt>');
+      }
+
+      function loadJsWithoutCache(jsUrl) {
+          jsUrl = jsUrl + '?v=' + +Math.random();
+          loadJsNormally(jsUrl);
+      }
+
+      
+      var droidyueNoCacheLoading = 'droidyue.no-cache';
+
+      function isNoCacheLoadingEnabled() {
+          return readCookie(droidyueNoCacheLoading) != null;
+      }
+
+      var noCacheLoading = isNoCacheLoadingEnabled();
+
+      function enableNoCacheLoading() {
+          setCookie(droidyueNoCacheLoading, 1, 365);
+      }
+
+      function disableNoCacheLoading() {
+          eraseCookie(droidyueNoCacheLoading);
+      }
+
+
+      function loadJs(jsUrl) {
+          if (noCacheLoading) {
+              loadJsWithoutCache(jsUrl);
+          } else {
+              loadJsNormally(jsUrl);
+          }
+      }
+  </script>
+  <script type="text/javascript" charset="utf-8" src="/javascripts/blogutils.js"></script>
+  <script type="text/javascript">
+    loadJsWithoutCache("https://asset.droidyue.com/javascript/geektime_qr_images.js");
+  </script>
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/book_rec_base.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="/stylesheets/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="/stylesheets/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="/javascripts/trackurl_maker.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="https://asset.droidyue.com/javascript/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/common_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/program_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/android_book_data.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/java_book_data.js" charset="utf-8"></script>
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+  (adsbygoogle = window.adsbygoogle || []).push({
+    google_ad_client: "ca-pub-6762344977202446",
+    enable_page_level_ads: true
+  });
+</script>
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?a30bba1172841d3a4e162df23a9c5e0c";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+
+<!-- GrowingIO Analytics code version 2.1 -->
+<!-- Copyright 2015-2018 GrowingIO, Inc. More info available at http://www.growingio.com -->
+
+<script type='text/javascript'>
+!function(e,t,n,g,i){e[i]=e[i]||function(){(e[i].q=e[i].q||[]).push(arguments)},n=t.createElement("script"),tag=t.getElementsByTagName("script")[0],n.async=1,n.src=('https:'==document.location.protocol?'https://':'http://')+g,tag.parentNode.insertBefore(n,tag)}(window,document,"script","assets.giocdn.com/2.1/gio.js","gio");
+  gio('init','a9815ce3665ad534', {});
+
+//custom page code begin here
+
+//custom page code end here
+
+gio('send');
+
+</script>
+
+<!-- End GrowingIO Analytics code version: 2.1 -->
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation">
+<form action="https://google.com/search" method="get"  target="_blank">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="搜索" />
+    <input type=hidden name=domains value="droidyue.com">
+    <input type=hidden name=sitesearch value="droidyue.com">
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">首页</a></li>
+  <li><a href="/ninki/">干货铺子</a></li>
+  <li><a href="/blog/archives/">存档</a></li>
+  <li><a href="/reading/">读书</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/cooperate/">合作</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/gfriends/">好基友</a></li>
+  <li><a href="/neitui/">内推</a></li>
+  <li><a href="/fuli/index.html">福利</a></li>
+  <li><a href="/links/">友链</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <a href="https://gio.ren/w/AovVWjoz" target="_blank" title="https://gio.ren/w/AovVWjoz">
+
+	<img src="https://asset.droidyue.com/image/201908/kaikeba.png" class="no_boarder_class kaikeba" style="max-Width:100%">
+</a>
+
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">未合并分支不怕丢,一个脚本快速搞定</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2020-04-05T21:20:00+08:00" pubdate data-updated="true">Apr 5<span>th</span>, 2020</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>我们使用 git 作为 版本控制工具，极大的提高了效率，但是随着业务的增多和自身对于提交内容原子性的要求，往往会产生很多的分支，这就难免有时候，在发版的时候，某些分支被遗忘提交，造成功能丢失等问题。</p>
+
+<p>因而如果保证分支多而且不忘记合并，是一个我们需要解决的问题。</p>
+
+<ul>
+<li>单纯靠人为挨个去看，肯定是不行的</li>
+<li>如果有程序化处理就靠谱多了</li>
+</ul>
+
+
+<!--more-->
+
+
+<p>是的，git有一个这样的功能呢，比如我们想要查看是否有分支没有合并进入develop</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git branch --no-merged develop
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>是的，这能解决问题，但是比如我们迁出了预发布分支(pre_release)，有的分支合并到了pre_release(但没有合并到develop), 上面的查找就不太合适了。</p>
+
+<p>所以我们需要的是</p>
+
+<ul>
+<li>能进行基于多个分支未合并的分支去交集</li>
+<li>支持自定义的忽略某些分支出现在未合并分支列表</li>
+</ul>
+
+
+<p>于是有了下面的脚本</p>
+
+<h2>脚本内容</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class='line'><span class="c1"># encoding: utf-8</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">getUnmergedBranches</span><span class="p">(</span><span class="n">targetBranch</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="sb">`git branch --no-merged </span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="sb">`</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sr">/\n+/</span><span class="p">)</span><span class="o">.</span><span class="n">map</span> <span class="p">{</span> <span class="o">|</span><span class="n">e</span><span class="o">|</span> <span class="n">e</span><span class="o">.</span><span class="n">sub</span>  <span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span> <span class="p">}</span><span class="o">.</span><span class="n">map</span> <span class="p">{</span> <span class="o">|</span><span class="n">e</span><span class="o">|</span> <span class="n">e</span><span class="o">.</span><span class="n">strip</span> <span class="p">}</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">branchesUnmergedToPreRelease</span> <span class="o">=</span> <span class="n">getUnmergedBranches</span><span class="p">(</span><span class="s1">&#39;origin/pre_release&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">puts</span> <span class="p">(</span><span class="n">getUnmergedBranches</span><span class="p">(</span><span class="s1">&#39;origin/develop&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">branchesUnmergedToPreRelease</span><span class="p">)</span><span class="o">.</span><span class="n">select</span> <span class="p">{</span><span class="o">|</span><span class="n">branch</span><span class="o">|</span> <span class="o">!</span><span class="n">branch</span><span class="o">.</span><span class="n">start_with?</span> <span class="s2">&quot;unmerge_ignore_&quot;</span><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的脚本做的是</p>
+
+<ul>
+<li>获取未合并进入<code>origin/develop</code>的分支集合 A</li>
+<li>获取未合并进入<code>origin/pre_release</code>的分支集合 B</li>
+<li>对于上面的 分支集合 A 和 B 取交集 得到 分支集合 C</li>
+<li>在分支集合 C 中提出 自定义忽略分支（以<code>unmerge_ignore_</code>开头）</li>
+</ul>
+
+
+<h2>脚本使用示例</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~:/  ruby unmergedBranches.rb
+</span><span class='line'>checkstyle
+</span><span class='line'>error_prone
+</span><span class='line'>file_chooser_webview
+</span><span class='line'>image_loading
+</span><span class='line'>jduan_inter_webview_messaging
+</span><span class='line'>jduan_webview_client_refactor
+</span><span class='line'>migration_to_androidx
+</span><span class='line'>upgrade_gradle_1106
+</span><span class='line'>upgrade_gradle_3.2.0
+</span><span class='line'>upgrade_suppport_28.0.0
+</span><span class='line'>video_preload
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>忽略某个分支，不作为unmerged 分支内容</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class='line'><span class="c1"># encoding: utf-8</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="nb">puts</span> <span class="s2">&quot;Please input the branch to unmerge-ignore&quot;</span>
+</span><span class='line'><span class="n">targetBranch</span> <span class="o">=</span> <span class="nb">gets</span><span class="o">.</span><span class="n">chomp</span>
+</span><span class='line'><span class="nb">puts</span> <span class="s2">&quot;You want to ignore this branch:</span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="s2">, Are you sure? (input yes)&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">confirm</span> <span class="o">=</span> <span class="nb">gets</span><span class="o">.</span><span class="n">chomp</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">confirm</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">newBranchName</span> <span class="o">=</span> <span class="s2">&quot;unmerge_ignore_</span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="nb">system</span> <span class="s2">&quot;git branch -m </span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">newBranchName</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="nb">puts</span> <span class="s2">&quot;changed </span><span class="si">#{</span><span class="n">targetBranch</span><span class="si">}</span><span class="s2"> into </span><span class="si">#{</span><span class="n">newBranchName</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用上面的脚本，就能够以命令交互的形式忽略某个分支</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~:/ ruby ignoreBranchWhenUnmerged.rb
+</span><span class='line'>Please input the branch to unmerge-ignore
+</span><span class='line'>new_account_sys
+</span><span class='line'>You want to ignore this branch:new_account_sys, Are you sure? <span class="o">(</span>input yes<span class="o">)</span>
+</span><span class='line'>yes
+</span><span class='line'>changed new_account_sys into unmerge_ignore_new_account_sys
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上.</p>
+
+<h2>更多内容推荐</h2>
+
+<ul>
+<li><a href="https://droidyue.com/blog/categories/jiao-ben/">更多脚本高效工具</a></li>
+<li><a href="https://droidyue.com/ninki/">小黑屋优质内容</a></li>
+</ul>
+
+</div>
+
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/vote_tips.js"></script>
+  
+  <br/>
+  <script type="text/javascript">
+		var geekTimeLinkImageStr = "<a href='http://gk.link/a/104bk'><img src='https://asset.droidyue.com/image/geektime/jikeshijian.jpeg' class='no_boarder_class' style='max-Width:100%'></a><br/>"
+		// document.write(geekTimeLinkImageStr)
+</script>
+  <div id="post_rec"></div>
+  <br/>
+  
+  <!-- 
+<script type="text/javascript"  charset="utf-8" src="/javascripts/random_recommend.js">
+</script>
+<script type="text/javascript" charset="utf-8">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+ -->
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-format="autorelaxed"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="4907659907"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script> 
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2020-04-05T21:20:00+08:00" pubdate data-updated="true">Apr 5<span>th</span>, 2020</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/branching/'>branching</a>, <a class='category' href='/blog/categories/git/'>git</a>, <a class='category' href='/blog/categories/ruby/'>ruby</a>, <a class='category' href='/blog/categories/fen-zhi-guan-li/'>分支管理</a>, <a class='category' href='/blog/categories/gong-cheng/'>工程</a>, <a class='category' href='/blog/categories/xiao-lu/'>效率</a>, <a class='category' href='/blog/categories/jiao-ben/'>脚本</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2020/03/30/install-parse-failed-unexpected-exception/" title="Previous Post: INSTALL PARSE FAILED UNEXPECTED EXCEPTION 问题">&laquo; INSTALL PARSE FAILED UNEXPECTED EXCEPTION 问题</a>
+      
+      
+    </p>
+    
+
+
+
+	<!-- JiaThis Button BEGIN -->
+
+<!-- JiaThis Button END -->
+
+
+  </footer>
+  </article>
+
+<br/>
+
+  <section>
+   <link rel="stylesheet" href="https://asset.droidyue.com/gitalk/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<div id="gitalk-container"></div>
+<script type="text/javascript">
+	var gitalk = new Gitalk({
+  		clientID: 'c6dab5d2becf02e6568f',
+  		clientSecret: '9541ee96975f1661eab6f69811d0730d348c6546',
+  		repo: 'comments_droidyuecom',
+  		owner: 'droidyuecom',
+  		admin: ['droidyuecom'],
+  		// Ensure uniqueness and length less than 50
+  		id: location.pathname.replace("/blog/", "").substring(0,50),      
+  		distractionFreeMode: false  // Facebook-like distraction free mode
+})
+
+gitalk.render('gitalk-container')
+</script>
+<!--adsense ads after the comments-->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- after_comments -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="9009226797"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+  </section>
+
+
+<link href="/stylesheets/remote.css"  rel="stylesheet" type="text/css">
+	
+<script type="text/javascript">var jd_union_unid="331185104",jd_ad_ids="506:6",jd_union_pid="COfejf6ILhDQ9/WdARoAIILhuskHKgA=";var jd_width=0;var jd_height=0;var jd_union_euid="";var p="AhIDUx5dFgsUDmVEH0hfIlgRRgYlXVZaCCsfSlpMWGVEH0hfIk8lcwNFZltsNRIPD14MfhVbM31%2BRWdZF2sVAhYBURhZFAYaN1cZWxULFgdUHmslXVZaCCsQewMiWBFGBiUCFg5WE18dChICXBxaJQMiN2U%3D";</script><script type="text/javascript" charset="utf-8" src="//u-x.jd.com/static/js/auto.js"></script>
+
+<style type="text/css">
+#pdd_ul {
+    margin-left:5rem
+}
+</style>
+
+<ul id="pdd_ul">
+    <li><a href="https://mobile.yangkeduo.com/app.html?use_reload=1&launch_url=duo_collection.html%3F__page%3Ddis%26pid%3D9961975_132254737%26cpsSign%3DCIP_200321_9961975_132254737_20320d0ca126c41d3271832bbdc626aa%26duoduo_type%3D2&campaign=ddjb&cid=launch_">【内购专供，请勿外传】拼多多员工内购清单，数量不多，先到先得~</a>
+    </li>
+
+    <li><a href="https://mobile.yangkeduo.com/app.html?use_reload=1&launch_url=duo_today_burst.html%3Fpid%3D9961975_132254737%26cpsSign%3DCM_200321_9961975_132254737_f35fadb1aa89577bdf2dca07bd134b81%26duoduo_type%3D2&campaign=ddjb&cid=launch_">今日爆款数量有限，更有超多大额优惠券发放中，一键立抢</a>
+    </li>
+
+    <li><a href="https://mobile.yangkeduo.com/app.html?use_reload=1&launch_url=duo_nine_nine.html%3Fpid%3D9961975_132254737%26cpsSign%3DCM_200321_9961975_132254737_4c99e1639d377c286bc5cd2fd170b63d%26duoduo_type%3D2&campaign=ddjb&cid=launch_">全场9块9低价包邮，更有超多大额优惠券发放中，一键立抢>></a>
+        </li>
+
+        <li><a href="https://mobile.yangkeduo.com/app.html?use_reload=1&launch_url=duo_transfer_channel.html%3FresourceType%3D4%26pid%3D9961975_132254737%26cpsSign%3DCE_200321_9961975_132254737_c8ecf0fc451398f478eeda6dc4132ebd%26duoduo_type%3D2&campaign=ddjb&cid=launch_transfer_channel_">限时秒杀，底价狂欢，精选好货即将售罄，一键立抢>></a></li>
+
+        <li><a href="https://mobile.yangkeduo.com/app.html?use_reload=1&launch_url=duo_transfer_channel.html%3FresourceType%3D39996%26pid%3D9961975_132254737%26_pdd_fs%3D1%26_pdd_tc%3Dffffff%26_pdd_sbs%3D1%26cpsSign%3DCE_200321_9961975_132254737_a2b695b301c6c92323a9fce5eabc6bb8%26duoduo_type%3D2&campaign=ddjb&cid=launch_transfer_channel_">官方百亿补贴，全场品质保障，全网最低，一键立抢>></a></li>
+</ul>
+
+	
+</div>
+
+<aside class="sidebar">
+  
+    
+<script type="text/javascript">
+	loadJs('/javascripts/right_image_rec.js');
+</script>
+<script type="text/javascript" src="/javascripts/notice.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/04/05/a-quick-script-to-view-all-unmerged-branches/">未合并分支不怕丢,一个脚本快速搞定</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/30/install-parse-failed-unexpected-exception/">INSTALL PARSE FAILED UNEXPECTED EXCEPTION 问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/29/install-gitlab-on-raspberry-pi-issues/">树莓派 Gitlab问题整理</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/29/wechat-share-standard/">一些关于微信分享的建议规范</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/29/ssh-raspberrypi-failure/">修复ssh 首次登录树莓派失败的问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/29/auto-on-after-power-failure-nuc/">Nuc 设置断电后自动开机</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/29/kotlintips-as-type/">KotlinTips asType 快捷转换</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/29/kotlin-tips-elvis-return/">KotlinTips Elvis 快速返回</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/22/kotlin-tips-get-value-safely/">KotlinTips: getValueSafely 安全取值</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/22/wechat-payment-server-jobs/">微信支付 核心业务应用工程师(深圳/广州) 招聘内推</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/03/21/contribute-to-droidyue-dot-com/">技术小黑屋投稿开放了</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/02/29/set-proxy-for-wget/">Linux 下 Wget 设置代理</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/02/23/install-jdk-on-raspberry-pi/">树莓派安装jdk 8</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/02/23/fix-lc-ctype-lc-all-cannot-set-lc-ctype-to-default-locale-no-such-file-or-directory-issue/">修复 LC_CTYPE LC_ALL 设置问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/02/09/play-audio-or-video-background-in-webview-app-android/">Android Webview 后台播放音视频实现</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/01/28/a-script-to-change-dns-on-mac-os/">Mac下实现超快捷切换DNS</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/01/12/fix-checkstyle-file-name-issue/">解决Checkstyle File Name 异常的问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2020/01/05/kotlin-flag-extension-methods/">Kotlin 处理位操作Flag 快捷方法</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/12/29/create-a-linux-service-with-systemd/">创建Linux服务，轻松管理（自启动，恢复）进程</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2019/12/28/rxhttp-an-awesome-library-mixed-with-rxjava-and-okhttp/">RxHttp 一款让你眼前一亮的 Http 请求框架</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" charset="utf-8">
+	loadJs("https://asset.droidyue.com/javascript/blogroll_data_source.js");
+</script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
+<center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center><html>
+	<!-- <script type="text/javascript">
+		for (var i = 0; i < 3 ; i++) {
+			document.write("<img class='no_boarder_class' style='max-Width:100%' src='" + geekTimeQrImages[i] + "'>");
+		};
+	</script>
+	
+	<br/> -->
+	
+	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_right_0 -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="2412800998"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+	
+</html>
+
+  
+</aside>
+
+
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2020 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> ；优质服务品牌： 
+	  <a href="https://onedrive.live.com/?invref=6b59396564b1963a&invscr=90">OneDrive</a>
+	  <a href="https://www.vultr.com/?ref=7819525-4F">Vultr VPS</a>
+	  <a href="https://m.do.co/c/3c4ff5a7ed39">Digital Ocean</a>
+      <a href="https://billing.virmach.com/aff.php?aff=9882">Virmach(真实可用,1.25$/月)</a>
+	  <a href="https://promotion.aliyun.com/ntms/yunparter/invite.html?userCode=tagltim6">阿里云</a>
+  </span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+
+<script type="text/javascript">
+var jiathis_config = {data_track_clickback:'true'};
+</script>
+
+<script type="text/javascript" src="/javascripts/toastr.min.js"></script>
+<link href="/stylesheets/toastr.min_v1.css" rel="stylesheet"/>
+<div id="toast"></div>
+<script type="text/javascript">
+	loadJsWithoutCache("https://asset.droidyue.com/javascript/rec_dialog_new.js");
+</script>
+
+<script type="text/javascript">
+/* 	var url = "http://onionos.com:8080/report_visitor?landUrl=" + window.btoa(document.location.href) + "&refer=" + window.btoa(document.referrer) + "&ua=" + window.btoa(navigator.userAgent);
+	loadJsNormally(url);*/
+</script>
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="/javascripts/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+  </div>
+</body>
+</html>
