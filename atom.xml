@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2020-04-20T20:35:14+08:00</updated>
+  <updated>2020-04-25T22:21:40+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,296 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Linux 下使用cut命令，实现更好切分数据]]></title>
+    <link href="https://droidyue.com/blog/2020/04/25/linux-cut-command/"/>
+    <updated>2020-04-25T22:07:00+08:00</updated>
+    <id>https://droidyue.com/blog/2020/04/25/linux-cut-command</id>
+    <content type="html"><![CDATA[<h2>cut是什么</h2>
+
+<ul>
+<li>一个Unix终端命令</li>
+<li>切割行内容，并进行标准输出</li>
+<li>可以按照字节，字符，分隔符进行切分</li>
+</ul>
+
+
+<!--more-->
+
+
+<h2>能有什么用</h2>
+
+<p>我们举一个简单的例子（非全部示例）来描述cut有什么用，可以做什么</p>
+
+<h3>简洁输出，去除干扰冗余信息</h3>
+
+<p>比如这个日志，可能会出现折行，另外假设<code>04-19 18:26:55.605 22750 22883 W</code>这些列的信息属于干扰信息</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>04-19 18:26:55.605 22750 22883 W System.err: java.lang.NoSuchFieldException
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.au.a<span class="o">(</span>Unknown Source:16<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.au.a<span class="o">(</span>Unknown Source:4<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.z.a<span class="o">(</span>Unknown Source:880<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.z.a<span class="o">(</span>Unknown Source:188<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.p.a<span class="o">(</span>Unknown Source:821<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.p.a<span class="o">(</span>Unknown Source:605<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.p.a<span class="o">(</span>Unknown Source:11<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.d.a<span class="o">(</span>Unknown Source:46<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.ak.b<span class="o">(</span>Unknown Source:50<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.ak.a<span class="o">(</span>Unknown Source:10<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.XMPushService<span class="nv">$c</span>.a<span class="o">(</span>Unknown Source:8<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.XMPushService<span class="nv">$i</span>.run<span class="o">(</span>Unknown Source:37<span class="o">)</span>
+</span><span class='line'>04-19 18:26:55.605 22750 22883 W System.err:  at com.xiaomi.push.service.g<span class="nv">$c</span>.run<span class="o">(</span>Unknown Source:175<span class="o">)</span>
+</span><span class='line'>04-19 18:27:24.787 23660 23685 W System.err: load vdr indoor lib success.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用cut 我们可以实现删除上面的冗余信息</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>adb logcat | grep <span class="s2">&quot;System.err&quot;</span> --line-buffered | cut -d <span class="s2">&quot; &quot;</span> -f 6-
+</span><span class='line'>System.err: java.lang.NoSuchFieldException
+</span><span class='line'>System.err:   at com.xiaomi.push.au.a<span class="o">(</span>Unknown Source:16<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.au.a<span class="o">(</span>Unknown Source:4<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.z.a<span class="o">(</span>Unknown Source:880<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.z.a<span class="o">(</span>Unknown Source:188<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.p.a<span class="o">(</span>Unknown Source:821<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.p.a<span class="o">(</span>Unknown Source:605<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.p.a<span class="o">(</span>Unknown Source:11<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.d.a<span class="o">(</span>Unknown Source:46<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.ak.b<span class="o">(</span>Unknown Source:50<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.ak.a<span class="o">(</span>Unknown Source:10<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.XMPushService<span class="nv">$c</span>.a<span class="o">(</span>Unknown Source:8<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.XMPushService<span class="nv">$i</span>.run<span class="o">(</span>Unknown Source:37<span class="o">)</span>
+</span><span class='line'>System.err:   at com.xiaomi.push.service.g<span class="nv">$c</span>.run<span class="o">(</span>Unknown Source:175<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>按照字节切分(cut -b)</h2>
+
+<h3>按照字节位置切分</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># 取第一个字节</span>
+</span><span class='line'>pi@raspberrypi:~ <span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;abcdef&quot;</span> | cut -b 1
+</span><span class='line'>a
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c"># 取第二个字节</span>
+</span><span class='line'>pi@raspberrypi:~ <span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;abcdef&quot;</span> | cut -b 2
+</span><span class='line'>b
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c"># 从1开始，0会报错</span>
+</span><span class='line'>pi@raspberrypi:~ <span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;abcdef&quot;</span> | cut -b 0
+</span><span class='line'>cut: byte/character positions are numbered from 1
+</span><span class='line'>Try <span class="s1">&#39;cut --help&#39;</span> <span class="k">for </span>more information.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>按照字节区间切分</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#1到2字节位置切分</span>
+</span><span class='line'>pi@raspberrypi:~ <span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;abcdef&quot;</span> | cut -b 1-2
+</span><span class='line'>ab
+</span><span class='line'>
+</span><span class='line'><span class="c"># 限定区间起始位置，不限定结束位置</span>
+</span><span class='line'>pi@raspberrypi:~ <span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;abcdef&quot;</span> | cut -b 1-
+</span><span class='line'>abcdef
+</span><span class='line'>
+</span><span class='line'><span class="c"># 限定区间结束位置，但不限定起始位置</span>
+</span><span class='line'>pi@raspberrypi:~ <span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;abcdef&quot;</span> | cut -b -5
+</span><span class='line'>abcde
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>按照字节多个位置切分</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>pi@raspberrypi:~ <span class="nv">$ </span><span class="nb">echo</span> <span class="s2">&quot;abcdef&quot;</span> | cut -b 1,3,5
+</span><span class='line'>ace
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>按照字符区分</h2>
+
+<p>当我们按照字符进行切分时，会遇到一些问题，比如出现中文的时候（一个中文占用三个字节）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># 异常出现</span>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;小黑屋&quot;</span> | cut -b 1
+</span><span class='line'>�
+</span><span class='line'>
+</span><span class='line'><span class="c">##必须限定满足正确的开始和结束位置</span>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;小黑屋&quot;</span> | cut -b 1-3
+</span><span class='line'>小
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是如果中英文并存，就比较麻烦了，好在有按照字符切分的方法(cut -c)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo</span> <span class="s2">&quot;abcd技术小黑屋ef&quot;</span> | cut -c 7
+</span><span class='line'>小
+</span><span class='line'>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;abcd技术小黑屋ef&quot;</span> | cut -c 7-9
+</span><span class='line'>小黑屋
+</span><span class='line'>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;abcd技术小黑屋ef&quot;</span> | cut -c 7,8,9
+</span><span class='line'>小黑屋
+</span><span class='line'>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;abcd技术小黑屋ef&quot;</span> | cut -c 5-
+</span><span class='line'>技术小黑屋ef
+</span><span class='line'>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;abcd技术小黑屋ef&quot;</span> | cut -c -9
+</span><span class='line'>abcd技术小黑屋
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>按照分隔符切分（cut -d ）</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo</span> <span class="s2">&quot;A|BC|DEF|GHIJ&quot;</span> |  cut -d <span class="s2">&quot;|&quot;</span> -f 1
+</span><span class='line'>A
+</span><span class='line'>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;A|BC|DEF|GHIJ&quot;</span> |  cut -d <span class="s2">&quot;|&quot;</span> -f 2
+</span><span class='line'>BC
+</span><span class='line'>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;A|BC|DEF|GHIJ&quot;</span> |  cut -d <span class="s2">&quot;|&quot;</span> -f 3
+</span><span class='line'>DEF
+</span><span class='line'>
+</span><span class='line'><span class="c"># 区间，限定开始位置</span>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;A|BC|DEF|GHIJ&quot;</span> |  cut -d <span class="s2">&quot;|&quot;</span> -f 1-
+</span><span class='line'>A|BC|DEF|GHIJ
+</span><span class='line'>
+</span><span class='line'><span class="c">#区间，限定结束位置</span>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;A|BC|DEF|GHIJ&quot;</span> |  cut -d <span class="s2">&quot;|&quot;</span> -f -3
+</span><span class='line'>A|BC|DEF
+</span><span class='line'>
+</span><span class='line'><span class="c"># 区间，限定开始和结束位置</span>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;A|BC|DEF|GHIJ&quot;</span> |  cut -d <span class="s2">&quot;|&quot;</span> -f 1-2
+</span><span class='line'>A|BC
+</span><span class='line'>
+</span><span class='line'><span class="c">#提供多个位置</span>
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;A|BC|DEF|GHIJ&quot;</span> |  cut -d <span class="s2">&quot;|&quot;</span> -f 1,2
+</span><span class='line'>A|BC
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>注意</h2>
+
+<ul>
+<li>上面为了示例简单实用了echo 加管道的方式</li>
+<li>上面所有的例子，都可以实用类似加文件的形式</li>
+<li>比如<code>cut -b 1 test_cut_file.txt</code>,<code>cut -c 1 test_cut_file.txt</code>,<code>cut -d "|" -f 1 test_cut_file.txt</code></li>
+</ul>
+
+
+<h2>更多</h2>
+
+<ul>
+<li><a href="https://droidyue.com/blog/categories/linux/">更多Linux文章</a></li>
+<li><a href="https://droidyue.com/blog/categories/jiao-ben/">更多脚本文章</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Linux 下按照文件大小查找文件]]></title>
@@ -1304,74 +1594,6 @@
 
 <ul>
 <li><a href="https://github.com/androidyue/WebViewVisibilityChangedSample">https://github.com/androidyue/WebViewVisibilityChangedSample</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Mac下实现超快捷切换DNS]]></title>
-    <link href="https://droidyue.com/blog/2020/01/28/a-script-to-change-dns-on-mac-os/"/>
-    <updated>2020-01-28T14:39:00+08:00</updated>
-    <id>https://droidyue.com/blog/2020/01/28/a-script-to-change-dns-on-mac-os</id>
-    <content type="html"><![CDATA[<p>在有些情况下，我们需要切换DNS来实现一些处理。但是频繁的进入设置-网络 的确很麻烦，于是再次朝着脚本的思路想了想，发现还是可以实现的。下面的脚本就能便捷的实现切换WIFI的DNS并验证。</p>
-
-<!--more-->
-
-
-<h2>changeToGoogleDns.sh</h2>
-
-<p>该脚本的内容切换DNS为信用值很高的Google DNS 8.8.8.8。虽然Google被墙，但是这个DNS地址还是可以用的。而且这也算是我主要使用的DNS。</p>
-
-<p>对应的脚本内容为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>networksetup -setdnsservers Wi-Fi 8.8.8.8
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>changeTo114Dns.sh</h2>
-
-<p>114的DNS也是一种选择，但是我几乎不用，可以作为一种选择。</p>
-
-<p>对应的脚本内容为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>networksetup -setdnsservers Wi-Fi 114.114.114.114
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>dumpWifiDNS.sh</h2>
-
-<p>设置完成DNS之后，需要做的通常是验证以下，下面是验证DNS设置结果的脚本的内容</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>networksetup -getdnsservers Wi-Fi
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>简单执行以下就可以了。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>➜  scripts dumpWifiDNS.sh
-</span><span class='line'>8.8.8.8
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>其他酷酷的脚本</h2>
-
-<ul>
-<li><a href="https://droidyue.com/blog/2019/12/15/translate-words-in-terminal/">终端依赖者福利：终端也能实现翻译功能了</a></li>
-<li><a href="https://droidyue.com/blog/2019/12/08/display-img-in-ternimal/">Mac 下在终端直接查看图片</a></li>
-<li><a href="https://droidyue.com/blog/2019/10/27/view-ssl-certificate-in-terminal/">在终端使用脚本查看网站 SSL 证书信息</a></li>
-<li><a href="https://droidyue.com/blog/categories/jiao-ben/">更多脚本</a></li>
 </ul>
 
 ]]></content>
