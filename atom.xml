@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2020-05-04T19:32:40+08:00</updated>
+  <updated>2020-05-10T21:13:56+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,326 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[用好 require,check,assert,写好 Kotlin 代码]]></title>
+    <link href="https://droidyue.com/blog/2020/05/10/understanding-check-require-assert-in-kotlin/"/>
+    <updated>2020-05-10T21:09:00+08:00</updated>
+    <id>https://droidyue.com/blog/2020/05/10/understanding-check-require-assert-in-kotlin</id>
+    <content type="html"><![CDATA[<p>在编码的时候，我们需要做很多的检测判断，比如某个变量是否为<code>null</code>，某个成员属性是否为<code>true</code>，执行某个操作结果是否成功。比如像下面的这段代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">var</span> <span class="n">isDiskMounted</span> <span class="p">=</span> <span class="k">true</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fun</span> <span class="nf">createNewFile</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="n">File</span><span class="p">?):</span> <span class="n">Boolean</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">if</span> <span class="p">(</span><span class="n">isDiskMounted</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">file</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">file</span><span class="p">.</span><span class="n">createNewFile</span><span class="p">()</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="n">file</span><span class="p">.</span><span class="n">exists</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">true</span>
+</span><span class='line'>            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">println</span><span class="p">(</span><span class="s">&quot;Create file($file) failed&quot;</span><span class="p">)</span>
+</span><span class='line'>                <span class="k">false</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">println</span><span class="p">(</span><span class="s">&quot;File($file) is null&quot;</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">false</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="s">&quot;Disk is not mounted&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">false</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<!--more-->
+
+
+<p>上面的代码实现了</p>
+
+<ul>
+<li>检测磁盘是否挂载</li>
+<li>检测file参数是否为null</li>
+<li>检测执行操作结果是否成功（file.exists()）</li>
+</ul>
+
+
+<p>但是上面的代码也有一些问题</p>
+
+<ul>
+<li>太多的if else 检测，层级产生，不够平</li>
+<li>多个方法出口</li>
+<li>更不容易发现异常和错误（有点类似fail safe模式）</li>
+</ul>
+
+
+<h2>使用今天的知识点改造</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">createNewFileV2</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="n">File</span><span class="p">?):</span> <span class="n">Boolean</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">check</span><span class="p">(</span><span class="n">isDiskMounted</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="s">&quot;Disk is not mounted&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">requireNotNull</span><span class="p">(</span><span class="n">file</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="s">&quot;file is null&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">file</span><span class="p">.</span><span class="n">createNewFile</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">assert</span><span class="p">(</span><span class="n">file</span><span class="p">.</span><span class="n">exists</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>        <span class="s">&quot;createNewFileV2 file($file) does not exist&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="k">true</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>方法体没有多余层级，比较平</li>
+<li>单个方法出口</li>
+<li>更快更早发现问题（有点类似fail fast）</li>
+<li><code>file.createNewFile()</code>执行时可以不需要再使用<code>file?.createNewFile()</code> 这一点是因为使用了<a href="https://droidyue.com/blog/2019/08/25/kotlin-contract-between-developers-and-the-compiler/">Contract</a>。</li>
+</ul>
+
+
+<h2>require</h2>
+
+<ul>
+<li><code>require(boolean)</code> 用来检测方法的参数，当参数boolean为false时，抛出<code>IllegalArgumentException</code></li>
+</ul>
+
+
+<h3>示例代码</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">readFileContent</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="n">File</span><span class="p">?):</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">//判断file不能为null</span>
+</span><span class='line'>    <span class="n">requireNotNull</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">//判断文件必须可读，并提供错误的信息</span>
+</span><span class='line'>    <span class="n">require</span><span class="p">(</span><span class="n">file</span><span class="p">.</span><span class="n">canRead</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>        <span class="s">&quot;readFileContent file($file) is not readable&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">//read file content</span>
+</span><span class='line'>    <span class="k">return</span> <span class="s">&quot;Your file content&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>变种方法</h3>
+
+<ul>
+<li><code>fun require(value: Boolean)</code></li>
+<li><code>fun require(value: Boolean, lazyMessage: () -&gt; Any)</code></li>
+<li><code>fun &lt;T : Any&gt; requireNotNull(value: T?)</code></li>
+<li><code>fun &lt;T : Any&gt; requireNotNull(value: T?, lazyMessage: () -&gt; Any)</code></li>
+</ul>
+
+
+<h2>check</h2>
+
+<ul>
+<li><code>check(boolean)</code>用来检测对象的状态（属性），如果boolean为false，抛出异常<code>IllegalStateException</code></li>
+</ul>
+
+
+<h3>示例代码</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">class</span> <span class="nc">Engine</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">var</span> <span class="n">isStarted</span> <span class="p">=</span> <span class="k">false</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">fun</span> <span class="nf">speedUp</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">check</span><span class="p">(</span><span class="n">isStarted</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="s">&quot;Engine is not started, cannot be speed up now&quot;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//speed up the engine</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>变种方法</h3>
+
+<ul>
+<li><code>fun check(value: Boolean, lazyMessage: () -&gt; Any)</code></li>
+<li><code>fun &lt;T : Any&gt; checkNotNull(value: T?)</code></li>
+<li><code>fun &lt;T : Any&gt; checkNotNull(value: T?, lazyMessage: () -&gt; Any)</code></li>
+</ul>
+
+
+<h2>assert</h2>
+
+<ul>
+<li><code>assert(boolean)</code> 用来检测执行结果，当boolean为false时，抛出<code>AssertionError</code>。但是需要在开启对应的JVM选项时才生效。</li>
+</ul>
+
+
+<h3>示例代码</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">makeFile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">val</span> <span class="n">file</span> <span class="p">=</span> <span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">file</span><span class="p">.</span><span class="n">createNewFile</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">assert</span><span class="p">(</span><span class="n">file</span><span class="p">.</span><span class="n">exists</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>        <span class="s">&quot;make File($file) failed&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>使用顺序</h2>
+
+<ul>
+<li>先使用<code>check</code>检测对象的状态</li>
+<li>再使用<code>require</code>检测方法的参数合法性</li>
+<li>执行操作后，使用<code>assert</code>校验结果</li>
+</ul>
+
+
+<h2>关于lazyMessage</h2>
+
+<ul>
+<li>lazyMessage 可以允许我们提供更详细的错误辅助信息</li>
+<li>lazyMessage的类型是<code>()-&gt; Any</code>,结合inline操作，可以实现惰性求值</li>
+<li>具体可以参考 <a href="https://droidyue.com/blog/2019/11/24/smart-log-in-android-slash-kotlin/">这可能是最好的 Android/Kotlin日志输出方法</a></li>
+</ul>
+
+
+<h2>崩溃更多了，怎么办</h2>
+
+<ul>
+<li>是的，上面无论是<code>require</code>,<code>check</code>,<code>assert</code>都会在发现错误的时候抛出异常</li>
+<li>这是为了让问题更早发现，这就是它们的哲学</li>
+<li>如果想要考虑稳定的话，可以在业务侧 debug下崩溃，非debug下捕获吞掉异常</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">createNewFile</span><span class="p">(</span><span class="k">null</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">safeRun</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">createNewFileV2</span><span class="p">(</span><span class="k">null</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">private</span> <span class="k">val</span> <span class="n">isDebug</span> <span class="p">=</span> <span class="k">true</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fun</span> <span class="nf">safeRun</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="n">Unit</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">try</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">block</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">Throwable</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">t</span><span class="p">.</span><span class="n">printStackTrace</span><span class="p">()</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">isDebug</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">throw</span>  <span class="n">t</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>更多文章</h2>
+
+<ul>
+<li><a href="https://droidyue.com/blog/2019/05/19/do-and-dont-in-kotlin/">编写地道的 Kotlin 代码</a></li>
+<li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
+<li><a href="https://droidyue.com/blog/2020/03/22/kotlin-tips-get-value-safely/">KotlinTips: getValueSafely 安全取值</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[解决Didn't find class java.lang.invoke.SerializedLambda 问题]]></title>
@@ -1516,111 +1836,6 @@
 
 
 <p><img src="https://asset.droidyue.com/image/2020/03/jishuxiaoheiwu_zhuli.jpeg" alt="https://asset.droidyue.com/image/2020/03/jishuxiaoheiwu_zhuli.jpeg" /></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Linux 下 wget 设置代理]]></title>
-    <link href="https://droidyue.com/blog/2020/02/29/set-proxy-for-wget/"/>
-    <updated>2020-02-29T20:41:00+08:00</updated>
-    <id>https://droidyue.com/blog/2020/02/29/set-proxy-for-wget</id>
-    <content type="html"><![CDATA[<p>Linux进行网络下载,基本上是wget或者curl,比如我们这样去进行请求,如果没有代理,是访问不了的</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>androidyue@in-house-ubuntu:/tmp<span class="nv">$ </span>wget google.com
-</span><span class='line'>--2020-03-01 11:53:14--  http://google.com/
-</span><span class='line'>Resolving google.com <span class="o">(</span>google.com<span class="o">)</span>... 46.82.174.69, 93.46.8.90
-</span><span class='line'>Connecting to google.com <span class="o">(</span>google.com<span class="o">)</span>|46.82.174.69|:80... connected.
-</span><span class='line'>HTTP request sent, awaiting response... Read error <span class="o">(</span>Connection reset by peer<span class="o">)</span> in headers.
-</span><span class='line'>Retrying.
-</span><span class='line'>
-</span><span class='line'>--2020-03-01 11:53:15--  <span class="o">(</span>try: 2<span class="o">)</span>  http://google.com/
-</span><span class='line'>Connecting to google.com <span class="o">(</span>google.com<span class="o">)</span>|46.82.174.69|:80...
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>所以,我们想要实现一些功能,需要为wget设置代理.方法很简单</p>
-
-<!--more-->
-
-
-<h2>方法一:参数设置</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>wget -e <span class="nv">http_proxy</span><span class="o">=</span>192.168.1.8:1611 google.com
-</span><span class='line'>
-</span><span class='line'>--2020-03-01 11:53:55--  http://google.com/
-</span><span class='line'>Connecting to 192.168.1.8:1611... connected.
-</span><span class='line'>Proxy request sent, awaiting response... 301 Moved Permanently
-</span><span class='line'>Location: http://www.google.com/ <span class="o">[</span>following<span class="o">]</span>
-</span><span class='line'>--2020-03-01 11:53:57--  http://www.google.com/
-</span><span class='line'>Reusing existing connection to 192.168.1.8:1611.
-</span><span class='line'>Proxy request sent, awaiting response... 200 OK
-</span><span class='line'>Length: unspecified <span class="o">[</span>text/html<span class="o">]</span>
-</span><span class='line'>Saving to: ‘index.html’
-</span><span class='line'>
-</span><span class='line'>index.html                               <span class="o">[</span> &lt;<span class="o">=</span>&gt;                                                                 <span class="o">]</span>  12.56K  --.-KB/s    in 0s
-</span><span class='line'>
-</span><span class='line'>2020-03-01 11:54:01 <span class="o">(</span>160 MB/s<span class="o">)</span> - ‘index.html’ saved <span class="o">[</span>12863<span class="o">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>方法二:配置文件设置</h3>
-
-<h3>进入家目录</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">cd</span> ~/
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>创建.wgetrc配置文件</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>vim .wgetrc
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>设置代理</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">http_proxy</span> <span class="o">=</span> http://your_proxy:port
-</span><span class='line'><span class="nv">https_proxy</span> <span class="o">=</span> http://your_proxy:port
-</span><span class='line'><span class="nv">proxy_user</span> <span class="o">=</span> user
-</span><span class='line'><span class="nv">proxy_password</span> <span class="o">=</span> password
-</span><span class='line'><span class="nv">use_proxy</span> <span class="o">=</span> on
-</span><span class='line'><span class="nb">wait</span> <span class="o">=</span> 15
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>以上</p>
 ]]></content>
   </entry>
   
