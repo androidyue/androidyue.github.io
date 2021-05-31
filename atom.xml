@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2021-05-28T14:10:39+08:00</updated>
+  <updated>2021-05-31T12:18:20+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,143 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Coobox之 LastWinExecutor，后来居上执行器]]></title>
+    <link href="https://droidyue.com/blog/2021/05/31/coobox-android-last-win-executor/"/>
+    <updated>2021-05-31T12:07:00+08:00</updated>
+    <id>https://droidyue.com/blog/2021/05/31/coobox-android-last-win-executor</id>
+    <content type="html"><![CDATA[<p>在编程的业务场景中，有时候会有这样的情况。有一个文本输入框用来输入检索数据</p>
+
+<ul>
+<li>为了避免过多的网络检索，实现频率控制</li>
+<li>当且仅当距离上次输入字符500 毫秒后，才真正执行检索请求</li>
+</ul>
+
+
+<!--more-->
+
+
+<h2>第一步 创建 LastWinExecutor</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="nl">lastWinExecutor:</span> <span class="n">LastWinExecutor</span> <span class="o">=</span> <span class="n">LastWinExecutor</span><span class="o">(</span><span class="mi">500</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中</p>
+
+<ul>
+<li>LastWinExecutor 接受一个超时参数，单位为毫秒，例子中为500毫秒</li>
+</ul>
+
+
+<h2>第二步 提交请求</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">lastWinExecutor</span><span class="o">.</span><span class="na">submit</span> <span class="o">{</span>
+</span><span class='line'>  <span class="c1">//需要执行的代码</span>
+</span><span class='line'>  <span class="o">...</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中</p>
+
+<ul>
+<li>每次输入框内容改变都会调用<code>lastWinExecutor.submit</code></li>
+<li>但是仅仅当距离上个输入框字符输入超过500 毫秒 才执行相应的代码</li>
+</ul>
+
+
+<h2>完整代码</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">LastWinExecutorFragment</span> <span class="o">:</span> <span class="n">TestableFragment</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">val</span> <span class="nl">lastWinExecutor:</span> <span class="n">LastWinExecutor</span> <span class="o">=</span> <span class="n">LastWinExecutor</span><span class="o">(</span><span class="mi">500</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">fun</span> <span class="nf">observeTextView</span><span class="o">(</span><span class="nl">textView:</span> <span class="n">TextView</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">textView</span><span class="o">.</span><span class="na">doAfterTextChanged</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">lastWinExecutor</span><span class="o">.</span><span class="na">submit</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">queryResult</span><span class="o">(</span><span class="n">it</span><span class="o">?.</span><span class="na">toString</span><span class="o">())</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>实现原理</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * 任务执行器，在规定的时间内执行提交，最后一个会被执行，之前的会被取消</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">class</span> <span class="nf">LastWinExecutor</span><span class="o">(</span><span class="kd">private</span> <span class="n">val</span> <span class="nl">timeSpanInMills:</span> <span class="n">Long</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">val</span> <span class="n">handler</span> <span class="o">=</span> <span class="n">Handler</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">getMainLooper</span><span class="o">())</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * 提交一个任务，如果在提交后 @param timeSpanInMills 没有新任务, 则执行该任务，否则被取消</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="n">fun</span> <span class="nf">submit</span><span class="o">(</span><span class="nl">task:</span> <span class="n">KRunnable</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">clearAllTasks</span><span class="o">()</span>
+</span><span class='line'>        <span class="n">handler</span><span class="o">.</span><span class="na">postDelayed</span><span class="o">(</span><span class="n">task</span><span class="o">,</span> <span class="n">timeSpanInMills</span><span class="o">)</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * 取消所有任务</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="n">fun</span> <span class="nf">clearAllTasks</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">handler</span><span class="o">.</span><span class="na">removeCallbacksAndMessages</span><span class="o">(</span><span class="kc">null</span><span class="o">)</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>实现原理为利用了 Handler postDelay方法实现。</p>
+
+<h2>如何快速使用</h2>
+
+<ul>
+<li>LastWinExecutor 已经包含在 CooBox 中，简单几步即可集成。<a href="https://github.com/secoo-android/coobox">开始集成</a> 欢迎点星星</li>
+<li>LastWinExecutor 源码 <a href="https://github.com/secoo-android/coobox">https://github.com/secoo-android/coobox</a></li>
+</ul>
+
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[国产远程控制软件 ToDesk 来了，特惠价 108 元起]]></title>
@@ -3041,58 +3178,6 @@
 <li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
 <li><a href="https://droidyue.com/blog/2020/03/22/kotlin-tips-get-value-safely/">KotlinTips: getValueSafely 安全取值</a></li>
 </ul>
-
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[解决Didn't find class java.lang.invoke.SerializedLambda 问题]]></title>
-    <link href="https://droidyue.com/blog/2020/05/04/java-dot-lang-dot-invoke-dot-serializedlambda-not-found-android-7-below/"/>
-    <updated>2020-05-04T19:28:00+08:00</updated>
-    <id>https://droidyue.com/blog/2020/05/04/java-dot-lang-dot-invoke-dot-serializedlambda-not-found-android-7-below</id>
-    <content type="html"><![CDATA[<h2>问题表现</h2>
-
-<ul>
-<li>在低于 Android 7（Android Nougat）以下出现</li>
-<li>错误的崩溃日志信息如下</li>
-</ul>
-
-
-<!--more-->
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ClassNotFoundException</span><span class="o">:</span> <span class="n">Didn</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">find</span> <span class="kd">class</span> <span class="err">&quot;</span><span class="nc">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">invoke</span><span class="o">.</span><span class="na">SerializedLambda</span><span class="s">&quot; on path: DexPathList[[dex file &quot;</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">user</span><span class="o">/</span><span class="mi">0</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">/.</span><span class="mi">00000000000</span><span class="o">/</span><span class="n">A3AEECD8</span><span class="o">.</span><span class="na">dex</span><span class="s">&quot;, zip file &quot;</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="n">base</span><span class="o">.</span><span class="na">apk</span><span class="err">&quot;</span><span class="o">],</span><span class="n">nativeLibraryDirectories</span><span class="o">=[/</span><span class="n">data</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">arm</span><span class="o">,</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="n">base</span><span class="o">.</span><span class="na">apk</span><span class="o">!/</span><span class="n">lib</span><span class="o">/</span><span class="n">armeabi</span><span class="o">-</span><span class="n">v7a</span><span class="o">,</span> <span class="o">/</span><span class="n">vendor</span><span class="o">/</span><span class="n">lib</span><span class="o">,</span> <span class="o">/</span><span class="n">system</span><span class="o">/</span><span class="n">lib</span><span class="o">]]</span>
-</span><span class='line'><span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">BaseDexClassLoader</span><span class="o">.</span><span class="na">findClass</span><span class="o">(</span><span class="n">BaseDexClassLoader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">56</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ClassLoader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">ClassLoader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">511</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ClassLoader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">ClassLoader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">469</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">libcore</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">InternalNames</span><span class="o">.</span><span class="na">getClass</span><span class="o">(</span><span class="n">InternalNames</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">53</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Class</span><span class="o">.</span><span class="na">getDexCacheType</span><span class="o">(</span><span class="n">Class</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">476</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">AbstractMethod</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">(</span><span class="n">AbstractMethod</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">166</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">170</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Class</span><span class="o">.</span><span class="na">getDeclaredMethods</span><span class="o">(</span><span class="n">Class</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">673</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>解决方法</h2>
-
-<p>在项目的 gradle.properties 文件中增加如下一行</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>android.enableD8.desugaring<span class="o">=</span><span class="nb">false</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
