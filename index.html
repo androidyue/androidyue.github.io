@@ -11,8 +11,25 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="curl 是一个很有名的处理网络请求的 类Unix 工具。出于某种原因，我们进行网络请求，需要设置代理。本文讲全面介绍如何为 curl 设置代理。 设置代理参数 基本用法 1
--x, --proxy [protocol://]host[:port] ">
+  <meta name="description" content="在处理 App 崩溃时，有一种崩溃问题着实难以解决，甚至是令人挠头。比如像是今天将讨论的TransactionTooLargeException。下面就是该异常出现时的 stacktrace 信息。 1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -194,6 +211,138 @@ gio('send');
       
   <header>
     
+      <h1 class="entry-title"><a href="/blog/2021/07/12/android-resolve-too-large-transaction-exception/">TransactionTooLargeException 问题分析与解决</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2021-07-12T11:44:00+08:00" pubdate data-updated="true">Jul 12<span>th</span>, 2021</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在处理 App 崩溃时，有一种崩溃问题着实难以解决，甚至是令人挠头。比如像是今天将讨论的<code>TransactionTooLargeException</code>。下面就是该异常出现时的 stacktrace 信息。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Adding</span> <span class="n">window</span> <span class="n">failed</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="n">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">548</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">406</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">320</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="n">$CompatModeWrapper</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">152</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">Window</span><span class="n">$LocalWindowManager</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">Window</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">557</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleResumeActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2897</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2245</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="n">$600</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">139</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1262</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">99</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">154</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">4977</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invokeNative</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">511</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">551</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">NativeStart</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span><span class='line'><span class="n">Caused</span> <span class="nl">by:</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">TransactionTooLargeException</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">BinderProxy</span><span class="o">.</span><span class="na">transact</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">IWindowSession</span><span class="n">$Stub$Proxy</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">IWindowSession</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">569</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="n">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">538</span><span class="o">)</span>
+</span><span class='line'><span class="o">...</span> <span class="mi">16</span> <span class="n">more</span>
+</span><span class='line'><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">TransactionTooLargeException</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">BinderProxy</span><span class="o">.</span><span class="na">transact</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">IWindowSession</span><span class="n">$Stub$Proxy</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">IWindowSession</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">569</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="n">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">538</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">406</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">320</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="n">$CompatModeWrapper</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">152</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">Window</span><span class="n">$LocalWindowManager</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">Window</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">557</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleResumeActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2897</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2245</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="n">$600</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">139</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1262</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">99</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">154</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">4977</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invokeNative</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">511</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">551</span><span class="o">)</span>
+</span><span class='line'><span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">NativeStart</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在上面的 stacktrace 中 我们 没有找到任何应用相关的代码信息，这让解决这类问题变得更加棘手。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2021/07/12/android-resolve-too-large-transaction-exception/">阅读全文 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/blog/2021/07/07/set-proxy-for-curl/">Curl 设置代理，看这篇就够了</a></h1>
     
     
@@ -270,8 +419,8 @@ gio('send');
   <div class="entry-content"><h2>需求场景</h2>
 
 <ul>
-<li>针对项目 A 使用  <a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#x3a;&#97;&#x61;&#97;&#64;&#x61;&#x61;&#97;&#46;&#x63;&#x6f;&#x6d;">&#x61;&#x61;&#x61;&#x40;&#97;&#x61;&#x61;&#46;&#99;&#x6f;&#x6d;</a> 邮箱</li>
-<li>针对除了项目A之外的项目 使用  <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#x62;&#x62;&#x62;&#x40;&#98;&#x62;&#98;&#x2e;&#99;&#111;&#109;">&#x62;&#x62;&#x62;&#x40;&#x62;&#x62;&#x62;&#46;&#99;&#x6f;&#109;</a> 邮箱</li>
+<li>针对项目 A 使用  <a href="&#x6d;&#97;&#105;&#108;&#116;&#x6f;&#x3a;&#x61;&#97;&#97;&#64;&#x61;&#97;&#97;&#46;&#99;&#111;&#109;">&#x61;&#97;&#x61;&#x40;&#97;&#97;&#x61;&#x2e;&#x63;&#x6f;&#109;</a> 邮箱</li>
+<li>针对除了项目A之外的项目 使用  <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#98;&#x62;&#98;&#64;&#x62;&#98;&#x62;&#x2e;&#99;&#111;&#x6d;">&#98;&#98;&#x62;&#x40;&#x62;&#98;&#x62;&#x2e;&#x63;&#111;&#x6d;</a> 邮箱</li>
 </ul>
 
 
@@ -1475,66 +1624,6 @@ gio('send');
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2020/05/31/using-kotlin-reflection-to-get-constant-variable-name-by-value/">巧用Kotlin反射实现按值取名，调试做到多快好省</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2020-05-31T20:55:00+08:00" pubdate data-updated="true">May 31<span>st</span>, 2020</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>痛点</h2>
-
-<p>我们经常会定义一些常量，比如</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ItemType</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_TEXT</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_IMG</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_VIDEO</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_AUDIO</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_LINK</span> <span class="o">=</span> <span class="mi">4</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2020/05/31/using-kotlin-reflection-to-get-constant-variable-name-by-value/">阅读全文 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/2/">&larr; Older</a>
@@ -1567,6 +1656,10 @@ gio('send');
 <section>
   <h1>最新文章</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2021/07/12/android-resolve-too-large-transaction-exception/">TransactionTooLargeException 问题分析与解决</a>
+      </li>
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2021/07/07/set-proxy-for-curl/">Curl 设置代理，看这篇就够了</a>
@@ -1642,10 +1735,6 @@ gio('send');
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2021/02/03/the-file-paths-you-may-not-know/">10年程序员都不一定搞清楚的文件路径</a>
-      </li>
-    
-      <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2021/01/25/change-network-connection-dns-server-on-mac-os/">Mac下关于DNS服务器的终端操作汇总</a>
       </li>
     
   </ul>
