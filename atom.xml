@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-02-21T21:27:26+08:00</updated>
+  <updated>2022-02-27T21:25:58+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,128 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Flutter 中获取 TextField 中 text 内容]]></title>
+    <link href="https://droidyue.com/blog/2022/02/27/how-to-get-textfiled-value-in-flutter/"/>
+    <updated>2022-02-27T21:20:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/02/27/how-to-get-textfiled-value-in-flutter</id>
+    <content type="html"><![CDATA[<p>在Flutter 中，TextField 是一个用来输入 文本的 控件。使用起来也很简单，比如这样，就可以轻松实现一个 TextField 来接收用户的输入内容。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="n">TextField</span><span class="p">(</span>
+</span><span class='line'> <span class="nl">decoration:</span> <span class="kd">const</span> <span class="n">InputDecoration</span><span class="p">(</span>
+</span><span class='line'>   <span class="nl">border:</span> <span class="n">OutlineInputBorder</span><span class="p">(),</span>
+</span><span class='line'>   <span class="nl">labelText:</span> <span class="s1">&#39;Contact Name&#39;</span><span class="p">,</span>
+</span><span class='line'> <span class="p">),</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是 Flutter 是声明式 UI 编程，我们无法像 Android 里那样拿到 TextField 的实例，类似这样(<code>textFieldInstance.text</code>)获取到内部的输入内容。</p>
+
+<p>不过，办法还是有的，只是略有不同而已。</p>
+
+<!--more-->
+
+
+<h2>onChange 监听，显式声明变量方式（不推荐）</h2>
+
+<p>这种方式的思路大概如下</p>
+
+<p>通过外部显式声明一个String 变量  textFieldText
+利用 <code>TextField</code> 的 onChanged 回调接收变化后的输入内容</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="n">TextField</span><span class="p">(</span>
+</span><span class='line'> <span class="nl">decoration:</span> <span class="kd">const</span> <span class="n">InputDecoration</span><span class="p">(</span>
+</span><span class='line'>   <span class="nl">border:</span> <span class="n">OutlineInputBorder</span><span class="p">(),</span>
+</span><span class='line'>   <span class="nl">labelText:</span> <span class="s1">&#39;Contact Name&#39;</span><span class="p">,</span>
+</span><span class='line'> <span class="p">),</span>
+</span><span class='line'> <span class="nl">onChanged:</span> <span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">textFieldText</span> <span class="o">=</span> <span class="n">text</span><span class="p">;</span>
+</span><span class='line'> <span class="p">},</span>
+</span><span class='line'><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是这种实现方式有着两个明显的问题</p>
+
+<ul>
+<li>如果 TextField 带有初始文本，没有经过任何修改，则无法获取到对应的内容。</li>
+<li>外部暴露 textFieldText 会使得业务侧有修改这个值的可能和风险。</li>
+</ul>
+
+
+<p>所以，上面的方式是严重不推荐的，不要使用。</p>
+
+<h2>借助 TextEditingController</h2>
+
+<p>这是官方文档推荐的方式，就是增加一个 TextEditingController. TextField 与 外部都通过这个 controller 进行连接。</p>
+
+<h3>声明一个 TextEditingController 实例</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="kd">final</span> <span class="n">TextEditingController</span> <span class="n">_nameController</span> <span class="o">=</span> <span class="n">TextEditingController</span><span class="p">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>将TextEditingController 实例 传入到 TextField 中</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="n">TextField</span><span class="p">(</span>
+</span><span class='line'> <span class="nl">controller:</span> <span class="n">_nameController</span><span class="p">,</span>
+</span><span class='line'> <span class="nl">decoration:</span> <span class="kd">const</span> <span class="n">InputDecoration</span><span class="p">(</span>
+</span><span class='line'>   <span class="nl">border:</span> <span class="n">OutlineInputBorder</span><span class="p">(),</span>
+</span><span class='line'>   <span class="nl">labelText:</span> <span class="s1">&#39;Contact Name&#39;</span><span class="p">,</span>
+</span><span class='line'> <span class="p">),</span>
+</span><span class='line'><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>通过 TextEditingController 获取 Text</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="nl">floatingActionButton:</span> <span class="n">FloatingActionButton</span><span class="p">(</span>
+</span><span class='line'> <span class="nl">onPressed:</span> <span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">debugPrint</span><span class="p">(</span><span class="s1">&#39;textfield.value(TextEditingController)=</span><span class="si">${</span><span class="n">_nameController</span><span class="p">.</span><span class="n">text</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">);</span>
+</span><span class='line'> <span class="p">},</span>
+</span><span class='line'> <span class="nl">tooltip:</span> <span class="s1">&#39;Increment&#39;</span><span class="p">,</span>
+</span><span class='line'> <span class="nl">child:</span> <span class="kd">const</span> <span class="n">Icon</span><span class="p">(</span><span class="n">Icons</span><span class="p">.</span><span class="n">print</span><span class="p">),</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用 TextEditingController 能够完美地处理 第一种 onChanged + 变量 的潜在的问题。这也是 Flutter 官方推荐的技术方案。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Mac 终端下获取文件的绝对路径]]></title>
@@ -1405,122 +1527,6 @@
 <li>升级到gradle 插件 到最新的版本即可。</li>
 </ul>
 
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[如何在 Android Studio(北极狐) 下增加仓库声明]]></title>
-    <link href="https://droidyue.com/blog/2021/08/09/how-to-add-repository-declaration-in-android-studio-arctic-fox/"/>
-    <updated>2021-08-09T21:44:00+08:00</updated>
-    <id>https://droidyue.com/blog/2021/08/09/how-to-add-repository-declaration-in-android-studio-arctic-fox</id>
-    <content type="html"><![CDATA[<p>最近升级了 Android Studio，变成了 Arctic Fox 的版本了。于是当我们新建一个项目的时候，尝试添加一个新的仓库声明。</p>
-
-<p>打开工程根目录下的 build.gradle</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// Top-level build file where you can add configuration options common to all sub-projects/modules.</span>
-</span><span class='line'><span class="n">buildscript</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">repositories</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">google</span><span class="o">()</span>
-</span><span class='line'>        <span class="n">mavenCentral</span><span class="o">()</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="n">dependencies</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">classpath</span> <span class="s">&quot;com.android.tools.build:gradle:7.0.0&quot;</span>
-</span><span class='line'>        <span class="n">classpath</span> <span class="s">&quot;org.jetbrains.kotlin:kotlin-gradle-plugin:1.5.21&quot;</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// NOTE: Do not place your application dependencies here; they belong</span>
-</span><span class='line'>        <span class="c1">// in the individual module build.gradle files</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">task</span> <span class="nf">clean</span><span class="o">(</span><span class="nl">type:</span> <span class="n">Delete</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">delete</span> <span class="n">rootProject</span><span class="o">.</span><span class="na">buildDir</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<!--more-->
-
-
-<p>我们发现并没有像以往那样存在<code>allprojects</code>这个配置区间。</p>
-
-<p>如果，强制在这个文件下，增加下面的内容</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">allprojects</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">repositories</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">maven</span> <span class="o">{</span> <span class="n">url</span> <span class="s">&quot;https://jitpack.io&quot;</span> <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>会出现这样的错误</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Build</span> <span class="n">file</span> <span class="err">&#39;</span><span class="o">/</span><span class="n">Users</span><span class="o">/</span><span class="n">androidyue</span><span class="o">/</span><span class="n">Documents</span><span class="o">/</span><span class="n">projects</span><span class="o">/</span><span class="n">ViewLifecycleSample2</span><span class="o">/</span><span class="n">build</span><span class="o">.</span><span class="na">gradle</span><span class="err">&#39;</span> <span class="nl">line:</span> <span class="mi">18</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">A</span> <span class="n">problem</span> <span class="n">occurred</span> <span class="n">evaluating</span> <span class="n">root</span> <span class="n">project</span> <span class="err">&#39;</span><span class="n">ViewLifecycleSample</span><span class="err">&#39;</span><span class="o">.</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">Build</span> <span class="n">was</span> <span class="n">configured</span> <span class="n">to</span> <span class="n">prefer</span> <span class="n">settings</span> <span class="n">repositories</span> <span class="n">over</span> <span class="n">project</span> <span class="n">repositories</span> <span class="n">but</span> <span class="n">repository</span> <span class="err">&#39;</span><span class="n">maven</span><span class="err">&#39;</span> <span class="n">was</span> <span class="n">added</span> <span class="n">by</span> <span class="n">build</span> <span class="n">file</span> <span class="err">&#39;</span><span class="n">build</span><span class="o">.</span><span class="na">gradle</span><span class="err">&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>那么该怎么办呢？</p>
-
-<p>解决方法 也很简单，就是在<code>settings.gradle</code> 文件的下面区域，增加仓库声明就可以了,比如这里是增加了<code>maven { url "https://jitpack.io" }</code></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">dependencyResolutionManagement</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">repositoriesMode</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">RepositoriesMode</span><span class="o">.</span><span class="na">FAIL_ON_PROJECT_REPOS</span><span class="o">)</span>
-</span><span class='line'>    <span class="n">repositories</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">google</span><span class="o">()</span>
-</span><span class='line'>        <span class="n">mavenCentral</span><span class="o">()</span>
-</span><span class='line'>        <span class="n">jcenter</span><span class="o">()</span> <span class="c1">// Warning: this repository is going to shut down soon</span>
-</span><span class='line'>        <span class="n">maven</span> <span class="o">{</span> <span class="n">url</span> <span class="s">&quot;https://jitpack.io&quot;</span> <span class="o">}</span> <span class="c1">//add your repository declaration here</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'><span class="n">rootProject</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="s">&quot;ViewLifecycleSample&quot;</span>
-</span><span class='line'><span class="n">include</span> <span class="err">&#39;</span><span class="o">:</span><span class="n">app</span><span class="err">&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>看来是设置依赖仓库的文件更换了，修改起来也不难。</p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
