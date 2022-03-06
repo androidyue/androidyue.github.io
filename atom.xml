@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-02-27T21:25:58+08:00</updated>
+  <updated>2022-03-06T22:16:25+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,158 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Flutter TabController 多次调用，导致切换异常问题]]></title>
+    <link href="https://droidyue.com/blog/2022/03/06/flutter-tabcontroller-listener-called-multiple-times/"/>
+    <updated>2022-03-06T22:13:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/03/06/flutter-tabcontroller-listener-called-multiple-times</id>
+    <content type="html"><![CDATA[<p>Flutter  中，TabController 是连接 TabBar 与 TabBarView 的纽带，处理选中状态时必不可少的内容。</p>
+
+<p>但是当我们在监听 TabController 时，会发现又多次调用</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="err">@</span><span class="n">override</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">initState</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'> <span class="k">super</span><span class="p">.</span><span class="n">initState</span><span class="p">();</span>
+</span><span class='line'> <span class="n">_tabController</span> <span class="o">=</span> <span class="n">TabController</span><span class="p">(</span><span class="nl">vsync:</span> <span class="k">this</span><span class="p">,</span> <span class="nl">length:</span> <span class="n">myTabs</span><span class="p">.</span><span class="n">length</span><span class="p">);</span>
+</span><span class='line'> <span class="n">_tabController</span><span class="p">.</span><span class="n">addListener</span><span class="p">(()</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">debugPrint</span><span class="p">(</span><span class="s1">&#39;initState currentIndex=</span><span class="si">${</span><span class="n">_tabController</span><span class="p">.</span><span class="n">index</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">);</span>
+</span><span class='line'> <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<!--more-->
+
+
+<p>对应的多次调用日志如下。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="o">[</span> +153 ms<span class="o">]</span> I/flutter <span class="o">(</span>13788<span class="o">)</span>: initState <span class="nv">currentIndex</span><span class="o">=</span>2
+</span><span class='line'><span class="o">[</span> +344 ms<span class="o">]</span> I/flutter <span class="o">(</span>13788<span class="o">)</span>: initState <span class="nv">currentIndex</span><span class="o">=</span>2
+</span><span class='line'><span class="o">[</span>+9932 ms<span class="o">]</span> I/ViewRootImpl@9e6d4e6<span class="o">[</span>MainActivity<span class="o">](</span>13788<span class="o">)</span>: ViewPostIme pointer 0
+</span><span class='line'><span class="o">[</span>  +94 ms<span class="o">]</span> I/ViewRootImpl@9e6d4e6<span class="o">[</span>MainActivity<span class="o">](</span>13788<span class="o">)</span>: ViewPostIme pointer 1
+</span><span class='line'><span class="o">[</span>   +5 ms<span class="o">]</span> I/flutter <span class="o">(</span>13788<span class="o">)</span>: initState <span class="nv">currentIndex</span><span class="o">=</span>0
+</span><span class='line'><span class="o">[</span> +320 ms<span class="o">]</span> I/flutter <span class="o">(</span>13788<span class="o">)</span>: initState <span class="nv">currentIndex</span><span class="o">=</span>0
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是为什么会调用两次呢，是bug（重复调用）还是 feature（其他用途），我们需要增加一个额外的信息打印。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="err">@</span><span class="n">override</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">initState</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'> <span class="k">super</span><span class="p">.</span><span class="n">initState</span><span class="p">();</span>
+</span><span class='line'> <span class="n">_tabController</span> <span class="o">=</span> <span class="n">TabController</span><span class="p">(</span><span class="nl">vsync:</span> <span class="k">this</span><span class="p">,</span> <span class="nl">length:</span> <span class="n">myTabs</span><span class="p">.</span><span class="n">length</span><span class="p">);</span>
+</span><span class='line'> <span class="n">_tabController</span><span class="p">.</span><span class="n">addListener</span><span class="p">(()</span> <span class="p">{</span>
+</span><span class='line'>   <span class="kd">final</span> <span class="n">currentIndex</span> <span class="o">=</span> <span class="n">_tabController</span><span class="p">.</span><span class="n">index</span><span class="p">;</span>
+</span><span class='line'>   <span class="kd">final</span> <span class="n">isIndexChanging</span> <span class="o">=</span> <span class="n">_tabController</span><span class="p">.</span><span class="n">indexIsChanging</span><span class="p">;</span>
+</span><span class='line'>   <span class="n">debugPrint</span><span class="p">(</span><span class="s1">&#39;initState currentIndex=</span><span class="si">$</span><span class="n">currentIndex</span><span class="s1">;isIndexChanging=</span><span class="si">$</span><span class="n">isIndexChanging</span><span class="s1">&#39;</span><span class="p">);</span>
+</span><span class='line'> <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>添加额外信息后的日志</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="o">[</span>  +34 ms<span class="o">]</span> I/flutter <span class="o">(</span>13788<span class="o">)</span>: initState <span class="nv">currentIndex</span><span class="o">=</span>2;isIndexChanging<span class="o">=</span><span class="nb">true</span>
+</span><span class='line'><span class="o">[</span> +308 ms<span class="o">]</span> I/flutter <span class="o">(</span>13788<span class="o">)</span>: initState <span class="nv">currentIndex</span><span class="o">=</span>2;isIndexChanging<span class="o">=</span><span class="nb">false</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Aha, 原来是这样。但是 isIndexChanging 是什么意思呢</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="c1">/// True while we&#39;re animating from [previousIndex] to [index] as a</span>
+</span><span class='line'><span class="c1">/// consequence of calling [animateTo].</span>
+</span><span class='line'><span class="c1">///</span>
+</span><span class='line'><span class="c1">/// This value is true during the [animateTo] animation that&#39;s triggered when</span>
+</span><span class='line'><span class="c1">/// the user taps a [TabBar] tab. It is false when [offset] is changing as a</span>
+</span><span class='line'><span class="c1">/// consequence of the user dragging (and &quot;flinging&quot;) the [TabBarView].</span>
+</span><span class='line'><span class="kt">bool</span> <span class="kd">get</span> <span class="n">indexIsChanging</span> <span class="o">=&gt;</span> <span class="n">_indexIsChangingCount</span> <span class="o">!=</span> <span class="m">0</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注释比较简单，大概的意思是</p>
+
+<ul>
+<li>当调用 animateTo 从 previousIndex 到 index 时 会返回true</li>
+<li>animateTo 触发是通过  用户点击 TabBar 的 tab 触发</li>
+<li>当TabBarView 处于 用户拖拽或者 flinging 后，返回false</li>
+</ul>
+
+
+<p>然后我又再次做了一些验证，下面是一些现象</p>
+
+<ul>
+<li>点击 TabBar 的 Tab 会触发两条回调,indexIsChanging 第一次是true，第二次为false</li>
+<li>手势滑动TabBarView  只有一次回调，indexIsChanging 为 false</li>
+<li>手势滑动TabBarView 不松开，不易产生回调，松开后才会产生。</li>
+</ul>
+
+
+<p>那我该怎么用</p>
+
+<p>综合上面的现象和文档描述，我们在处理切换时，可以判断 indexIsChanging 为 false 后，使用index值。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="err">@</span><span class="n">override</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">initState</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'> <span class="k">super</span><span class="p">.</span><span class="n">initState</span><span class="p">();</span>
+</span><span class='line'> <span class="n">_tabController</span> <span class="o">=</span> <span class="n">TabController</span><span class="p">(</span><span class="nl">vsync:</span> <span class="k">this</span><span class="p">,</span> <span class="nl">length:</span> <span class="n">myTabs</span><span class="p">.</span><span class="n">length</span><span class="p">);</span>
+</span><span class='line'> <span class="n">_tabController</span><span class="p">.</span><span class="n">addListener</span><span class="p">(()</span> <span class="p">{</span>
+</span><span class='line'>   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">_tabController</span><span class="p">.</span><span class="n">indexIsChanging</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>     <span class="c1">//do your work</span>
+</span><span class='line'>   <span class="p">}</span>
+</span><span class='line'> <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在具体项目中，如果不进行indexIsChanging判断，可能回调至页面切换错乱，比如从第一个tab切到第三个tab，实际是切到了第二个tab。</p>
+
+<p>按照上面的处理，进行indexIsChanging判断即可解决问题。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Flutter 中获取 TextField 中 text 内容]]></title>
@@ -1462,70 +1614,6 @@
 </span><span class='line'><span class="nl">JVM:</span>          <span class="mf">1.8</span><span class="o">.</span><span class="mi">0</span><span class="n">_281</span> <span class="o">(</span><span class="n">Oracle</span> <span class="n">Corporation</span> <span class="mf">25.281</span><span class="o">-</span><span class="n">b09</span><span class="o">)</span>
 </span><span class='line'><span class="nl">OS:</span>           <span class="n">Mac</span> <span class="n">OS</span> <span class="n">X</span> <span class="mf">10.16</span> <span class="n">x86_64</span>
 </span></code></pre></td></tr></table></div></figure>
-
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Gson NoClassDefFoundError 问题解决]]></title>
-    <link href="https://droidyue.com/blog/2021/09/06/gson-noclassdeffounderror-issue/"/>
-    <updated>2021-09-06T10:26:00+08:00</updated>
-    <id>https://droidyue.com/blog/2021/09/06/gson-noclassdeffounderror-issue</id>
-    <content type="html"><![CDATA[<p>最近升级了<code>gson</code>到 2.8.6(2.8.7)，结果发生了崩溃</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="n">FATAL</span> <span class="nl">EXCEPTION:</span> <span class="n">PushConnectivityManager</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="nl">Process:</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">,</span> <span class="nl">PID:</span> <span class="mi">11278</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">NoClassDefFoundError</span><span class="o">:</span> <span class="n">Failed</span> <span class="n">resolution</span> <span class="nl">of:</span> <span class="n">Lcom</span><span class="o">/</span><span class="n">google</span><span class="o">/</span><span class="n">gson</span><span class="o">/</span><span class="n">Gson</span><span class="o">;</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">rongpush</span><span class="o">.</span><span class="na">RongPushCacheHelper</span><span class="o">.</span><span class="na">cacheRongPushIPs</span><span class="o">(</span><span class="n">RongPushCacheHelper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">44</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">core</span><span class="o">.</span><span class="na">PushNaviClient</span><span class="o">.</span><span class="na">connect</span><span class="o">(</span><span class="n">PushNaviClient</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">152</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">core</span><span class="o">.</span><span class="na">PushNaviClient</span><span class="o">.</span><span class="na">connectToNavi</span><span class="o">(</span><span class="n">PushNaviClient</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">93</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">core</span><span class="o">.</span><span class="na">PushNaviClient</span><span class="o">.</span><span class="na">getPushServerIPs</span><span class="o">(</span><span class="n">PushNaviClient</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">85</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">rongpush</span><span class="o">.</span><span class="na">PushConnectivityManager</span><span class="o">.</span><span class="na">connectToNavi</span><span class="o">(</span><span class="n">PushConnectivityManager</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">398</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">rongpush</span><span class="o">.</span><span class="na">PushConnectivityManager</span><span class="o">.</span><span class="na">access</span><span class="n">$200</span><span class="o">(</span><span class="n">PushConnectivityManager</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">34</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">rongpush</span><span class="o">.</span><span class="na">PushConnectivityManager</span><span class="n">$DisconnectedState</span><span class="o">.</span><span class="na">processMessage</span><span class="o">(</span><span class="n">PushConnectivityManager</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">234</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">common</span><span class="o">.</span><span class="na">stateMachine</span><span class="o">.</span><span class="na">StateMachine</span><span class="n">$SmHandler</span><span class="o">.</span><span class="na">processMsg</span><span class="o">(</span><span class="n">StateMachine</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">966</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">io</span><span class="o">.</span><span class="na">rong</span><span class="o">.</span><span class="na">push</span><span class="o">.</span><span class="na">common</span><span class="o">.</span><span class="na">stateMachine</span><span class="o">.</span><span class="na">StateMachine</span><span class="n">$SmHandler</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">StateMachine</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">789</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">110</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">219</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">HandlerThread</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">HandlerThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">67</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ClassNotFoundException</span><span class="o">:</span> <span class="n">Didn</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">find</span> <span class="kd">class</span> <span class="err">&quot;</span><span class="nc">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">Gson</span><span class="s">&quot; on path: DexPathList[[zip file &quot;</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">-</span><span class="n">GXNVWX</span><span class="o">-</span><span class="n">EHV4m1HU42XJIgw</span><span class="o">==/</span><span class="n">base</span><span class="o">.</span><span class="na">apk</span><span class="err">&quot;</span><span class="o">],</span><span class="n">nativeLibraryDirectories</span><span class="o">=[/</span><span class="n">data</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">-</span><span class="n">GXNVWX</span><span class="o">-</span><span class="n">EHV4m1HU42XJIgw</span><span class="o">==/</span><span class="n">lib</span><span class="o">/</span><span class="n">arm</span><span class="o">,</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">-</span><span class="n">GXNVWX</span><span class="o">-</span><span class="n">EHV4m1HU42XJIgw</span><span class="o">==/</span><span class="n">base</span><span class="o">.</span><span class="na">apk</span><span class="o">!/</span><span class="n">lib</span><span class="o">/</span><span class="n">armeabi</span><span class="o">-</span><span class="n">v7a</span><span class="o">,</span> <span class="o">/</span><span class="n">system</span><span class="o">/</span><span class="n">lib</span><span class="o">,</span> <span class="o">/</span><span class="n">hw_product</span><span class="o">/</span><span class="n">lib</span><span class="o">]]</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">BaseDexClassLoader</span><span class="o">.</span><span class="na">findClass</span><span class="o">(</span><span class="n">BaseDexClassLoader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">209</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ClassLoader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">ClassLoader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">379</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ClassLoader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">ClassLoader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">312</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span> <span class="nl">AndroidRuntime:</span>  <span class="o">...</span> <span class="mi">12</span> <span class="n">more</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<!--more-->
-
-
-<h2>解决方案</h2>
-
-<ul>
-<li>升级到gradle 插件 到最新的版本即可。</li>
-</ul>
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
