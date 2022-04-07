@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-03-29T07:15:56+08:00</updated>
+  <updated>2022-04-07T08:03:03+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,254 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android 添加 Overlay View （覆盖视图）]]></title>
+    <link href="https://droidyue.com/blog/2022/04/07/how-to-add-overlay-view-in-android/"/>
+    <updated>2022-04-07T07:55:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/04/07/how-to-add-overlay-view-in-android</id>
+    <content type="html"><![CDATA[<p>在 Android 中，有一种黑科技，就是能够过在 Window 上添加一个视图，然后这个视图，会覆盖在所有的 应用视图的上面（包括桌面）。比如下面的视图。</p>
+
+<p><img src="https://asset.droidyue.com/image/2022/h1/android_overlay_view_sample.png" alt="https://asset.droidyue.com/image/2022/h1/android_overlay_view_sample.png" /></p>
+
+<p>想要利用上面的黑科技，很简单。大概分为如下的步骤。</p>
+
+<!--more-->
+
+
+<h2>检测权限</h2>
+
+<ul>
+<li><code>Settings.canDrawOverlays(aContext)</code> 可以检测 当前的 App 是否可以添加悬浮窗视图。</li>
+<li>如果返回为true，则表明已经获取了添加悬浮视图的权限。</li>
+<li>如果返回为false，则需要按照下方的内容获取权限。</li>
+</ul>
+
+
+<h2>获取权限</h2>
+
+<p>SYSTEM_ALERT_WINDOW，设置悬浮窗权限，是 Android 中一个比较特殊的权限。</p>
+
+<p>关于获取权限，可以使用下面的代码处理。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">private</span> <span class="n">static</span> <span class="n">final</span> <span class="kt">int</span> <span class="n">REQUEST_CODE</span> <span class="p">=</span> <span class="m">1</span><span class="p">;</span>
+</span><span class='line'><span class="k">private</span>  <span class="k">void</span> <span class="nf">requestAlertWindowPermission</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">Intent</span> <span class="n">intent</span> <span class="p">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="p">(</span><span class="n">Settings</span><span class="p">.</span><span class="n">ACTION_MANAGE_OVERLAY_PERMISSION</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">intent</span><span class="p">.</span><span class="n">setData</span><span class="p">(</span><span class="n">Uri</span><span class="p">.</span><span class="n">parse</span><span class="p">(</span><span class="s">&quot;package:&quot;</span> <span class="p">+</span> <span class="n">getPackageName</span><span class="p">()));</span>
+</span><span class='line'>    <span class="n">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="n">REQUEST_CODE</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">@Override</span>
+</span><span class='line'><span class="k">protected</span> <span class="k">void</span> <span class="nf">onActivityResult</span><span class="p">(</span><span class="kt">int</span> <span class="n">requestCode</span><span class="p">,</span> <span class="kt">int</span> <span class="n">resultCode</span><span class="p">,</span> <span class="n">Intent</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">onActivityResult</span><span class="p">(</span><span class="n">requestCode</span><span class="p">,</span> <span class="n">resultCode</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">requestCode</span> <span class="p">==</span> <span class="n">REQUEST_CODE</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">Settings</span><span class="p">.</span><span class="n">canDrawOverlays</span><span class="p">(</span><span class="k">this</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="n">LOGTAG</span><span class="p">,</span> <span class="s">&quot;onActivityResult granted&quot;</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>添加悬浮窗视图</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">addOverlay</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">windowManager</span> <span class="o">=</span> <span class="n">getSystemService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">WINDOW_SERVICE</span><span class="o">)</span> <span class="n">as</span><span class="o">?</span> <span class="n">WindowManager</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">params</span> <span class="o">=</span> <span class="n">WindowManager</span><span class="o">.</span><span class="na">LayoutParams</span><span class="o">()</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">Build</span><span class="o">.</span><span class="na">VERSION</span><span class="o">.</span><span class="na">SDK_INT</span> <span class="o">&gt;=</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION_CODES</span><span class="o">.</span><span class="na">O</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="c1">//8.0新特性</span>
+</span><span class='line'>        <span class="n">params</span><span class="o">.</span><span class="na">type</span> <span class="o">=</span> <span class="n">WindowManager</span><span class="o">.</span><span class="na">LayoutParams</span><span class="o">.</span><span class="na">TYPE_APPLICATION_OVERLAY</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">params</span><span class="o">.</span><span class="na">type</span> <span class="o">=</span> <span class="n">WindowManager</span><span class="o">.</span><span class="na">LayoutParams</span><span class="o">.</span><span class="na">TYPE_SYSTEM_ALERT</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="na">format</span> <span class="o">=</span> <span class="n">PixelFormat</span><span class="o">.</span><span class="na">RGBA_8888</span><span class="o">;</span>
+</span><span class='line'>    <span class="c1">//设置flags</span>
+</span><span class='line'>    <span class="c1">//设置flags</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="na">flags</span> <span class="o">=</span>
+</span><span class='line'>        <span class="o">(</span><span class="n">WindowManager</span><span class="o">.</span><span class="na">LayoutParams</span><span class="o">.</span><span class="na">FLAG_NOT_TOUCH_MODAL</span> <span class="c1">//设置flags.不可聚焦及不可使用按钮对悬浮窗进行操控.</span>
+</span><span class='line'>                <span class="n">or</span> <span class="n">WindowManager</span><span class="o">.</span><span class="na">LayoutParams</span><span class="o">.</span><span class="na">FLAG_NOT_FOCUSABLE</span>
+</span><span class='line'>                <span class="n">or</span> <span class="n">WindowManager</span><span class="o">.</span><span class="na">LayoutParams</span><span class="o">.</span><span class="na">FLAG_FULLSCREEN</span> <span class="c1">//窗口被虚拟按键遮挡问题</span>
+</span><span class='line'>                <span class="n">or</span> <span class="n">WindowManager</span><span class="o">.</span><span class="na">LayoutParams</span><span class="o">.</span><span class="na">FLAG_TRANSLUCENT_NAVIGATION</span><span class="o">)</span>
+</span><span class='line'>    <span class="c1">//设置flags.不可聚焦及不可使用按钮对悬浮窗进行操控.</span>
+</span><span class='line'>    <span class="c1">//设置窗口坐标参考系</span>
+</span><span class='line'>    <span class="c1">//设置flags.不可聚焦及不可使用按钮对悬浮窗进行操控.</span>
+</span><span class='line'>    <span class="c1">//设置窗口坐标参考系</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="na">gravity</span> <span class="o">=</span> <span class="n">Gravity</span><span class="o">.</span><span class="na">LEFT</span> <span class="n">or</span> <span class="n">Gravity</span><span class="o">.</span><span class="na">TOP</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="na">x</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="na">y</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="na">width</span> <span class="o">=</span> <span class="mi">200</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="na">height</span> <span class="o">=</span> <span class="mi">200</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">container</span> <span class="o">=</span> <span class="n">TextView</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+</span><span class='line'>    <span class="n">overlayContainer</span> <span class="o">=</span> <span class="n">container</span>
+</span><span class='line'>    <span class="n">container</span><span class="o">.</span><span class="na">setBackgroundColor</span><span class="o">(</span><span class="n">Color</span><span class="o">.</span><span class="na">parseColor</span><span class="o">(</span><span class="s">&quot;#cce8cf&quot;</span><span class="o">))</span>
+</span><span class='line'>    <span class="n">windowManager</span><span class="o">?.</span><span class="na">addView</span><span class="o">(</span><span class="n">container</span><span class="o">,</span> <span class="n">params</span><span class="o">)</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>完整的代码</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">class</span> <span class="nc">MainActivity</span> <span class="p">:</span> <span class="n">AppCompatActivity</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">var</span> <span class="n">overlayContainer</span><span class="p">:</span> <span class="n">TextView</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">@RequiresApi</span><span class="p">(</span><span class="n">Build</span><span class="p">.</span><span class="n">VERSION_CODES</span><span class="p">.</span><span class="n">M</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">override</span> <span class="k">fun</span> <span class="nf">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">:</span> <span class="n">Bundle</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">setContentView</span><span class="p">(</span><span class="n">R</span><span class="p">.</span><span class="n">layout</span><span class="p">.</span><span class="n">activity_main</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">Settings</span><span class="p">.</span><span class="n">canDrawOverlays</span><span class="p">(</span><span class="k">this</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">addOverlay</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">val</span> <span class="n">intent</span> <span class="p">=</span> <span class="n">Intent</span><span class="p">(</span><span class="n">Settings</span><span class="p">.</span><span class="n">ACTION_MANAGE_OVERLAY_PERMISSION</span><span class="p">)</span>
+</span><span class='line'>          <span class="n">intent</span><span class="p">.</span><span class="n">data</span> <span class="p">=</span> <span class="n">Uri</span><span class="p">.</span><span class="n">parse</span><span class="p">(</span><span class="s">&quot;package:$packageName&quot;</span><span class="p">)</span>
+</span><span class='line'>          <span class="n">startActivity</span><span class="p">(</span><span class="n">intent</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      
+</span><span class='line'>      <span class="n">findViewById</span><span class="p">&lt;</span><span class="n">View</span><span class="p">&gt;(</span><span class="n">R</span><span class="p">.</span><span class="n">id</span><span class="p">.</span><span class="n">textview_hello</span><span class="p">).</span><span class="n">setOnClickListener</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">overlayContainer</span><span class="p">?.</span><span class="n">text</span> <span class="p">=</span> <span class="s">&quot;${System.currentTimeMillis()}&quot;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">fun</span> <span class="nf">addOverlay</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">val</span> <span class="n">windowManager</span> <span class="p">=</span> <span class="n">getSystemService</span><span class="p">(</span><span class="n">Context</span><span class="p">.</span><span class="n">WINDOW_SERVICE</span><span class="p">)</span> <span class="k">as</span><span class="p">?</span> <span class="n">WindowManager</span>
+</span><span class='line'>      <span class="k">val</span> <span class="n">params</span> <span class="p">=</span> <span class="n">WindowManager</span><span class="p">.</span><span class="n">LayoutParams</span><span class="p">()</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">Build</span><span class="p">.</span><span class="n">VERSION</span><span class="p">.</span><span class="n">SDK_INT</span> <span class="p">&gt;=</span> <span class="n">Build</span><span class="p">.</span><span class="n">VERSION_CODES</span><span class="p">.</span><span class="n">O</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">//8.0新特性</span>
+</span><span class='line'>          <span class="n">params</span><span class="p">.</span><span class="n">type</span> <span class="p">=</span> <span class="n">WindowManager</span><span class="p">.</span><span class="n">LayoutParams</span><span class="p">.</span><span class="n">TYPE_APPLICATION_OVERLAY</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">params</span><span class="p">.</span><span class="n">type</span> <span class="p">=</span> <span class="n">WindowManager</span><span class="p">.</span><span class="n">LayoutParams</span><span class="p">.</span><span class="n">TYPE_SYSTEM_ALERT</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">params</span><span class="p">.</span><span class="n">format</span> <span class="p">=</span> <span class="n">PixelFormat</span><span class="p">.</span><span class="n">RGBA_8888</span><span class="p">;</span>
+</span><span class='line'>      <span class="c1">//设置flags</span>
+</span><span class='line'>      <span class="c1">//设置flags</span>
+</span><span class='line'>      <span class="n">params</span><span class="p">.</span><span class="n">flags</span> <span class="p">=</span>
+</span><span class='line'>          <span class="p">(</span><span class="n">WindowManager</span><span class="p">.</span><span class="n">LayoutParams</span><span class="p">.</span><span class="n">FLAG_NOT_TOUCH_MODAL</span> <span class="c1">//设置flags.不可聚焦及不可使用按钮对悬浮窗进行操控.</span>
+</span><span class='line'>                <span class="n">or</span> <span class="n">WindowManager</span><span class="p">.</span><span class="n">LayoutParams</span><span class="p">.</span><span class="n">FLAG_NOT_FOCUSABLE</span>
+</span><span class='line'>                <span class="n">or</span> <span class="n">WindowManager</span><span class="p">.</span><span class="n">LayoutParams</span><span class="p">.</span><span class="n">FLAG_FULLSCREEN</span> <span class="c1">//窗口被虚拟按键遮挡问题</span>
+</span><span class='line'>                <span class="n">or</span> <span class="n">WindowManager</span><span class="p">.</span><span class="n">LayoutParams</span><span class="p">.</span><span class="n">FLAG_TRANSLUCENT_NAVIGATION</span><span class="p">)</span>
+</span><span class='line'>      <span class="c1">//设置flags.不可聚焦及不可使用按钮对悬浮窗进行操控.</span>
+</span><span class='line'>      <span class="c1">//设置窗口坐标参考系</span>
+</span><span class='line'>      <span class="c1">//设置flags.不可聚焦及不可使用按钮对悬浮窗进行操控.</span>
+</span><span class='line'>      <span class="c1">//设置窗口坐标参考系</span>
+</span><span class='line'>      <span class="n">params</span><span class="p">.</span><span class="n">gravity</span> <span class="p">=</span> <span class="n">Gravity</span><span class="p">.</span><span class="n">LEFT</span> <span class="n">or</span> <span class="n">Gravity</span><span class="p">.</span><span class="n">TOP</span>
+</span><span class='line'>      <span class="n">params</span><span class="p">.</span><span class="n">x</span> <span class="p">=</span> <span class="m">0</span>
+</span><span class='line'>      <span class="n">params</span><span class="p">.</span><span class="n">y</span> <span class="p">=</span> <span class="m">0</span>
+</span><span class='line'>      <span class="n">params</span><span class="p">.</span><span class="n">width</span> <span class="p">=</span> <span class="m">200</span>
+</span><span class='line'>      <span class="n">params</span><span class="p">.</span><span class="n">height</span> <span class="p">=</span> <span class="m">200</span>
+</span><span class='line'>      <span class="k">val</span> <span class="n">container</span> <span class="p">=</span> <span class="n">TextView</span><span class="p">(</span><span class="k">this</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">overlayContainer</span> <span class="p">=</span> <span class="n">container</span>
+</span><span class='line'>      <span class="n">container</span><span class="p">.</span><span class="n">setBackgroundColor</span><span class="p">(</span><span class="n">Color</span><span class="p">.</span><span class="n">parseColor</span><span class="p">(</span><span class="s">&quot;#cce8cf&quot;</span><span class="p">))</span>
+</span><span class='line'>      <span class="n">windowManager</span><span class="p">?.</span><span class="n">addView</span><span class="p">(</span><span class="n">container</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iSlide 插件 5 周年回馈，买两年送一年！每月不到 5 块钱]]></title>
@@ -1770,72 +2018,6 @@
 <li>在终端输入 slackWithProxy 即可OK。</li>
 </ul>
 
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Synergy 为你的键鼠升个级，一套键盘鼠标轻松控制多台电脑！]]></title>
-    <link href="https://droidyue.com/blog/2021/12/25/synergy-one-mouse-and-keyboard-could-control-more-desktops/"/>
-    <updated>2021-12-25T11:30:00+08:00</updated>
-    <id>https://droidyue.com/blog/2021/12/25/synergy-one-mouse-and-keyboard-could-control-more-desktops</id>
-    <content type="html"><![CDATA[<p>如果你的桌子上放置了多台电脑，为了分别控制每台设备，最常规的操作就是为每一台都插上一套键鼠，而此时你的桌面也被多个键盘鼠标占去了很大一部分空间。</p>
-
-<p>不仅看起来凌乱，放在一起还不太容易区分哪套键鼠控制哪个设备。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE1.png?v=111" alt="111" /></p>
-
-<p>今天要分享的 Synergy，不需要添置硬件、反复插拔键鼠，纯软件实现一套键盘鼠标连接控制多台电脑。不管你的键盘鼠标是什么品牌 / 型号，有线或是无线，甚至笔记本键盘、触控板都能直接用。</p>
-
-<!--more-->
-
-
-<h2>多台电脑一套键鼠</h2>
-
-<p>将鼠标移向屏幕边缘即可无缝切换控制，键盘也会自动跟随鼠标切换到其他设备上，就像拓展屏幕之间移动鼠标一样简单。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE2.png" alt="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE2.png" /></p>
-
-<p>基础版支持连接 3 台设备，升级专业版可享受 15 台设备无缝切换控制。</p>
-
-<p>中国特惠价基础版 <strong>59</strong> 元，专业版也仅需 <strong>99</strong> 元，不用额外买几百元的跨屏鼠标，Synergy 让手上的设备直接升级为跨屏键鼠。点击<a href="https://store.lizhi.io/site/products/id/511?cid=wncr9wz5">优惠链接</a>前往购买～</p>
-
-<h2>使用简单便捷</h2>
-
-<p>虽说界面汉化不是很到位，但需要设置的地方也不是很多，没有很高的学习成本。</p>
-
-<p>只需在所有的设备上安装 Synergy，选择插入键鼠的设备作为服务端，其余作为客户端并填入服务端的 IP 地址，连接成功即可使用。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE3.png" alt="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE3.png" /></p>
-
-<p>软件很贴心地列出了当前设备的 IP 地址，填写和客户端同一网段的 IP 更方便。</p>
-
-<h2>跨平台操控</h2>
-
-<p>打破系统间壁垒，装有 Win / Mac / Linux / 树莓派不同系统的设备，也能轻松实现键鼠共享。Synergy 从 Win 切换到 Mac 时可自动切换 WIN 和 CMD 键，使用 CMD + C 这类快捷键更方便。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE4.png" alt="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE4.png" /></p>
-
-<p>Synergy 还可实现跨设备剪贴板共享，不同系统的电脑之间复制粘贴文字，数据共享大大提升工作效率。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE5.png" alt="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE5.png" /></p>
-
-<p>来数码荔枝购买享中国特惠价，仅需 <strong>59</strong> 元起，即可体验一台设备控制多台多台电脑的便利，点击<a href="https://store.lizhi.io/site/products/id/511?cid=wncr9wz5">优惠链接</a>前往购买～</p>
-
-<h2>自由切换控制</h2>
-
-<p>设备太多移动很麻烦？你还能设置快捷键用于快速切换控制某台设备。对于游戏玩家，游戏全屏时也无需担心，因操作幅度太大将鼠标移走，只需设置一个快捷键将键鼠锁定到当前设备，带给你更好的游戏体验。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE6.png" alt="https://asset.droidyue.com/image/lizhi_io/synergy/%E5%9B%BE6.png" /></p>
-
-<p>各设备间仅需局域网即可连接控制，高速的本地网络，无需考虑宽带速度限制，连接更快延迟更低。</p>
-
-<p>Synergy 使用过程中不连接互联网，数据交换私密安全。购买专业版，还能享受安全程度更高的 TLS / SSL 加密。</p>
-
-<hr />
-
-<p>Synergy 新品上架数码荔枝，基础版中国优惠价 <strong>59</strong> 元，专业版也仅需 <strong>99</strong> 元。简简单单将你的普通键盘鼠标，升级为支持跨屏控制的键鼠，相比花费百元添置新设备更划算。</p>
-
-<p>如果你正好有控制多台电脑的需求，一定要进来看看！优惠链接：<a href="https://store.lizhi.io/site/products/id/511?cid=wncr9wz5">https://store.lizhi.io/site/products/id/511?cid=wncr9wz5</a></p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
