@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-04-10T20:44:50+08:00</updated>
+  <updated>2022-04-18T06:54:52+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,157 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[简单一招，百倍提速 Flutter 开发]]></title>
+    <link href="https://droidyue.com/blog/2022/04/18/how-to-be-100x-faster-about-replace-dart-flutter-deps-in-the-development/"/>
+    <updated>2022-04-18T06:25:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/04/18/how-to-be-100x-faster-about-replace-dart-flutter-deps-in-the-development</id>
+    <content type="html"><![CDATA[<p>Flutter 开发中，为了实现更好的解耦与更高的复用，我们都会使用模块化的思路来处理，在Dart 和 Flutter 中，我们会使用 Dart 包或者插件包等，将它们发布到比如自己的unpub 服务器上，然后在壳工程（主工程）中聚合使用。</p>
+
+<p>比如一个 壳工程的 yaml 是这样的</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">dependencies</span><span class="p-Indicator">:</span>
+</span><span class='line'> <span class="l-Scalar-Plain">flutter</span><span class="p-Indicator">:</span>
+</span><span class='line'>   <span class="l-Scalar-Plain">sdk</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">flutter</span>
+</span><span class='line'> <span class="l-Scalar-Plain">firebase_crashlytics</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">2.4.5</span>
+</span><span class='line'> <span class="l-Scalar-Plain">firebase_analytics</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">9.0.5</span>
+</span><span class='line'> <span class="l-Scalar-Plain">basic</span><span class="p-Indicator">:</span>
+</span><span class='line'>   <span class="l-Scalar-Plain">hosted</span><span class="p-Indicator">:</span>
+</span><span class='line'>     <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">basic</span>
+</span><span class='line'>     <span class="l-Scalar-Plain">url</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">https://unpub.droidyue.com</span>
+</span><span class='line'>   <span class="l-Scalar-Plain">version</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">1.6.2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>于是有这样一个场景，我们想要在basic 包里面加一个方法，并应用到 主工程中。</p>
+
+<p>但是在执行处理的时候，我们会有这样的考虑</p>
+
+<ul>
+<li>如果修改的内容，通过 unpub 进行验证，时间成本很大。</li>
+<li>但是发布到unpub，需要有一定的质量把控，修改的内容必须进行验证通过后，才能发布到unpub 服务器上</li>
+</ul>
+
+
+<p>所以，我们需要尝试寻找一种不通过 unpub，更快速验证修改内容的方式。</p>
+
+<p>好在 dart 提供了 <code>dependency_overrides</code> 这个配置项来处理依赖重写问题。</p>
+
+<!--more-->
+
+
+<p>使用起来也很简单，下面就是我们实现重写 basic 的示例，基本上只需要关心 包名称(basic)与 path (../basic)即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">dependency_overrides</span><span class="p-Indicator">:</span>
+</span><span class='line'> <span class="l-Scalar-Plain">basic</span><span class="p-Indicator">:</span>
+</span><span class='line'>   <span class="l-Scalar-Plain">path</span><span class="p-Indicator">:</span> <span class="s">&quot;../basic&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>虽然提供了上面的方法可以实现依赖重写，但是还是不够快速，这是因为通常场景是这样的</p>
+
+<ul>
+<li>我们通常用 Android Studio 打开了 basic 工程，AS 开多了会卡。</li>
+<li>当我们想要使用<code>dependency_overrides</code>调整 basic 时，需要用Android studio 再次打开壳工程项目。当然也可以使用文本编辑器，但是它对yaml 支持不一定有 AS 那么好，无法智能提示。</li>
+</ul>
+
+
+<p>那么有没有更快速的方式呢，答案是有的，这是因为 yaml 是结构化的，我们可以使用脚本来生成<code>dependency_overrides</code>对应的内容。</p>
+
+<p>下面就是一个ruby 脚本，实现yaml 内容的添加处理。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class='line'><span class="c1"># encoding: utf-8</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;yaml&#39;</span>
+</span><span class='line'><span class="n">file_path</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
+</span><span class='line'><span class="n">repo_name</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span>
+</span><span class='line'><span class="n">repo_path</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">2</span><span class="o">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">yaml_string</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">read</span> <span class="n">file_path</span>
+</span><span class='line'><span class="n">data</span> <span class="o">=</span> <span class="no">YAML</span><span class="o">.</span><span class="n">load</span> <span class="n">yaml_string</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="s1">&#39;dependency_overrides&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="nb">hash</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">repo_name</span><span class="o">.</span><span class="n">strip</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="s2">&quot;path&quot;</span> <span class="o">=&gt;</span> <span class="n">repo_path</span><span class="o">.</span><span class="n">strip</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">data</span><span class="o">[</span><span class="s1">&#39;dependency_overrides&#39;</span><span class="o">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="s1">&#39;dependency_overrides&#39;</span><span class="o">].</span><span class="n">merge</span><span class="p">(</span><span class="nb">hash</span><span class="p">)</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'>    <span class="n">data</span><span class="o">[</span><span class="s1">&#39;dependency_overrides&#39;</span><span class="o">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">repo_name</span><span class="o">.</span><span class="n">strip</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="s2">&quot;path&quot;</span> <span class="o">=&gt;</span> <span class="n">repo_path</span><span class="o">.</span><span class="n">strip</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">output</span> <span class="o">=</span> <span class="no">YAML</span><span class="o">.</span><span class="n">dump</span> <span class="n">data</span>
+</span><span class='line'><span class="no">File</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>保存上面的脚本，命名为 localDartDep.rb,</li>
+<li>将其路径放入环境变量 PATH, 然后更新当前的bash</li>
+<li>切换到当前项目路径，然后执行 <code>localDartDep.rb basic ../basic</code> 即可快速完成替换操作。不用开Android Studio，轻量快捷。</li>
+</ul>
+
+
+<p>对于上面的操作，依然可以更加包装成一个shell 脚本，实现更加便捷的处理</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
+</span><span class='line'>localDartDep.rb <span class="s2">&quot;$1/pubspec.yaml&quot;</span> <span class="s2">&quot;basic&quot;</span> <span class="s2">&quot;../basic&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后切换到对应的工程下，执行<code>basicLocalDep.sh ./</code> 即可。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android Studio 无 创建 Flutter 工程选项（New Flutter Project）解决]]></title>
@@ -1929,84 +2080,6 @@
 
 
 <p>一条小广告：这里有一个软件，让你的 Mac 就能轻松读写常见 NTFS 硬盘 / U 盘，点击这个链接 <a href="https://droidyue.com/blog/2021/03/07/mac-ntfs-assistant-to-write-files-to-disk/">https://droidyue.com/blog/2021/03/07/mac-ntfs-assistant-to-write-files-to-disk/</a></p>
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[跨平台 Markdown 编辑器 Typora 独家上架数码荔枝，新用户券后仅需 81 元]]></title>
-    <link href="https://droidyue.com/blog/2021/12/25/markdown-editor-typora-at-low-price/"/>
-    <updated>2021-12-25T14:54:00+08:00</updated>
-    <id>https://droidyue.com/blog/2021/12/25/markdown-editor-typora-at-low-price</id>
-    <content type="html"><![CDATA[<p>Typora 是一款广受好评的桌面 Markdown 编辑器，经过长达 6 年的测试，Typora 近期正式发布 1.0 版本，终于进入正式版时代并开启付费模式。</p>
-
-<p>Typora 被老朋友数码荔枝评为国货之光，并带来优惠活动，现仅需 86 元即可买断当前版本，新注册用户领券还可立减 5 元，仅需 81 元！<a href="https://store.lizhi.io/site/products/id/520?cid=wncr9wz5">点击购买</a></p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE1.png?v=111223355532" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE1.png" /></p>
-
-<!--more-->
-
-
-<h2>实时预览格式</h2>
-
-<p>Typora 是一款适配 Windows / macOS / Linux 平台的 Markdown 编辑器，编辑实时预览标记格式，所见即所得，轻巧而强大。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE2.png" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE2.png" /></p>
-
-<p>作为一款优秀的 Markdown 编辑器，它具备完善的 Markdown 语法，支持插入多级标题、代码、超链接、表格公式等。亦可一键切换源代码模式，实现高效排版。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE3.gif" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE3.gif" /></p>
-
-<h2>侧边栏大纲目录</h2>
-
-<p>想要修改文段？通过隐藏式的侧边栏可展示大纲目录，快速跳转章节。而文件树列表功能可切换到其它文章编写，非常方便。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE4.gif" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE4.gif" /></p>
-
-<p>官网购买不方便？数码荔枝独家授权代理，一样可以买到正版软件，下单即收授权码，激活更方便！<a href="https://store.lizhi.io/site/products/id/520?cid=wncr9wz5">点击购买</a></p>
-
-<h2>灵活支持各图床</h2>
-
-<p>在粘贴或拖拽图片到写作窗口时，Typora 还能绑定 iPic、PicGo 等图床工具将其上传。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE5.gif" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE5.gif" /></p>
-
-<p>并且支持 Custom Command，方便集成更多第三方插件，对于博客作者来说会方便不少。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE6.png" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE6.png" /></p>
-
-<h2>多种扩展语法</h2>
-
-<p>Typora 还支持插入 LaTeX 公式、绘制序列图 / 流程图，各种语言代码块皆可高亮显示，满足更多专业人士的高阶需求。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE7.png" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE7.png" /></p>
-
-<p>还提供了专注模式 / 打字机模式、字数统计、符号补全等众多写作优化功能。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE8.gif" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE8.gif" /></p>
-
-<p>功能完善却不冗杂，简洁优雅的写作体验，你的桌面需要这样一款文本编辑器，心动就快前往体验吧。趁活动买下更优惠！<a href="https://store.lizhi.io/site/products/id/520?cid=wncr9wz5">点击前往</a></p>
-
-<h2>自定义主题</h2>
-
-<p>Typora 提供了数种风格主题，还可修改 CSS 文件，自定义专属主题样式，文字创作更舒适。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE9.PNG" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE9.PNG" /></p>
-
-<p>除此之外，Typora 的高度自定义也体现在语法偏好设置上，支持设置是否采取严格模式、扩展语法、智能标点等等。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE10.PNG" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE10.PNG" /></p>
-
-<p>加上多格式导出及跨平台支持，Typora 的写作体验无疑是数一数二的。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE11.png" alt="https://asset.droidyue.com/image/lizhi_io/typora/%E5%9B%BE11.png" /></p>
-
-<hr />
-
-<p>Typora 简洁优雅又不失强大，无论是 Markdown 入门用户还是精通 MD 语法的老手，都能在这里体会到数字写作的魅力。</p>
-
-<p>2021.12.23 ~ 2022.1.11，数码荔枝国货之光年底大促火热进行中，新注册用户券后购买 Typora 仅需 81 元，快为你的电脑装备这款优秀的文本编辑器吧！<a href="https://store.lizhi.io/site/products/id/520?cid=wncr9wz5">点击购买</a></p>
-
-<p>除此之外，还有格志日记、MarginNote、Snipaste、白描、潮汐等 40+ 精选国产软件优惠低至 6 折起，马上前往<a href="https://store.lizhi.io/site/search_list?order_by=2&amp;word=&amp;coupon_uuid=0&amp;category_id=62&amp;cid=wncr9wz5">大促专区</a>买买买！</p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
