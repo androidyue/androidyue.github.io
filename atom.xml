@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-05-08T22:47:05+08:00</updated>
+  <updated>2022-05-15T22:38:07+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,329 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[一个脚本，快速发现项目中的重复文件]]></title>
+    <link href="https://droidyue.com/blog/2022/05/15/how-to-find-duplicated-file-via-one-script/"/>
+    <updated>2022-05-15T22:16:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/05/15/how-to-find-duplicated-file-via-one-script</id>
+    <content type="html"><![CDATA[<p>项目中的文件越来愈多，导致生成的apk包也不断增大，可是这些文件中会不会存在重复的文件呢，这是一个值得验证的问题，毕竟解决了之后会减少很多apk的体积。</p>
+
+<p>我们不可能依赖人工的手动查找，因为这样是时间成本太大。于是我们再次尝试使用脚本程序来实现检查项目中是否有重复文件。</p>
+
+<!--more-->
+
+
+<h2>脚本思路</h2>
+
+<ul>
+<li>利用md5对内容进行计算</li>
+<li>设置一个字典，key是md5值，value是对应的文件路径列表</li>
+<li>如果上字典的value项（文件路径列表）多余1个，则表示存在重复的文件</li>
+<li>利用重复的文件的数量和重复文件的大小，我们计算出总共可以节省的空间大小</li>
+</ul>
+
+
+<h2>脚本内容</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class='line'><span class="c1"># encoding: utf-8</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;find&#39;</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;digest/md5&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">#  通常为项目的路径</span>
+</span><span class='line'><span class="n">targetDirToSearch</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
+</span><span class='line'><span class="vg">$hashesFiles</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class='line'><span class="vg">$sizeCanBeSaved</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">getFileMd5Checksum</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="ss">Digest</span><span class="p">:</span><span class="ss">:MD5</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">(</span><span class="no">File</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">file</span><span class="p">))</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">shouldCheckThisFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">isFile</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">file?</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">isGitFile</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">include?</span> <span class="s2">&quot;.git/&quot;</span>
+</span><span class='line'>  <span class="n">isGradleFile</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">include?</span> <span class="s2">&quot;.gradle/&quot;</span>
+</span><span class='line'>  <span class="n">isIdeFile</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">include?</span> <span class="s2">&quot;.idea/&quot;</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">isFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isGitFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isGradleFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isIdeFile</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">getFilesByMd5</span><span class="p">(</span><span class="n">md5Value</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">existingFiles</span> <span class="o">=</span> <span class="vg">$hashesFiles</span><span class="o">[</span><span class="n">md5Value</span><span class="o">]</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">existingFiles</span> <span class="o">==</span> <span class="kp">nil</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">existingFiles</span> <span class="o">=</span> <span class="o">[]</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">existingFiles</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">recordFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">md5</span> <span class="o">=</span> <span class="n">getFileMd5Checksum</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>  <span class="vg">$hashesFiles</span><span class="o">[</span><span class="n">md5</span><span class="o">]</span> <span class="o">=</span> <span class="n">getFilesByMd5</span><span class="p">(</span><span class="n">md5</span><span class="p">)</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">printHashesFiles</span><span class="p">()</span>
+</span><span class='line'>  <span class="vg">$hashesFiles</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">select</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">|</span><span class="n">array</span><span class="o">|</span> <span class="n">array</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="p">}</span><span class="o">.</span><span class="n">sort_by</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">|</span><span class="n">files</span><span class="o">|</span> <span class="no">File</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">files</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">|</span><span class="n">array</span><span class="o">|</span>
+</span><span class='line'>          <span class="n">fileSize</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">array</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span><span class="p">)</span>
+</span><span class='line'>          <span class="nb">puts</span> <span class="s2">&quot;Duplicated files size=</span><span class="si">#{</span><span class="n">format_mb</span><span class="p">(</span><span class="n">fileSize</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>          <span class="n">array</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span>
+</span><span class='line'>              <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="nb">puts</span> <span class="n">f</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="vg">$sizeCanBeSaved</span> <span class="o">+=</span> <span class="n">fileSize</span> <span class="o">*</span> <span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>          <span class="nb">puts</span> <span class="s2">&quot;&quot;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">format_mb</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">conv</span> <span class="o">=</span> <span class="o">[</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;kb&#39;</span><span class="p">,</span> <span class="s1">&#39;mb&#39;</span><span class="p">,</span> <span class="s1">&#39;gb&#39;</span><span class="p">,</span> <span class="s1">&#39;tb&#39;</span><span class="p">,</span> <span class="s1">&#39;pb&#39;</span><span class="p">,</span> <span class="s1">&#39;eb&#39;</span> <span class="o">]</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">scale</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ndx</span><span class="o">=</span><span class="mi">1</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="n">ndx</span><span class="p">)</span>  <span class="p">)</span> <span class="k">then</span>
+</span><span class='line'>    <span class="k">return</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="o">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="o">.</span><span class="n">to_f</span>
+</span><span class='line'>  <span class="o">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="o">].</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">ndx</span><span class="o">|</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="n">ndx</span><span class="p">)</span>  <span class="p">)</span> <span class="k">then</span>
+</span><span class='line'>      <span class="k">return</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="s1">&#39;%.3f&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">size</span><span class="o">/</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="p">(</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="o">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="n">ndx</span><span class="o">=</span><span class="mi">7</span>
+</span><span class='line'>  <span class="k">return</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="s1">&#39;%.3f&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">size</span><span class="o">/</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="p">(</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="o">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">getFileSize</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">format_mb</span><span class="p">(</span><span class="no">File</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="n">dirToSearch</span><span class="p">)</span>
+</span><span class='line'>  <span class="no">Find</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">dirToSearch</span><span class="p">)</span><span class="o">.</span><span class="n">select</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="n">shouldCheckThisFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="nb">puts</span> <span class="s2">&quot;Checking file </span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>          <span class="n">recordFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="n">printHashesFiles</span><span class="p">()</span>
+</span><span class='line'>  <span class="nb">puts</span> <span class="s2">&quot;Size can be saved </span><span class="si">#{</span><span class="n">format_mb</span><span class="p">(</span><span class="vg">$sizeCanBeSaved</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">start</span><span class="p">(</span><span class="n">targetDirToSearch</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>执行结果</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>MacBook-Pro-8:~/Documents/AndroidProjects/EasyHybridApp<span class="o">(</span>master|✚3<span class="o">)</span> % findDuplicatedFiles.rb ./
+</span><span class='line'>Checking file ./.gitignore
+</span><span class='line'>Checking file ./EasyHybridApp.iml
+</span><span class='line'>Checking file ./app/.gitignore
+</span><span class='line'>Checking file ./app/app.iml
+</span><span class='line'>Checking file ./app/build.gradle
+</span><span class='line'>Checking file ./app/proguard-rules.pro
+</span><span class='line'>Checking file ./app/src/androidTest/java/com/droidyue/easyhybridapp/ExampleInstrumentedTest.kt
+</span><span class='line'>Checking file ./app/src/main/AndroidManifest.xml
+</span><span class='line'>Checking file ./app/src/main/java/com/droidyue/easyhybridapp/AppInfo.kt
+</span><span class='line'>Checking file ./app/src/main/res/layout/activity_main.xml
+</span><span class='line'>Checking file ./app/src/main/res/values/colors.xml
+</span><span class='line'>Checking file ./app/src/main/res/values/strings.xml
+</span><span class='line'>Checking file ./app/src/main/res/values/styles.xml
+</span><span class='line'>Checking file ./app/src/main/res/xml/network_security_config.xml
+</span><span class='line'>Checking file ./app/src/test/java/com/droidyue/easyhybridapp/ExampleUnitTest.kt
+</span><span class='line'>Checking file ./build.gradle
+</span><span class='line'>Checking file ./common/.gitignore
+</span><span class='line'>Checking file ./common/build.gradle
+</span><span class='line'>Checking file ./common/common.iml
+</span><span class='line'>Checking file ./common/consumer-rules.pro
+</span><span class='line'>Checking file ./common/proguard-rules.pro
+</span><span class='line'>Checking file ./common/src/androidTest/java/com/droidyue/common/ExampleInstrumentedTest.kt
+</span><span class='line'>Checking file ./common/src/main/AndroidManifest.xml
+</span><span class='line'>Checking file ./common/src/main/java/com/droidyue/common/ClassExt.kt
+</span><span class='line'>Checking file ./common/src/main/java/com/droidyue/common/ConfirmDialogExt.kt
+</span><span class='line'>Checking file ./common/src/main/java/com/droidyue/common/ContextExt.kt
+</span><span class='line'>Checking file ./webview/src/androidTest/java/com/droidyue/webview/ExampleInstrumentedTest.kt
+</span><span class='line'>Checking file ./webview/src/main/java/com/droidyue/webview/webviewclient/PageRequestWebViewClient.kt
+</span><span class='line'>Checking file ./webview/src/main/java/com/droidyue/webview/webviewclient/WhitelistLaunchingIntentWebViewClient.kt
+</span><span class='line'>Checking file ./webview/src/main/res/layout/activity_webview.xml
+</span><span class='line'>Checking file ./webview/src/main/res/raw/deeplink_whitelist.json
+</span><span class='line'>Checking file ./webview/src/main/res/values/strings.xml
+</span><span class='line'>Checking file ./webview/src/test/java/com/droidyue/webview/ExampleUnitTest.kt
+</span><span class='line'>Checking file ./webview/webview.iml
+</span><span class='line'>Duplicated files <span class="nv">size</span><span class="o">=</span>0 b
+</span><span class='line'>./common/consumer-rules.pro
+</span><span class='line'>./webview/consumer-rules.pro
+</span><span class='line'>
+</span><span class='line'>Duplicated files <span class="nv">size</span><span class="o">=</span>7 b
+</span><span class='line'>./app/.gitignore
+</span><span class='line'>./common/.gitignore
+</span><span class='line'>./webview/.gitignore
+</span><span class='line'>
+</span><span class='line'>Duplicated files <span class="nv">size</span><span class="o">=</span>272 b
+</span><span class='line'>./app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+</span><span class='line'>./app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+</span><span class='line'>
+</span><span class='line'>Duplicated files <span class="nv">size</span><span class="o">=</span>751 b
+</span><span class='line'>./app/proguard-rules.pro
+</span><span class='line'>./common/proguard-rules.pro
+</span><span class='line'>./webview/proguard-rules.pro
+</span><span class='line'>
+</span><span class='line'>Size can be saved 1788 b
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>运行建议</h2>
+
+<ul>
+<li>在执行之前建议执行以下clean，比如安卓项目执行<code>./gradlew clean</code></li>
+</ul>
+
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Flutter 在 iOS 模拟器中运行卡住问题解决]]></title>
@@ -2027,72 +2350,6 @@
 
 
 
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Mac 清理优化工具 MacBooster 限时特惠，终生版 7 折低至 41.3 元起]]></title>
-    <link href="https://droidyue.com/blog/2022/01/09/mac-booster-app/"/>
-    <updated>2022-01-09T19:39:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/01/09/mac-booster-app</id>
-    <content type="html"><![CDATA[<p>Mac 用户越来越多，针对 Mac 的病毒木马也逐渐出现了，Mac 电脑无需安全优化工具的历史似乎已成为过去。但部分清理工具升级迭代快，价格也很昂贵。</p>
-
-<p>今天给大家推荐一款价格实惠、功能强大的 macOS 系统清理优化工具：MacBooster。一站式清理、查杀病毒及残余文件，优化系统加速运行。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE1.png" alt="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE1.png" /></p>
-
-<!--more-->
-
-
-<h2>一键系统清理</h2>
-
-<p>普通的清理工具都只是对软件缓存进行清除，而 MacBooster 支持对软件残余、破损登录项、iOS 设备系统更新等 20 类垃圾文件进行清理。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE2.PNG" alt="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE2.PNG" /></p>
-
-<p>分类清晰明了，能快速定位垃圾文件位置，杜绝误删问题。同时 MacBooster 还支持老旧 / 大文件的扫描查找，揪出占用磁盘空间的罪魁祸首。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE3.PNG" alt="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE3.PNG" /></p>
-
-<p>软件自带重复文件及相似图片清理工具，安装 MacBooster 相当于拥有了：清理工具 CleanMyMac + 重复文件搜寻工具 Gemini。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE4.PNG" alt="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE4.PNG" /></p>
-
-<p>此外，MacBooster 还带有软件强力卸载的功能，自动深度扫描，彻底根除各种偏好设定、支持文档等关联文件。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE5.PNG" alt="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE5.PNG" /></p>
-
-<p>一个 MacBooster 兼备多种功能，一站式解决文件占用空间的各种问题，限时折后只需 41.3 元起。<a href="https://store.lizhi.io/site/products/id/32?cid=wncr9wz5">点击购买</a></p>
-
-<h2>系统优化功能强</h2>
-
-<p>MacBooster 的优化功能可谓面面俱到，无论是内存、硬盘还是启动项，它都可进行专属优化。</p>
-
-<p>Turbo Boost 功能会通过优化磁盘、修复磁盘权限来有效加速电脑，内存清理则可释放运存空间减少卡顿。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE6.PNG" alt="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE6.PNG" /></p>
-
-<p>而 MacBooster 的开机启动项优化功能，会将众多隐藏的开机启动服务找出，并将控制权交给用户处理。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE7.PNG" alt="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE7.PNG" /></p>
-
-<p>搭配在菜单栏上的 MacBooster Mini 小工具，随时获取内存占用以及网络信息，快捷进行清理加速。</p>
-
-<h2>安全防护也在行</h2>
-
-<p>清理优化不只是在问题出现后进行，提前预防更重要！MacBooster 的安全防护功能就是 Mac 设备的保护伞。</p>
-
-<p>软件可扫描病毒及恶意软件，强力移除顽固软件或文件。可在线获取病毒库数据更新，防止电脑受到各类新式病毒的威胁。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE8.PNG" alt="https://asset.droidyue.com/image/lizhi_io/mac_booster/%E5%9B%BE8.PNG" /></p>
-
-<p>而且 MacBooster 自带隐私保护工具，能清除浏览器中的历史记录以及 Cookies，抹去 App 痕迹和最近文件访问记录，充分保护用户的隐私安全。</p>
-
-<p>MacBooster 具备优秀清理优化工具的一切要素，售价也亲民，只需 41.3 元起，即可带走这款多合一的优化利器，助你轻松管理 Mac 设备！<a href="https://store.lizhi.io/site/products/id/32?cid=wncr9wz5">点击购买</a></p>
-
-<hr />
-
-<p>即日起至 2022 年 1 月 11 日，数码荔枝国货之光大促活动火热进行中，还有 Seer、BitDock 、优效日历、Snipaste 等 40+ 精选国产软件优惠低至 6 折起，众多优秀的国产软件值得被看见，快去前往<a href="https://store.lizhi.io/site/search_list?order_by=2&amp;word=&amp;coupon_uuid=0&amp;category_id=62&amp;cid=wncr9wz5">大促专区</a>买买买吧！</p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
