@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-06-19T21:41:21+08:00</updated>
+  <updated>2022-06-26T21:02:35+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,98 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Linux 下解决 grep is directory 问题]]></title>
+    <link href="https://droidyue.com/blog/2022/06/26/fix-grep-is-directory-issue-linux-mac/"/>
+    <updated>2022-06-26T20:52:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/06/26/fix-grep-is-directory-issue-linux-mac</id>
+    <content type="html"><![CDATA[<p>Grep 是一个很便捷有用的终端工具，它可以帮助我们快速过滤筛选出一些内容。通常配合 find 命令，可以实现更加强大的能力。</p>
+
+<p>比如这个这样的组合，可以快速发现并定位到 哪个.gradle 文件包含 maven.aliyun.com 。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always <span class="s2">&quot;maven.aliyun.com&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是我们在执行的时候，总会遇到这样的错误提示输出。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>grep: ./example/android/.gradle: Is a directory
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<!--more-->
+
+
+<p>之所以出现这个问题，原因是 <code>find . -name "*.gradle"</code> 匹配到了 .gradle 目录，而使用 grep 只是单纯扫描这个目录（非包含内部文件）没有任何意义。</p>
+
+<p>还在解决方法有很多，可以轻松规避这个错误输出。</p>
+
+<h2>方法一，递归查找该目录</h2>
+
+<p>我们可以通过 <code>-r</code> 指令，递归目录内部的文件查找</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always -r <span class="s2">&quot;maven.aliyun.com&quot;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>方法二，跳过目录</h2>
+
+<p>我们可以通过 <code>--directories=skip</code> 跳过对文件夹的查找</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always  <span class="s2">&quot;maven.aliyun.com&quot;</span> --directories<span class="o">=</span>skip
+</span><span class='line'> find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always  <span class="s2">&quot;maven.aliyun.com&quot;</span> --directories<span class="o">=</span>skip
+</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>方案三，设置环境变量，跳过目录</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">export </span><span class="nv">GREP_OPTIONS</span><span class="o">=</span><span class="s2">&quot;--directories=skip&quot;</span>
+</span><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always <span class="s2">&quot;maven.aliyun.com&quot;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>方案四， grep 输入源控制</h2>
+
+<p>我们可以使用 find 的 <code>-type f</code> 来只查找文件类型，排除目录类型。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> -type f |  xargs grep -E -n --color<span class="o">=</span>always <span class="s2">&quot;maven.aliyun.com&quot;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的方法都可以解决这个问题，大家可以随意选择偏好的方案处理使用。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Waiting for another flutter command to release the startup lock 问题解决]]></title>
@@ -2113,32 +2205,6 @@
 
 
 
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[MBP touchbar 设置Fn 按键长期显示]]></title>
-    <link href="https://droidyue.com/blog/2022/03/13/macbook-pro-show-fn-always-in-the-touchbar/"/>
-    <updated>2022-03-13T10:38:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/03/13/macbook-pro-show-fn-always-in-the-touchbar</id>
-    <content type="html"><![CDATA[<p>TouchBar 的出现确实让 MBP 酷炫了很多，但是对于我来说，总感觉有点华而不实，原因有二</p>
-
-<ul>
-<li>动态变化的 按钮 几乎没有用到</li>
-<li>基础的Fn 按键 使用起来反而更加不方便。（比如 IDE 使用F3 查看Definition）</li>
-</ul>
-
-
-<p>好在系统设置提供了长期显示 Fn 的配置选项</p>
-
-<!--more-->
-
-
-<h3>设置方式</h3>
-
-<p>选择系统设置(System Preferences)，选择 键盘(Keyboard) 如下设计即可</p>
-
-<p><img src="https://asset.droidyue.com/image/2022/h1/mbp_touchbar_fn_keys.png" alt="mbp touchbar fn keys setting" /></p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
