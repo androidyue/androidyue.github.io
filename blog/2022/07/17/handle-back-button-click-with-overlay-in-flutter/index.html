@@ -1,0 +1,1168 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Flutter 处理 Overlay 返回事件 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="Flutter 处理 Overlay 返回事件 Jul 17th, 2022 在 Flutter 中，我们可以使用 OverlayEntry 实现一个位于顶层的遮罩层。 比如上面的 Overlay 示例效果，可以通过 这段代码来实现 1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13 &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="/images/touch_icon.png"/>
+  
+  <link rel="canonical" href="https://droidyue.com/blog/2022/07/17/handle-back-button-click-with-overlay-in-flutter">
+  <link href="/images/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/ad.js"></script>
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
+      function setCookie(name,value,days) {
+          if (days) {
+              var date = new Date();
+              date.setTime(date.getTime()+(days*24*60*60*1000));
+              var expires = "; expires="+date.toGMTString();
+          }
+          else var expires = "";
+          document.cookie = name+"="+value+expires+"; path=/";
+      }
+
+      function eraseCookie(name) {
+          setCookie(name,"",-1);
+      }
+
+
+      function readCookie(name) {
+          var nameEQ = name + "=";
+          var ca = document.cookie.split(';');
+          for(var i=0;i < ca.length;i++) {
+              var c = ca[i];
+              while (c.charAt(0)==' ') c = c.substring(1,c.length);
+              if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+          }
+          return null;
+      }
+
+      function loadJsNormally(jsUrl) {
+          document.write('<script type="text/javascript" charset="utf-8" src="'+ jsUrl +'"></scr'+'ipt>');
+      }
+
+      function loadJsWithoutCache(jsUrl) {
+          jsUrl = jsUrl + '?v=' + +Math.random();
+          loadJsNormally(jsUrl);
+      }
+
+      
+      var droidyueNoCacheLoading = 'droidyue.no-cache';
+
+      function isNoCacheLoadingEnabled() {
+          return readCookie(droidyueNoCacheLoading) != null;
+      }
+
+      var noCacheLoading = isNoCacheLoadingEnabled();
+
+      function enableNoCacheLoading() {
+          setCookie(droidyueNoCacheLoading, 1, 365);
+      }
+
+      function disableNoCacheLoading() {
+          eraseCookie(droidyueNoCacheLoading);
+      }
+
+
+      function loadJs(jsUrl) {
+          if (noCacheLoading) {
+              loadJsWithoutCache(jsUrl);
+          } else {
+              loadJsNormally(jsUrl);
+          }
+      }
+  </script>
+  <script type="text/javascript" charset="utf-8" src="/javascripts/blogutils.js"></script>
+  <script type="text/javascript">
+    loadJsWithoutCache("https://asset.droidyue.com/javascript/geektime_qr_images.js");
+  </script>
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/book_rec_base.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="/stylesheets/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="/stylesheets/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="/javascripts/trackurl_maker.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="https://asset.droidyue.com/javascript/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/common_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/program_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/android_book_data.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/java_book_data.js" charset="utf-8"></script>
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+  (adsbygoogle = window.adsbygoogle || []).push({
+    google_ad_client: "ca-pub-6762344977202446",
+    enable_page_level_ads: true
+  });
+</script>
+
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation">
+<form action="https://google.com/search" method="get"  target="_blank">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="搜索" />
+    <input type=hidden name=domains value="droidyue.com">
+    <input type=hidden name=sitesearch value="droidyue.com">
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">首页</a></li>
+  <li><a href="/ninki/">干货铺子</a></li>
+  <li><a href="/blog/archives/">存档</a></li>
+  <li><a href="/reading/">读书</a></li>
+  <li><a href="/blog/categories/zheng-ban-ruan-jian/">低价正版</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/cooperate/">合作</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/gfriends/">好基友</a></li>
+  <li><a href="/neitui/">内推</a></li>
+  <li><a href="/fuli/index.html">福利</a></li>
+  <li><a href="/links/">友链</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Flutter 处理 Overlay 返回事件</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2022-07-17T21:46:00+08:00" pubdate data-updated="true">Jul 17<span>th</span>, 2022</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在 Flutter 中，我们可以使用 OverlayEntry 实现一个位于顶层的遮罩层。</p>
+
+<p><img src="https://asset.droidyue.com/image/2022/h2/WX20220717-214434%402x.png?v=111" alt="https://asset.droidyue.com/image/2022/h2/WX20220717-214434%402x.png?v=111" /></p>
+
+<!--more-->
+
+
+<p>比如上面的 Overlay 示例效果，可以通过 这段代码来实现</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="kt">void</span> <span class="n">_showOverlay</span><span class="p">(</span><span class="n">BuildContext</span> <span class="n">context</span><span class="p">,</span> <span class="p">{</span><span class="n">required</span> <span class="kt">String</span> <span class="n">text</span><span class="p">})</span> <span class="n">async</span> <span class="p">{</span>
+</span><span class='line'> <span class="n">OverlayState</span><span class="o">?</span> <span class="n">overlayState</span> <span class="o">=</span> <span class="n">Overlay</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">);</span>
+</span><span class='line'> <span class="n">OverlayEntry</span> <span class="n">overlayEntry</span><span class="p">;</span>
+</span><span class='line'> <span class="n">overlayEntry</span> <span class="o">=</span> <span class="n">OverlayEntry</span><span class="p">(</span><span class="nl">builder:</span> <span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">Positioned</span><span class="p">(</span>
+</span><span class='line'>     <span class="nl">left:</span> <span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">width</span> <span class="o">*</span> <span class="m">0.1</span><span class="p">,</span>
+</span><span class='line'>     <span class="nl">top:</span> <span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">height</span> <span class="o">*</span> <span class="m">0.80</span><span class="p">,</span>
+</span><span class='line'>     <span class="nl">child:</span> <span class="n">ClipRRect</span><span class="p">(</span>
+</span><span class='line'>       <span class="nl">borderRadius:</span> <span class="n">BorderRadius</span><span class="p">.</span><span class="n">circular</span><span class="p">(</span><span class="m">10</span><span class="p">),</span>
+</span><span class='line'>       <span class="nl">child:</span> <span class="n">Material</span><span class="p">(</span>
+</span><span class='line'>         <span class="nl">child:</span> <span class="n">Container</span><span class="p">(</span>
+</span><span class='line'>           <span class="nl">alignment:</span> <span class="n">Alignment</span><span class="p">.</span><span class="n">center</span><span class="p">,</span>
+</span><span class='line'>           <span class="nl">color:</span> <span class="n">Colors</span><span class="p">.</span><span class="n">yellowAccent</span><span class="p">,</span>
+</span><span class='line'>           <span class="nl">padding:</span>
+</span><span class='line'>           <span class="n">EdgeInsets</span><span class="p">.</span><span class="n">all</span><span class="p">(</span><span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">height</span> <span class="o">*</span> <span class="m">0.02</span><span class="p">),</span>
+</span><span class='line'>           <span class="nl">width:</span> <span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">width</span> <span class="o">*</span> <span class="m">0.8</span><span class="p">,</span>
+</span><span class='line'>           <span class="nl">height:</span> <span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">height</span> <span class="o">*</span> <span class="m">0.06</span><span class="p">,</span>
+</span><span class='line'>           <span class="nl">child:</span> <span class="n">Text</span><span class="p">(</span>
+</span><span class='line'>             <span class="n">text</span><span class="p">,</span>
+</span><span class='line'>             <span class="nl">style:</span> <span class="kd">const</span> <span class="n">TextStyle</span><span class="p">(</span><span class="nl">color:</span> <span class="n">Colors</span><span class="p">.</span><span class="n">black</span><span class="p">),</span>
+</span><span class='line'>           <span class="p">),</span>
+</span><span class='line'>         <span class="p">),</span>
+</span><span class='line'>       <span class="p">),</span>
+</span><span class='line'>     <span class="p">),</span>
+</span><span class='line'>   <span class="p">);</span>
+</span><span class='line'> <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// inserting overlay entry</span>
+</span><span class='line'> <span class="n">overlayState</span><span class="o">!</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">overlayEntry</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>看起来一切都很正常，但是如果我们点击一下系统的返回按键，我们看到的结果是</p>
+
+<ul>
+<li>Overlay 并没有优先消失</li>
+<li>而是当前的底层界面会退出了。</li>
+</ul>
+
+
+<h2>WillPopScope 管用么</h2>
+
+<p>经过验证，WillPopScope 其实也无法拦截 Overlay 的返回事件。因为所处层级不同。</p>
+
+<h2>那怎么办</h2>
+
+<p>可以借助系统的 <code>SystemChannels.navigation</code> 来实现，在 popRoute 层面去做拦截。</p>
+
+<p>这里有一个库可以解决</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>dependencies:
+</span><span class='line'> flutter:
+</span><span class='line'>   sdk: flutter
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> back_button_interceptor: 5.0.2
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意：如果你的 Flutter 适配到了 Flutter 3.0，可以使用最新的back_button_interceptor(6.0.0)，否则使用上面的5.0.2版本。</p>
+
+<h2>导入包</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="n">import</span> <span class="s1">&#39;package:back_button_interceptor/back_button_interceptor.dart&#39;</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>接入拦截代码</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="kt">void</span> <span class="n">_showOverlay</span><span class="p">(</span><span class="n">BuildContext</span> <span class="n">context</span><span class="p">,</span> <span class="p">{</span><span class="n">required</span> <span class="kt">String</span> <span class="n">text</span><span class="p">})</span> <span class="n">async</span> <span class="p">{</span>
+</span><span class='line'> <span class="n">OverlayState</span><span class="o">?</span> <span class="n">overlayState</span> <span class="o">=</span> <span class="n">Overlay</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">);</span>
+</span><span class='line'> <span class="n">OverlayEntry</span> <span class="n">overlayEntry</span><span class="p">;</span>
+</span><span class='line'> <span class="n">overlayEntry</span> <span class="o">=</span> <span class="n">OverlayEntry</span><span class="p">(</span><span class="nl">builder:</span> <span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">Positioned</span><span class="p">(</span>
+</span><span class='line'>    <span class="err">……</span> <span class="n">some</span> <span class="n">code</span> <span class="n">omitted</span> <span class="p">.</span>
+</span><span class='line'> <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// inserting overlay entry</span>
+</span><span class='line'> <span class="n">overlayState</span><span class="o">!</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">overlayEntry</span><span class="p">);</span>
+</span><span class='line'> <span class="n">BackButtonInterceptor</span><span class="p">.</span><span class="n">add</span><span class="p">((</span><span class="kt">bool</span> <span class="n">stopDefaultButtonEvent</span><span class="p">,</span> <span class="n">RouteInfo</span> <span class="n">info</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">overlayEntry</span><span class="p">.</span><span class="n">remove</span><span class="p">();</span>
+</span><span class='line'>   <span class="n">BackButtonInterceptor</span><span class="p">.</span><span class="n">removeByName</span><span class="p">(</span><span class="s1">&#39;my_back_button&#39;</span><span class="p">);</span>
+</span><span class='line'>   <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'> <span class="p">},</span> <span class="nl">name:</span> <span class="s1">&#39;my_back_button&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中</p>
+
+<ul>
+<li>BackButtonInterceptor.add 用来添加一个拦截器，通常还是需要增加一个 name 用作后续的移除做标识</li>
+<li>当拦截之后，我们需要添加<code>overlayEntry.remove();</code>用作移除OverlayEntry。 添加 <code>BackButtonInterceptor.removeByName('my_back_button');</code> 移除当前的拦截器， <code>return true;</code> 表明拦截器处理了该事件。</li>
+</ul>
+
+
+<h2>内部核心代码逻辑实现</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="c1">/// 添加逻辑</span>
+</span><span class='line'><span class="kd">static</span> <span class="kt">void</span> <span class="n">add</span><span class="p">(</span>
+</span><span class='line'> <span class="n">InterceptorFunction</span> <span class="kt">int</span><span class="n">erceptorFunction</span><span class="p">,</span> <span class="p">{</span>
+</span><span class='line'> <span class="kt">bool</span> <span class="n">ifNotYetIntercepted</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span>
+</span><span class='line'> <span class="kt">int</span><span class="o">?</span> <span class="n">zIndex</span><span class="p">,</span>
+</span><span class='line'> <span class="kt">String</span><span class="o">?</span> <span class="n">name</span><span class="p">,</span>
+</span><span class='line'> <span class="n">BuildContext</span><span class="o">?</span> <span class="n">context</span><span class="p">,</span>
+</span><span class='line'><span class="p">})</span> <span class="p">{</span>
+</span><span class='line'> <span class="n">_interceptors</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span>
+</span><span class='line'>     <span class="m">0</span><span class="p">,</span>
+</span><span class='line'>     <span class="n">_FunctionWithZIndex</span><span class="p">(</span>
+</span><span class='line'>       <span class="kt">int</span><span class="n">erceptorFunction</span><span class="p">,</span>
+</span><span class='line'>       <span class="n">ifNotYetIntercepted</span><span class="p">,</span>
+</span><span class='line'>       <span class="n">zIndex</span><span class="p">,</span>
+</span><span class='line'>       <span class="n">name</span><span class="p">,</span>
+</span><span class='line'>       <span class="n">context</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">?</span> <span class="kc">null</span> <span class="o">:</span> <span class="n">getCurrentNavigatorRoute</span><span class="p">(</span><span class="n">context</span><span class="p">),</span>
+</span><span class='line'>     <span class="p">));</span>
+</span><span class='line'> <span class="n">stableSort</span><span class="p">(</span><span class="n">_interceptors</span><span class="p">);</span>
+</span><span class='line'> <span class="n">SystemChannels</span><span class="p">.</span><span class="n">navigation</span><span class="p">.</span><span class="n">setMethodCallHandler</span><span class="p">(</span><span class="n">_handleNavigationInvocation</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// hook 回掉逻辑</span>
+</span><span class='line'><span class="kd">static</span> <span class="n">Future</span><span class="o">&lt;</span><span class="n">dynamic</span><span class="o">&gt;</span> <span class="n">_handleNavigationInvocation</span><span class="p">(</span><span class="n">MethodCall</span> <span class="n">methodCall</span><span class="p">)</span> <span class="n">async</span> <span class="p">{</span>
+</span><span class='line'> <span class="c1">// POP.</span>
+</span><span class='line'> <span class="k">if</span> <span class="p">(</span><span class="n">methodCall</span><span class="p">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;popRoute&#39;</span><span class="p">)</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">popRoute</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// PUSH.</span>
+</span><span class='line'> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">methodCall</span><span class="p">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;pushRoute&#39;</span><span class="p">)</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">_pushRoute</span><span class="p">(</span><span class="n">methodCall</span><span class="p">.</span><span class="n">arguments</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// OTHER.</span>
+</span><span class='line'> <span class="k">else</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">Future</span><span class="o">&lt;</span><span class="n">dynamic</span><span class="o">&gt;</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// 弹出拦截逻辑</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">static</span> <span class="n">Future</span> <span class="n">popRoute</span><span class="p">()</span> <span class="n">async</span> <span class="p">{</span>
+</span><span class='line'> <span class="kt">bool</span> <span class="n">stopDefaultButtonEvent</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">results</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">List</span><span class="o">&lt;</span><span class="n">_FunctionWithZIndex</span><span class="o">&gt;</span> <span class="kt">int</span><span class="n">erceptors</span> <span class="o">=</span> <span class="n">List</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">_interceptors</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="n">i</span> <span class="o">=</span> <span class="m">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="kt">int</span><span class="n">erceptors</span><span class="p">.</span><span class="n">length</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="kt">bool</span><span class="o">?</span> <span class="n">result</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="k">try</span> <span class="p">{</span>
+</span><span class='line'>     <span class="kd">var</span> <span class="kt">int</span><span class="n">erceptor</span> <span class="o">=</span> <span class="kt">int</span><span class="n">erceptors</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>     <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="kt">int</span><span class="n">erceptor</span><span class="p">.</span><span class="n">ifNotYetIntercepted</span> <span class="o">||</span> <span class="o">!</span><span class="n">stopDefaultButtonEvent</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>       <span class="n">FutureOr</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">_result</span> <span class="o">=</span> <span class="kt">int</span><span class="n">erceptor</span><span class="p">.</span><span class="kt">int</span><span class="n">erceptionFunction</span><span class="p">(</span>
+</span><span class='line'>         <span class="n">stopDefaultButtonEvent</span><span class="p">,</span>
+</span><span class='line'>         <span class="n">RouteInfo</span><span class="p">(</span><span class="nl">routeWhenAdded:</span> <span class="kt">int</span><span class="n">erceptor</span><span class="p">.</span><span class="n">routeWhenAdded</span><span class="p">),</span>
+</span><span class='line'>       <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>       <span class="k">if</span> <span class="p">(</span><span class="n">_result</span> <span class="k">is</span> <span class="kt">bool</span><span class="p">)</span>
+</span><span class='line'>         <span class="n">result</span> <span class="o">=</span> <span class="n">_result</span><span class="p">;</span>
+</span><span class='line'>       <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">_result</span> <span class="k">is</span> <span class="n">Future</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'>         <span class="n">result</span> <span class="o">=</span> <span class="n">await</span> <span class="n">_result</span><span class="p">;</span>
+</span><span class='line'>       <span class="k">else</span>
+</span><span class='line'>         <span class="k">throw</span> <span class="n">AssertionError</span><span class="p">(</span><span class="n">_result</span><span class="p">.</span><span class="n">runtimeType</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>       <span class="n">results</span><span class="p">.</span><span class="n">results</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="n">InterceptorResult</span><span class="p">(</span><span class="kt">int</span><span class="n">erceptor</span><span class="p">.</span><span class="n">name</span><span class="p">,</span> <span class="n">result</span><span class="p">));</span>
+</span><span class='line'>     <span class="p">}</span>
+</span><span class='line'>   <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>     <span class="n">errorProcessing</span><span class="p">(</span><span class="n">error</span><span class="p">);</span>
+</span><span class='line'>   <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="k">if</span> <span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="kc">true</span><span class="p">)</span> <span class="n">stopDefaultButtonEvent</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">if</span> <span class="p">(</span><span class="n">stopDefaultButtonEvent</span><span class="p">)</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">Future</span><span class="o">&lt;</span><span class="n">dynamic</span><span class="o">&gt;</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+</span><span class='line'> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">results</span><span class="p">.</span><span class="n">ifDefaultButtonEventWasFired</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">handlePopRouteFunction</span><span class="p">();</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>完整的示例代码</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="n">import</span> <span class="s1">&#39;package:flutter/material.dart&#39;</span><span class="p">;</span>
+</span><span class='line'><span class="n">import</span> <span class="s1">&#39;package:back_button_interceptor/back_button_interceptor.dart&#39;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'> <span class="n">runApp</span><span class="p">(</span><span class="kd">const</span> <span class="n">MyApp</span><span class="p">());</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">MyApp</span> <span class="kd">extends</span> <span class="n">StatelessWidget</span> <span class="p">{</span>
+</span><span class='line'> <span class="kd">const</span> <span class="n">MyApp</span><span class="p">({</span><span class="n">Key</span><span class="o">?</span> <span class="n">key</span><span class="p">})</span> <span class="o">:</span> <span class="k">super</span><span class="p">(</span><span class="nl">key:</span> <span class="n">key</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// This widget is the root of your application.</span>
+</span><span class='line'> <span class="err">@</span><span class="n">override</span>
+</span><span class='line'> <span class="n">Widget</span> <span class="n">build</span><span class="p">(</span><span class="n">BuildContext</span> <span class="n">context</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">MaterialApp</span><span class="p">(</span>
+</span><span class='line'>     <span class="nl">title:</span> <span class="s1">&#39;Flutter Demo&#39;</span><span class="p">,</span>
+</span><span class='line'>     <span class="nl">theme:</span> <span class="n">ThemeData</span><span class="p">(</span>
+</span><span class='line'>       <span class="c1">// This is the theme of your application.</span>
+</span><span class='line'>       <span class="c1">//</span>
+</span><span class='line'>       <span class="c1">// Try running your application with &quot;flutter run&quot;. You&#39;ll see the</span>
+</span><span class='line'>       <span class="c1">// application has a blue toolbar. Then, without quitting the app, try</span>
+</span><span class='line'>       <span class="c1">// changing the primarySwatch below to Colors.green and then invoke</span>
+</span><span class='line'>       <span class="c1">// &quot;hot reload&quot; (press &quot;r&quot; in the console where you ran &quot;flutter run&quot;,</span>
+</span><span class='line'>       <span class="c1">// or simply save your changes to &quot;hot reload&quot; in a Flutter IDE).</span>
+</span><span class='line'>       <span class="c1">// Notice that the counter didn&#39;t reset back to zero; the application</span>
+</span><span class='line'>       <span class="c1">// is not restarted.</span>
+</span><span class='line'>       <span class="nl">primarySwatch:</span> <span class="n">Colors</span><span class="p">.</span><span class="n">blue</span><span class="p">,</span>
+</span><span class='line'>     <span class="p">),</span>
+</span><span class='line'>     <span class="nl">home:</span> <span class="kd">const</span> <span class="n">MyHomePage</span><span class="p">(</span><span class="nl">title:</span> <span class="s1">&#39;Flutter Demo Home Page&#39;</span><span class="p">),</span>
+</span><span class='line'>   <span class="p">);</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">MyHomePage</span> <span class="kd">extends</span> <span class="n">StatefulWidget</span> <span class="p">{</span>
+</span><span class='line'> <span class="kd">const</span> <span class="n">MyHomePage</span><span class="p">({</span><span class="n">Key</span><span class="o">?</span> <span class="n">key</span><span class="p">,</span> <span class="n">required</span> <span class="k">this</span><span class="p">.</span><span class="n">title</span><span class="p">})</span> <span class="o">:</span> <span class="k">super</span><span class="p">(</span><span class="nl">key:</span> <span class="n">key</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// This widget is the home page of your application. It is stateful, meaning</span>
+</span><span class='line'> <span class="c1">// that it has a State object (defined below) that contains fields that affect</span>
+</span><span class='line'> <span class="c1">// how it looks.</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// This class is the configuration for the state. It holds the values (in this</span>
+</span><span class='line'> <span class="c1">// case the title) provided by the parent (in this case the App widget) and</span>
+</span><span class='line'> <span class="c1">// used by the build method of the State. Fields in a Widget subclass are</span>
+</span><span class='line'> <span class="c1">// always marked &quot;final&quot;.</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kd">final</span> <span class="kt">String</span> <span class="n">title</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="err">@</span><span class="n">override</span>
+</span><span class='line'> <span class="n">State</span><span class="o">&lt;</span><span class="n">MyHomePage</span><span class="o">&gt;</span> <span class="n">createState</span><span class="p">()</span> <span class="o">=&gt;</span> <span class="n">_MyHomePageState</span><span class="p">();</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">_MyHomePageState</span> <span class="kd">extends</span> <span class="n">State</span><span class="o">&lt;</span><span class="n">MyHomePage</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'> <span class="kt">int</span> <span class="n">_counter</span> <span class="o">=</span> <span class="m">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">void</span> <span class="n">_incrementCounter</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">setState</span><span class="p">(()</span> <span class="p">{</span>
+</span><span class='line'>     <span class="c1">// This call to setState tells the Flutter framework that something has</span>
+</span><span class='line'>     <span class="c1">// changed in this State, which causes it to rerun the build method below</span>
+</span><span class='line'>     <span class="c1">// so that the display can reflect the updated values. If we changed</span>
+</span><span class='line'>     <span class="c1">// _counter without calling setState(), then the build method would not be</span>
+</span><span class='line'>     <span class="c1">// called again, and so nothing would appear to happen.</span>
+</span><span class='line'>     <span class="n">_counter</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>   <span class="p">});</span>
+</span><span class='line'>   <span class="n">_showOverlay</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="nl">text:</span> <span class="s1">&#39;overlay&#39;</span><span class="p">);</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">void</span> <span class="n">_showOverlay</span><span class="p">(</span><span class="n">BuildContext</span> <span class="n">context</span><span class="p">,</span> <span class="p">{</span><span class="n">required</span> <span class="kt">String</span> <span class="n">text</span><span class="p">})</span> <span class="n">async</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">OverlayState</span><span class="o">?</span> <span class="n">overlayState</span> <span class="o">=</span> <span class="n">Overlay</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">);</span>
+</span><span class='line'>   <span class="n">OverlayEntry</span> <span class="n">overlayEntry</span><span class="p">;</span>
+</span><span class='line'>   <span class="n">overlayEntry</span> <span class="o">=</span> <span class="n">OverlayEntry</span><span class="p">(</span><span class="nl">builder:</span> <span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>     <span class="k">return</span> <span class="n">Positioned</span><span class="p">(</span>
+</span><span class='line'>       <span class="nl">left:</span> <span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">width</span> <span class="o">*</span> <span class="m">0.1</span><span class="p">,</span>
+</span><span class='line'>       <span class="nl">top:</span> <span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">height</span> <span class="o">*</span> <span class="m">0.80</span><span class="p">,</span>
+</span><span class='line'>       <span class="nl">child:</span> <span class="n">ClipRRect</span><span class="p">(</span>
+</span><span class='line'>         <span class="nl">borderRadius:</span> <span class="n">BorderRadius</span><span class="p">.</span><span class="n">circular</span><span class="p">(</span><span class="m">10</span><span class="p">),</span>
+</span><span class='line'>         <span class="nl">child:</span> <span class="n">Material</span><span class="p">(</span>
+</span><span class='line'>           <span class="nl">child:</span> <span class="n">Container</span><span class="p">(</span>
+</span><span class='line'>             <span class="nl">alignment:</span> <span class="n">Alignment</span><span class="p">.</span><span class="n">center</span><span class="p">,</span>
+</span><span class='line'>             <span class="nl">color:</span> <span class="n">Colors</span><span class="p">.</span><span class="n">yellowAccent</span><span class="p">,</span>
+</span><span class='line'>             <span class="nl">padding:</span>
+</span><span class='line'>             <span class="n">EdgeInsets</span><span class="p">.</span><span class="n">all</span><span class="p">(</span><span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">height</span> <span class="o">*</span> <span class="m">0.02</span><span class="p">),</span>
+</span><span class='line'>             <span class="nl">width:</span> <span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">width</span> <span class="o">*</span> <span class="m">0.8</span><span class="p">,</span>
+</span><span class='line'>             <span class="nl">height:</span> <span class="n">MediaQuery</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">size</span><span class="p">.</span><span class="n">height</span> <span class="o">*</span> <span class="m">0.06</span><span class="p">,</span>
+</span><span class='line'>             <span class="nl">child:</span> <span class="n">Text</span><span class="p">(</span>
+</span><span class='line'>               <span class="n">text</span><span class="p">,</span>
+</span><span class='line'>               <span class="nl">style:</span> <span class="kd">const</span> <span class="n">TextStyle</span><span class="p">(</span><span class="nl">color:</span> <span class="n">Colors</span><span class="p">.</span><span class="n">black</span><span class="p">),</span>
+</span><span class='line'>             <span class="p">),</span>
+</span><span class='line'>           <span class="p">),</span>
+</span><span class='line'>         <span class="p">),</span>
+</span><span class='line'>       <span class="p">),</span>
+</span><span class='line'>     <span class="p">);</span>
+</span><span class='line'>   <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// inserting overlay entry</span>
+</span><span class='line'>   <span class="n">overlayState</span><span class="o">!</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">overlayEntry</span><span class="p">);</span>
+</span><span class='line'>   <span class="n">BackButtonInterceptor</span><span class="p">.</span><span class="n">add</span><span class="p">((</span><span class="kt">bool</span> <span class="n">stopDefaultButtonEvent</span><span class="p">,</span> <span class="n">RouteInfo</span> <span class="n">info</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>     <span class="n">overlayEntry</span><span class="p">.</span><span class="n">remove</span><span class="p">();</span>
+</span><span class='line'>     <span class="n">BackButtonInterceptor</span><span class="p">.</span><span class="n">removeByName</span><span class="p">(</span><span class="s1">&#39;my_back_button&#39;</span><span class="p">);</span>
+</span><span class='line'>     <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'>   <span class="p">},</span> <span class="nl">name:</span> <span class="s1">&#39;my_back_button&#39;</span><span class="p">);</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="err">@</span><span class="n">override</span>
+</span><span class='line'> <span class="n">Widget</span> <span class="n">build</span><span class="p">(</span><span class="n">BuildContext</span> <span class="n">context</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="c1">// This method is rerun every time setState is called, for instance as done</span>
+</span><span class='line'>   <span class="c1">// by the _incrementCounter method above.</span>
+</span><span class='line'>   <span class="c1">//</span>
+</span><span class='line'>   <span class="c1">// The Flutter framework has been optimized to make rerunning build methods</span>
+</span><span class='line'>   <span class="c1">// fast, so that you can just rebuild anything that needs updating rather</span>
+</span><span class='line'>   <span class="c1">// than having to individually change instances of widgets.</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">Scaffold</span><span class="p">(</span>
+</span><span class='line'>     <span class="nl">appBar:</span> <span class="n">AppBar</span><span class="p">(</span>
+</span><span class='line'>       <span class="c1">// Here we take the value from the MyHomePage object that was created by</span>
+</span><span class='line'>       <span class="c1">// the App.build method, and use it to set our appbar title.</span>
+</span><span class='line'>       <span class="nl">title:</span> <span class="n">Text</span><span class="p">(</span><span class="n">widget</span><span class="p">.</span><span class="n">title</span><span class="p">),</span>
+</span><span class='line'>     <span class="p">),</span>
+</span><span class='line'>     <span class="nl">body:</span> <span class="n">Center</span><span class="p">(</span>
+</span><span class='line'>       <span class="c1">// Center is a layout widget. It takes a single child and positions it</span>
+</span><span class='line'>       <span class="c1">// in the middle of the parent.</span>
+</span><span class='line'>       <span class="nl">child:</span> <span class="n">Column</span><span class="p">(</span>
+</span><span class='line'>         <span class="c1">// Column is also a layout widget. It takes a list of children and</span>
+</span><span class='line'>         <span class="c1">// arranges them vertically. By default, it sizes itself to fit its</span>
+</span><span class='line'>         <span class="c1">// children horizontally, and tries to be as tall as its parent.</span>
+</span><span class='line'>         <span class="c1">//</span>
+</span><span class='line'>         <span class="c1">// Invoke &quot;debug painting&quot; (press &quot;p&quot; in the console, choose the</span>
+</span><span class='line'>         <span class="c1">// &quot;Toggle Debug Paint&quot; action from the Flutter Inspector in Android</span>
+</span><span class='line'>         <span class="c1">// Studio, or the &quot;Toggle Debug Paint&quot; command in Visual Studio Code)</span>
+</span><span class='line'>         <span class="c1">// to see the wireframe for each widget.</span>
+</span><span class='line'>         <span class="c1">//</span>
+</span><span class='line'>         <span class="c1">// Column has various properties to control how it sizes itself and</span>
+</span><span class='line'>         <span class="c1">// how it positions its children. Here we use mainAxisAlignment to</span>
+</span><span class='line'>         <span class="c1">// center the children vertically; the main axis here is the vertical</span>
+</span><span class='line'>         <span class="c1">// axis because Columns are vertical (the cross axis would be</span>
+</span><span class='line'>         <span class="c1">// horizontal).</span>
+</span><span class='line'>         <span class="nl">mainAxisAlignment:</span> <span class="n">MainAxisAlignment</span><span class="p">.</span><span class="n">center</span><span class="p">,</span>
+</span><span class='line'>         <span class="nl">children:</span> <span class="o">&lt;</span><span class="n">Widget</span><span class="o">&gt;</span><span class="p">[</span>
+</span><span class='line'>           <span class="kd">const</span> <span class="n">Text</span><span class="p">(</span>
+</span><span class='line'>             <span class="s1">&#39;You have pushed the button this many times:&#39;</span><span class="p">,</span>
+</span><span class='line'>           <span class="p">),</span>
+</span><span class='line'>           <span class="n">Text</span><span class="p">(</span>
+</span><span class='line'>             <span class="s1">&#39;</span><span class="si">$</span><span class="n">_counter</span><span class="s1">&#39;</span><span class="p">,</span>
+</span><span class='line'>             <span class="nl">style:</span> <span class="n">Theme</span><span class="p">.</span><span class="n">of</span><span class="p">(</span><span class="n">context</span><span class="p">).</span><span class="n">textTheme</span><span class="p">.</span><span class="n">headline4</span><span class="p">,</span>
+</span><span class='line'>           <span class="p">),</span>
+</span><span class='line'>         <span class="p">],</span>
+</span><span class='line'>       <span class="p">),</span>
+</span><span class='line'>     <span class="p">),</span>
+</span><span class='line'>     <span class="nl">floatingActionButton:</span> <span class="n">FloatingActionButton</span><span class="p">(</span>
+</span><span class='line'>       <span class="nl">onPressed:</span> <span class="n">_incrementCounter</span><span class="p">,</span>
+</span><span class='line'>       <span class="nl">tooltip:</span> <span class="s1">&#39;Increment&#39;</span><span class="p">,</span>
+</span><span class='line'>       <span class="nl">child:</span> <span class="kd">const</span> <span class="n">Icon</span><span class="p">(</span><span class="n">Icons</span><span class="p">.</span><span class="n">add</span><span class="p">),</span>
+</span><span class='line'>     <span class="p">),</span> <span class="c1">// This trailing comma makes auto-formatting nicer for build methods.</span>
+</span><span class='line'>   <span class="p">);</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
+</div>
+
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/vote_tips.js"></script>
+  
+  <br/>
+  <div id="post_rec"></div>
+  <br/>
+<a href="https://droidyue.com/blog/categories/zheng-ban-ruan-jian/">低价正版软件，限时优惠，Office 365,Typora等海量优惠</a><br/>
+
+
+  <!-- 
+<script type="text/javascript"  charset="utf-8" src="/javascripts/random_recommend.js">
+</script>
+<script type="text/javascript" charset="utf-8">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+ -->
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-format="autorelaxed"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="4907659907"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script> 
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2022-07-17T21:46:00+08:00" pubdate data-updated="true">Jul 17<span>th</span>, 2022</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/flutter/'>Flutter</a>, <a class='category' href='/blog/categories/overlay/'>Overlay</a>, <a class='category' href='/blog/categories/ios/'>iOS</a>
+  
+</span>
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2022/07/12/nexus-503-issues/" title="Previous Post: Nexus Repo 503 错误解决">&laquo; Nexus Repo 503 错误解决</a>
+      
+      
+    </p>
+    
+
+
+
+	<!-- JiaThis Button BEGIN -->
+
+<!-- JiaThis Button END -->
+
+
+  </footer>
+  </article>
+
+<br/>
+<script type="text/javascript">
+		var geekTimeLinkImageStr = "<a href='http://gk.link/a/104bk'><img src='https://asset.droidyue.com/image/geektime/jikeshijian.jpeg' class='no_boarder_class' style='max-Width:100%'></a><br/>"
+		// document.write(geekTimeLinkImageStr)
+</script>
+
+
+
+  <section>
+   <link rel="stylesheet" href="https://asset.droidyue.com/gitalk/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<div id="gitalk-container"></div>
+<script type="text/javascript">
+	var gitalk = new Gitalk({
+  		clientID: 'c6dab5d2becf02e6568f',
+  		clientSecret: '9541ee96975f1661eab6f69811d0730d348c6546',
+  		repo: 'comments_droidyuecom',
+  		owner: 'droidyuecom',
+  		admin: ['droidyuecom'],
+  		// Ensure uniqueness and length less than 50
+  		id: location.pathname.replace("/blog/", "").substring(0,50),      
+  		distractionFreeMode: false  // Facebook-like distraction free mode
+})
+
+gitalk.render('gitalk-container')
+</script>
+<!--adsense ads after the comments-->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- after_comments -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="9009226797"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+  </section>
+
+
+<link href="/stylesheets/remote.css"  rel="stylesheet" type="text/css">
+	
+
+	
+</div>
+
+<aside class="sidebar">
+  
+    
+<script type="text/javascript">
+	loadJs('/javascripts/right_image_rec.js');
+</script>
+<script type="text/javascript" src="/javascripts/notice.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/07/17/handle-back-button-click-with-overlay-in-flutter/">Flutter 处理 Overlay 返回事件</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/07/12/nexus-503-issues/">Nexus Repo 503 错误解决</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/07/12/flutter-webview-handle-self-goback-first/">Flutter Webview 处理回退历史</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/06/26/fix-grep-is-directory-issue-linux-mac/">Linux 下解决 Grep Is Directory 问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/06/19/waiting-for-another-flutter-command-to-release-the-startup-lock/">Waiting for Another Flutter Command to Release the Startup Lock 问题解决</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/06/17/siyuan-note-618-sale/">碎片知识整理速成绝招，思源笔记真的太强了！限时优惠还能叠券折上折</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/06/17/xmind-big-sale-discount/">限时买一年送半年，618 国民级思维导图工具 XMind 2022 来袭！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/06/13/a-little-git-log-case-can-do-big-help/">谁动了我的奶酪，通过 Git 找出内容变更历史</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/06/06/git-diff-show-filename-only/">终端下 Git Diff 只展示文件名</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/05/31/2022-618-lizhi-dot-io-apps-with-discounts-android-windows-mac-ios/">给「荔」一夏 618 正版软件大促，秒杀 + 折扣 + 满减一起来袭！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/05/30/generate-qrcode-in-terminal-on-mac-or-linux/">Mac 下 终端也能生成二维码了</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/05/23/disable-debugprint-and-print-in-flutter-dart-release-mode/">Flutter/Dart Release 模式下屏蔽 debugPrint 与 Print 输出</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/05/15/how-to-find-duplicated-file-via-one-script/">一个脚本，快速发现项目中的重复文件</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/05/08/flutter-run-stuck-with-log-waiting-for-observatory-port-to-be-available/">Flutter 在 iOS 模拟器中运行卡住问题解决</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/04/25/convert-svg-to-jpg-or-png-in-a-fast-way/">超快速实现 Svg 转 Png，jpg等格式</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/04/18/how-to-be-100x-faster-about-replace-dart-flutter-deps-in-the-development/">简单一招，百倍提速 Flutter 开发</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/04/10/unable-to-create-flutter-project-in-android-studio/">Android Studio 无 创建 Flutter 工程选项（New Flutter Project）解决</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/04/07/how-to-add-overlay-view-in-android/">Android 添加 Overlay View （覆盖视图）</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/03/29/buy-islide-at-a-very-acceptable-price/">iSlide 插件 5 周年回馈，买两年送一年！每月不到 5 块钱</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/03/27/fences-4-is-comming-as-a-cool-app-in-windows/">Fences 4 新版来袭，栅栏式桌面整理快速搞定，从此不再乱糟糟！</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" charset="utf-8">
+	loadJs("https://asset.droidyue.com/javascript/blogroll_data_source.js");
+</script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+<!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
+<center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
+-->
+<html>
+	<!-- <script type="text/javascript">
+		for (var i = 0; i < 3 ; i++) {
+			document.write("<img class='no_boarder_class' style='max-Width:100%' src='" + geekTimeQrImages[i] + "'>");
+		};
+	</script>
+	
+	<br/> -->
+	
+	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_right_0 -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="2412800998"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+	
+
+
+
+</html>
+
+  
+</aside>
+
+
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2022 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> ；优质服务品牌： 
+	  <a href="https://onedrive.live.com/?invref=6b59396564b1963a&invscr=90">OneDrive</a>
+	  <a href="https://www.vultr.com/?ref=7819525-4F">Vultr VPS</a>
+	  <a href="https://m.do.co/c/3c4ff5a7ed39">Digital Ocean</a>
+      <a href="https://billing.virmach.com/aff.php?aff=9882">Virmach(真实可用,1.25$/月)</a>
+	  <a href="https://promotion.aliyun.com/ntms/yunparter/invite.html?userCode=tagltim6">阿里云</a>
+  </span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+
+<script type="text/javascript">
+var jiathis_config = {data_track_clickback:'true'};
+</script>
+
+<script type="text/javascript" src="/javascripts/toastr.min.js"></script>
+<link href="/stylesheets/toastr.min_v1.css" rel="stylesheet"/>
+<div id="toast"></div>
+<script type="text/javascript">
+	loadJsWithoutCache("https://asset.droidyue.com/javascript/rec_dialog_new.js");
+</script>
+
+<script type="text/javascript">
+/* 	var url = "http://onionos.com:8080/report_visitor?landUrl=" + window.btoa(document.location.href) + "&refer=" + window.btoa(document.referrer) + "&ua=" + window.btoa(navigator.userAgent);
+	loadJsNormally(url);*/
+</script>
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="/javascripts/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+  </div>
+</body>
+</html>
