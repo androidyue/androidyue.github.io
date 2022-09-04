@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-09-04T21:46:20+08:00</updated>
+  <updated>2022-09-04T22:21:08+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,183 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[关于仓库的批量处理脚本，效率提升 500%]]></title>
+    <link href="https://droidyue.com/blog/2022/09/04/speed-up-about-cloning-git-repos-and-updating-them/"/>
+    <updated>2022-09-04T21:57:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/09/04/speed-up-about-cloning-git-repos-and-updating-them</id>
+    <content type="html"><![CDATA[<p>很多时候，我们会遇到这样的场景</p>
+
+<ul>
+<li>换了新电脑，需要挨个 clone gitlab repos？</li>
+<li>无法确定哪个 repo 包含了 maven.aliyun.com 这个设置？</li>
+<li>能否批量更新 本地的 repos？</li>
+</ul>
+
+
+<p>如果你有上述的疑问或者情况，你可以尝试本文中的一些批量处理 repos 的方法</p>
+
+<!--more-->
+
+
+<h2>批量 clone</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>ruby cloneRepos.rb code-git-xxxxxx ../projects/
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中 cloneRepos.rb 脚本内容如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class='line'><span class="c1"># encoding: utf-8</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;httparty&#39;</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;json&#39;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">cloneRepos</span><span class="p">(</span><span class="n">repoUrlApi</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>        <span class="s1">&#39;PRIVATE-TOKEN&#39;</span><span class="p">:</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span><span class="p">,</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">response</span> <span class="o">=</span> <span class="no">HTTParty</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">repoUrlApi</span><span class="p">,</span> <span class="ss">headers</span><span class="p">:</span> <span class="n">headers</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">data</span> <span class="o">=</span> <span class="no">JSON</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="p">);</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="n">data</span><span class="o">.</span><span class="n">length</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">data</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span> <span class="o">|</span><span class="n">e</span><span class="o">|</span>
+</span><span class='line'>        <span class="nb">name</span> <span class="o">=</span> <span class="n">e</span><span class="o">[</span><span class="s1">&#39;name&#39;</span><span class="o">]</span>
+</span><span class='line'>        <span class="n">gitUrl</span> <span class="o">=</span> <span class="n">e</span><span class="o">[</span><span class="s1">&#39;ssh_url_to_repo&#39;</span><span class="o">]</span>
+</span><span class='line'>        <span class="nb">system</span> <span class="s2">&quot;cd </span><span class="si">#{</span><span class="no">ARGV</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span><span class="si">}</span><span class="s2"> &amp;&amp; git clone  </span><span class="si">#{</span><span class="n">gitUrl</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>        <span class="nb">puts</span> <span class="nb">name</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="n">cloneRepos</span><span class="p">(</span><span class="s1">&#39;https://code.hahaha.io/api/v4/projects?per_page=100&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="n">cloneRepos</span><span class="p">(</span><span class="s1">&#39;https://code.hahaha.io/api/v4/projects?per_page=100&amp;page=2&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>参数解释</h3>
+
+<ul>
+<li>code-git-xxxxxx 从 gitlab 获取的token，根据下图指示获取</li>
+</ul>
+
+
+<p><img src="https://asset.droidyue.com/image/2022/h2/QQ20220904-220957%402x.png" alt="https://asset.droidyue.com/image/2022/h2/QQ20220904-220957%402x.png" /></p>
+
+<ul>
+<li>../projects 存放的目录</li>
+</ul>
+
+
+<h3>注意</h3>
+
+<p>这个脚本目前只能处理 前200个 repos，如果有需要，可以自行修改代码处理。
+批量工程检索</p>
+
+<h2>快速查找</h2>
+
+<p>比如我们想要搜索 maven.aliyun.com</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>projects gradleSearch.sh maven.aliyun.com
+</span><span class='line'>
+</span><span class='line'>./xxxx/example/android/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span><span class='line'>
+</span><span class='line'>./xxxxx/example/android/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
+</span><span class='line'>
+</span><span class='line'>./xxxx/android/build.gradle:22:            url <span class="s1">&#39;https://maven.aliyun.com/repository/public/&#39;</span>
+</span><span class='line'>
+</span><span class='line'>./xxxx/example/android/build.gradle:6:        maven <span class="o">{</span>url <span class="s1">&#39;https://maven.aliyun.com/repository/google&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中 gradleSearch.sh 的内容如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
+</span><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always -r <span class="s2">&quot;$1&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>批量更新</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>updateRepo.sh
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>它的内容是这样的</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
+</span><span class='line'><span class="k">for </span>dir in */; <span class="k">do</span>
+</span><span class='line'><span class="k">    </span><span class="nb">echo</span> <span class="s2">&quot;$dir&quot;</span>
+</span><span class='line'>    <span class="nv">realpath</span><span class="o">=</span><span class="sb">`</span>realpath <span class="nv">$dir</span><span class="sb">`</span>
+</span><span class='line'>    <span class="nb">echo</span> <span class="nv">$realpath</span>
+</span><span class='line'>    <span class="nb">cd</span> <span class="nv">$realpath</span>
+</span><span class='line'>    git checkout master
+</span><span class='line'>    git pull origin master
+</span><span class='line'>    <span class="nb">cd</span> -
+</span><span class='line'><span class="k">done</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>注意</h3>
+
+<ul>
+<li>如果当前repo 有未提交修改，则无法更新。</li>
+</ul>
+
+
+<p>通过上面的几个脚本，我们可以轻松实现效率提升。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[JetBrains 系列即将涨价，抓紧最后的好价入手！]]></title>
@@ -2490,157 +2667,6 @@ GoLand、CLion、RubyMine&hellip;&hellip;：￥599 > ￥669</p>
 
 
 
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[简单一招，百倍提速 Flutter 开发]]></title>
-    <link href="https://droidyue.com/blog/2022/04/18/how-to-be-100x-faster-about-replace-dart-flutter-deps-in-the-development/"/>
-    <updated>2022-04-18T06:25:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/04/18/how-to-be-100x-faster-about-replace-dart-flutter-deps-in-the-development</id>
-    <content type="html"><![CDATA[<p>Flutter 开发中，为了实现更好的解耦与更高的复用，我们都会使用模块化的思路来处理，在Dart 和 Flutter 中，我们会使用 Dart 包或者插件包等，将它们发布到比如自己的unpub 服务器上，然后在壳工程（主工程）中聚合使用。</p>
-
-<p>比如一个 壳工程的 yaml 是这样的</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">dependencies</span><span class="p-Indicator">:</span>
-</span><span class='line'> <span class="l-Scalar-Plain">flutter</span><span class="p-Indicator">:</span>
-</span><span class='line'>   <span class="l-Scalar-Plain">sdk</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">flutter</span>
-</span><span class='line'> <span class="l-Scalar-Plain">firebase_crashlytics</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">2.4.5</span>
-</span><span class='line'> <span class="l-Scalar-Plain">firebase_analytics</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">9.0.5</span>
-</span><span class='line'> <span class="l-Scalar-Plain">basic</span><span class="p-Indicator">:</span>
-</span><span class='line'>   <span class="l-Scalar-Plain">hosted</span><span class="p-Indicator">:</span>
-</span><span class='line'>     <span class="l-Scalar-Plain">name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">basic</span>
-</span><span class='line'>     <span class="l-Scalar-Plain">url</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">https://unpub.droidyue.com</span>
-</span><span class='line'>   <span class="l-Scalar-Plain">version</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">1.6.2</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>于是有这样一个场景，我们想要在basic 包里面加一个方法，并应用到 主工程中。</p>
-
-<p>但是在执行处理的时候，我们会有这样的考虑</p>
-
-<ul>
-<li>如果修改的内容，通过 unpub 进行验证，时间成本很大。</li>
-<li>但是发布到unpub，需要有一定的质量把控，修改的内容必须进行验证通过后，才能发布到unpub 服务器上</li>
-</ul>
-
-
-<p>所以，我们需要尝试寻找一种不通过 unpub，更快速验证修改内容的方式。</p>
-
-<p>好在 dart 提供了 <code>dependency_overrides</code> 这个配置项来处理依赖重写问题。</p>
-
-<!--more-->
-
-
-<p>使用起来也很简单，下面就是我们实现重写 basic 的示例，基本上只需要关心 包名称(basic)与 path (../basic)即可。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='yaml'><span class='line'><span class="l-Scalar-Plain">dependency_overrides</span><span class="p-Indicator">:</span>
-</span><span class='line'> <span class="l-Scalar-Plain">basic</span><span class="p-Indicator">:</span>
-</span><span class='line'>   <span class="l-Scalar-Plain">path</span><span class="p-Indicator">:</span> <span class="s">&quot;../basic&quot;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>虽然提供了上面的方法可以实现依赖重写，但是还是不够快速，这是因为通常场景是这样的</p>
-
-<ul>
-<li>我们通常用 Android Studio 打开了 basic 工程，AS 开多了会卡。</li>
-<li>当我们想要使用<code>dependency_overrides</code>调整 basic 时，需要用Android studio 再次打开壳工程项目。当然也可以使用文本编辑器，但是它对yaml 支持不一定有 AS 那么好，无法智能提示。</li>
-</ul>
-
-
-<p>那么有没有更快速的方式呢，答案是有的，这是因为 yaml 是结构化的，我们可以使用脚本来生成<code>dependency_overrides</code>对应的内容。</p>
-
-<p>下面就是一个ruby 脚本，实现yaml 内容的添加处理。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
-</span><span class='line'><span class="c1"># encoding: utf-8</span>
-</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;yaml&#39;</span>
-</span><span class='line'><span class="n">file_path</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
-</span><span class='line'><span class="n">repo_name</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span>
-</span><span class='line'><span class="n">repo_path</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">2</span><span class="o">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">yaml_string</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">read</span> <span class="n">file_path</span>
-</span><span class='line'><span class="n">data</span> <span class="o">=</span> <span class="no">YAML</span><span class="o">.</span><span class="n">load</span> <span class="n">yaml_string</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="s1">&#39;dependency_overrides&#39;</span><span class="p">)</span>
-</span><span class='line'>    <span class="nb">hash</span> <span class="o">=</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">repo_name</span><span class="o">.</span><span class="n">strip</span> <span class="o">=&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="s2">&quot;path&quot;</span> <span class="o">=&gt;</span> <span class="n">repo_path</span><span class="o">.</span><span class="n">strip</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="n">data</span><span class="o">[</span><span class="s1">&#39;dependency_overrides&#39;</span><span class="o">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">[</span><span class="s1">&#39;dependency_overrides&#39;</span><span class="o">].</span><span class="n">merge</span><span class="p">(</span><span class="nb">hash</span><span class="p">)</span>
-</span><span class='line'><span class="k">else</span>
-</span><span class='line'>    <span class="n">data</span><span class="o">[</span><span class="s1">&#39;dependency_overrides&#39;</span><span class="o">]</span> <span class="o">=</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">repo_name</span><span class="o">.</span><span class="n">strip</span> <span class="o">=&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="s2">&quot;path&quot;</span> <span class="o">=&gt;</span> <span class="n">repo_path</span><span class="o">.</span><span class="n">strip</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">output</span> <span class="o">=</span> <span class="no">YAML</span><span class="o">.</span><span class="n">dump</span> <span class="n">data</span>
-</span><span class='line'><span class="no">File</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>保存上面的脚本，命名为 localDartDep.rb,</li>
-<li>将其路径放入环境变量 PATH, 然后更新当前的bash</li>
-<li>切换到当前项目路径，然后执行 <code>localDartDep.rb basic ../basic</code> 即可快速完成替换操作。不用开Android Studio，轻量快捷。</li>
-</ul>
-
-
-<p>对于上面的操作，依然可以更加包装成一个shell 脚本，实现更加便捷的处理</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>localDartDep.rb <span class="s2">&quot;$1/pubspec.yaml&quot;</span> <span class="s2">&quot;basic&quot;</span> <span class="s2">&quot;../basic&quot;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>然后切换到对应的工程下，执行<code>basicLocalDep.sh ./</code> 即可。</p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
