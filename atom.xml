@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-09-12T22:08:16+08:00</updated>
+  <updated>2022-09-12T22:24:03+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,144 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Flutter 3 迁移后编译 warnings 一键修复]]></title>
+    <link href="https://droidyue.com/blog/2022/09/12/fix-flutter-3-warnings-quickly/"/>
+    <updated>2022-09-12T22:15:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/09/12/fix-flutter-3-warnings-quickly</id>
+    <content type="html"><![CDATA[<p>当我们的 app 支持 flutter 3 后，无论是编译速度，还是运行效率，方方面面会有很大的提升。但是在我们编译的时候，会有类似下面的这些警告。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>../../../your_pub/lib/src/framework.dart:275:26: Warning: Operand of null-aware operation <span class="s1">&#39;!&#39;</span> has <span class="nb">type</span> <span class="s1">&#39;SchedulerBinding&#39;</span> which excludes null.
+</span><span class='line'><span class="o">[</span>        <span class="o">]</span>  - <span class="s1">&#39;SchedulerBinding&#39;</span> is from <span class="s1">&#39;package:flutter/src/scheduler/binding.dart&#39;</span> <span class="o">(</span><span class="s1">&#39;../../../code/flutter_3/packages/flutter/lib/src/scheduler/binding.dart&#39;</span><span class="o">)</span>.
+</span><span class='line'><span class="o">[</span>        <span class="o">]</span>     <span class="k">if</span> <span class="o">(</span>SchedulerBinding.instance!.schedulerPhase <span class="o">==</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的警告虽然不会影响应用的编译，但是长久来看，还是需要解决的。</p>
+
+<!--more-->
+
+
+<h2>原因为何</h2>
+
+<p>原因是从 flutter 3 开始, <code>SchedulerBinding.instance</code>返回的是一个 非 null 实例，当我们使用<code>SchedulerBinding.instance!.schedulerPhase</code> 会得到这样的警告<code>Warning: Operand of null-aware operation '!' has type 'SchedulerBinding' which excludes null.
+</code></p>
+
+<h2>如何解决</h2>
+
+<p>解决起来很简单，按照下面的处理，将<code>!</code>去掉即可。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>SchedulerBinding.instance.schedulerPhase
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>都有哪些场景</h2>
+
+<p>flutter3 开始，下面这些都会有编译警告问题</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>SchedulerBinding.instance!.xxx
+</span><span class='line'>SchedulerBinding.instance?.xxx
+</span><span class='line'>
+</span><span class='line'>WidgetsBinding.instance!.xxxx
+</span><span class='line'>WidgetsBinding.instance?.xxxx
+</span><span class='line'>
+</span><span class='line'>PaintingBinding.instance?.xxx
+</span><span class='line'>PaintingBinding.instance!.xxx
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>RendererBinding.instance!.xxx
+</span><span class='line'>RendererBinding.instance?.xxxx
+</span><span class='line'>
+</span><span class='line'>GestureBinding.instance!.xxx
+</span><span class='line'>GestureBinding.instance?.xxx
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>一键解决</h2>
+
+<p>那这么多内容需要解决，有没有一键处理的办法呢？</p>
+
+<p>如果你接触过 终端脚本，答案是肯定的。我们可以使用下面的shell 脚本处理。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/usr/bin/env bash</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">function </span>sedReplaceFile<span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nb">echo</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/SchedulerBinding.instance!/SchedulerBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/SchedulerBinding.instance?/SchedulerBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/WidgetsBinding.instance!/WidgetsBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/WidgetsBinding.instance?/WidgetsBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/PaintingBinding.instance?/PaintingBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/PaintingBinding.instance!/PaintingBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/RendererBinding.instance!/RendererBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/RendererBinding.instance?/RendererBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/GestureBinding.instance!/GestureBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  sed -i <span class="s2">&quot;&quot;</span> -e <span class="s2">&quot;s/GestureBinding.instance?/GestureBinding.instance/g&quot;</span> <span class="nv">$1</span>
+</span><span class='line'>  
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">export</span> -f sedReplaceFile
+</span><span class='line'>find . -name <span class="s2">&quot;*.dart&quot;</span>  | xargs -I <span class="o">{}</span> bash -c <span class="s1">&#39;sedReplaceFile {}&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>执行</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">cd </span>your_project
+</span><span class='line'>f3_fix.sh
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>注</h2>
+
+<ul>
+<li>上面的脚本仅在 mac 系统验证， Linux 可能需要自行做简易修改。</li>
+<li>如果是 三方pub 包含警告问题，可以选择对应适配 flutter 3 的版本升级即可。</li>
+</ul>
+
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[正版软件优惠，近期新品软件推荐]]></title>
@@ -2542,63 +2680,6 @@ GoLand、CLion、RubyMine&hellip;&hellip;：￥599 > ￥669</p>
 <li>在执行之前建议执行以下clean，比如安卓项目执行<code>./gradlew clean</code></li>
 </ul>
 
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Flutter 在 iOS 模拟器中运行卡住问题解决]]></title>
-    <link href="https://droidyue.com/blog/2022/05/08/flutter-run-stuck-with-log-waiting-for-observatory-port-to-be-available/"/>
-    <updated>2022-05-08T22:41:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/05/08/flutter-run-stuck-with-log-waiting-for-observatory-port-to-be-available</id>
-    <content type="html"><![CDATA[<p>当我们尝试在 iOS 模拟器运行 <code>flutter run</code> 可能会出现类似如下的卡住问题。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nl">executing:</span> <span class="n">xcrun</span> <span class="n">simctl</span> <span class="n">launch</span> <span class="n">xxx</span><span class="o">-</span><span class="mi">54</span><span class="n">F9</span><span class="o">-</span><span class="mi">427</span><span class="n">F</span><span class="o">-</span><span class="mi">8119</span><span class="o">-</span><span class="n">xxxx</span> <span class="n">com</span><span class="o">.</span><span class="na">hahaha</span><span class="o">.</span><span class="na">app</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">dart</span><span class="o">-</span><span class="n">profiling</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">checked</span><span class="o">-</span><span class="n">mode</span> <span class="o">--</span><span class="n">verify</span><span class="o">-</span><span class="n">entry</span><span class="o">-</span><span class="n">points</span> <span class="o">--</span><span class="n">observatory</span><span class="o">-</span><span class="n">port</span><span class="o">=</span><span class="mi">0</span>
-</span><span class='line'><span class="o">[+</span><span class="mi">1000</span> <span class="n">ms</span><span class="o">]</span> <span class="n">com</span><span class="o">.</span><span class="na">hahaha</span><span class="o">.</span><span class="na">app</span><span class="o">:</span> <span class="mi">49573</span>
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="n">Waiting</span> <span class="k">for</span> <span class="n">observatory</span> <span class="n">port</span> <span class="n">to</span> <span class="n">be</span> <span class="n">available</span><span class="err">…</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>模拟器上的 App 也无法打开，也看不出有什么具体的崩溃问题。不知如何是好。</p>
-
-<!--more-->
-
-
-<p>不过，还是有办法解决的，那就是使用 XCode 运行项目，查看输出</p>
-
-<h2>使用 Xcode 打开项目</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">cd</span> <span class="n">ios</span><span class="o">/</span>
-</span><span class='line'><span class="n">open</span> <span class="n">Runner</span><span class="o">.</span><span class="na">xcworkspace</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>点击运行</h2>
-
-<p>像正常的 iOS 项目一样，点击 那个类似播放的按钮进行编译运行。</p>
-
-<h2>查看日志</h2>
-
-<p>等到运行后，大概在 XCode 右下角，就会发现一定的错误信息</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nl">dyld:</span> <span class="n">Symbol</span> <span class="n">not</span> <span class="nl">found:</span> <span class="n">_$s7SwiftUI4ViewP14_viewListCountxxdddx6inputsSiSgxxxAA01_ceF6xxdxxddInputsV_tFZxxxxTq</span>
-</span><span class='line'>  <span class="n">Referenced</span> <span class="nl">from:</span> <span class="o">/</span><span class="n">Users</span><span class="o">/</span><span class="n">xxxxx</span><span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Developer</span><span class="o">/</span><span class="n">CoreSimulator</span><span class="o">/</span><span class="n">Devices</span><span class="o">/</span><span class="n">xxxxddxx</span><span class="o">-</span><span class="mi">54</span><span class="n">F9</span><span class="o">-</span><span class="mi">427</span><span class="n">F</span><span class="o">-</span><span class="mi">8119</span><span class="o">-</span><span class="n">xxxxx</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">Containers</span><span class="o">/</span><span class="n">Bundle</span><span class="o">/</span><span class="n">Application</span><span class="o">/</span><span class="n">xxxx</span><span class="o">-</span><span class="mi">8791</span><span class="o">-</span><span class="mi">4</span><span class="n">B78xxx</span><span class="o">-</span><span class="n">A9C1</span><span class="o">-</span><span class="mi">381572</span><span class="n">AC1A2B</span><span class="o">/</span><span class="n">Runner</span><span class="o">.</span><span class="na">app</span><span class="o">/</span><span class="n">Frameworks</span><span class="o">/</span><span class="n">abcde</span><span class="o">.</span><span class="na">framework</span><span class="o">/</span><span class="n">abcde</span> <span class="o">(</span><span class="n">which</span> <span class="n">was</span> <span class="n">built</span> <span class="k">for</span> <span class="n">iOS</span> <span class="mf">14.0</span><span class="o">)</span>
-</span><span class='line'>  <span class="n">Expected</span> <span class="nl">in:</span> <span class="o">/</span><span class="n">System</span><span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Frameworks</span><span class="o">/</span><span class="n">SwiftUI</span><span class="o">.</span><span class="na">framework</span><span class="o">/</span><span class="n">SwiftUI</span>
-</span><span class='line'> <span class="n">in</span> <span class="o">/</span><span class="n">Users</span><span class="o">/</span><span class="n">xxxxxx</span><span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Developer</span><span class="o">/</span><span class="n">CoreSimulator</span><span class="o">/</span><span class="n">Devices</span><span class="o">/</span><span class="n">xxxxx</span><span class="o">-</span><span class="mi">54</span><span class="n">F9</span><span class="o">-</span><span class="mi">427</span><span class="n">F</span><span class="o">-</span><span class="mi">8119</span><span class="o">-</span><span class="n">xxxxxx</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">Containers</span><span class="o">/</span><span class="n">Bundle</span><span class="o">/</span><span class="n">Application</span><span class="o">/</span><span class="n">xxxxx</span><span class="o">-</span><span class="mi">8791</span><span class="o">-</span><span class="mi">4</span><span class="n">B78</span><span class="o">-</span><span class="n">xxxx</span><span class="o">-</span><span class="mi">381572</span><span class="n">xAC1A2B</span><span class="o">/</span><span class="n">Runner</span><span class="o">.</span><span class="na">app</span><span class="o">/</span><span class="n">Frameworks</span><span class="o">/</span><span class="n">abcde</span><span class="o">.</span><span class="na">framework</span><span class="o">/</span><span class="n">abcde</span>
-</span><span class='line'><span class="nl">dyld:</span> <span class="n">launch</span><span class="o">,</span> <span class="n">loading</span> <span class="n">dependent</span> <span class="n">libraries</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>通过分析上面的错误日志，我们可以确定，这个问题是因为在低于 14 的模拟器上是无法运行这个应用的。</p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
