@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2022-09-18T21:40:23+08:00</updated>
+  <updated>2022-10-04T21:26:40+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,84 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[修复 Flutter 项目中 xxx.kt: (19, 8): Redeclaration: xxxManager]]></title>
+    <link href="https://droidyue.com/blog/2022/10/04/fix-flutter-redeclaration-xxx-kotlin-error/"/>
+    <updated>2022-10-04T21:21:00+08:00</updated>
+    <id>https://droidyue.com/blog/2022/10/04/fix-flutter-redeclaration-xxx-kotlin-error</id>
+    <content type="html"><![CDATA[<p>在我们日常构建 Android app 包时，多少会遇到这样的问题</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[        ] e: /Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.3/android/src/main/kotlin/com/example/gogogo/xxxManager.kt: (19, 8): Redeclaration: xxxManager
+</span><span class='line'>[        ] e: /Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.3/android/src/main/kotlin/com/example/gogogo/xxxManager.kt: (79, 12): Redeclaration: gogogoResult
+</span><span class='line'>[        ] e: /Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.3/android/src/main/kotlin/com/example/gogogo/xxxManager.kt: (82, 12): Redeclaration: gogogoListResult
+</span><span class='line'>[        ] e: /Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/android/src/main/kotlin/com/example/gogogo/xxxManager.kt: (21, 8): Redeclaration: xxxManager
+</span><span class='line'>[        ] e: /Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/android/src/main/kotlin/com/example/gogogo/xxxManager.kt: (94, 12): Redeclaration: gogogoResult
+</span><span class='line'>[        ] e: /Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/android/src/main/kotlin/com/example/gogogo/xxxManager.kt: (97, 12): Redeclaration: gogogoListResult</span></code></pre></td></tr></table></div></figure>
+
+
+<!--more-->
+
+
+<h2>问题的原因</h2>
+
+<ul>
+<li>因为 Kotlin 增量编译的bug。当你关闭增量编译时，该问题不会出现。</li>
+</ul>
+
+
+<h2>常用的解决办法</h2>
+
+<ul>
+<li>flutter clean</li>
+<li>但是这个方法可能会比较重，因为它会清理掉一些多余的缓存，影响构建速度</li>
+</ul>
+
+
+<h2>更加轻量的解决办法</h2>
+
+<ul>
+<li>该方法只删除对应的pub 缓存，不删除其他的内容。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
+</span><span class='line'>find ~/.pub-cache/hosted  -name <span class="s2">&quot;$1-*&quot;</span> -type d -maxdepth 2 | xargs rm -rfv
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>保存上述命令为脚本。</p>
+
+<p>比如我们出问题的 pub 名称为 gogogo 我们只需要清除它的版本缓存就可以了。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>removePubCache.sh gogogo
+</span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/LICENSE
+</span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/test/gogogo_test.dart
+</span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/test
+</span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/CHANGELOG.md
+</span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/example/test/widget_test.dart
+</span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/example/test
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后执行一下<code>flutter pub get --verbose</code>即可（需要）。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Mac 平台知名视频下载工具 Downie 4 买断仅需 79 元]]></title>
@@ -2372,61 +2450,6 @@ GoLand、CLion、RubyMine&hellip;&hellip;：￥599 > ￥669</p>
 <hr />
 
 <p>数码荔枝 618 活动正式开启！秒杀 + 折扣 + 满减的超强优惠阵容，错过要等好久，赶快买它！别忘了通过<a href="https://store.lizhi.io/?cid=wncr9wz5">专属链接</a> 前往购买，享受独家的大促优惠！</p>
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Mac 下 终端也能生成二维码了]]></title>
-    <link href="https://droidyue.com/blog/2022/05/30/generate-qrcode-in-terminal-on-mac-or-linux/"/>
-    <updated>2022-05-30T07:45:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/05/30/generate-qrcode-in-terminal-on-mac-or-linux</id>
-    <content type="html"><![CDATA[<p>有些时候，我们需要将链接或者文本转换成 二维码，通常这时候我们会使用网上的在线服务进行处理，其实我们还可以做到更加简单，使用终端即可生成二维码。</p>
-
-<p>这里，我们需要借助 Mac 下 homebrew 的一个库来实现，这个库的名字叫做 qrencode。下面就是关于 这个库的安装，封装，以及使用。</p>
-
-<!--more-->
-
-
-<h2>安装</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>brew install qrencode
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>使用</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>qrencode  -t ANSIUTF8 https://droidyue.com
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>执行上面的语句，就能马上看到一个二维码在终端生成了。</p>
-
-<h2>保存成脚本(qrCodeGenerate.sh)</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>qrencode  -t ANSIUTF8 <span class="nv">$1</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>脚本使用</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>qrCodeGenerate.sh https://droidyue.com
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>保存成脚本，让我们后续使用起来更加的简单与快捷。</p>
-
-<h2>qrencode 文档</h2>
-
-<ul>
-<li><a href="https://formulae.brew.sh/formula/qrencode">https://formulae.brew.sh/formula/qrencode</a></li>
-</ul>
-
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
