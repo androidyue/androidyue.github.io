@@ -1,0 +1,913 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>详解JVM如何处理异常 - 技术小黑屋</title>
+  <meta name="author" content="androidyue">
+  
+  <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
+  <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
+  
+  <meta name="description" content="详解JVM如何处理异常 Oct 21st, 2018 无论你是使用何种编程语言，在日常的开发过程中，都会不可避免的要处理异常。今天本文将尝试讲解一些JVM如何处理异常问题，希望能够讲清楚这个内部的机制，如果对大家有所启发和帮助，则甚好。 当异常不仅仅是异常 我们在标题中提到了异常， &hellip;">
+  
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" href="/images/touch_icon.png"/>
+  
+  <link rel="canonical" href="https://droidyue.com/blog/2018/10/21/how-jvm-handle-exceptions">
+  <link href="/images/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="技术小黑屋" type="application/atom+xml">
+  <script src="/javascripts/ad.js"></script>
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
+      function setCookie(name,value,days) {
+          if (days) {
+              var date = new Date();
+              date.setTime(date.getTime()+(days*24*60*60*1000));
+              var expires = "; expires="+date.toGMTString();
+          }
+          else var expires = "";
+          document.cookie = name+"="+value+expires+"; path=/";
+      }
+
+      function eraseCookie(name) {
+          setCookie(name,"",-1);
+      }
+
+
+      function readCookie(name) {
+          var nameEQ = name + "=";
+          var ca = document.cookie.split(';');
+          for(var i=0;i < ca.length;i++) {
+              var c = ca[i];
+              while (c.charAt(0)==' ') c = c.substring(1,c.length);
+              if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+          }
+          return null;
+      }
+
+      function loadJsNormally(jsUrl) {
+          document.write('<script type="text/javascript" charset="utf-8" src="'+ jsUrl +'"></scr'+'ipt>');
+      }
+
+      function loadJsWithoutCache(jsUrl) {
+          jsUrl = jsUrl + '?v=' + +Math.random();
+          loadJsNormally(jsUrl);
+      }
+
+      
+      var droidyueNoCacheLoading = 'droidyue.no-cache';
+
+      function isNoCacheLoadingEnabled() {
+          return readCookie(droidyueNoCacheLoading) != null;
+      }
+
+      var noCacheLoading = isNoCacheLoadingEnabled();
+
+      function enableNoCacheLoading() {
+          setCookie(droidyueNoCacheLoading, 1, 365);
+      }
+
+      function disableNoCacheLoading() {
+          eraseCookie(droidyueNoCacheLoading);
+      }
+
+
+      function loadJs(jsUrl) {
+          if (noCacheLoading) {
+              loadJsWithoutCache(jsUrl);
+          } else {
+              loadJsNormally(jsUrl);
+          }
+      }
+  </script>
+  <script type="text/javascript" charset="utf-8" src="/javascripts/blogutils.js"></script>
+  <script type="text/javascript">
+    loadJsWithoutCache("https://asset.droidyue.com/javascript/geektime_qr_images.js");
+  </script>
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/book_rec_base.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="/stylesheets/pt_serif.css" rel="stylesheet" type="text/css">
+<link href="/stylesheets/PT_Sans.css" rel="stylesheet" type="text/css">
+
+  <script type="text/javascript" src="/javascripts/trackurl_maker.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/remote_head.js" charset="utf-8"></script>
+  <script type="text/javascript" src="https://asset.droidyue.com/javascript/best_posts_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/common_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/program_book_data_source.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/android_book_data.js" charset="utf-8"></script>
+  <script type="text/javascript" src="/javascripts/java_book_data.js" charset="utf-8"></script>
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+  (adsbygoogle = window.adsbygoogle || []).push({
+    google_ad_client: "ca-pub-6762344977202446",
+    enable_page_level_ads: true
+  });
+</script>
+
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">技术小黑屋</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation">
+<form action="https://google.com/search" method="get"  target="_blank">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:droidyue.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="搜索" />
+    <input type=hidden name=domains value="droidyue.com">
+    <input type=hidden name=sitesearch value="droidyue.com">
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">首页</a></li>
+  <li><a href="/ninki/">干货铺子</a></li>
+  <li><a href="/blog/archives/">存档</a></li>
+  <li><a href="/reading/">读书</a></li>
+  <li><a href="/blog/categories/zheng-ban-ruan-jian/">低价正版</a></li>
+  <li><a href="/about/">关于</a></li>
+  <li><a href="/cooperate/">合作</a></li>
+  <li><a href="/donate/">捐赠</a></li>
+  <li><a href="/subscribe/">订阅</a></li>
+  <li><a href="/gfriends/">好基友</a></li>
+  <li><a href="/neitui/">内推</a></li>
+  <li><a href="/fuli/index.html">福利</a></li>
+  <li><a href="/links/">友链</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">详解JVM如何处理异常</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-10-21T20:14:00+08:00" pubdate data-updated="true">Oct 21<span>st</span>, 2018</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>无论你是使用何种编程语言，在日常的开发过程中，都会不可避免的要处理异常。今天本文将尝试讲解一些JVM如何处理异常问题，希望能够讲清楚这个内部的机制，如果对大家有所启发和帮助，则甚好。</p>
+
+<h2>当异常不仅仅是异常</h2>
+
+<p>我们在标题中提到了异常，然而这里指的异常并不是单纯的Exception，而是更为宽泛的Throwable。只是我们工作中习以为常的将它们（错误地）这样称谓。</p>
+
+<p>关于Exception和Throwable的关系简单描述一下</p>
+
+<ul>
+<li>Exception属于Throwable的子类，Throwable的另一个重要的子类是Error</li>
+<li>throw可以抛出的都是Throwable和其子类，catch可捕获的也是Throwable和其子类。</li>
+</ul>
+
+
+<!--more-->
+
+
+<p>除此之外，但是Exception也有一些需要我们再次强调的</p>
+
+<ul>
+<li>Exception分为两种类型，一种为Checked Exception，另一种为unchecked Exception</li>
+<li>Checked Exception，比如最常见的IOException，这种异常需要调用处显式处理，要么使用try catch捕获，要么再次抛出去。</li>
+<li>Unchecked Exception指的是所有继承自Error（包含自身）或者是RuntimeException（包含自身）的类。这些异常不强制在调用处进行处理。但是也可以try catch处理。</li>
+</ul>
+
+
+<p>注：本文暂不做Checked Exception设计的好坏的分析。</p>
+
+<h2>Exception Table 异常表</h2>
+
+<p>提到JVM处理异常的机制，就需要提及Exception Table，以下称为异常表。我们暂且不急于介绍异常表，先看一个简单的Java处理异常的小例子。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatch</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">testNPE</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码是一个很简单的例子，用来捕获处理一个潜在的空指针异常。</p>
+
+<p>当然如果只是看简简单单的代码，我们很难看出什么高深之处，更没有了今天文章要谈论的内容。</p>
+
+<p>所以这里我们需要借助一把神兵利器，它就是javap,一个用来拆解class文件的工具，和javac一样由JDK提供。</p>
+
+<p>然后我们使用javap来分析这段代码（需要先使用javac编译）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//javap -c Main</span>
+</span><span class='line'> <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatch</span><span class="o">();</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
+</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">11</span>
+</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class='line'>       <span class="mi">7</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
+</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="k">return</span>
+</span><span class='line'>    <span class="n">Exception</span> <span class="nl">table:</span>
+</span><span class='line'>       <span class="n">from</span>    <span class="n">to</span>  <span class="n">target</span> <span class="n">type</span>
+</span><span class='line'>           <span class="mi">0</span>     <span class="mi">3</span>     <span class="mi">6</span>   <span class="n">Class</span> <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Exception</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>看到上面的代码，应该会有会心一笑，因为终于看到了Exception table，也就是我们要研究的异常表。</p>
+
+<p>异常表中包含了一个或多个异常处理者(Exception Handler)的信息，这些信息包含如下</p>
+
+<ul>
+<li>from 可能发生异常的起始点</li>
+<li>to 可能发生异常的结束点</li>
+<li>target 上述from和to之前发生异常后的异常处理者的位置</li>
+<li>type 异常处理者处理的异常的类信息</li>
+</ul>
+
+
+<h2>那么异常表用在什么时候呢</h2>
+
+<p>答案是异常发生的时候，当一个异常发生时</p>
+
+<p>1.JVM会在当前出现异常的方法中，查找异常表，是否有合适的处理者来处理</p>
+
+<p>2.如果当前方法异常表不为空，并且异常符合处理者的from和to节点，并且type也匹配，则JVM调用位于target的调用者来处理。</p>
+
+<p>3.如果上一条未找到合理的处理者，则继续查找异常表中的剩余条目</p>
+
+<p>4.如果当前方法的异常表无法处理，则向上查找（弹栈处理）刚刚调用该方法的调用处，并重复上面的操作。</p>
+
+<p>5.如果所有的栈帧被弹出，仍然没有处理，则抛给当前的Thread，Thread则会终止。</p>
+
+<p>6.如果当前Thread为最后一个非守护线程，且未处理异常，则会导致JVM终止运行。</p>
+
+<p>以上就是JVM处理异常的一些机制。</p>
+
+<h2>try catch -finally</h2>
+
+<p>除了简单的try-catch外，我们还常常和finally做结合使用。比如这样的代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">testNPE</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Finally&quot;</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>同样我们使用javap分析一下代码</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">();</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
+</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class='line'>       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
+</span><span class='line'>      <span class="mi">14</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
+</span><span class='line'>      <span class="mi">19</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      <span class="mi">22</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class='line'>      <span class="mi">24</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">27</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
+</span><span class='line'>      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_1</span>
+</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class='line'>      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>
+</span><span class='line'>      <span class="mi">41</span><span class="o">:</span> <span class="k">return</span>
+</span><span class='line'>    <span class="n">Exception</span> <span class="nl">table:</span>
+</span><span class='line'>       <span class="n">from</span>    <span class="n">to</span>  <span class="n">target</span> <span class="n">type</span>
+</span><span class='line'>           <span class="mi">0</span>     <span class="mi">3</span>    <span class="mi">14</span>   <span class="n">Class</span> <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Exception</span>
+</span><span class='line'>           <span class="mi">0</span>     <span class="mi">3</span>    <span class="mi">30</span>   <span class="n">any</span>
+</span><span class='line'>          <span class="mi">14</span>    <span class="mi">19</span>    <span class="mi">30</span>   <span class="n">any</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>和之前有所不同，这次</p>
+
+<ul>
+<li>异常表中，有三条数据，而我们仅仅捕获了一个Exception</li>
+<li>异常表的后两个item的type为any</li>
+</ul>
+
+
+<p>上面的三条异常表item的意思为</p>
+
+<ul>
+<li>如果0到3之间，发生了Exception类型的异常，调用14位置的异常处理者。</li>
+<li>如果0到3之间，无论发生什么异常，都调用30位置的处理者</li>
+<li>如果14到19之间（即catch部分），不论发生什么异常，都调用30位置的处理者。</li>
+</ul>
+
+
+<p>再次分析上面的Java代码，finally里面的部分已经被提取到了try部分和catch部分。我们再次调一下代码来看一下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">();</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>      <span class="c1">//try 部分提取finally代码，如果没有异常发生，则执行输出finally操作，直至goto到41位置，执行返回操作。  </span>
+</span><span class='line'>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
+</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class='line'>       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">//catch部分提取finally代码，如果没有异常发生，则执行输出finally操作，直至执行got到41位置，执行返回操作。</span>
+</span><span class='line'>      <span class="mi">14</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
+</span><span class='line'>      <span class="mi">19</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      <span class="mi">22</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class='line'>      <span class="mi">24</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">27</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
+</span><span class='line'>      <span class="c1">//finally部分的代码如果被调用，有可能是try部分，也有可能是catch部分发生异常。</span>
+</span><span class='line'>      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_1</span>
+</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class='line'>      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>     <span class="c1">//如果异常没有被catch捕获，而是到了这里，执行完finally的语句后，仍然要把这个异常抛出去，传递给调用处。</span>
+</span><span class='line'>      <span class="mi">41</span><span class="o">:</span> <span class="k">return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Catch先后顺序的问题</h2>
+
+<p>我们在代码中的catch的顺序决定了异常处理者在异常表的位置，所以，越是具体的异常要先处理，否则就会出现下面的问题</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">misuseCatchException</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">testNPE</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">t</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="c1">//error occurs during compilings with tips Exception Java.lang.Exception has already benn caught.</span>
+</span><span class='line'>       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这段代码会导致编译失败，因为先捕获Throwable后捕获Exception，会导致后面的catch永远无法被执行。</p>
+
+<h2>Return 和finally的问题</h2>
+
+<p>这算是我们扩展的一个相对比较极端的问题，就是类似这样的代码，既有return，又有finally，那么finally导致会不会执行</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">String</span> <span class="nf">tryCatchReturn</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">testNPE</span><span class="o">();</span>
+</span><span class='line'>       <span class="k">return</span>  <span class="s">&quot;OK&quot;</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="k">return</span> <span class="s">&quot;ERROR&quot;</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;tryCatchReturn&quot;</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>答案是finally会执行，那么还是使用上面的方法，我们来看一下为什么finally会执行。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="nf">tryCatchReturn</span><span class="o">();</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
+</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// String OK</span>
+</span><span class='line'>       <span class="mi">5</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>       <span class="mi">9</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
+</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">14</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="n">areturn</span>       <span class="err">返回</span><span class="n">OK</span><span class="err">字符串，</span><span class="n">areturn</span><span class="err">意思为</span><span class="k">return</span> <span class="n">a</span> <span class="n">reference</span> <span class="n">from</span> <span class="n">a</span> <span class="n">method</span>
+</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class='line'>      <span class="mi">17</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">10</span>                 <span class="c1">// String ERROR</span>
+</span><span class='line'>      <span class="mi">19</span><span class="o">:</span> <span class="n">astore_1</span>
+</span><span class='line'>      <span class="mi">20</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      <span class="mi">23</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
+</span><span class='line'>      <span class="mi">25</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">28</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>      <span class="mi">29</span><span class="o">:</span> <span class="n">areturn</span>  <span class="c1">//返回ERROR字符串</span>
+</span><span class='line'>      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_2</span>
+</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
+</span><span class='line'>      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class='line'>      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_2</span>
+</span><span class='line'>      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>  <span class="err">如果</span><span class="k">catch</span><span class="err">有未处理的异常，抛出去。</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>行文仓促，加之本人水平有限，有错误的地方，请指出。</p>
+
+<p>参考文章：</p>
+
+<ul>
+<li><a href="http://blog.jamesdbloom.com/JVMInternals.html#exception_table">http://blog.jamesdbloom.com/JVMInternals.html#exception_table</a></li>
+<li><a href="https://blog.takipi.com/the-surprising-truth-of-java-exceptions-what-is-really-going-on-under-the-hood/">https://blog.takipi.com/the-surprising-truth-of-java-exceptions-what-is-really-going-on-under-the-hood/</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings">https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings</a></li>
+<li><a href="https://dzone.com/articles/the-truth-of-java-exceptions-whats-really-going-on">https://dzone.com/articles/the-truth-of-java-exceptions-whats-really-going-on</a></li>
+</ul>
+
+
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
+</div>
+
+
+  <script type="text/javascript"  charset="utf-8" src="/javascripts/vote_tips.js"></script>
+  
+  <br/>
+  <div id="post_rec"></div>
+  <br/>
+<a href="https://store.lizhi.io/site/products/id/520?cid=wncr9wz5">快来解锁最新版 Typora，新用户券后仅需 84 元！</a><br/>
+<a href="https://store.lizhi.io/site/products/id/335?cid=wncr9wz5">如何便宜的购买 office 365 ？</a><br/>
+<a href="https://store.lizhi.io/site/products/id/68?cid=wncr9wz5">新版赤友 NTFS 助手来袭，正版超低价</a><br/>
+
+  <!-- 
+<script type="text/javascript"  charset="utf-8" src="/javascripts/random_recommend.js">
+</script>
+<script type="text/javascript" charset="utf-8">
+    var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
+    displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
+</script>
+ -->
+
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-format="autorelaxed"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="4907659907"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script> 
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-10-21T20:14:00+08:00" pubdate data-updated="true">Oct 21<span>st</span>, 2018</time>
+      
+
+
+    </p>
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/10/14/dive-into-kotlin-default-arguments-and-jvmoverloads/" title="Previous Post: 有点意思的Kotlin的默认参数与JVMOverloads">&laquo; 有点意思的Kotlin的默认参数与JVMOverloads</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/12/16/daemon-thread-in-java/" title="Next Post: JVM 中的守护线程">JVM 中的守护线程 &raquo;</a>
+        
+    </p>
+    
+
+
+
+	<!-- JiaThis Button BEGIN -->
+
+<!-- JiaThis Button END -->
+
+
+  </footer>
+  </article>
+
+<br/>
+<script type="text/javascript">
+		var geekTimeLinkImageStr = "<a href='http://gk.link/a/104bk'><img src='https://asset.droidyue.com/image/geektime/jikeshijian.jpeg' class='no_boarder_class' style='max-Width:100%'></a><br/>"
+		// document.write(geekTimeLinkImageStr)
+</script>
+
+
+
+  <section>
+   <div id="disqus_thread"></div>
+<script>
+    /**
+    *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables    */
+    
+    var disqus_config = function () {
+    this.page.url = window.location.href.split('#')[0];  // Replace PAGE_URL with your page's canonical URL variable
+    this.page.identifier = window.location.href.split('#')[0]; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+    };
+    
+    (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = 'https://droidyue.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+<!--adsense ads after the comments-->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- after_comments -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="9009226797"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+  </section>
+
+
+<link href="/stylesheets/remote.css"  rel="stylesheet" type="text/css">
+	
+
+	
+</div>
+
+<aside class="sidebar">
+  
+    
+<script type="text/javascript">
+	loadJs('/javascripts/right_image_rec.js');
+</script>
+<script type="text/javascript" src="/javascripts/notice.js" charset="utf-8"></script>
+<script type="text/javascript">
+	displaySection(shouldDisplayNotice(), isNoticeInDebug(), makeNoticeDataSource(), makeNoticePrefix(), makeNoticeSuffix(), 'notice');
+</script>
+<section>
+  <h1>最新文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2023/03/12/how-to-modify-android-emulator-hosts/">Android 模拟器实现 Hosts 修改</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2023/02/12/how-to-override-methods-in-vscode/">Vs Code 快速实现 重写 方法</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/11/27/recommended-lables-merge-requests-or-pull-requests/">Merge(Pull) Request 推荐的标签列表</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/11/27/adguard-no-more-ads-mac-windows-ios-android/">中国特惠！多平台广告屏蔽专家 AdGuard 买断仅需 119 元起</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/11/20/use-fvm-to-add-unpub-uploaders/">使用 FVM 解决 Flutter 3 无法添加 Uploader 问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/11/14/aapt2-aapt2-7-dot-2-2-7984345-osx-daemon-number-5-idle-daemon-unexpectedly-exit-this-should-not-happen/">AAPT2 aapt2-7.2.2-7984345-osx Daemon #5: Idle Daemon Unexpectedly Exit. This Should Not Happen 问题解决</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/10/26/speed-up-git-clone-via-proxy/">Git Clone 使用代理，实现百倍加速</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/10/11/flutter-error-member-not-found-asciichar/">Flutter 处理 Error Setter Not Found AsciiChar 问题</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/10/11/to-write-better-ppt-use-islide/">iSlide 插件买两年送 180 天，每月不到 6 元钱</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/10/04/fix-flutter-redeclaration-xxx-kotlin-error/">修复 Flutter 项目中 xxx.kt: (19, 8): Redeclaration: xxxManager</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/09/18/mac-video-download-tool-downie/">Mac 平台知名视频下载工具 Downie 4 买断仅需 79 元</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/09/18/android-some-runtime-jar-files-in-the-classpath-have-an-incompatible-version-kotlin/">Android Some Runtime JAR Files in the Classpath Have an Incompatible Version Kotlin 问题解决</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/09/12/fix-flutter-3-warnings-quickly/">Flutter 3 迁移后编译 Warnings 一键修复</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/09/12/lizhi-new-product-2022-09/">正版软件优惠，近期新品软件推荐</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/speed-up-about-cloning-git-repos-and-updating-them/">关于仓库的批量处理脚本，效率提升 500%</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/09/proxy-setting-in-terminal/">Linux/Mac 终端代理设置，取消与排除名单</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/07/31/flutter-attach-process/">使用 Flutter Attach 实现代码与应用进程关联</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/07/17/handle-back-button-click-with-overlay-in-flutter/">Flutter 处理 Overlay 返回事件</a>
+      </li>
+    
+  </ul>
+</section>
+<script type="text/javascript" charset="utf-8">
+	loadJs("https://asset.droidyue.com/javascript/blogroll_data_source.js");
+</script>
+<script type="text/javascript" >
+	displaySection(shouldDisplayBlogRoll() && onlyForDesktop(), isBlogRollInDebug(), makeBlogRollDataSource(), makeBlogRollPrefix(), makeBlogRollSuffix(), sDroidBlogRollClass);
+</script>
+<script type="text/javascript">
+	displaySection(shouldDisplayCommonBook() && onlyForDesktop(), isCommonBookInDebug(), makeCommonBookDataSource(), makeCommonBookPrefix(), makeCommonBookSuffix(), sDroidCommonBookClass);
+</script>
+<script type="text/javascript">
+displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDebug(), makeProgramBookDataSource(), makeProgramBookPrefix(), makeProgramBookSuffix(), sDroidProgramBookClass);
+</script>
+<script type="text/javascript" charset="utf-8">
+	displayJavaBook();
+	displayAndroidBook();
+</script>
+<script type="text/javascript">
+	var bestPosts = makeBestPostsDataSource();
+	
+	if (getRandomBoolean()) {
+		bestPosts = shuffleJsonObject(bestPosts);
+	}
+	
+	if (shouldLimitBestPosts()) {
+		var limit = getBestPostsLimitSize();
+		bestPosts = splitJSONObject(bestPosts, limit);
+	}
+	displaySection(shouldDisplayBestPosts(), isBestPostsInDebug(), bestPosts, makeBestPostsPrefix(), makeBestPostsSuffix(), sDroidBestPostsClass);
+</script>
+<!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
+<center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
+-->
+<html>
+	<!-- <script type="text/javascript">
+		for (var i = 0; i < 3 ; i++) {
+			document.write("<img class='no_boarder_class' style='max-Width:100%' src='" + geekTimeQrImages[i] + "'>");
+		};
+	</script>
+	
+	<br/> -->
+	
+	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- post_right_0 -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-6762344977202446"
+     data-ad-slot="2412800998"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+	
+
+
+
+</html>
+
+  
+</aside>
+
+
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2023 - androidyue -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> ；优质服务品牌： 
+	  <a href="https://onedrive.live.com/?invref=6b59396564b1963a&invscr=90">OneDrive</a>
+	  <a href="https://www.vultr.com/?ref=7819525-4F">Vultr VPS</a>
+	  <a href="https://m.do.co/c/3c4ff5a7ed39">Digital Ocean</a>
+      <a href="https://billing.virmach.com/aff.php?aff=9882">Virmach(真实可用,1.25$/月)</a>
+	  <a href="https://promotion.aliyun.com/ntms/yunparter/invite.html?userCode=tagltim6">阿里云</a>
+  </span>
+</p>
+
+<div id="includedContentRefEnd"></div>
+
+<script type="text/javascript">
+var jiathis_config = {data_track_clickback:'true'};
+</script>
+
+<script type="text/javascript" src="/javascripts/toastr.min.js"></script>
+<link href="/stylesheets/toastr.min_v1.css" rel="stylesheet"/>
+<div id="toast"></div>
+<script type="text/javascript">
+	loadJsWithoutCache("https://asset.droidyue.com/javascript/rec_dialog_new.js");
+</script>
+
+<script type="text/javascript">
+/* 	var url = "http://onionos.com:8080/report_visitor?landUrl=" + window.btoa(document.location.href) + "&refer=" + window.btoa(document.referrer) + "&ua=" + window.btoa(navigator.userAgent);
+	loadJsNormally(url);*/
+</script>
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <script type="text/javascript" src="/javascripts/arrow38.js"></script>
+<noscript>Not seeing a <a href="http://www.scrolltotop.com/">Scroll to Top Button</a>? Go to our FAQ page for more info.</noscript>
+
+
+  </div>
+</body>
+</html>
