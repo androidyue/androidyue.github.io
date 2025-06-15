@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2024-11-03T00:50:45+08:00</updated>
+  <updated>2025-06-15T10:24:23+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,169 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用 flock 解决 Git `unable to read tree` 问题]]></title>
+    <link href="https://droidyue.com/blog/2025/06/15/use-flock-to-resolve-git-concurrent-operation-issues/"/>
+    <updated>2025-06-15T08:49:00+08:00</updated>
+    <id>https://droidyue.com/blog/2025/06/15/use-flock-to-resolve-git-concurrent-operation-issues</id>
+    <content type="html"><![CDATA[<h2>背景</h2>
+
+<p>在 CI/CD 环境下，团队常遇到以下错误：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fatal: unable to read tree &lt;SHA&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这通常是多个进程或脚本并发操作同一个 Git 仓库，导致元数据损坏或锁冲突。Git 并非为高并发本地操作设计，因此需要解决并发问题。</p>
+
+<!--more-->
+
+
+<h2>问题复现</h2>
+
+<p>在自动化脚本中，例如：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git fetch origin
+</span><span class='line'>git checkout some-branch
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果多个任务同时执行，可能导致锁冲突或元数据损坏。</p>
+
+<h2>解决思路</h2>
+
+<p>通过加锁机制，让所有 Git 操作串行执行。<code>flock</code> 是一个简单高效的工具，专为这种场景设计。</p>
+
+<h2>flock 安装</h2>
+
+<h3>Linux</h3>
+
+<p>大多数 Linux 发行版自带 <code>flock</code>（属于 <code>util-linux</code> 套件）。如果没有，可按以下方式安装：</p>
+
+<ul>
+<li><strong>Debian/Ubuntu</strong>:</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo apt-get update
+</span><span class='line'>sudo apt-get install util-linux
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>CentOS/RHEL</strong>:</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo yum install util-linux
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>Arch</strong>:</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo pacman -S util-linux
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>安装后即可使用 <code>flock</code> 命令。</p>
+
+<h3>macOS</h3>
+
+<p>macOS 默认不包含 <code>flock</code>，但可通过 Homebrew 安装兼容版本：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>brew install flock
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>安装的是 Ben Noordhuis 的 <code>flock</code>，语法与 Linux 版本基本一致。</p>
+
+<p><strong>提示</strong>：在 CI 服务（如 GitHub Actions）中，可在步骤中提前安装 <code>flock</code>。</p>
+
+<h2>flock 用法</h2>
+
+<p><code>flock</code> 用于在 shell 脚本中对文件加锁：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>flock &lt;lockfile&gt; &lt;<span class="nb">command</span>&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>建议将锁文件放在 <code>.git</code> 目录下，避免污染业务代码目录。</p>
+
+<h2>实战例子</h2>
+
+<p>假设有一个 <code>deploy.sh</code> 脚本：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
+</span><span class='line'>git fetch origin
+</span><span class='line'>git checkout some-branch
+</span><span class='line'><span class="c"># ...more commands...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>加锁后修改为：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
+</span><span class='line'><span class="nv">LOCK_FILE</span><span class="o">=</span><span class="s2">&quot;/path/to/your/repo/.git/deploy.lock&quot;</span>
+</span><span class='line'>
+</span><span class='line'>flock -n <span class="s2">&quot;$LOCK_FILE&quot;</span> bash <span class="s">&lt;&lt;&#39;EOF&#39;</span>
+</span><span class='line'><span class="s">git fetch origin</span>
+</span><span class='line'><span class="s">git checkout some-branch</span>
+</span><span class='line'><span class="s"># ...more commands...</span>
+</span><span class='line'><span class="s">EOF</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>或者直接锁定整个脚本：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>flock -n /path/to/your/repo/.git/deploy.lock ./deploy.sh
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><code>-n</code>：表示拿不到锁时立即退出（可选）。</li>
+<li>建议将锁文件放在 <code>.git</code> 目录下。</li>
+</ul>
+
+
+<h2>总结</h2>
+
+<ul>
+<li>避免并发操作同一个 Git 仓库！</li>
+<li>使用 <code>flock</code> 使 Git 操作串行，防止元数据损坏。</li>
+<li>Linux 下直接使用，macOS 通过 Homebrew 安装 <code>flock</code>。</li>
+<li>锁粒度可适当放宽，确保安全优先。</li>
+<li>本地自动化操作 Git 时，<code>flock</code> 是必备工具，简单高效！</li>
+</ul>
+
+
+<p>如有问题，请在评论区讨论。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Could not create task ':generateDebugRFile' 问题小记]]></title>
@@ -1529,60 +1692,6 @@ GoLand、CLion、RubyMine&hellip;&hellip;：￥599 > ￥669</p>
 
 
 <p>上述 设置代理，设置代理排除名单，也可以放到 .bashrc 或 .zshrc 自动持久化处理。</p>
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[使用 flutter attach 实现代码与应用进程关联]]></title>
-    <link href="https://droidyue.com/blog/2022/07/31/flutter-attach-process/"/>
-    <updated>2022-07-31T17:04:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/07/31/flutter-attach-process</id>
-    <content type="html"><![CDATA[<p>当我们使用 flutter run 调试 App 时，假如数据线接触不良或者断开，当我们想要继续调试的时候，可能就需要再次执行 <code>flutter run</code>。</p>
-
-<p>但其实，还有一个命令叫做 flutter attach. 它可以实现如下的功能</p>
-
-<ul>
-<li>attach 到一个现在运行的 app</li>
-<li>支持指定设备 id 进行 attach</li>
-<li>支持指定端口进行 attach</li>
-<li>支持设置超时时间</li>
-<li>支持传递 key-value 键值对设置</li>
-</ul>
-
-
-<!--more-->
-
-
-<p>使用起来也很简单</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>flutter attach
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>多设备可用时</h2>
-
-<p>首先使用 <code>flutter devices</code> 查看目标设备 id</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'> flutter devices
-</span><span class='line'>2 connected devices:
-</span><span class='line'>
-</span><span class='line'>SM G9730 <span class="o">(</span>mobile<span class="o">)</span> • RA2TQ6PN • android-arm64  • Android 11 <span class="o">(</span>API 30<span class="o">)</span>
-</span><span class='line'>Chrome <span class="o">(</span>web<span class="o">)</span>      • chrome      • web-javascript • Google Chrome 100.0.4896.60
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>然后执行设备id 执行即可。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>flutter attach -d RA2TQ6PN --verbose
-</span></code></pre></td></tr></table></div></figure>
-
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
