@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2025-06-23T08:45:31+08:00</updated>
+  <updated>2025-09-27T08:58:08+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,87 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用 grep 查找关键字并显示上下文行]]></title>
+    <link href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/"/>
+    <updated>2025-06-24T10:30:00+08:00</updated>
+    <id>https://droidyue.com/blog/2025/06/24/use-grep-with-context</id>
+    <content type="html"><![CDATA[<h2>背景</h2>
+
+<p>排查日志时，常需要定位关键字并带上一两行上下文确认语义。<code>grep</code> 内建的上下文选项可以直接满足需求，不必再手动 <code>sed -n '19,21p'</code>。</p>
+
+<!--more-->
+
+
+<h2>快速示例</h2>
+
+<p>假设想在 <code>app.log</code> 中找出包含 <code>Fatal error</code> 的行，并且同时看到上一行与下一行：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>grep -n -C 1 "Fatal error" app.log</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><code>-n</code> 会显示行号，便于定位。</li>
+<li><code>-C 1</code> 等价于 <code>--context=1</code>，表示向前向后各多带 1 行。想多看几行时调整数字即可。</li>
+</ul>
+
+
+<p>输出中，命中的行以冒号分隔行号与内容，上下文行则以短横线 <code>-</code> 连接，快速区分重点。</p>
+
+<h2>控制上下文范围</h2>
+
+<p><code>grep</code> 提供三个粒度化参数：</p>
+
+<ul>
+<li><code>-C &lt;N&gt;</code>：两侧各 N 行，是最常用的形式。</li>
+<li><code>-B &lt;N&gt;</code>：只带前 N 行（Before）。</li>
+<li><code>-A &lt;N&gt;</code>：只带后 N 行（After）。</li>
+</ul>
+
+
+<p>例如只关心关键字后面的调用栈，可使用：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>grep -n -A 4 "NullPointerException" stacktrace.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>再配合 <code>-m 1</code>（匹配一次后退出）可以缩短复杂日志的搜索时间。</p>
+
+<h2>与常见参数组合</h2>
+
+<ul>
+<li><code>-i</code>：忽略大小写，处理大小写不一致的告警信息很方便。</li>
+<li><code>-E</code>：启用扩展正则，可直接写 <code>grep -E "(WARN|ERROR)"</code>。</li>
+<li><code>--color=auto</code>：高亮命中关键字，在终端阅读更直观。</li>
+</ul>
+
+
+<p>将这些参数组合成 Shell 函数，后续排查直接调用。例如在 <code>~/.bashrc</code> 中定义：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>gctx() {
+</span><span class='line'>  local keyword="$1" file="$2" lines="${3:-1}"
+</span><span class='line'>  grep -n --color=always -C "$lines" "$keyword" "$file"
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行 <code>gctx "timeout" service.log 2</code>，即可得到行号、关键字高亮、上下文行的结果。</p>
+
+<h2>小结</h2>
+
+<ul>
+<li><code>-C/-A/-B</code> 是获取上下文的核心选项，记住数字表示行数即可。</li>
+<li>搭配 <code>-n</code>、<code>--color</code>、<code>-m</code> 等参数可以提升排查效率。</li>
+<li>如果命中结果过多，将命令与 <code>less -R</code> 或 <code>fzf</code> 管道组合，能够在终端中进行二次筛选，让排查体验更顺滑。</li>
+</ul>
+
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android 开发中的三个常见构建错误及解决方案]]></title>
@@ -31,10 +112,9 @@
 <span class='line-number'>5</span>
 </pre></td><td class='code'><pre><code class='bash'><span class='line'>FAILURE: Build failed with an exception.
 </span><span class='line'>* What went wrong:
-</span><span class='line'>Execution failed <span class="k">for </span>task <span class="s1">&#39;:app:mergeDebugJavaResource&#39;</span>.
-</span><span class='line'>&gt; A failure occurred <span class="k">while </span>executing com.android.build.gradle.internal.tasks.MergeJavaResWorkAction
-</span><span class='line'>   &gt; 2 files found with path <span class="s1">&#39;META-INF/versions/9/OSGI-INF/MANIFEST.MF&#39;</span> from inputs:
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>Execution failed for task ':app:mergeDebugJavaResource'.
+</span><span class='line'>> A failure occurred while executing com.android.build.gradle.internal.tasks.MergeJavaResWorkAction
+</span><span class='line'>   > 2 files found with path 'META-INF/versions/9/OSGI-INF/MANIFEST.MF' from inputs:</span></code></pre></td></tr></table></div></figure>
 
 
 <!--more-->
@@ -51,14 +131,13 @@
 <span class='line-number'>5</span>
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>android <span class="o">{</span>
-</span><span class='line'>    packagingOptions <span class="o">{</span>
-</span><span class='line'>        resources <span class="o">{</span>
-</span><span class='line'>            excludes +<span class="o">=</span> <span class="s2">&quot;META-INF/versions/9/OSGI-INF/MANIFEST.MF&quot;</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>android {
+</span><span class='line'>    packagingOptions {
+</span><span class='line'>        resources {
+</span><span class='line'>            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+</span><span class='line'>        }
+</span><span class='line'>    }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
 
 
 <h3>说明</h3>
@@ -75,9 +154,8 @@
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='bash'><span class='line'>Caused by: java.lang.RuntimeException: Duplicate class org.tensorflow.lite.DataType found in
-</span><span class='line'>modules jetified-litert-api-1.0.1-runtime <span class="o">(</span>com.google.ai.edge.litert:litert-api:1.0.1<span class="o">)</span> and
-</span><span class='line'>jetified-tensorflow-lite-api-2.12.0-runtime <span class="o">(</span>org.tensorflow:tensorflow-lite-api:2.12.0<span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>modules jetified-litert-api-1.0.1-runtime (com.google.ai.edge.litert:litert-api:1.0.1) and
+</span><span class='line'>jetified-tensorflow-lite-api-2.12.0-runtime (org.tensorflow:tensorflow-lite-api:2.12.0)</span></code></pre></td></tr></table></div></figure>
 
 
 <h3>解决方案</h3>
@@ -89,12 +167,11 @@
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
 <span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>configurations.all <span class="o">{</span>
-</span><span class='line'>    resolutionStrategy.dependencySubstitution <span class="o">{</span>
-</span><span class='line'>        substitute module<span class="o">(</span><span class="s2">&quot;org.tensorflow:tensorflow-lite&quot;</span><span class="o">)</span> with module<span class="o">(</span><span class="s2">&quot;com.google.ai.edge.litert:litert:1.0.1&quot;</span><span class="o">)</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>configurations.all {
+</span><span class='line'>    resolutionStrategy.dependencySubstitution {
+</span><span class='line'>        substitute module("org.tensorflow:tensorflow-lite") with module("com.google.ai.edge.litert:litert:1.0.1")
+</span><span class='line'>    }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
 
 
 <h3>说明</h3>
@@ -112,10 +189,9 @@
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
 </pre></td><td class='code'><pre><code class='bash'><span class='line'>Caused by: java.lang.RuntimeException: Failed to transform
-</span><span class='line'><span class="s1">&#39;/Users/xxxxx/.gradle/caches/modules-2/files-2.1/org.bouncycastle/bcprov-jdk18on/1.78/619aafb92dc0b4c6c</span>
-</span><span class='line'><span class="s1">c4cf86c487ca48ee2d67a8e/bcprov-jdk18on-1.78.jar&#39;</span> using Jetifier.
-</span><span class='line'>Reason: IllegalArgumentException, message: Unsupported class file major version 65.
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>'/Users/xxxxx/.gradle/caches/modules-2/files-2.1/org.bouncycastle/bcprov-jdk18on/1.78/619aafb92dc0b4c6c
+</span><span class='line'>c4cf86c487ca48ee2d67a8e/bcprov-jdk18on-1.78.jar' using Jetifier.
+</span><span class='line'>Reason: IllegalArgumentException, message: Unsupported class file major version 65.</span></code></pre></td></tr></table></div></figure>
 
 
 <h3>解决方案</h3>
@@ -123,8 +199,7 @@
 <p>在项目根目录的 <code>android/gradle.properties</code> 文件中添加：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>android.jetifier.ignorelist<span class="o">=</span>bcprov-jdk18on-1.78.jar,bcutil-jdk18on-1.78.jar
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>android.jetifier.ignorelist=bcprov-jdk18on-1.78.jar,bcutil-jdk18on-1.78.jar</span></code></pre></td></tr></table></div></figure>
 
 
 <h3>说明</h3>
@@ -169,8 +244,7 @@
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 </pre></td><td class='code'><pre><code class='bash'><span class='line'>git fetch origin
-</span><span class='line'>git checkout some-branch
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>git checkout some-branch</span></code></pre></td></tr></table></div></figure>
 
 
 <p>如果多个任务同时执行，可能导致锁冲突或元数据损坏。</p>
@@ -193,8 +267,7 @@
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 </pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo apt-get update
-</span><span class='line'>sudo apt-get install util-linux
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>sudo apt-get install util-linux</span></code></pre></td></tr></table></div></figure>
 
 
 <ul>
@@ -203,8 +276,7 @@
 
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo yum install util-linux
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo yum install util-linux</span></code></pre></td></tr></table></div></figure>
 
 
 <ul>
@@ -213,8 +285,7 @@
 
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo pacman -S util-linux
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo pacman -S util-linux</span></code></pre></td></tr></table></div></figure>
 
 
 <p>安装后即可使用 <code>flock</code> 命令。</p>
@@ -224,8 +295,7 @@
 <p>macOS 默认不包含 <code>flock</code>，但可通过 Homebrew 安装兼容版本：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>brew install flock
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>brew install flock</span></code></pre></td></tr></table></div></figure>
 
 
 <p>安装的是 Ben Noordhuis 的 <code>flock</code>，语法与 Linux 版本基本一致。</p>
@@ -237,8 +307,7 @@
 <p><code>flock</code> 用于在 shell 脚本中对文件加锁：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>flock &lt;lockfile&gt; &lt;<span class="nb">command</span>&gt;
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>flock <lockfile> <command></span></code></pre></td></tr></table></div></figure>
 
 
 <p>建议将锁文件放在 <code>.git</code> 目录下，避免污染业务代码目录。</p>
@@ -251,11 +320,10 @@
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>#!/bin/bash
 </span><span class='line'>git fetch origin
 </span><span class='line'>git checkout some-branch
-</span><span class='line'><span class="c"># ...more commands...</span>
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'># ...more commands...</span></code></pre></td></tr></table></div></figure>
 
 
 <p>加锁后修改为：</p>
@@ -268,22 +336,20 @@
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
 <span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'><span class="nv">LOCK_FILE</span><span class="o">=</span><span class="s2">&quot;/path/to/your/repo/.git/deploy.lock&quot;</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>#!/bin/bash
+</span><span class='line'>LOCK_FILE="/path/to/your/repo/.git/deploy.lock"
 </span><span class='line'>
-</span><span class='line'>flock -n <span class="s2">&quot;$LOCK_FILE&quot;</span> bash <span class="s">&lt;&lt;&#39;EOF&#39;</span>
-</span><span class='line'><span class="s">git fetch origin</span>
-</span><span class='line'><span class="s">git checkout some-branch</span>
-</span><span class='line'><span class="s"># ...more commands...</span>
-</span><span class='line'><span class="s">EOF</span>
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>flock -n "$LOCK_FILE" bash <<'EOF'
+</span><span class='line'>git fetch origin
+</span><span class='line'>git checkout some-branch
+</span><span class='line'># ...more commands...
+</span><span class='line'>EOF</span></code></pre></td></tr></table></div></figure>
 
 
 <p>或者直接锁定整个脚本：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>flock -n /path/to/your/repo/.git/deploy.lock ./deploy.sh
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>flock -n /path/to/your/repo/.git/deploy.lock ./deploy.sh</span></code></pre></td></tr></table></div></figure>
 
 
 <ul>
@@ -324,17 +390,16 @@
 <span class='line-number'>8</span>
 <span class='line-number'>9</span>
 <span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Could</span> <span class="n">not</span> <span class="n">create</span> <span class="n">task</span> <span class="err">&#39;</span><span class="o">:</span><span class="n">generateDebugRFile</span><span class="err">&#39;</span><span class="o">.</span>
-</span><span class='line'><span class="n">Cannot</span> <span class="n">use</span> <span class="nd">@TaskAction</span> <span class="n">annotation</span> <span class="n">on</span> <span class="n">method</span> <span class="n">IncrementalTask</span><span class="o">.</span><span class="na">taskAction</span><span class="n">$gradle_core</span><span class="o">()</span> <span class="n">because</span> <span class="kd">interface</span> <span class="nc">org</span><span class="o">.</span><span class="na">gradle</span><span class="o">.</span><span class="na">api</span><span class="o">.</span><span class="na">tasks</span><span class="o">.</span><span class="na">incremental</span><span class="o">.</span><span class="na">IncrementalTaskInputs</span> <span class="n">is</span> <span class="n">not</span> <span class="n">a</span> <span class="n">valid</span> <span class="n">parameter</span> <span class="n">to</span> <span class="n">an</span> <span class="n">action</span> <span class="n">method</span><span class="o">.</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>Could not create task ':generateDebugRFile'.
+</span><span class='line'>Cannot use @TaskAction annotation on method IncrementalTask.taskAction$gradle_core() because interface org.gradle.api.tasks.incremental.IncrementalTaskInputs is not a valid parameter to an action method.
 </span><span class='line'>
-</span><span class='line'><span class="o">*</span> <span class="nl">Try:</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">Run</span> <span class="n">with</span> <span class="o">--</span><span class="n">debug</span> <span class="n">option</span> <span class="n">to</span> <span class="n">get</span> <span class="n">more</span> <span class="n">log</span> <span class="n">output</span><span class="o">.</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">Run</span> <span class="n">with</span> <span class="o">--</span><span class="n">scan</span> <span class="n">to</span> <span class="n">get</span> <span class="n">full</span> <span class="n">insights</span><span class="o">.</span>
+</span><span class='line'>* Try:
+</span><span class='line'>> Run with --debug option to get more log output.
+</span><span class='line'>> Run with --scan to get full insights.
 </span><span class='line'>
-</span><span class='line'><span class="o">*</span> <span class="n">Exception</span> <span class="nl">is:</span>
-</span><span class='line'><span class="n">com</span><span class="o">.</span><span class="na">intellij</span><span class="o">.</span><span class="na">openapi</span><span class="o">.</span><span class="na">externalSystem</span><span class="o">.</span><span class="na">model</span><span class="o">.</span><span class="na">ExternalSystemException</span><span class="o">:</span> <span class="n">Could</span> <span class="n">not</span> <span class="n">create</span> <span class="n">task</span> <span class="err">&#39;</span><span class="o">:</span><span class="n">generateDebugRFile</span><span class="err">&#39;</span><span class="o">.</span>
-</span><span class='line'><span class="n">Cannot</span> <span class="n">use</span> <span class="nd">@TaskAction</span> <span class="n">annotation</span> <span class="n">on</span> <span class="n">method</span> <span class="n">IncrementalTask</span><span class="o">.</span><span class="na">taskAction</span><span class="n">$gradle_core</span><span class="o">()</span> <span class="n">because</span> <span class="kd">interface</span> <span class="nc">org</span><span class="o">.</span><span class="na">gradle</span><span class="o">.</span><span class="na">api</span><span class="o">.</span><span class="na">tasks</span><span class="o">.</span><span class="na">incremental</span><span class="o">.</span><span class="na">IncrementalTaskInputs</span> <span class="n">is</span> <span class="n">not</span> <span class="n">a</span> <span class="n">valid</span> <span class="n">parameter</span> <span class="n">to</span> <span class="n">an</span> <span class="n">action</span> <span class="n">method</span><span class="o">.</span>
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>* Exception is:
+</span><span class='line'>com.intellij.openapi.externalSystem.model.ExternalSystemException: Could not create task ':generateDebugRFile'.
+</span><span class='line'>Cannot use @TaskAction annotation on method IncrementalTask.taskAction$gradle_core() because interface org.gradle.api.tasks.incremental.IncrementalTaskInputs is not a valid parameter to an action method.</span></code></pre></td></tr></table></div></figure>
 
 
 
@@ -404,15 +469,13 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 </span><span class='line'>Pixel_6_API_22
 </span><span class='line'>Pixel_6_API_28
 </span><span class='line'>Pixel_6_Pro_API_23
-</span><span class='line'>Pixel_6_Pro_API_30_X86
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>Pixel_6_Pro_API_30_X86</span></code></pre></td></tr></table></div></figure>
 
 
 <h2>启动 avd，可写入状态</h2>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>~/Library/Android/sdk/tools/emulator -avd Pixel_3a_API_33_arm64-v8a  -writable-system
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>~/Library/Android/sdk/tools/emulator -avd Pixel_3a_API_33_arm64-v8a  -writable-system</span></code></pre></td></tr></table></div></figure>
 
 
 <h2>新起终端tab 执行</h2>
@@ -437,9 +500,9 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 </pre></td><td class='code'><pre><code class='bash'><span class='line'>adb shell
 </span><span class='line'>
 </span><span class='line'>ping baidu.com
-</span><span class='line'>PING baidu.com <span class="o">(</span>127.0.0.1<span class="o">)</span> 56<span class="o">(</span>84<span class="o">)</span> bytes of data.
-</span><span class='line'>64 bytes from baidu.com <span class="o">(</span>127.0.0.1<span class="o">)</span>: <span class="nv">icmp_seq</span><span class="o">=</span>1 <span class="nv">ttl</span><span class="o">=</span>64 <span class="nb">time</span><span class="o">=</span>1.55 ms
-</span><span class='line'>64 bytes from baidu.com <span class="o">(</span>127.0.0.1<span class="o">)</span>: <span class="nv">icmp_seq</span><span class="o">=</span>2 <span class="nv">ttl</span><span class="o">=</span>64 <span class="nb">time</span><span class="o">=</span>0.180 ms
+</span><span class='line'>PING baidu.com (127.0.0.1) 56(84) bytes of data.
+</span><span class='line'>64 bytes from baidu.com (127.0.0.1): icmp_seq=1 ttl=64 time=1.55 ms
+</span><span class='line'>64 bytes from baidu.com (127.0.0.1): icmp_seq=2 ttl=64 time=0.180 ms
 </span></code></pre></td></tr></table></div></figure>
 
 
@@ -716,8 +779,7 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 <p>执行脚本</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>bash addUnpubUploader.sh aaa@gmail.com
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>bash addUnpubUploader.sh aaa@gmail.com</span></code></pre></td></tr></table></div></figure>
 
 
 <h2>Referrence</h2>
@@ -745,16 +807,15 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 <span class='line-number'>7</span>
 <span class='line-number'>8</span>
 <span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>AAPT2 aapt2-7.2.2-7984345-osx Daemon <span class="c">#7: Idle daemon unexpectedly exit. This should not happen.</span>
-</span><span class='line'>15:32:49 <span class="o">[</span>        <span class="o">]</span> AAPT2 aapt2-7.2.2-7984345-osx Daemon <span class="c">#8: Idle daemon unexpectedly exit. This should not happen.</span>
-</span><span class='line'>15:32:49 <span class="o">[</span>        <span class="o">]</span> AAPT2 aapt2-7.2.2-7984345-osx Daemon <span class="c">#0: shutdown</span>
-</span><span class='line'>15:32:49 <span class="o">[</span>  +98 ms<span class="o">]</span> AAPT2 aapt2-7.2.2-7984345-osx Daemon <span class="c">#6: Idle daemon unexpectedly exit. This should not happen.</span>
-</span><span class='line'>15:32:49 <span class="o">[</span>        <span class="o">]</span> AAPT2 aapt2-7.2.2-7984345-osx Daemon <span class="c">#4: Idle daemon unexpectedly exit. This should not happen.</span>
-</span><span class='line'>15:32:49 <span class="o">[</span>        <span class="o">]</span> AAPT2 aapt2-7.2.2-7984345-osx Daemon <span class="c">#3: Idle daemon unexpectedly exit. This should not happen.</span>
-</span><span class='line'>15:32:49 <span class="o">[</span>        <span class="o">]</span> AAPT2 aapt2-7.2.2-7984345-osx Daemon <span class="c">#5: Idle daemon unexpectedly exit. This should not happen.</span>
-</span><span class='line'>15:32:49 <span class="o">[</span>        <span class="o">]</span> AAPT2 aapt2-7.2.2-7984345-osx Daemon <span class="c">#1: Idle daemon unexpectedly exit. This should not happen.</span>
-</span><span class='line'>15:32:49 <span class="o">[</span> +499 ms<span class="o">]</span> The message received from the daemon indicates that the daemon has disappeared.
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>AAPT2 aapt2-7.2.2-7984345-osx Daemon #7: Idle daemon unexpectedly exit. This should not happen.
+</span><span class='line'>15:32:49 [        ] AAPT2 aapt2-7.2.2-7984345-osx Daemon #8: Idle daemon unexpectedly exit. This should not happen.
+</span><span class='line'>15:32:49 [        ] AAPT2 aapt2-7.2.2-7984345-osx Daemon #0: shutdown
+</span><span class='line'>15:32:49 [  +98 ms] AAPT2 aapt2-7.2.2-7984345-osx Daemon #6: Idle daemon unexpectedly exit. This should not happen.
+</span><span class='line'>15:32:49 [        ] AAPT2 aapt2-7.2.2-7984345-osx Daemon #4: Idle daemon unexpectedly exit. This should not happen.
+</span><span class='line'>15:32:49 [        ] AAPT2 aapt2-7.2.2-7984345-osx Daemon #3: Idle daemon unexpectedly exit. This should not happen.
+</span><span class='line'>15:32:49 [        ] AAPT2 aapt2-7.2.2-7984345-osx Daemon #5: Idle daemon unexpectedly exit. This should not happen.
+</span><span class='line'>15:32:49 [        ] AAPT2 aapt2-7.2.2-7984345-osx Daemon #1: Idle daemon unexpectedly exit. This should not happen.
+</span><span class='line'>15:32:49 [ +499 ms] The message received from the daemon indicates that the daemon has disappeared.</span></code></pre></td></tr></table></div></figure>
 
 
 <!--more-->
@@ -778,8 +839,7 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>./gradlew --no-daemon assembleXXX
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>./gradlew --no-daemon assembleXXX</span></code></pre></td></tr></table></div></figure>
 
 
 <h3>gradle.properties</h3>
@@ -792,9 +852,8 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">## 修改这个文件 ~/.gradle/gradle.properties 如果没有，直接创建即可</span>
-</span><span class='line'>org.gradle.daemon<span class="o">=</span><span class="nb">false</span>
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>## 修改这个文件 ~/.gradle/gradle.properties 如果没有，直接创建即可
+</span><span class='line'>org.gradle.daemon=false</span></code></pre></td></tr></table></div></figure>
 
 
 <p>注意： 这里配置完成，最好执行一下<code>./gradlew --stop</code> 确保不适用已有的守护进程。</p>
@@ -820,8 +879,7 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 <h2>实践起来</h2>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>git clone https://github.com/flutter/flutter.git --config <span class="s2">&quot;http.proxy=192.168.1.6:1611&quot;</span>
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git clone https://github.com/flutter/flutter.git --config "http.proxy=192.168.1.6:1611"</span></code></pre></td></tr></table></div></figure>
 
 
 <p>上面的例子</p>
@@ -860,23 +918,23 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 <span class='line-number'>15</span>
 <span class='line-number'>16</span>
 <span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>   +2 ms<span class="o">]</span> ../../../../.pub-cache/hosted/pub.flutter-io.cn/cached_network_image-3.2.0/lib/src/image_provider/multi_image_stream_completer.dart:152:22: Warning: Operand of null-aware operation <span class="s1">&#39;?.&#39;</span> has
-</span><span class='line'><span class="nb">type</span> <span class="s1">&#39;SchedulerBinding&#39;</span> which excludes null.
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>  - <span class="s1">&#39;SchedulerBinding&#39;</span> is from <span class="s1">&#39;package:flutter/src/scheduler/binding.dart&#39;</span> <span class="o">(</span><span class="s1">&#39;../../../../code/flutter_3/packages/flutter/lib/src/scheduler/binding.dart&#39;</span><span class="o">)</span>.
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>     SchedulerBinding.instance?.scheduleFrameCallback<span class="o">(</span>_handleAppFrame<span class="o">)</span>;
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>                      ^
-</span><span class='line'><span class="o">[</span> +402 ms<span class="o">]</span> <span class="o">[</span> +414 ms<span class="o">]</span> ../../../../.pub-cache/hosted/pub.flutter-io.cn/win32-2.3.1/lib/src/structs.g.dart:554:31: Error: Member not found: <span class="s1">&#39;UnicodeChar&#39;</span>.
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>   int get <span class="nv">UnicodeChar</span> <span class="o">=</span>&gt; Char.UnicodeChar;
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>                               ^^^^^^^^^^^
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span> ../../../../.pub-cache/hosted/pub.flutter-io.cn/win32-2.3.1/lib/src/structs.g.dart:555:38: Error: Setter not found: <span class="s1">&#39;UnicodeChar&#39;</span>.
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>   <span class="nb">set </span>UnicodeChar<span class="o">(</span>int value<span class="o">)</span> <span class="o">=</span>&gt; Char.UnicodeChar <span class="o">=</span> value;
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>                                      ^^^^^^^^^^^
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span> ../../../../.pub-cache/hosted/pub.flutter-io.cn/win32-2.3.1/lib/src/structs.g.dart:557:29: Error: Member not found: <span class="s1">&#39;AsciiChar&#39;</span>.
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>   int get <span class="nv">AsciiChar</span> <span class="o">=</span>&gt; Char.AsciiChar;
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>                             ^^^^^^^^^
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span> ../../../../.pub-cache/hosted/pub.flutter-io.cn/win32-2.3.1/lib/src/structs.g.dart:558:36: Error: Setter not found: <span class="s1">&#39;AsciiChar&#39;</span>.
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>   <span class="nb">set </span>AsciiChar<span class="o">(</span>int value<span class="o">)</span> <span class="o">=</span>&gt; Char.AsciiChar <span class="o">=</span> value;
-</span><span class='line'><span class="o">[</span>        <span class="o">]</span> <span class="o">[</span>        <span class="o">]</span>                                    ^^^^^^^^^
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>[        ] [   +2 ms] ../../../../.pub-cache/hosted/pub.flutter-io.cn/cached_network_image-3.2.0/lib/src/image_provider/multi_image_stream_completer.dart:152:22: Warning: Operand of null-aware operation '?.' has
+</span><span class='line'>type 'SchedulerBinding' which excludes null.
+</span><span class='line'>[        ] [        ]  - 'SchedulerBinding' is from 'package:flutter/src/scheduler/binding.dart' ('../../../../code/flutter_3/packages/flutter/lib/src/scheduler/binding.dart').
+</span><span class='line'>[        ] [        ]     SchedulerBinding.instance?.scheduleFrameCallback(_handleAppFrame);
+</span><span class='line'>[        ] [        ]                      ^
+</span><span class='line'>[ +402 ms] [ +414 ms] ../../../../.pub-cache/hosted/pub.flutter-io.cn/win32-2.3.1/lib/src/structs.g.dart:554:31: Error: Member not found: 'UnicodeChar'.
+</span><span class='line'>[        ] [        ]   int get UnicodeChar => Char.UnicodeChar;
+</span><span class='line'>[        ] [        ]                               ^^^^^^^^^^^
+</span><span class='line'>[        ] [        ] ../../../../.pub-cache/hosted/pub.flutter-io.cn/win32-2.3.1/lib/src/structs.g.dart:555:38: Error: Setter not found: 'UnicodeChar'.
+</span><span class='line'>[        ] [        ]   set UnicodeChar(int value) => Char.UnicodeChar = value;
+</span><span class='line'>[        ] [        ]                                      ^^^^^^^^^^^
+</span><span class='line'>[        ] [        ] ../../../../.pub-cache/hosted/pub.flutter-io.cn/win32-2.3.1/lib/src/structs.g.dart:557:29: Error: Member not found: 'AsciiChar'.
+</span><span class='line'>[        ] [        ]   int get AsciiChar => Char.AsciiChar;
+</span><span class='line'>[        ] [        ]                             ^^^^^^^^^
+</span><span class='line'>[        ] [        ] ../../../../.pub-cache/hosted/pub.flutter-io.cn/win32-2.3.1/lib/src/structs.g.dart:558:36: Error: Setter not found: 'AsciiChar'.
+</span><span class='line'>[        ] [        ]   set AsciiChar(int value) => Char.AsciiChar = value;
+</span><span class='line'>[        ] [        ]                                    ^^^^^^^^^
 </span></code></pre></td></tr></table></div></figure>
 
 
@@ -888,8 +946,7 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 <p>对于这种问题，解决起来也比较简单，执行</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>flutter pub upgrade
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>flutter pub upgrade</span></code></pre></td></tr></table></div></figure>
 
 
 
@@ -1012,9 +1069,8 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>find ~/.pub-cache/hosted  -name <span class="s2">&quot;$1-*&quot;</span> -type d -maxdepth 2 | xargs rm -rfv
-</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>#!/bin/bash
+</span><span class='line'>find ~/.pub-cache/hosted  -name "$1-*" -type d -maxdepth 2 | xargs rm -rfv</span></code></pre></td></tr></table></div></figure>
 
 
 <p>保存上述命令为脚本。</p>
@@ -1028,14 +1084,15 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-all.zip</p
 <span class='line-number'>5</span>
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>removePubCache.sh gogogo
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>
+</span><span class='line'>removePubCache.sh gogogo
 </span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/LICENSE
 </span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/test/gogogo_test.dart
 </span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/test
 </span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/CHANGELOG.md
 </span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/example/test/widget_test.dart
-</span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/example/test
-</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>/Users/xxxxxxxxx/.pub-cache/hosted/unpub.xxxxx.com/gogogo-1.0.4/example/test</span></code></pre></td></tr></table></div></figure>
 
 
 <p>然后执行一下<code>flutter pub get --verbose</code>即可（需要）。</p>
@@ -1686,71 +1743,6 @@ GoLand、CLion、RubyMine&hellip;&hellip;：￥599 > ￥669</p>
 <p>JetBrains 系列产品的优秀有目共睹，除了官网，开发者现在又多了「数码荔枝」这样专业靠谱的购买渠道。</p>
 
 <p>快趁涨价前带走这些工具，高效助力你的开发！<a href="https://store.lizhi.io/site/search_list?order_by=2&amp;word=&amp;coupon_uuid=0&amp;category_id=35&amp;cid=wncr9wz5">点击链接</a>马上订阅 / 续费 JetBrains 系列软件</p>
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[unpub 发布原子化处理]]></title>
-    <link href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/"/>
-    <updated>2022-08-16T07:43:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish</id>
-    <content type="html"><![CDATA[<p>目前 unpub 作为我们重要的 pub 私有服务托管着 众多的 pubs。在日常的开发过程中，我们也会对pub 做出了一些约束。比如</p>
-
-<ul>
-<li>只允许在 master 或者 release/* 分支发布</li>
-<li>不符合上述条件的分支不允许发布。</li>
-</ul>
-
-
-<p>今天我们讨论的问题重点，非上述的问题，而是发布 unpub 的原子性。</p>
-
-<!--more-->
-
-
-<h2>非原子化的两步</h2>
-
-<p>在讨论原子性之前，我们需要明确有两个步骤。</p>
-
-<ul>
-<li>我们需要执行 <code>flutter packages pub publish --server=https://pub.aaa.com/ --verbose</code> 进行发布</li>
-<li>在发布unpub 前后，我们需要将代码推送到远端 gitlab 服务器</li>
-</ul>
-
-
-<h2>非原子化的问题</h2>
-
-<p>那么如果我们忘记了，最后一步的推送工作，带来的问题可能会很严重</p>
-
-<ul>
-<li>某份代码 A 未被推送，后面的更改再发布 unpub 导致 代码 A 的功能 丢失</li>
-<li>后续发现丢失后，找回代码A 很可能无法 确定 当时的代码修改内容（可能包含其他修改，人的记忆里不总是可靠）</li>
-<li>找回后，往往需要投入一定的测试资源验证较为稳妥。</li>
-</ul>
-
-
-<p>所以，将上面两部合成一步，来作为一个原子操作，显得尤为重要。</p>
-
-<h2>一个脚本原子化</h2>
-
-<p>这里有一个简单，却极为实用的方式，就是这个代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>git push origin <span class="s2">&quot;$(git symbolic-ref -q HEAD 2&gt;/dev/null | cut -d&#39;/&#39; -f 3)&quot;</span>
-</span><span class='line'>flutter packages pub publish --server<span class="o">=</span>https://pub.aaa.com/ --verbose
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>下载到本地后，设置文件可执行(加入环境变量)，然后当再次发布 unpub 时 这样处理即可。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>unpubUpload.sh
-</span></code></pre></td></tr></table></div></figure>
-
-
-
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
