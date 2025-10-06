@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2025-10-06T23:14:11+08:00</updated>
+  <updated>2025-10-06T23:26:36+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,182 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[解决 Android Studio 关闭后终端 flutter run 进程自动结束的问题]]></title>
+    <link href="https://droidyue.com/blog/2025/09/28/android-studio-guan-bi-shi-bu-zi-dong-tui-chu-flutter-run-deng-jin-cheng-de-jie-jue-fang-an/"/>
+    <updated>2025-09-28T08:56:00+08:00</updated>
+    <id>https://droidyue.com/blog/2025/09/28/android-studio-guan-bi-shi-bu-zi-dong-tui-chu-flutter-run-deng-jin-cheng-de-jie-jue-fang-an</id>
+    <content type="html"><![CDATA[<p>在 Flutter 开发过程中，很多开发者遇到一个困扰的问题：当使用终端运行 <code class="language-plaintext highlighter-rouge">flutter run</code> 命令进行开发时，一旦关闭 Android Studio 或 IntelliJ IDEA，终端中的 <code class="language-plaintext highlighter-rouge">flutter run</code> 进程就会自动结束，导致应用停止运行。本文将详细分析这个问题的原因并提供解决方案。</p>
+
+<!--more-->
+
+<h2 id="问题现象">问题现象</h2>
+
+<h3 id="典型场景">典型场景</h3>
+<ol>
+  <li>在终端中执行 <code class="language-plaintext highlighter-rouge">flutter run</code> 启动 Flutter 应用</li>
+  <li>同时打开 Android Studio 进行代码编辑</li>
+  <li>关闭 Android Studio 或 IntelliJ IDEA</li>
+  <li>终端中的 <code class="language-plaintext highlighter-rouge">flutter run</code> 进程自动结束，应用停止运行</li>
+</ol>
+
+<h3 id="影响范围">影响范围</h3>
+<ul>
+  <li>通过终端启动的 <code class="language-plaintext highlighter-rouge">flutter run</code> 进程</li>
+  <li>相关的热重载功能失效</li>
+  <li>调试连接中断</li>
+  <li>需要重新启动应用才能继续开发</li>
+</ul>
+
+<h2 id="问题原因分析">问题原因分析</h2>
+
+<h3 id="根本原因">根本原因</h3>
+
+<p>当 Android Studio 启动时，它会自动管理 ADB（Android Debug Bridge）服务器的生命周期。默认情况下，IDE 会：</p>
+
+<ol>
+  <li><strong>启动自己的 ADB 服务器实例</strong></li>
+  <li><strong>接管现有的调试连接</strong></li>
+  <li><strong>在退出时终止所有相关的调试进程</strong></li>
+</ol>
+
+<p>这种设计导致即使是通过终端独立启动的 <code class="language-plaintext highlighter-rouge">flutter run</code> 进程，也会因为 ADB 服务器的关闭而被迫结束。</p>
+
+<h3 id="进程依赖关系">进程依赖关系</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class=""><span class="line">终端 flutter run → ADB 连接 → Android Studio 管理的 ADB 服务器</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>当 Android Studio 关闭时，它管理的 ADB 服务器也会关闭，进而导致所有依赖该 ADB 连接的进程（包括终端的 <code class="language-plaintext highlighter-rouge">flutter run</code>）都被终止。</p>
+
+<h2 id="解决方案">解决方案</h2>
+
+<h3 id="配置外部-adb-服务器管理">配置外部 ADB 服务器管理</h3>
+
+<p>最有效的解决方案是让 Android Studio 使用外部手动管理的 ADB 服务器，而不是自己管理一个实例：</p>
+
+<h4 id="配置步骤">配置步骤</h4>
+
+<ol>
+  <li>打开 Android Studio 设置（Preferences/Settings）</li>
+  <li>导航到 <code class="language-plaintext highlighter-rouge">Build, Execution, Deployment</code> → <code class="language-plaintext highlighter-rouge">Debugger</code></li>
+  <li>找到 <code class="language-plaintext highlighter-rouge">Android Debug Bridge (adb)</code> 部分</li>
+  <li>在 <code class="language-plaintext highlighter-rouge">Adb Server Lifecycle Management</code> 中选择 <code class="language-plaintext highlighter-rouge">Use existing manually managed server</code></li>
+  <li>设置 <code class="language-plaintext highlighter-rouge">Existing ADB server port</code> 为 <code class="language-plaintext highlighter-rouge">5037</code>（默认端口）</li>
+</ol>
+
+<p><img src="https://asset.droidyue.com/image/25_h2/android_studido_adb.png" alt="android studio adb config" /></p>
+
+<h4 id="关键配置说明">关键配置说明</h4>
+
+<ul>
+  <li><strong>Use existing manually managed server</strong>: 告诉 Android Studio 不要自己管理 ADB 服务器，而是使用外部已存在的服务器</li>
+  <li><strong>Existing ADB server port</strong>: 指定外部 ADB 服务器的端口（通常为 5037）</li>
+</ul>
+
+<p>这样配置后，Android Studio 不会在启动时接管 ADB 服务器，也不会在关闭时终止它，从而保证终端运行的进程不受影响。</p>
+
+<h2 id="验证配置是否生效">验证配置是否生效</h2>
+
+<p>配置完成后，可以通过以下步骤验证：</p>
+
+<ol>
+  <li>在终端启动 <code class="language-plaintext highlighter-rouge">flutter run</code></li>
+  <li>打开 Android Studio</li>
+  <li>关闭 Android Studio</li>
+  <li>检查终端中的 <code class="language-plaintext highlighter-rouge">flutter run</code> 是否依然运行</li>
+</ol>
+
+<p>如果 <code class="language-plaintext highlighter-rouge">flutter run</code> 进程没有被终止，说明配置成功。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>通过配置 Android Studio 使用外部手动管理的 ADB 服务器，可以有效解决 IDE 关闭后终端 <code class="language-plaintext highlighter-rouge">flutter run</code> 进程自动结束的问题。这种方法的优势在于：</p>
+
+<ol>
+  <li><strong>进程独立性</strong>：终端和 IDE 的调试进程相互独立</li>
+  <li><strong>开发效率</strong>：无需频繁重启应用</li>
+  <li><strong>资源优化</strong>：避免不必要的进程重启</li>
+  <li><strong>稳定性</strong>：减少因 IDE 操作导致的调试中断</li>
+</ol>
+
+<p>推荐所有 Flutter 开发者采用这种配置方式，特别是那些习惯在终端中运行 <code class="language-plaintext highlighter-rouge">flutter run</code> 的开发者。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[使用 grep 查找关键字并显示上下文行]]></title>
+    <link href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/"/>
+    <updated>2025-06-24T10:30:00+08:00</updated>
+    <id>https://droidyue.com/blog/2025/06/24/use-grep-with-context</id>
+    <content type="html"><![CDATA[<h2 id="背景">背景</h2>
+
+<p>排查日志时，常需要定位关键字并带上一两行上下文确认语义。<code class="language-plaintext highlighter-rouge">grep</code> 内建的上下文选项可以直接满足需求，不必再手动 <code class="language-plaintext highlighter-rouge">sed -n '19,21p'</code>。</p>
+
+<!--more-->
+
+<h2 id="快速示例">快速示例</h2>
+
+<p>假设想在 <code class="language-plaintext highlighter-rouge">app.log</code> 中找出包含 <code class="language-plaintext highlighter-rouge">Fatal error</code> 的行，并且同时看到上一行与下一行：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">grep</span> <span class="nt">-n</span> <span class="nt">-C</span> 1 <span class="s2">"Fatal error"</span> app.log</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">-n</code> 会显示行号，便于定位。</li>
+  <li><code class="language-plaintext highlighter-rouge">-C 1</code> 等价于 <code class="language-plaintext highlighter-rouge">--context=1</code>，表示向前向后各多带 1 行。想多看几行时调整数字即可。</li>
+</ul>
+
+<p>输出中，命中的行以冒号分隔行号与内容，上下文行则以短横线 <code class="language-plaintext highlighter-rouge">-</code> 连接，快速区分重点。</p>
+
+<h2 id="控制上下文范围">控制上下文范围</h2>
+
+<p><code class="language-plaintext highlighter-rouge">grep</code> 提供三个粒度化参数：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">-C &lt;N&gt;</code>：两侧各 N 行，是最常用的形式。</li>
+  <li><code class="language-plaintext highlighter-rouge">-B &lt;N&gt;</code>：只带前 N 行（Before）。</li>
+  <li><code class="language-plaintext highlighter-rouge">-A &lt;N&gt;</code>：只带后 N 行（After）。</li>
+</ul>
+
+<p>例如只关心关键字后面的调用栈，可使用：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">grep</span> <span class="nt">-n</span> <span class="nt">-A</span> 4 <span class="s2">"NullPointerException"</span> stacktrace.txt</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>再配合 <code class="language-plaintext highlighter-rouge">-m 1</code>（匹配一次后退出）可以缩短复杂日志的搜索时间。</p>
+
+<h2 id="与常见参数组合">与常见参数组合</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">-i</code>：忽略大小写，处理大小写不一致的告警信息很方便。</li>
+  <li><code class="language-plaintext highlighter-rouge">-E</code>：启用扩展正则，可直接写 <code class="language-plaintext highlighter-rouge">grep -E "(WARN|ERROR)"</code>。</li>
+  <li><code class="language-plaintext highlighter-rouge">--color=auto</code>：高亮命中关键字，在终端阅读更直观。</li>
+</ul>
+
+<p>将这些参数组合成 Shell 函数，后续排查直接调用。例如在 <code class="language-plaintext highlighter-rouge">~/.bashrc</code> 中定义：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">gctx<span class="o">()</span> <span class="o">{</span>
+</span><span class="line">  <span class="nb">local </span><span class="nv">keyword</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span> <span class="nv">file</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span> <span class="nv">lines</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">3</span><span class="k">:-</span><span class="nv">1</span><span class="k">}</span><span class="s2">"</span>
+</span><span class="line">  <span class="nb">grep</span> <span class="nt">-n</span> <span class="nt">--color</span><span class="o">=</span>always <span class="nt">-C</span> <span class="s2">"</span><span class="nv">$lines</span><span class="s2">"</span> <span class="s2">"</span><span class="nv">$keyword</span><span class="s2">"</span> <span class="s2">"</span><span class="nv">$file</span><span class="s2">"</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>执行 <code class="language-plaintext highlighter-rouge">gctx "timeout" service.log 2</code>，即可得到行号、关键字高亮、上下文行的结果。</p>
+
+<h2 id="小结">小结</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">-C/-A/-B</code> 是获取上下文的核心选项，记住数字表示行数即可。</li>
+  <li>搭配 <code class="language-plaintext highlighter-rouge">-n</code>、<code class="language-plaintext highlighter-rouge">--color</code>、<code class="language-plaintext highlighter-rouge">-m</code> 等参数可以提升排查效率。</li>
+  <li>如果命中结果过多，将命令与 <code class="language-plaintext highlighter-rouge">less -R</code> 或 <code class="language-plaintext highlighter-rouge">fzf</code> 管道组合，能够在终端中进行二次筛选，让排查体验更顺滑。</li>
+</ul>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android 开发中的三个常见构建错误及解决方案]]></title>
@@ -1394,154 +1570,6 @@ distributionUrl=https://services.gradle.org/distributions/gradle-7.4-all.zip</p>
 </ul>
 
 <p>通过上面的几个脚本，我们可以轻松实现效率提升。</p>
-
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[JetBrains 系列即将涨价，抓紧最后的好价入手！]]></title>
-    <link href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/"/>
-    <updated>2022-09-04T21:40:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/09/04/jetbrains-big-sale</id>
-    <content type="html"><![CDATA[<p>对于开发者来讲，每天都要和各种编程 IDE 和开发工具打交道。想必一定听说过 <strong>JetBrains</strong> 公司，或旗下的产品：<strong>IntelliJ IDEA</strong>、<strong>PyCharm</strong>、<strong>WebStorm</strong> 等。</p>
-
-<p>不久前，JetBrains 发布公告，他们即将上调系列产品的订阅价格！</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE1.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE1.png" /></p>
-
-<p>涨价风暴将席卷旗下一众产品，包括：IDE、.NET 工具和 All Products Pack。</p>
-
-<!--more-->
-
-<p>此次价格调整将于 <strong>2022 年 10 月 1 日</strong> 生效，届时订阅价格将上涨 <strong>10%~20%</strong>，以下是部分个人版的涨价情况：</p>
-
-<p>ReSharper：￥869 &gt; ￥939
-WebStorm：￥399 &gt; ￥469
-All Products Pack：￥1679 &gt; ￥1949
-GoLand、CLion、RubyMine……：￥599 &gt; ￥669</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE2.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE2.png" /></p>
-
-<p>JetBrains 这些产品对于开发者来讲可是刚需呀！知名代理商「数码荔枝」目前价格还未调整，大伙记得趁涨价前赶紧囤一波订阅，别等到涨价了才后悔错过优惠，现在就是入手的最佳时机！</p>
-
-<p><a href="https://store.lizhi.io/site/search_list?order_by=2&amp;word=&amp;coupon_uuid=0&amp;category_id=35&amp;cid=wncr9wz5">点击专属链接</a>优惠订阅 / 续费 JetBrains 系列软件</p>
-
-<p>囤货的朋友还得注意一下，个人订阅允许最多至三年，企业订阅最多至两年！</p>
-
-<h2 id="优秀专业且强大">优秀、专业且强大</h2>
-
-<p>工欲善其事，必先利其器。对于开发者来说，出色的编程技能固然重要，但要让敲代码变成轻松愉悦的享受，自然得备上一款能提升开发效率的好工具。</p>
-
-<p>自带代码辅助功能的 JetBrains 系列软件，非常值得各位开发者拥有。</p>
-
-<p>包含 IntelliJ IDEA、PyCharm、WebStorm、AppCode、CLion、DataGrip、GoLand、PhpStorm、RubyMine 等。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE3.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE3.png" /></p>
-
-<p>各位使用 Java、PHP、Python 还是 Swift 开发语言的朋友，都能找到合适的开发工具。</p>
-
-<p>JetBrains 具备优秀的智能编码辅助和代码重构能力，强大、稳定的调试器帮助开发者节省更多调试时间。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE4.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE4.png" /></p>
-
-<p>提供了包括提交、冲突解决、分支切换和分支对比在内的源码管理功能，帮助实现源代码高效版本控制。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE5.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE5.png" /></p>
-
-<p>集成 Docker、版本控制、反编译器等众多开发工具，丰富的插件生态系统，让开发者可以根据自己的特定需求定制 IDE。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE6.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE6.png" /></p>
-
-<p>优秀、专业且强大的工具，开发者和团队必备。现在续费还能获得额外折扣，不要错过！<a href="https://store.lizhi.io/site/search_list?order_by=2&amp;word=&amp;coupon_uuid=0&amp;category_id=35&amp;cid=wncr9wz5">点击专属链接</a>优惠入手 JetBrains 系列软件</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE7.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE7.png" /></p>
-
-<h2 id="all-products-pack-更划算">All Products Pack 更划算</h2>
-
-<p>而对于全栈开发者来说，JetBrains 的全套编码工具更是开发时的不二之选。集合 IntelliJ IDEA、PyCharm、GoLand 等十余个 IDE，多个 .NET 开发工具以及分析器。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE8.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE8.png" /></p>
-
-<p>实力与优惠兼得的 JetBrains 编程开发工具集，涨价后 <strong>1949 元</strong>，现在还能以 <strong>1679 元</strong>的限时特价入手，立省几百！<a href="https://store.lizhi.io/site/products/id/416?cid=wncr9wz5">点击专属链接</a>优惠订阅 All Products Pack</p>
-
-<h2 id="产品汉化出色">产品汉化出色</h2>
-
-<p>JetBrains 系列产品现已完成汉化，无需另外下载软件安装，大部分软件内直接安装语言插件，就可以显示简体中文界面。</p>
-
-<p>中文操作界面，新手更好入门！</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE9.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE9.png" /></p>
-
-<h2 id="铂金代理-品质售后无忧">铂金代理 品质售后无忧</h2>
-
-<p>购买专业软件不仅要选对代理商，还得看靠谱的售后服务。</p>
-
-<p>数码荔枝拥有开发商 JetBrains 的铂金代理资格。所销售的正版软件品质可靠，值得开发者信赖！</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE10.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE10.png" /></p>
-
-<p>除了可靠的授权，它们店铺的客服同样专业，可以为用户解决众多软件上的使用问题。在这购买 JetBrains 系列软件，使用自然没有后顾之忧。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE11.png" alt="https://asset.droidyue.com/image/lizhi_io/jetbrains/%E5%9B%BE11.png" /></p>
-
-<p>对于软件激活与授权安装的问题，它们的客服会提供专业售后服务。更多软件使用问题还可在官方平台提交工单，获得开发商的专业支持。</p>
-
-<p>JetBrains 系列产品的优秀有目共睹，除了官网，开发者现在又多了「数码荔枝」这样专业靠谱的购买渠道。</p>
-
-<p>快趁涨价前带走这些工具，高效助力你的开发！<a href="https://store.lizhi.io/site/search_list?order_by=2&amp;word=&amp;coupon_uuid=0&amp;category_id=35&amp;cid=wncr9wz5">点击链接</a>马上订阅 / 续费 JetBrains 系列软件</p>
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[unpub 发布原子化处理]]></title>
-    <link href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/"/>
-    <updated>2022-08-16T07:43:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish</id>
-    <content type="html"><![CDATA[<p>目前 unpub 作为我们重要的 pub 私有服务托管着 众多的 pubs。在日常的开发过程中，我们也会对pub 做出了一些约束。比如</p>
-
-<ul>
-  <li>只允许在 master 或者 release/* 分支发布</li>
-  <li>不符合上述条件的分支不允许发布。</li>
-</ul>
-
-<p>今天我们讨论的问题重点，非上述的问题，而是发布 unpub 的原子性。</p>
-
-<!--more-->
-
-<h2 id="非原子化的两步">非原子化的两步</h2>
-
-<p>在讨论原子性之前，我们需要明确有两个步骤。</p>
-
-<ul>
-  <li>我们需要执行 <code class="language-plaintext highlighter-rouge">flutter packages pub publish --server=https://pub.aaa.com/ --verbose</code> 进行发布</li>
-  <li>在发布unpub 前后，我们需要将代码推送到远端 gitlab 服务器</li>
-</ul>
-
-<h2 id="非原子化的问题">非原子化的问题</h2>
-<p>那么如果我们忘记了，最后一步的推送工作，带来的问题可能会很严重</p>
-
-<ul>
-  <li>某份代码 A 未被推送，后面的更改再发布 unpub 导致 代码 A 的功能 丢失</li>
-  <li>后续发现丢失后，找回代码A 很可能无法 确定 当时的代码修改内容（可能包含其他修改，人的记忆里不总是可靠）</li>
-  <li>找回后，往往需要投入一定的测试资源验证较为稳妥。</li>
-</ul>
-
-<p>所以，将上面两部合成一步，来作为一个原子操作，显得尤为重要。</p>
-
-<h2 id="一个脚本原子化">一个脚本原子化</h2>
-<p>这里有一个简单，却极为实用的方式，就是这个代码</p>
-
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-<span class="line-number">2</span>
-<span class="line-number">3</span>
-</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="c">#!/bin/bash</span>
-</span><span class="line">git push origin <span class="s2">"</span><span class="si">$(</span>git symbolic-ref <span class="nt">-q</span> HEAD 2&gt;/dev/null | <span class="nb">cut</span> <span class="nt">-d</span><span class="s1">'/'</span> <span class="nt">-f</span> 3<span class="si">)</span><span class="s2">"</span>
-</span><span class="line">flutter packages pub publish <span class="nt">--server</span><span class="o">=</span>https://pub.aaa.com/ <span class="nt">--verbose</span></span></code></pre></td></tr></table></div></figure></notextile></div>
-
-<p>下载到本地后，设置文件可执行(加入环境变量)，然后当再次发布 unpub 时 这样处理即可。</p>
-
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-</pre></td><td class="code"><pre><code class="shell"><span class="line">unpubUpload.sh</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
