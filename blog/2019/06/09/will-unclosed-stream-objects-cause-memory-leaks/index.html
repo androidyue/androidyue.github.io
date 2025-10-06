@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="未关闭的文件流会引起内存泄露么？ Jun 9th, 2019 最近接触了一些面试者，在面试过程中有涉及到内存泄露的问题，其中有不少人回答说，如果文件打开后，没有关闭会导致内存泄露。当被继续追问，为什么会导致内存泄露时，大部分人都没有回答出来。 本文将具体讲一讲 文件(流)未关闭与内存泄露的关系 &hellip;">
+  <meta name="description" content="未关闭的文件流会引起内存泄露么？ 最近接触了一些面试者，在面试过程中有涉及到内存泄露的问题，其中有不少人回答说，如果文件打开后，没有关闭会导致内存泄露。当被继续追问，为什么会导致内存泄露时，大部分人都没有回答出来。 本文将具体讲一讲 文件(流)未关闭与内存泄露的关系。 什么是内存泄露 定义： &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2019-06-09T22:06:00+08:00" pubdate data-updated="true">Jun 9<span>th</span>, 2019</time>
+<time datetime="2019-06-09T22:06:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -189,212 +187,196 @@
 <p>本文将具体讲一讲 文件(流)未关闭与内存泄露的关系。</p>
 
 <!--more-->
-
-
-<h2>什么是内存泄露</h2>
+<h2 id="什么是内存泄露">什么是内存泄露</h2>
 
 <ul>
-<li>定义：当生命周期长的实例<code>L</code> <strong>不合理</strong>地持有一个生命周期短的实例<code>S</code>，导致<code>S</code>实例无法被正常回收</li>
+  <li>定义：当生命周期长的实例<code class="language-plaintext highlighter-rouge">L</code> <strong>不合理</strong>地持有一个生命周期短的实例<code class="language-plaintext highlighter-rouge">S</code>，导致<code class="language-plaintext highlighter-rouge">S</code>实例无法被正常回收</li>
 </ul>
 
-
-<h3>举例说明</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">AppSettings</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="n">Context</span> <span class="n">mAppContext</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="n">AppSettings</span> <span class="n">sInstance</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AppSettings</span><span class="o">();</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">//some other codes</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">AppSettings</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">sInstance</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">setup</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">mAppContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<h3 id="举例说明">举例说明</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">AppSettings</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="nc">Context</span> <span class="n">mAppContext</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">private</span> <span class="kd">static</span> <span class="nc">AppSettings</span> <span class="n">sInstance</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">AppSettings</span><span class="o">();</span>
+</span><span class="line">
+</span><span class="line">    <span class="c1">//some other codes</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">AppSettings</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">      <span class="k">return</span> <span class="n">sInstance</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">setup</span><span class="o">(</span><span class="nc">Context</span> <span class="n">context</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">mAppContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>上面的代码可能会发生内存泄露</p>
 
 <ul>
-<li>我们调用<code>AppSettings.getInstance.setup()</code>传入一个<code>Activity</code>实例</li>
-<li>当上述的<code>Activity</code>退出时，由于被<code>AppSettings</code>中属性<code>mAppContext</code>持有，进而导致内存泄露。</li>
+  <li>我们调用<code class="language-plaintext highlighter-rouge">AppSettings.getInstance.setup()</code>传入一个<code class="language-plaintext highlighter-rouge">Activity</code>实例</li>
+  <li>当上述的<code class="language-plaintext highlighter-rouge">Activity</code>退出时，由于被<code class="language-plaintext highlighter-rouge">AppSettings</code>中属性<code class="language-plaintext highlighter-rouge">mAppContext</code>持有，进而导致内存泄露。</li>
 </ul>
-
 
 <p>为什么上面的情况就会发生内存泄露</p>
 
 <ul>
-<li>以 Android 为例，GC 回收对象采用<code>GC Roots</code>强引用可到达机制。</li>
-<li><code>Activity</code>实例被<code>AppSettings.sInstance</code>持有</li>
-<li><code>AppSettings.sInstance</code>由于是静态，被<code>AppSettings</code>类持有</li>
-<li><code>AppSettings</code>类被加载它的类加载器持有</li>
-<li>而类加载器就是<code>GC Roots</code>的一种</li>
-<li>由于上述关系导致<code>Activity</code>实例无法被回收销毁。</li>
+  <li>以 Android 为例，GC 回收对象采用<code class="language-plaintext highlighter-rouge">GC Roots</code>强引用可到达机制。</li>
+  <li><code class="language-plaintext highlighter-rouge">Activity</code>实例被<code class="language-plaintext highlighter-rouge">AppSettings.sInstance</code>持有</li>
+  <li><code class="language-plaintext highlighter-rouge">AppSettings.sInstance</code>由于是静态，被<code class="language-plaintext highlighter-rouge">AppSettings</code>类持有</li>
+  <li><code class="language-plaintext highlighter-rouge">AppSettings</code>类被加载它的类加载器持有</li>
+  <li>而类加载器就是<code class="language-plaintext highlighter-rouge">GC Roots</code>的一种</li>
+  <li>由于上述关系导致<code class="language-plaintext highlighter-rouge">Activity</code>实例无法被回收销毁。</li>
 </ul>
 
+<h2 id="验证是否引起内存泄露">验证是否引起内存泄露</h2>
 
-<h2>验证是否引起内存泄露</h2>
-
-<p>因此，想要证明未关闭的文件流是否导致内存泄露，需要查看文件流是否是<code>GC Roots</code>强引用可到达。</p>
+<p>因此，想要证明未关闭的文件流是否导致内存泄露，需要查看文件流是否是<code class="language-plaintext highlighter-rouge">GC Roots</code>强引用可到达。</p>
 
 <p>示例代码1（辅助验证GC 发生）</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.streamleakssample</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">import</span> <span class="n">java</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="n">BufferedReader</span>
-</span><span class='line'><span class="n">import</span> <span class="n">java</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="n">Reader</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">class</span> <span class="nf">MyBufferedReader</span><span class="p">(</span><span class="err">`</span><span class="k">in</span><span class="err">`</span><span class="p">:</span> <span class="n">Reader</span><span class="p">?)</span> <span class="p">:</span> <span class="n">BufferedReader</span><span class="p">(</span><span class="err">`</span><span class="k">in</span><span class="err">`</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">protected</span> <span class="k">fun</span> <span class="nf">finalize</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="s">&quot;MyBufferedReader get collected&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">package</span> <span class="nn">com.example.streamleakssample</span>
+</span><span class="line">
+</span><span class="line"><span class="k">import</span> <span class="nn">java.io.BufferedReader</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">java.io.Reader</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="kd">class</span> <span class="nc">MyBufferedReader</span><span class="p">(</span><span class="n">`in`</span><span class="p">:</span> <span class="nc">Reader</span><span class="p">?)</span> <span class="p">:</span> <span class="nc">BufferedReader</span><span class="p">(</span><span class="n">`in`</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">protected</span> <span class="k">fun</span> <span class="nf">finalize</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">println</span><span class="p">(</span><span class="s">"MyBufferedReader get collected"</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>示例代码2</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">package</span> <span class="nn">com.example.streamleakssample</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">os</span><span class="p">.</span><span class="n">Bundle</span>
-</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">support</span><span class="p">.</span><span class="n">v7</span><span class="p">.</span><span class="n">app</span><span class="p">.</span><span class="n">AppCompatActivity</span>
-</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="n">Log</span>
-</span><span class='line'><span class="n">import</span> <span class="n">android</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">View</span>
-</span><span class='line'><span class="n">import</span> <span class="n">java</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="n">FileInputStream</span>
-</span><span class='line'><span class="n">import</span> <span class="n">java</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="n">InputStreamReader</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">class</span> <span class="nc">MainActivity</span> <span class="p">:</span> <span class="n">AppCompatActivity</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">:</span> <span class="n">Bundle</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">setContentView</span><span class="p">(</span><span class="n">R</span><span class="p">.</span><span class="n">layout</span><span class="p">.</span><span class="n">activity_main</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">findViewById</span><span class="p">&lt;</span><span class="n">View</span><span class="p">&gt;(</span><span class="n">R</span><span class="p">.</span><span class="n">id</span><span class="p">.</span><span class="n">textview</span><span class="p">).</span><span class="n">setOnClickListener</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">testInputStream</span><span class="p">()</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">private</span> <span class="k">fun</span> <span class="nf">testInputStream</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">//需进入设置手动开启应用权限，未处理运行时权限问题</span>
-</span><span class='line'>        <span class="k">val</span> <span class="err">`</span><span class="k">is</span><span class="err">`</span> <span class="p">=</span> <span class="n">FileInputStream</span><span class="p">(</span><span class="s">&quot;/sdcard/a.txt&quot;</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">val</span> <span class="n">buf</span> <span class="p">=</span> <span class="n">MyBufferedReader</span><span class="p">(</span><span class="n">InputStreamReader</span><span class="p">(</span><span class="err">`</span><span class="k">is</span><span class="err">`</span><span class="p">))</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">var</span> <span class="n">line</span> <span class="p">=</span> <span class="n">buf</span><span class="p">.</span><span class="n">readLine</span><span class="p">()</span>
-</span><span class='line'>        <span class="k">val</span> <span class="n">sb</span> <span class="p">=</span> <span class="n">StringBuilder</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">while</span> <span class="p">(</span><span class="n">line</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">sb</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">).</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;\n&quot;</span><span class="p">)</span>
-</span><span class='line'>            <span class="n">line</span> <span class="p">=</span> <span class="n">buf</span><span class="p">.</span><span class="n">readLine</span><span class="p">()</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">val</span> <span class="n">fileAsString</span> <span class="p">=</span> <span class="n">sb</span><span class="p">.</span><span class="n">toString</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;MainActivity&quot;</span><span class="p">,</span> <span class="s">&quot;testInputStream.Contents : $fileAsString&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">package</span> <span class="nn">com.example.streamleakssample</span>
+</span><span class="line">
+</span><span class="line"><span class="k">import</span> <span class="nn">android.os.Bundle</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">android.support.v7.app.AppCompatActivity</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">android.util.Log</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">android.view.View</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">java.io.FileInputStream</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">java.io.InputStreamReader</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="kd">class</span> <span class="nc">MainActivity</span> <span class="p">:</span> <span class="nc">AppCompatActivity</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">override</span> <span class="k">fun</span> <span class="nf">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">:</span> <span class="nc">Bundle</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">super</span><span class="p">.</span><span class="nf">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">)</span>
+</span><span class="line">        <span class="nf">setContentView</span><span class="p">(</span><span class="nc">R</span><span class="p">.</span><span class="n">layout</span><span class="p">.</span><span class="n">activity_main</span><span class="p">)</span>
+</span><span class="line">        <span class="n">findViewById</span><span class="p">&lt;</span><span class="nc">View</span><span class="p">&gt;(</span><span class="nc">R</span><span class="p">.</span><span class="n">id</span><span class="p">.</span><span class="n">textview</span><span class="p">).</span><span class="nf">setOnClickListener</span> <span class="p">{</span>
+</span><span class="line">            <span class="nf">testInputStream</span><span class="p">()</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">private</span> <span class="k">fun</span> <span class="nf">testInputStream</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    	<span class="c1">//需进入设置手动开启应用权限，未处理运行时权限问题</span>
+</span><span class="line">        <span class="kd">val</span> <span class="py">`is`</span> <span class="p">=</span> <span class="nc">FileInputStream</span><span class="p">(</span><span class="s">"/sdcard/a.txt"</span><span class="p">)</span>
+</span><span class="line">        <span class="kd">val</span> <span class="py">buf</span> <span class="p">=</span> <span class="nc">MyBufferedReader</span><span class="p">(</span><span class="nc">InputStreamReader</span><span class="p">(</span><span class="n">`is`</span><span class="p">))</span>
+</span><span class="line">
+</span><span class="line">        <span class="kd">var</span> <span class="py">line</span> <span class="p">=</span> <span class="n">buf</span><span class="p">.</span><span class="nf">readLine</span><span class="p">()</span>
+</span><span class="line">        <span class="kd">val</span> <span class="py">sb</span> <span class="p">=</span> <span class="nc">StringBuilder</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line">        <span class="k">while</span> <span class="p">(</span><span class="n">line</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">            <span class="n">sb</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">line</span><span class="p">).</span><span class="nf">append</span><span class="p">(</span><span class="s">"\n"</span><span class="p">)</span>
+</span><span class="line">            <span class="n">line</span> <span class="p">=</span> <span class="n">buf</span><span class="p">.</span><span class="nf">readLine</span><span class="p">()</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="kd">val</span> <span class="py">fileAsString</span> <span class="p">=</span> <span class="n">sb</span><span class="p">.</span><span class="nf">toString</span><span class="p">()</span>
+</span><span class="line">        <span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"MainActivity"</span><span class="p">,</span> <span class="s">"testInputStream.Contents : $fileAsString"</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>这里我们这样操作</p>
 
 <ol>
-<li> 点击textview视图，触发多次<code>testInputStream</code></li>
-<li> 过几秒后，我们执行<code>heap dump</code>。</li>
-<li> 我们使用 MAT 对上一步的dump文件进行分析(需进行格式转换)</li>
+  <li>点击textview视图，触发多次<code class="language-plaintext highlighter-rouge">testInputStream</code></li>
+  <li>过几秒后，我们执行<code class="language-plaintext highlighter-rouge">heap dump</code>。</li>
+  <li>我们使用 MAT 对上一步的dump文件进行分析(需进行格式转换)</li>
 </ol>
-
 
 <p><img src="https://asset.droidyue.com/image/2019_05/fianalizer_reference_path_to_gc_roots.png" alt="https://asset.droidyue.com/image/2019_05/fianalizer_reference_path_to_gc_roots.png" /></p>
 
 <p>分析上图，我们发现</p>
 
 <ul>
-<li>FileInputStream 只被 FinalizerReference 这个类(GC Root)持有</li>
-<li>上述持有的原因是，<code>FileInputStream</code>重写了<code>finalize</code>，会被加入到<code>FinalizerReference</code>的析构处理集合</li>
-<li>上述引用会随着<code>Finalizer</code>守护线程处理后解除，即<code>FileInputStream</code>实例彻底销毁。</li>
+  <li>FileInputStream 只被 FinalizerReference 这个类(GC Root)持有</li>
+  <li>上述持有的原因是，<code class="language-plaintext highlighter-rouge">FileInputStream</code>重写了<code class="language-plaintext highlighter-rouge">finalize</code>，会被加入到<code class="language-plaintext highlighter-rouge">FinalizerReference</code>的析构处理集合</li>
+  <li>上述引用会随着<code class="language-plaintext highlighter-rouge">Finalizer</code>守护线程处理后解除，即<code class="language-plaintext highlighter-rouge">FileInputStream</code>实例彻底销毁。</li>
 </ul>
-
 
 <p>所以，我们再来操作一波，验证上面的结论。</p>
 
 <ul>
-<li>然后利用工具执行强制GC回收</li>
-<li>过几秒后，我们执行<code>heap dump</code>。</li>
-<li>我们使用 MAT 对上一步的dump文件进行分析(需进行格式转换)</li>
-<li>堆分析文件，查找<code>MyBufferedReader</code>或者<code>FileInputStream</code>或者<code>InputStreamReader</code> 没有发现这些实例，说明已经GC回收</li>
-<li>出于谨慎考虑，我们按照包名查找<code>java.io</code>在排除无关实例外，依旧无法找到<code>testInputStream</code>中的实例。再次证明已经被GC回收</li>
+  <li>然后利用工具执行强制GC回收</li>
+  <li>过几秒后，我们执行<code class="language-plaintext highlighter-rouge">heap dump</code>。</li>
+  <li>我们使用 MAT 对上一步的dump文件进行分析(需进行格式转换)</li>
+  <li>堆分析文件，查找<code class="language-plaintext highlighter-rouge">MyBufferedReader</code>或者<code class="language-plaintext highlighter-rouge">FileInputStream</code>或者<code class="language-plaintext highlighter-rouge">InputStreamReader</code> 没有发现这些实例，说明已经GC回收</li>
+  <li>出于谨慎考虑，我们按照包名查找<code class="language-plaintext highlighter-rouge">java.io</code>在排除无关实例外，依旧无法找到<code class="language-plaintext highlighter-rouge">testInputStream</code>中的实例。再次证明已经被GC回收</li>
 </ul>
-
 
 <p>因而我们可以确定，正常的使用流，不会导致内存泄露的产生。</p>
 
 <p>当然，如果你刻意显式持有Stream实例，那就另当别论了。</p>
 
-<h2>为什么需要关闭流</h2>
+<h2 id="为什么需要关闭流">为什么需要关闭流</h2>
 
 <p>首先我们看一张图
 <img src="https://asset.droidyue.com/image/2019_05/file-descriptor_table.jpg" alt="https://asset.droidyue.com/image/2019_05/file-descriptor_table.jpg" /></p>
@@ -402,156 +384,138 @@
 <p>如上图从左至右有三张表</p>
 
 <ul>
-<li>file descriptor table 归属于单个进程</li>
-<li>global file table(又称open file table) 归属于系统全局</li>
-<li>inode table 归属于系统全局</li>
+  <li>file descriptor table 归属于单个进程</li>
+  <li>global file table(又称open file table) 归属于系统全局</li>
+  <li>inode table 归属于系统全局</li>
 </ul>
 
+<h3 id="从一次文件打开说起">从一次文件打开说起</h3>
+<p>当我们尝试打开文件<code class="language-plaintext highlighter-rouge">/path/myfile.txt</code></p>
 
-<h3>从一次文件打开说起</h3>
-
-<p>当我们尝试打开文件<code>/path/myfile.txt</code></p>
-
-<p>1.从inode table 中查找到对应的文件节点 <br/>
-2.根据用户代码的一些参数（比如读写权限等）在open file table 中创建open file 节点 <br/>
-3.将上一步的open file节点信息保存，在file descriptor table中创建 file descriptor <br/>
+<p>1.从inode table 中查找到对应的文件节点 <br />
+2.根据用户代码的一些参数（比如读写权限等）在open file table 中创建open file 节点 <br />
+3.将上一步的open file节点信息保存，在file descriptor table中创建 file descriptor <br />
 4.返回上一步的file descriptor的索引位置，供应用读写等使用。</p>
 
-<h3>file descriptor 和流有什么关系</h3>
+<h3 id="file-descriptor-和流有什么关系">file descriptor 和流有什么关系</h3>
 
 <ul>
-<li>当我们这样<code>FileInputStream("/sdcard/a.txt")</code> 会获取一个file descriptor。</li>
-<li>出于稳定系统性能和避免因为过多打开文件导致CPU和RAM占用居高的考虑，每个进程都会有可用的file descriptor 限制。</li>
-<li>所以如果不释放file descriptor，会导致应用后续依赖file descriptor的行为(socket连接，读写文件等)无法进行，甚至是导致进程崩溃。</li>
-<li>当我们调用<code>FileInputStream.close</code>后，会释放掉这个file descriptor。</li>
+  <li>当我们这样<code class="language-plaintext highlighter-rouge">FileInputStream("/sdcard/a.txt")</code> 会获取一个file descriptor。</li>
+  <li>出于稳定系统性能和避免因为过多打开文件导致CPU和RAM占用居高的考虑，每个进程都会有可用的file descriptor 限制。</li>
+  <li>所以如果不释放file descriptor，会导致应用后续依赖file descriptor的行为(socket连接，读写文件等)无法进行，甚至是导致进程崩溃。</li>
+  <li>当我们调用<code class="language-plaintext highlighter-rouge">FileInputStream.close</code>后，会释放掉这个file descriptor。</li>
 </ul>
-
 
 <p>因此到这里我们可以说，不关闭流不是内存泄露问题，是<strong>资源泄露问题</strong>(file descriptor 属于资源)。</p>
 
-<h2>不手动关闭会怎样</h2>
-
+<h2 id="不手动关闭会怎样">不手动关闭会怎样</h2>
 <p>不手动关闭的真的会发生上面的问题么？ 其实也不完全是。</p>
 
-<p>因为对于这些流的处理，源代码中通常会做一个兜底处理。以<code>FileInputStream</code>为例</p>
+<p>因为对于这些流的处理，源代码中通常会做一个兜底处理。以<code class="language-plaintext highlighter-rouge">FileInputStream</code>为例</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
-</span><span class='line'><span class="cm"> * Ensures that the &lt;code&gt;close&lt;/code&gt; method of this file input stream is</span>
-</span><span class='line'><span class="cm"> * called when there are no more references to it.</span>
-</span><span class='line'><span class="cm"> *</span>
-</span><span class='line'><span class="cm"> * @exception  IOException  if an I/O error occurs.</span>
-</span><span class='line'><span class="cm"> * @see        java.io.FileInputStream#close()</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">finalize</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
-</span><span class='line'>    <span class="c1">// Android-added: CloseGuard support.</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">guard</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">guard</span><span class="o">.</span><span class="na">warnIfOpen</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">if</span> <span class="o">((</span><span class="n">fd</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">&amp;&amp;</span>  <span class="o">(</span><span class="n">fd</span> <span class="o">!=</span> <span class="n">FileDescriptor</span><span class="o">.</span><span class="na">in</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="c1">// Android-removed: Obsoleted comment about shared FileDescriptor handling.</span>
-</span><span class='line'>        <span class="n">close</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="cm">/**
+</span><span class="line"> * Ensures that the &lt;code&gt;close&lt;/code&gt; method of this file input stream is
+</span><span class="line"> * called when there are no more references to it.
+</span><span class="line"> *
+</span><span class="line"> * @exception  IOException  if an I/O error occurs.
+</span><span class="line"> * @see        java.io.FileInputStream#close()
+</span><span class="line"> */</span>
+</span><span class="line"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">finalize</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+</span><span class="line">    <span class="c1">// Android-added: CloseGuard support.</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">guard</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">guard</span><span class="o">.</span><span class="na">warnIfOpen</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">if</span> <span class="o">((</span><span class="n">fd</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">&amp;&amp;</span>  <span class="o">(</span><span class="n">fd</span> <span class="o">!=</span> <span class="nc">FileDescriptor</span><span class="o">.</span><span class="na">in</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">        <span class="c1">// Android-removed: Obsoleted comment about shared FileDescriptor handling.</span>
+</span><span class="line">        <span class="n">close</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-
-<p>是的，在finalize方法中有调用<code>close</code>来释放file descriptor.</p>
+<p>是的，在finalize方法中有调用<code class="language-plaintext highlighter-rouge">close</code>来释放file descriptor.</p>
 
 <p><strong>但是finalize方法执行速度不确定，不可靠</strong></p>
 
-<p>所以，我们不能依赖于这种形式，还是要手动调用<code>close</code>来释放file descriptor。</p>
+<p>所以，我们不能依赖于这种形式，还是要手动调用<code class="language-plaintext highlighter-rouge">close</code>来释放file descriptor。</p>
 
-<h2>关闭流实践</h2>
-
+<h2 id="关闭流实践">关闭流实践</h2>
 <p>Java 7 之后，可以使用try-with-resource方式处理</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">static</span> <span class="nc">String</span> <span class="nf">readFirstLineFromFile</span><span class="o">(</span><span class="nc">String</span> <span class="n">path</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">try</span> <span class="o">(</span><span class="nc">BufferedReader</span> <span class="n">br</span> <span class="o">=</span>
+</span><span class="line">                   <span class="k">new</span> <span class="nf">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="nc">FileReader</span><span class="o">(</span><span class="n">path</span><span class="o">)))</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">br</span><span class="o">.</span><span class="na">readLine</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">static</span> <span class="n">String</span> <span class="nf">readFirstLineFromFile</span><span class="o">(</span><span class="n">String</span> <span class="n">path</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">try</span> <span class="o">(</span><span class="n">BufferedReader</span> <span class="n">br</span> <span class="o">=</span>
-</span><span class='line'>                   <span class="k">new</span> <span class="nf">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="n">FileReader</span><span class="o">(</span><span class="n">path</span><span class="o">)))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">br</span><span class="o">.</span><span class="na">readLine</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Kotlin 可以使用<code>use</code></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">readFirstLine</span><span class="p">():</span> <span class="n">String</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">BufferedReader</span><span class="p">(</span><span class="n">FileReader</span><span class="p">(</span><span class="s">&quot;test.file&quot;</span><span class="p">)).</span><span class="n">use</span> <span class="p">{</span> <span class="k">return</span> <span class="n">it</span><span class="p">.</span><span class="n">readLine</span><span class="p">()</span> <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<p>Kotlin 可以使用<code class="language-plaintext highlighter-rouge">use</code></p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">private</span> <span class="k">fun</span> <span class="nf">readFirstLine</span><span class="p">():</span> <span class="nc">String</span> <span class="p">{</span>
+</span><span class="line">    <span class="nc">BufferedReader</span><span class="p">(</span><span class="nc">FileReader</span><span class="p">(</span><span class="s">"test.file"</span><span class="p">)).</span><span class="nf">use</span> <span class="p">{</span> <span class="k">return</span> <span class="n">it</span><span class="p">.</span><span class="nf">readLine</span><span class="p">()</span> <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>当然，还有最基础的手动关闭的形式</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="nc">String</span> <span class="nf">readFirstLine</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">FileNotFoundException</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">BufferedReader</span> <span class="n">reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="nc">FileReader</span><span class="o">(</span><span class="s">"test.file"</span><span class="o">));</span>
+</span><span class="line">    <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">reader</span><span class="o">.</span><span class="na">readLine</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">reader</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class="line">        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">String</span> <span class="nf">readFirstLine</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">FileNotFoundException</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">BufferedReader</span> <span class="n">reader</span> <span class="o">=</span> <span class="k">new</span> <span class="n">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="n">FileReader</span><span class="o">(</span><span class="s">&quot;test.file&quot;</span><span class="o">));</span>
-</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">reader</span><span class="o">.</span><span class="na">readLine</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">reader</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Reference</h2>
-
+<h2 id="reference">Reference</h2>
 <ul>
-<li><a href="https://stackoverflow.com/questions/26541513/why-is-it-good-to-close-an-inputstream">https://stackoverflow.com/questions/26541513/why-is-it-good-to-close-an-inputstream</a></li>
-<li><a href="https://www.reddit.com/r/learnjava/comments/577769/why_do_you_need_to_close_streams/">https://www.reddit.com/r/learnjava/comments/577769/why_do_you_need_to_close_streams/</a></li>
+  <li>https://stackoverflow.com/questions/26541513/why-is-it-good-to-close-an-inputstream</li>
+  <li>https://www.reddit.com/r/learnjava/comments/577769/why_do_you_need_to_close_streams/</li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -573,7 +537,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -587,8 +551,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -600,15 +562,13 @@
 
 
 
-  
 
-
-<time datetime="2019-06-09T22:06:00+08:00" pubdate data-updated="true">Jun 9<span>th</span>, 2019</time>
+<time datetime="2019-06-09T22:06:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/fd/'>FD</a>, <a class='category' href='/blog/categories/leaks/'>Leaks</a>, <a class='category' href='/blog/categories/memoryleaks/'>MemoryLeaks</a>, <a class='category' href='/blog/categories/nei-cun-xie-lu/'>内存泄露</a>, <a class='category' href='/blog/categories/nei-cun-xie-lu/'>内存泄露</a>, <a class='category' href='/blog/categories/wen-jian-miao-shu-fu/'>文件描述符</a>
+    AndroidFD文件描述符内存泄露MemoryLeaksLeaks
   
 </span>
 
@@ -701,10 +661,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -713,7 +669,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -780,6 +736,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -813,7 +773,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -821,7 +781,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

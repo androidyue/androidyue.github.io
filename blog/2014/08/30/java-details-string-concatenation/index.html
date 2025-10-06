@@ -11,7 +11,8 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Java细节：字符串的拼接 Aug 30th, 2014 工作日忙于项目的逻辑实现，周六有点时间，从书柜里拿出厚厚的英文版Thinking In Java，读到了字符串对象的拼接。参考着这本书做个翻译，加上自己思考的东西，写上这篇文章记录一下。 不可变的String对象 在Java中, &hellip;">
+  <meta name="description" content="Java细节：字符串的拼接 工作日忙于项目的逻辑实现，周六有点时间，从书柜里拿出厚厚的英文版Thinking In Java，读到了字符串对象的拼接。参考着这本书做个翻译，加上自己思考的东西，写上这篇文章记录一下。 ##不可变的String对象
+在Java中,String对象是不可变的( &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,331 +175,284 @@
 
 
 
-  
 
-
-<time datetime="2014-08-30T18:18:00+08:00" pubdate data-updated="true">Aug 30<span>th</span>, 2014</time>
+<time datetime="2014-08-30T18:18:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>工作日忙于项目的逻辑实现，周六有点时间，从书柜里拿出厚厚的英文版<em>Thinking In Java</em>，读到了字符串对象的拼接。参考着这本书做个翻译，加上自己思考的东西，写上这篇文章记录一下。</p>
-
+<div class="entry-content"><p>工作日忙于项目的逻辑实现，周六有点时间，从书柜里拿出厚厚的英文版<em>Thinking In Java</em>，读到了字符串对象的拼接。参考着这本书做个翻译，加上自己思考的东西，写上这篇文章记录一下。
 <!--more-->
+##不可变的String对象
+在Java中,String对象是不可变的(Immutable)。在代码中，可以创建多个某一个String对象的别名。但是这些别名都是的引用是相同的。<br />
+比如s1和s2都是”droidyue.com”对象的别名，别名保存着到真实对象的引用。所以s1 = s2</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">s1</span> <span class="o">=</span> <span class="s">"droidyue.com"</span><span class="o">;</span>
+</span><span class="line"><span class="nc">String</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">s1</span><span class="o">;</span>
+</span><span class="line"><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"s1 and s2 has the same reference ="</span> <span class="o">+</span> <span class="o">(</span><span class="n">s1</span> <span class="o">==</span> <span class="n">s2</span><span class="o">));</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<p>##Java中仅有的重载运算符
+在Java中，唯一被重载的运算符就是字符串的拼接相关的。<code class="language-plaintext highlighter-rouge">+</code>,<code class="language-plaintext highlighter-rouge">+=</code>。除此之外，Java设计者不允许重载其他的运算符。</p>
 
-<h2>不可变的String对象</h2>
+<p>##拼接剖析</p>
 
-<p>在Java中,String对象是不可变的(Immutable)。在代码中，可以创建多个某一个String对象的别名。但是这些别名都是的引用是相同的。<br/>
-比如s1和s2都是&#8221;droidyue.com&#8221;对象的别名，别名保存着到真实对象的引用。所以s1 = s2</p>
+<p>###真的有性能代价么
+了解了上面两点，可能会有这样的思考，既然Sting对象不可变，那么多个（三个及以上）字符串拼接必然产生多余的中间String对象。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">"Andy"</span><span class="o">;</span>
+</span><span class="line"><span class="nc">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">"24"</span><span class="o">;</span>
+</span><span class="line"><span class="nc">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">"Developer"</span><span class="o">;</span>
+</span><span class="line"><span class="nc">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>要得到上面的info，就会userName和age拼接生成临时一个String对象t1,内容为<code class="language-plaintext highlighter-rouge">Andy24</code>，然后有t1和job拼接生成最终我们需要的info对象，这其中，产生了一个中间的t1，而且t1创建之后，没有主动回收，势必会占一定的空间。如果是一个很多(假设上百个，多见于对对象的toString的调用)字符串的拼接，那么代价就更大了，性能一下会降低很多。</p>
 
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">s1</span> <span class="o">=</span> <span class="s">&quot;droidyue.com&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">s1</span><span class="o">;</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;s1 and s2 has the same reference =&quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">s1</span> <span class="o">==</span> <span class="n">s2</span><span class="o">));</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Java中仅有的重载运算符</h2>
-
-<p>在Java中，唯一被重载的运算符就是字符串的拼接相关的。<code>+</code>,<code>+=</code>。除此之外，Java设计者不允许重载其他的运算符。</p>
-
-<h2>拼接剖析</h2>
-
-<h3>真的有性能代价么</h3>
-
-<p>了解了上面两点，可能会有这样的思考，既然Sting对象不可变，那么多个（三个及以上）字符串拼接必然产生多余的中间String对象。</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">&quot;Andy&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">&quot;24&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">&quot;Developer&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>要得到上面的info，就会userName和age拼接生成临时一个String对象t1,内容为<code>Andy24</code>，然后有t1和job拼接生成最终我们需要的info对象，这其中，产生了一个中间的t1，而且t1创建之后，没有主动回收，势必会占一定的空间。如果是一个很多(假设上百个，多见于对对象的toString的调用)字符串的拼接，那么代价就更大了，性能一下会降低很多。</p>
-
-<h3>编译器的优化处理</h3>
-
-<p>真的会有上面的性能代价么，字符串拼接这么常用，没有特殊的处理优化么，答案是有的，这个优化进行在编译器编译.java到bytecode时。</p>
+<p>###编译器的优化处理
+真的会有上面的性能代价么，字符串拼接这么常用，没有特殊的处理优化么，答案是有的，这个优化进行在编译器编译.java到bytecode时。</p>
 
 <p>一个Java程序如果想运行起来，需要经过两个时期，编译时和运行时。在编译时，Java 编译器(Compiler)将java文件转换成字节码。在运行时，Java虚拟机（JVM）运行编译时生成的字节码。通过这样两个时期，Java做到了所谓的一处编译，处处运行。</p>
 
 <p>我们实验一下编译期都做了哪些优化，我们制造一段可能会出现性能代价的代码。</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Concatenation</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">&quot;Andy&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">&quot;24&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">&quot;Developer&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">info</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Concatenation</span> <span class="o">{</span>
+</span><span class="line">	<span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="nc">String</span> <span class="n">userName</span> <span class="o">=</span> <span class="s">"Andy"</span><span class="o">;</span>
+</span><span class="line">		<span class="nc">String</span> <span class="n">age</span> <span class="o">=</span> <span class="s">"24"</span><span class="o">;</span>
+</span><span class="line">		<span class="nc">String</span> <span class="n">job</span> <span class="o">=</span> <span class="s">"Developer"</span><span class="o">;</span>
+</span><span class="line">		<span class="nc">String</span> <span class="n">info</span> <span class="o">=</span> <span class="n">userName</span> <span class="o">+</span> <span class="n">age</span> <span class="o">+</span> <span class="n">job</span><span class="o">;</span>
+</span><span class="line">		<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">info</span><span class="o">);</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>对Concatenation.java进行编译一下。得到Concatenation.class</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>javac Concatenation.java
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>然后我们使用javap反编译一下编译出来的Concatenation.class文件。<code>javap -c Concatenation</code>。如果没有找到javap命令，请考虑将javap所在目录加入环境变量或者使用javap的完整路径。</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>17:22:04-androidyue~/workspace_adt/strings/src<span class="nv">$ </span>javap -c Concatenation
-</span><span class='line'>Compiled from <span class="s2">&quot;Concatenation.java&quot;</span>
-</span><span class='line'>public class Concatenation <span class="o">{</span>
-</span><span class='line'>  public Concatenation<span class="o">()</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: aload_0
-</span><span class='line'>       1: invokespecial <span class="c">#1                  // Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>       4: <span class="k">return        </span>
-</span><span class='line'>
-</span><span class='line'><span class="k">  </span>public static void main<span class="o">(</span>java.lang.String<span class="o">[])</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: ldc           <span class="c">#2                  // String Andy</span>
-</span><span class='line'>       2: astore_1
-</span><span class='line'>       3: ldc           <span class="c">#3                  // String 24</span>
-</span><span class='line'>       5: astore_2
-</span><span class='line'>       6: ldc           <span class="c">#4                  // String Developer</span>
-</span><span class='line'>       8: astore_3
-</span><span class='line'>       9: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
-</span><span class='line'>      12: dup
-</span><span class='line'>      13: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>      16: aload_1
-</span><span class='line'>      17: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      20: aload_2
-</span><span class='line'>      21: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      24: aload_3
-</span><span class='line'>      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
-</span><span class='line'>      31: astore        4
-</span><span class='line'>      33: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      36: aload         4
-</span><span class='line'>      38: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      41: <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">javac Concatenation.java</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>然后我们使用javap反编译一下编译出来的Concatenation.class文件。<code class="language-plaintext highlighter-rouge">javap -c Concatenation</code>。如果没有找到javap命令，请考虑将javap所在目录加入环境变量或者使用javap的完整路径。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">17:22:04-androidyue~/workspace_adt/strings/src<span class="nv">$ </span>javap <span class="nt">-c</span> Concatenation 
+</span><span class="line">Compiled from <span class="s2">"Concatenation.java"</span>
+</span><span class="line">public class Concatenation <span class="o">{</span>
+</span><span class="line">  public Concatenation<span class="o">()</span><span class="p">;</span>
+</span><span class="line">    Code:
+</span><span class="line">       0: aload_0       
+</span><span class="line">       1: invokespecial <span class="c">#1                  // Method java/lang/Object."&lt;init&gt;":()V</span>
+</span><span class="line">       4: <span class="k">return        
+</span><span class="line">
+</span><span class="line">  </span>public static void main<span class="o">(</span>java.lang.String[]<span class="o">)</span><span class="p">;</span>
+</span><span class="line">    Code:
+</span><span class="line">       0: ldc           <span class="c">#2                  // String Andy</span>
+</span><span class="line">       2: astore_1      
+</span><span class="line">       3: ldc           <span class="c">#3                  // String 24</span>
+</span><span class="line">       5: astore_2      
+</span><span class="line">       6: ldc           <span class="c">#4                  // String Developer</span>
+</span><span class="line">       8: astore_3      
+</span><span class="line">       9: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class="line">      12: dup           
+</span><span class="line">      13: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder."&lt;init&gt;":()V</span>
+</span><span class="line">      16: aload_1       
+</span><span class="line">      17: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class="line">      20: aload_2       
+</span><span class="line">      21: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class="line">      24: aload_3       
+</span><span class="line">      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class="line">      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+</span><span class="line">      31: astore        4
+</span><span class="line">      33: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      36: aload         4
+</span><span class="line">      38: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      41: <span class="k">return</span>        
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>其中，ldc，astore等为java字节码的指令，类似汇编指令。后面的注释使用了Java相关的内容进行了说明。
 我们可以看到上面有很多StringBuilder,但是我们在Java代码里并没有显示地调用，这就是Java编译器做的优化，当Java编译器遇到字符串拼接的时候，会创建一个StringBuilder对象，后面的拼接，实际上是调用StringBuilder对象的append方法。这样就不会有我们上面担心的问题了。</p>
 
-<h3>仅靠编译器优化？</h3>
-
-<p>既然编译器帮我们做了优化，是不是仅仅依靠编译器的优化就够了呢，当然不是。 <br/>
+<p>###仅靠编译器优化？
+既然编译器帮我们做了优化，是不是仅仅依靠编译器的优化就够了呢，当然不是。 <br />
 下面我们看一段未优化性能较低的代码</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span>  <span class="nf">implicitUseStringBuilder</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">String</span> <span class="n">result</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">;</span>
-</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">result</span> <span class="o">+=</span> <span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">];</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span>  <span class="nf">implicitUseStringBuilder</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="nc">String</span> <span class="n">result</span> <span class="o">=</span> <span class="s">""</span><span class="o">;</span>
+</span><span class="line">	<span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
+</span><span class="line">		<span class="n">result</span> <span class="o">+=</span> <span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">];</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>使用javac编译，使用javap查看</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>public void implicitUseStringBuilder<span class="o">(</span>java.lang.String<span class="o">[])</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: ldc           <span class="c">#11                 // String </span>
-</span><span class='line'>       2: astore_2
-</span><span class='line'>       3: iconst_0
-</span><span class='line'>       4: istore_3
-</span><span class='line'>       5: iload_3
-</span><span class='line'>       6: aload_1
-</span><span class='line'>       7: arraylength
-</span><span class='line'>       8: if_icmpge     38
-</span><span class='line'>      11: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
-</span><span class='line'>      14: dup
-</span><span class='line'>      15: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>      18: aload_2
-</span><span class='line'>      19: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      22: aload_1
-</span><span class='line'>      23: iload_3
-</span><span class='line'>      24: aaload
-</span><span class='line'>      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
-</span><span class='line'>      31: astore_2
-</span><span class='line'>      32: iinc          3, 1
-</span><span class='line'>      35: goto          5
-</span><span class='line'>      38: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      41: aload_2
-</span><span class='line'>      42: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      45: <span class="k">return</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>其中<code>8: if_icmpge     38</code> 和<code>35: goto          5</code>构成了一个循环。<code>8: if_icmpge     38</code>的意思是如果JVM操作数栈的整数对比大于等于（i &lt; values.length的相反结果）成立，则跳到第38行（System.out）。<code>35: goto          5</code>则表示直接跳到第5行。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">public void implicitUseStringBuilder<span class="o">(</span>java.lang.String[]<span class="o">)</span><span class="p">;</span>
+</span><span class="line">    Code:
+</span><span class="line">       0: ldc           <span class="c">#11                 // String </span>
+</span><span class="line">       2: astore_2      
+</span><span class="line">       3: iconst_0      
+</span><span class="line">       4: istore_3      
+</span><span class="line">       5: iload_3       
+</span><span class="line">       6: aload_1       
+</span><span class="line">       7: arraylength   
+</span><span class="line">       8: if_icmpge     38
+</span><span class="line">      11: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class="line">      14: dup           
+</span><span class="line">      15: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder."&lt;init&gt;":()V</span>
+</span><span class="line">      18: aload_2       
+</span><span class="line">      19: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class="line">      22: aload_1       
+</span><span class="line">      23: iload_3       
+</span><span class="line">      24: aaload        
+</span><span class="line">      25: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class="line">      28: invokevirtual <span class="c">#8                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+</span><span class="line">      31: astore_2      
+</span><span class="line">      32: iinc          3, 1
+</span><span class="line">      35: goto          5
+</span><span class="line">      38: getstatic     <span class="c">#9                  // Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      41: aload_2       
+</span><span class="line">      42: invokevirtual <span class="c">#10                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      45: <span class="k">return</span>        </span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>其中<code class="language-plaintext highlighter-rouge"> 8: if_icmpge     38</code> 和<code class="language-plaintext highlighter-rouge">35: goto          5</code>构成了一个循环。<code class="language-plaintext highlighter-rouge"> 8: if_icmpge     38</code>的意思是如果JVM操作数栈的整数对比大于等于（i &lt; values.length的相反结果）成立，则跳到第38行（System.out）。<code class="language-plaintext highlighter-rouge">35: goto          5</code>则表示直接跳到第5行。</p>
 
 <p>但是这里面有一个很重要的就是StringBuilder对象创建发生在循环之间，也就是意味着有多少次循环会创建多少个StringBuilder对象，这样明显不好。赤裸裸地低水平代码啊。</p>
 
 <p>稍微优化一下，瞬间提升逼格。</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">explicitUseStringBuider</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">StringBuilder</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringBuilder</span><span class="o">();</span>
-</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">result</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">explicitUseStringBuider</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="nc">StringBuilder</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">();</span>
+</span><span class="line">	<span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
+</span><span class="line">		<span class="n">result</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>对应的编译后的信息</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>public void explicitUseStringBuider<span class="o">(</span>java.lang.String<span class="o">[])</span>;
-</span><span class='line'>    Code:
-</span><span class='line'>       0: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
-</span><span class='line'>       3: dup
-</span><span class='line'>       4: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>       7: astore_2
-</span><span class='line'>       8: iconst_0
-</span><span class='line'>       9: istore_3
-</span><span class='line'>      10: iload_3
-</span><span class='line'>      11: aload_1
-</span><span class='line'>      12: arraylength
-</span><span class='line'>      13: if_icmpge     30
-</span><span class='line'>      16: aload_2
-</span><span class='line'>      17: aload_1
-</span><span class='line'>      18: iload_3
-</span><span class='line'>      19: aaload
-</span><span class='line'>      20: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
-</span><span class='line'>      23: pop
-</span><span class='line'>      24: iinc          3, 1
-</span><span class='line'>      27: goto          10
-</span><span class='line'>      30: <span class="k">return</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>从上面可以看出，<code>13: if_icmpge     30</code>和<code>27: goto          10</code>构成了一个loop循环，而<code>0: new           #5</code>位于循环之外，所以不会多次创建StringBuilder.</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">public void explicitUseStringBuider<span class="o">(</span>java.lang.String[]<span class="o">)</span><span class="p">;</span>
+</span><span class="line">    Code:
+</span><span class="line">       0: new           <span class="c">#5                  // class java/lang/StringBuilder</span>
+</span><span class="line">       3: dup           
+</span><span class="line">       4: invokespecial <span class="c">#6                  // Method java/lang/StringBuilder."&lt;init&gt;":()V</span>
+</span><span class="line">       7: astore_2      
+</span><span class="line">       8: iconst_0      
+</span><span class="line">       9: istore_3      
+</span><span class="line">      10: iload_3       
+</span><span class="line">      11: aload_1       
+</span><span class="line">      12: arraylength   
+</span><span class="line">      13: if_icmpge     30
+</span><span class="line">      16: aload_2       
+</span><span class="line">      17: aload_1       
+</span><span class="line">      18: iload_3       
+</span><span class="line">      19: aaload        
+</span><span class="line">      20: invokevirtual <span class="c">#7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class="line">      23: pop           
+</span><span class="line">      24: iinc          3, 1
+</span><span class="line">      27: goto          10
+</span><span class="line">      30: <span class="k">return</span>      </span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>从上面可以看出，<code class="language-plaintext highlighter-rouge"> 13: if_icmpge     30</code>和<code class="language-plaintext highlighter-rouge"> 27: goto          10</code>构成了一个loop循环，而<code class="language-plaintext highlighter-rouge">0: new           #5</code>位于循环之外，所以不会多次创建StringBuilder.</p>
 
 <p>总的来说，我们在循环体中需要尽量避免隐式或者显式创建StringBuilder. 所以那些了解代码如何编译，内部如何执行的人，写的代码档次都比较高。</p>
 
 <p>以上文章，如有错误，请批评指正 。</p>
 
-<h3>推荐阅读</h3>
-
+<p>###推荐阅读</p>
 <ul>
-<li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011F7WU4&linkCode=as2&tag=droidyue-23">Java编程思想(第4版)</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011F7WU4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0011C3CVA/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0011C3CVA&linkCode=as2&tag=droidyue-23">Java编程思想（英文版）</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0011C3CVA" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00D2ID4PK&linkCode=as2&tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00D2ID4PK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B0011F7WU4/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011F7WU4&amp;linkCode=as2&amp;tag=droidyue-23">Java编程思想(第4版)</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B0011F7WU4" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B0011C3CVA/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0011C3CVA&amp;linkCode=as2&amp;tag=droidyue-23">Java编程思想（英文版）</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B0011C3CVA" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B00D2ID4PK/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00D2ID4PK&amp;linkCode=as2&amp;tag=droidyue-23">深入理解Java虚拟机:JVM高级特性与最佳实践</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00D2ID4PK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -520,7 +474,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -534,8 +488,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -547,15 +499,13 @@
 
 
 
-  
 
-
-<time datetime="2014-08-30T18:18:00+08:00" pubdate data-updated="true">Aug 30<span>th</span>, 2014</time>
+<time datetime="2014-08-30T18:18:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/xi-jie/'>细节</a>
+    Java细节
   
 </span>
 
@@ -648,10 +598,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -660,7 +606,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -727,6 +673,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -760,7 +710,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -768,7 +718,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

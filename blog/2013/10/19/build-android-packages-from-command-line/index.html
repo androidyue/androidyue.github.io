@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Build Android Packages From Command Line Oct 19th, 2013 A few months ago,I dealed with a task:To build a large amount of apk files. The trick I came &hellip;">
+  <meta name="description" content="Build Android Packages From Command Line A few months ago,I dealed with a task:To build a large amount of apk files. The trick I came up with is to &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,155 +174,110 @@
 
 
 
-  
 
-
-<time datetime="2013-10-19T09:11:00+08:00" pubdate data-updated="true">Oct 19<span>th</span>, 2013</time>
+<time datetime="2013-10-19T09:11:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>A few months ago,I dealed with a task:To build a large amount of apk files.  The trick I came up with is to build apk file from the command so that I could use Python to glue all the works.  Eventually I made it.And so this post is to make some description about the trick.</p>
-
-<h2>Requirements</h2>
-
+<div class="entry-content"><p>A few months ago,I dealed with a task:To build a large amount of apk files.  The trick I came up with is to build apk file from the command so that I could use Python to glue all the works.  Eventually I made it.And so this post is to make some description about the trick.<br />
+##Requirements</p>
 <ul>
-<li> Setup JDK</li>
-<li> Setup Android SDK
-
-<h2>Steps</h2></li>
-<li>Generate R class file</li>
-<li>Compile Java codes(.java files) into classes(.class) files</li>
-<li>Convert .class files into .dex files</li>
-<li>Package Resouces</li>
-<li>Build Unsigned APK File</li>
-<li>Sign Apk with Jarsigner</li>
-<li>The Extra One:Use zipalign for optimization</li>
+  <li>Setup JDK</li>
+  <li>Setup Android SDK
+##Steps
+    <ol>
+      <li>Generate R class file</li>
+      <li>Compile Java codes(.java files) into classes(.class) files</li>
+      <li>Convert .class files into .dex files</li>
+      <li>Package Resouces</li>
+      <li>Build Unsigned APK File</li>
+      <li>Sign Apk with Jarsigner</li>
+      <li>The Extra One:Use zipalign for optimization</li>
+    </ol>
+  </li>
 </ul>
 
-
-<h3>Generate R class File</h3>
-
-<p>In Android,We use R class to refer resources instead of hard-coding the resouces.<br/>
-For a better understanding,pleae have a look at <a href="http://www.satyakomatineni.com/akc/display?url=displaynoteimpurl&amp;ownerUserId=satya&amp;reportId=2883">http://www.satyakomatineni.com/akc/display?url=displaynoteimpurl&amp;ownerUserId=satya&amp;reportId=2883</a></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>aapt package -f -m -J /home/androidyue/temp/ubuntu/workspace/MxDataProvider/gen/ -S /home/androidyue/temp/ubuntu/workspace/MxDataProvider/res/ -I /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -M /home/androidyue/temp/ubuntu/workspace/MxDataProvider/AndroidManifest.xml
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
+<p>###Generate R class File 
+In Android,We use R class to refer resources instead of hard-coding the resouces.<br />
+For a better understanding,pleae have a look at http://www.satyakomatineni.com/akc/display?url=displaynoteimpurl&amp;ownerUserId=satya&amp;reportId=2883</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">aapt package <span class="nt">-f</span> <span class="nt">-m</span> <span class="nt">-J</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/gen/ <span class="nt">-S</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/res/ <span class="nt">-I</span> /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar <span class="nt">-M</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/AndroidManifest.xml</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####Some descriptions</p>
 <ul>
-<li> -f  force overwrite of existing files</li>
-<li> -m  make package directories under location specified by -J</li>
-<li> -J  specify where to output R.java resource constant definitions</li>
-<li> -S  directory in which to find resources.  Multiple directories will be scanned and the first match found (left to right) will take precedence.</li>
-<li> -I  add an existing package to base include set</li>
-<li> -M  specify full path to AndroidManifest.xml to include in zip</li>
+  <li>-f  force overwrite of existing files</li>
+  <li>-m  make package directories under location specified by -J</li>
+  <li>-J  specify where to output R.java resource constant definitions</li>
+  <li>-S  directory in which to find resources.  Multiple directories will be scanned and the first match found (left to right) will take precedence.</li>
+  <li>-I  add an existing package to base include set</li>
+  <li>-M  specify full path to AndroidManifest.xml to include in zip</li>
 </ul>
 
-
-<h3>Comiple .java into .class files</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>javac -encoding UTF-8 -source 1.6 -target 1.6 -bootclasspath /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -d /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin/ /home/androidyue/temp/ubuntu/workspace/MxDataProvider/src//coop/channel/provider/*.java /home/androidyue/temp/ubuntu/workspace/MxDataProvider/gen//coop/channel/provider/R.java
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
+<p>###Comiple .java into .class files</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">javac <span class="nt">-encoding</span> UTF-8 <span class="nt">-source</span> 1.6 <span class="nt">-target</span> 1.6 <span class="nt">-bootclasspath</span> /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar <span class="nt">-d</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin/ /home/androidyue/temp/ubuntu/workspace/MxDataProvider/src//coop/channel/provider/<span class="k">*</span>.java /home/androidyue/temp/ubuntu/workspace/MxDataProvider/gen//coop/channel/provider/R.java </span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####Some descriptions</p>
 <ul>
-<li> -encoding encoding  Set the source file encoding name, such as EUC-JP and UTF-8. If -encoding is not specified, the platform default converter is used.</li>
-<li> -source release   Specifies the version of source code accepted, Please Do NOT use Java 7(1.7)</li>
-<li> -target version  Generate  class files that target a specified version of the VM. Class files will run on the specified target and on later versions, but not on earlier versions of the VM. Valid targets are 1.1, 1.2, 1.3, 1.4, 1.5 (also 5), 1.6(also 6), and 1.7 (also 7).</li>
-<li> -bootclasspath bootclasspath Cross-compile against the specified set of boot classes. As with the user class path, boot class path entries are separated by colons (:) and can be directories, JAR archives, or ZIP archives.</li>
-<li> -d directory  Set the destination directory for class files. The directory must already exist; javac will not create it.
-As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
+  <li>-encoding encoding  Set the source file encoding name, such as EUC-JP and UTF-8. If -encoding is not specified, the platform default converter is used.</li>
+  <li>-source release   Specifies the version of source code accepted, Please Do NOT use Java 7(1.7)</li>
+  <li>-target version  Generate  class files that target a specified version of the VM. Class files will run on the specified target and on later versions, but not on earlier versions of the VM. Valid targets are 1.1, 1.2, 1.3, 1.4, 1.5 (also 5), 1.6(also 6), and 1.7 (also 7).</li>
+  <li>-bootclasspath bootclasspath Cross-compile against the specified set of boot classes. As with the user class path, boot class path entries are separated by colons (:) and can be directories, JAR archives, or ZIP archives.</li>
+  <li>-d directory  Set the destination directory for class files. The directory must already exist; javac will not create it. 
+As I have suffered a lot using Java 7, It’s recomended to use Java 6</li>
 </ul>
 
+<p>###Convert .class into .dex files</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">/home/androidyue/dev_tools/android-sdk-linux_86_backup/build-tools/17.0.0/dx <span class="nt">--dex</span> <span class="nt">--output</span><span class="o">=</span>/home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//class.dex /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin/</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>To dive into Dalvik, please visit http://source.android.com/devices/tech/dalvik/index.html</p>
 
-<h3>Convert .class into .dex files</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>/home/androidyue/dev_tools/android-sdk-linux_86_backup/build-tools/17.0.0/dx --dex --output<span class="o">=</span>/home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//class.dex /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin/
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To dive into Dalvik, please visit <a href="http://source.android.com/devices/tech/dalvik/index.html">http://source.android.com/devices/tech/dalvik/index.html</a></p>
-
-<h3>Package Resouces</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>aapt package -f -M /home/androidyue/temp/ubuntu/workspace/MxDataProvider/AndroidManifest.xml -S /home/androidyue/temp/ubuntu/workspace/MxDataProvider/res/ -A /home/androidyue/temp/ubuntu/workspace/MxDataProvider//assets/ -I /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar -F /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//resources.ap_
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
+<p>###Package Resouces</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">aapt package <span class="nt">-f</span> <span class="nt">-M</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/AndroidManifest.xml <span class="nt">-S</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/res/ <span class="nt">-A</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider//assets/ <span class="nt">-I</span> /home/androidyue/dev_tools/android-sdk-linux_86_backup/platforms/android-17/android.jar <span class="nt">-F</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//resources.ap_</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####Some descriptions</p>
 <ul>
-<li> -F  specify the apk file to output</li>
-<li> -A  additional directory in which to find raw asset files</li>
+  <li>-F  specify the apk file to output</li>
+  <li>-A  additional directory in which to find raw asset files</li>
 </ul>
 
-
-<h3>Build Unsigned APK File</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>/home/androidyue/temp/ubuntu/dev_tools/adt-bundle-linux_backup/sdk/tools/apkbuilder /tmp/unsignedApkFile.apk -v -u -z /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//resources.ap_ -f /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//class.dex -rf /home/androidyue/temp/ubuntu/workspace/MxDataProvider/src/
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
+<p>###Build Unsigned APK File</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">/home/androidyue/temp/ubuntu/dev_tools/adt-bundle-linux_backup/sdk/tools/apkbuilder /tmp/unsignedApkFile.apk <span class="nt">-v</span> <span class="nt">-u</span> <span class="nt">-z</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//resources.ap_ <span class="nt">-f</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/bin//class.dex <span class="nt">-rf</span> /home/androidyue/temp/ubuntu/workspace/MxDataProvider/src/</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####Some descriptions</p>
 <ul>
-<li> -u      Creates an unsigned package.</li>
-<li> -z      Followed by the path to a zip archive. Adds the content of the application package.</li>
-<li> -f      Followed by the path to a file. Adds the file to the application package.</li>
-<li> -rf     Followed by the path to a source folder. Adds the java resources found in that folder to the application package, while keeping their path relative to the source folder.</li>
+  <li>-u      Creates an unsigned package.</li>
+  <li>-z      Followed by the path to a zip archive. Adds the content of the application package.</li>
+  <li>-f      Followed by the path to a file. Adds the file to the application package.</li>
+  <li>-rf     Followed by the path to a source folder. Adds the java resources found in that folder to the application package, while keeping their path relative to the source folder.</li>
 </ul>
 
-
-<h3>Sign Apk with Jarsigner</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>jarsigner -keystore /home/androidyue/temp/ubuntu/myKeystore -storepass storepassValue -keypass keypassValue -signedjar /home/androidyue/Desktop/output/max1111111.apk /tmp/unsignedApkFile.apk maxthon -digestalg SHA1 -sigalg MD5withRSA
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
+<h3 id="sign-apk-with-jarsigner">Sign Apk with Jarsigner</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">jarsigner <span class="nt">-keystore</span> /home/androidyue/temp/ubuntu/myKeystore <span class="nt">-storepass</span> storepassValue <span class="nt">-keypass</span> keypassValue <span class="nt">-signedjar</span> /home/androidyue/Desktop/output/max1111111.apk /tmp/unsignedApkFile.apk maxthon <span class="nt">-digestalg</span> SHA1 <span class="nt">-sigalg</span> MD5withRSA</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####Some descriptions</p>
 <ul>
-<li> [-keystore <url>]           keystore location</li>
-<li> [-storepass <password>]     password for keystore integrity</li>
-<li> [-keypass <password>]       password for private key (if different)</li>
-<li> [-signedjar <file>]         name of signed JAR file</li>
-<li> [-digestalg <algorithm>]    name of digest algorithm</li>
-<li> [-sigalg <algorithm>]       name of signature algorithm</li>
+  <li>[-keystore <url>]           keystore location</url></li>
+  <li>[-storepass <password>]     password for keystore integrity</password></li>
+  <li>[-keypass <password>]       password for private key (if different)</password></li>
+  <li>[-signedjar <file>]         name of signed JAR file</file></li>
+  <li>[-digestalg <algorithm>]    name of digest algorithm</algorithm></li>
+  <li>[-sigalg <algorithm>]       name of signature algorithm</algorithm></li>
 </ul>
 
-
-<h3>Use Zipalign for optimization</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>zipalign -f -v 4 /home/androidyue/Desktop/output/max1111111.apk /home/androidyue/Desktop/output/max222222.apk
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Some descriptions</h4>
-
+<p>###Use Zipalign for optimization</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">zipalign <span class="nt">-f</span> <span class="nt">-v</span> 4 /home/androidyue/Desktop/output/max1111111.apk /home/androidyue/Desktop/output/max222222.apk</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####Some descriptions</p>
 <ul>
-<li> The <alignment> is an integer that defines the byte-alignment boundaries. This must always be 4 (which provides 32-bit alignment) or else it effectively does nothing.</li>
-<li> For more details, please visit <a href="http://developer.android.com/tools/help/zipalign.html">http://developer.android.com/tools/help/zipalign.html</a></li>
+  <li>The <alignment> is an integer that defines the byte-alignment boundaries. This must always be 4 (which provides 32-bit alignment) or else it effectively does nothing.</alignment></li>
+  <li>For more details, please visit http://developer.android.com/tools/help/zipalign.html</li>
 </ul>
 
-
-<h3>Others</h3>
-
+<p>###Others</p>
 <ul>
-<li><a href="http://www.amazon.com/gp/product/1250032156/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=1250032156&linkCode=as2&tag=droidyueblog-20&linkId=US32QO6KTI7UYC7U">How to Build an Android: The True Story of Philip K. Dick&rsquo;s Robotic Resurrection</a><img src="http://ir-na.amazon-adsystem.com/e/ir?t=droidyueblog-20&l=as2&o=1&a=1250032156" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.com/gp/product/1250032156/ref=as_li_tl?ie=UTF8&amp;camp=1789&amp;creative=9325&amp;creativeASIN=1250032156&amp;linkCode=as2&amp;tag=droidyueblog-20&amp;linkId=US32QO6KTI7UYC7U">How to Build an Android: The True Story of Philip K. Dick’s Robotic Resurrection</a><img src="http://ir-na.amazon-adsystem.com/e/ir?t=droidyueblog-20&amp;l=as2&amp;o=1&amp;a=1250032156" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 
@@ -346,7 +301,7 @@ As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -360,8 +315,6 @@ As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -373,15 +326,13 @@ As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
 
 
 
-  
 
-
-<time datetime="2013-10-19T09:11:00+08:00" pubdate data-updated="true">Oct 19<span>th</span>, 2013</time>
+<time datetime="2013-10-19T09:11:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>
+    Android
   
 </span>
 
@@ -474,10 +425,6 @@ As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -486,7 +433,7 @@ As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -553,6 +500,10 @@ As I have suffered a lot using Java 7, It&rsquo;s recomended to use Java 6</li>
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -586,7 +537,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -594,7 +545,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

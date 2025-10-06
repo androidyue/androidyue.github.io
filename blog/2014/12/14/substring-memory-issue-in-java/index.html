@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Java中的substring真的会引起内存泄露么？ Dec 14th, 2014 在Java中开发，String是我们开发程序可以说必须要使用的类型，String有一个substring方法用来截取字符串，我们想必也常常使用。但是你知道么，关于Java &hellip;">
+  <meta name="description" content="Java中的substring真的会引起内存泄露么？ 在Java中开发，String是我们开发程序可以说必须要使用的类型，String有一个substring方法用来截取字符串，我们想必也常常使用。但是你知道么，关于Java 6中的substring是否会引起内存泄露， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2014-12-14T12:02:00+08:00" pubdate data-updated="true">Dec 14<span>th</span>, 2014</time>
+<time datetime="2014-12-14T12:02:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -187,203 +185,161 @@
 <div class="entry-content"><p>在Java中开发，String是我们开发程序可以说必须要使用的类型，String有一个substring方法用来截取字符串，我们想必也常常使用。但是你知道么，关于Java 6中的substring是否会引起内存泄露，在国外的论坛和社区有着一些讨论，以至于Java官方已经将其标记成bug，并且为此Java 7 还重新进行了实现。读到这里可能你的问题就来了，substring怎么会引起内存泄露呢？那么我们就带着问题，走进小黑屋，看看substring有没有内存泄露，又是怎么导致所谓的内存泄露。</p>
 
 <!--more-->
-
-
-<h2>基本介绍</h2>
-
-<p>substring方法提供两种重载，第一种为只接受开始截取位置一个参数的方法。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="n">String</span> <span class="nf">substring</span><span class="o">(</span><span class="kt">int</span> <span class="n">beginIndex</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>比如我们使用上面的方法，<code>"unhappy".substring(2)</code> 返回结果 <code>"happy"</code></p>
+<p>##基本介绍
+substring方法提供两种重载，第一种为只接受开始截取位置一个参数的方法。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="nc">String</span> <span class="nf">substring</span><span class="o">(</span><span class="kt">int</span> <span class="n">beginIndex</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>比如我们使用上面的方法，<code class="language-plaintext highlighter-rouge">"unhappy".substring(2)</code> 返回结果 <code class="language-plaintext highlighter-rouge">"happy"</code></p>
 
 <p>另一种重载就是接受一个开始截取位置和一个结束截取位置的参数的方法。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="n">String</span> <span class="nf">substring</span><span class="o">(</span><span class="kt">int</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endIndex</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>使用这个方法，<code>"smiles".substring(1, 5)</code> 返回结果 <code>"mile"</code></p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="nc">String</span> <span class="nf">substring</span><span class="o">(</span><span class="kt">int</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endIndex</span><span class="o">)</span> </span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>使用这个方法，<code class="language-plaintext highlighter-rouge">"smiles".substring(1, 5)</code> 返回结果 <code class="language-plaintext highlighter-rouge">"mile"</code></p>
 
 <p>通过这个介绍我们基本了解了substring的作用，这样便于我们理解下面的内容。</p>
 
-<h2>准备工作</h2>
-
-<p>因为这个问题出现的情况在Java 6，如果你的Java版本号不是Java 6 需要调整一下。</p>
-
-<h3>终端调整（适用于Mac系统）</h3>
-
-<p>查看java版本号</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>13:03 <span class="nv">$ </span>java -version
-</span><span class='line'>java version <span class="s2">&quot;1.8.0_25&quot;</span>
-</span><span class='line'>Java<span class="o">(</span>TM<span class="o">)</span> SE Runtime Environment <span class="o">(</span>build 1.8.0_25-b17<span class="o">)</span>
-</span><span class='line'>Java HotSpot<span class="o">(</span>TM<span class="o">)</span> 64-Bit Server VM <span class="o">(</span>build 25.25-b02, mixed mode<span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##准备工作
+因为这个问题出现的情况在Java 6，如果你的Java版本号不是Java 6 需要调整一下。
+###终端调整（适用于Mac系统）
+查看java版本号</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">13:03 <span class="nv">$ </span>java <span class="nt">-version</span>
+</span><span class="line">java version <span class="s2">"1.8.0_25"</span>
+</span><span class="line">Java<span class="o">(</span>TM<span class="o">)</span> SE Runtime Environment <span class="o">(</span>build 1.8.0_25-b17<span class="o">)</span>
+</span><span class="line">Java HotSpot<span class="o">(</span>TM<span class="o">)</span> 64-Bit Server VM <span class="o">(</span>build 25.25-b02, mixed mode<span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>切换到1.6</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">export</span> <span class="no">JAVA_HOME</span><span class="o">=</span><span class="err">$</span><span class="o">(/</span><span class="n">usr</span><span class="o">/</span><span class="n">libexec</span><span class="o">/</span><span class="n">java_home</span> <span class="o">-</span><span class="n">v</span> <span class="mf">1.6</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>Ubuntu使用<code class="language-plaintext highlighter-rouge">alternatives --config java</code>，Fedora上面使用<code class="language-plaintext highlighter-rouge">alternatives --config java</code>。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">export</span> <span class="n">JAVA_HOME</span><span class="o">=</span><span class="n">$</span><span class="o">(/</span><span class="n">usr</span><span class="o">/</span><span class="n">libexec</span><span class="o">/</span><span class="n">java_home</span> <span class="o">-</span><span class="n">v</span> <span class="mf">1.6</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Ubuntu使用<code>alternatives --config java</code>，Fedora上面使用<code>alternatives --config java</code>。</p>
-
-<p>如果你使用Eclipse，可以选择工程，右击，选择Properties（属性）&mdash; Java Compiler（Java编译器）进行特殊指定。</p>
-
-<h2>问题重现</h2>
-
-<p>这里贴一下java官方bug里用到的重现问题的代码。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestGC</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="n">String</span> <span class="n">largeString</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">100000</span><span class="o">]);</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">String</span> <span class="nf">getString</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="k">this</span><span class="o">.</span><span class="na">largeString</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span><span class="mi">2</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">ArrayList</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">ArrayList</span><span class="o">();</span>
-</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000000</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">TestGC</span> <span class="n">gc</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TestGC</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">gc</span><span class="o">.</span><span class="na">getString</span><span class="o">());</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>如果你使用Eclipse，可以选择工程，右击，选择Properties（属性）– Java Compiler（Java编译器）进行特殊指定。
+##问题重现
+这里贴一下java官方bug里用到的重现问题的代码。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestGC</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="nc">String</span> <span class="n">largeString</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">100000</span><span class="o">]);</span>
+</span><span class="line">    
+</span><span class="line">    <span class="nc">String</span> <span class="nf">getString</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">return</span> <span class="k">this</span><span class="o">.</span><span class="na">largeString</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span><span class="mi">2</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">ArrayList</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">ArrayList</span><span class="o">();</span>
+</span><span class="line">        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000000</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class="line">            <span class="nc">TestGC</span> <span class="n">gc</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">TestGC</span><span class="o">();</span>
+</span><span class="line">            <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">gc</span><span class="o">.</span><span class="na">getString</span><span class="o">());</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>然而上面的代码，只要使用Java 6 （Java 7和8 都不会抛出异常）运行一下就会报java.lang.OutOfMemoryError: Java heap space的异常，这说明没有足够的堆内存供我们创建对象，JVM选择了抛出异常操作。</p>
 
 <p>于是有人会说，是因为你每个循环中创建了一个TestGC对象，虽然我们加入ArrayList只是两个字符的字符串，但是这个对象中又存储largeString这么大的对象，这样必然会造成OOM的。</p>
 
 <p>然而，其实你说的不对。比如我们看一下这样的代码,我们只修改getString方法。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestGC</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="n">String</span> <span class="n">largeString</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">100000</span><span class="o">]);</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">String</span> <span class="nf">getString</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="c1">//return this.largeString.substring(0,2);</span>
-</span><span class='line'>      <span class="k">return</span> <span class="k">new</span> <span class="nf">String</span><span class="o">(</span><span class="s">&quot;ab&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">ArrayList</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">ArrayList</span><span class="o">();</span>
-</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000000</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">TestGC</span> <span class="n">gc</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TestGC</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">gc</span><span class="o">.</span><span class="na">getString</span><span class="o">());</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestGC</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="nc">String</span> <span class="n">largeString</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">100000</span><span class="o">]);</span>
+</span><span class="line">    
+</span><span class="line">    <span class="nc">String</span> <span class="nf">getString</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="c1">//return this.largeString.substring(0,2);</span>
+</span><span class="line">    	<span class="k">return</span> <span class="k">new</span> <span class="nf">String</span><span class="o">(</span><span class="s">"ab"</span><span class="o">);</span> 
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">ArrayList</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">ArrayList</span><span class="o">();</span>
+</span><span class="line">        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000000</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class="line">            <span class="nc">TestGC</span> <span class="n">gc</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">TestGC</span><span class="o">();</span>
+</span><span class="line">            <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">gc</span><span class="o">.</span><span class="na">getString</span><span class="o">());</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">        
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>执行上面的方法，<strong>并不会导致OOM异常</strong>，因为我们持有的时1000000个ab字符串对象，而TestGC对象（包括其中的largeString）会在java的垃圾回收中释放掉。所以这里不会存在内存溢出。</p>
 
 <p>那么究竟是什么导致的内存泄露呢？要研究这个问题，我们需要看一下方法的实现，即可。</p>
 
-<h2>深入Java 6实现</h2>
-
-<p>在String类中存在这样三个属性</p>
+<p>##深入Java 6实现
+在String类中存在这样三个属性</p>
 
 <ul>
-<li>value 字符数组，存储字符串实际的内容</li>
-<li>offset 该字符串在字符数组value中的起始位置</li>
-<li>count 字符串包含的字符的长度</li>
+  <li>value 字符数组，存储字符串实际的内容</li>
+  <li>offset 该字符串在字符数组value中的起始位置</li>
+  <li>count 字符串包含的字符的长度</li>
 </ul>
 
-
 <p>Java 6中substring的实现</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="n">String</span> <span class="nf">substring</span><span class="o">(</span><span class="kt">int</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endIndex</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">beginIndex</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">beginIndex</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">endIndex</span> <span class="o">&gt;</span> <span class="n">count</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">endIndex</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">beginIndex</span> <span class="o">&gt;</span> <span class="n">endIndex</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">endIndex</span> <span class="o">-</span> <span class="n">beginIndex</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="o">((</span><span class="n">beginIndex</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">endIndex</span> <span class="o">==</span> <span class="n">count</span><span class="o">))</span> <span class="o">?</span> <span class="k">this</span> <span class="o">:</span>
-</span><span class='line'>      <span class="k">new</span> <span class="nf">String</span><span class="o">(</span><span class="n">offset</span> <span class="o">+</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="n">endIndex</span> <span class="o">-</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="nc">String</span> <span class="nf">substring</span><span class="o">(</span><span class="kt">int</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endIndex</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="k">if</span> <span class="o">(</span><span class="n">beginIndex</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">beginIndex</span><span class="o">);</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	<span class="k">if</span> <span class="o">(</span><span class="n">endIndex</span> <span class="o">&gt;</span> <span class="n">count</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">endIndex</span><span class="o">);</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	<span class="k">if</span> <span class="o">(</span><span class="n">beginIndex</span> <span class="o">&gt;</span> <span class="n">endIndex</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">endIndex</span> <span class="o">-</span> <span class="n">beginIndex</span><span class="o">);</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	<span class="k">return</span> <span class="o">((</span><span class="n">beginIndex</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">endIndex</span> <span class="o">==</span> <span class="n">count</span><span class="o">))</span> <span class="o">?</span> <span class="k">this</span> <span class="o">:</span>
+</span><span class="line">		<span class="k">new</span> <span class="nf">String</span><span class="o">(</span><span class="n">offset</span> <span class="o">+</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="n">endIndex</span> <span class="o">-</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>上述方法调用的构造方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//Package private constructor which shares value array for speed.</span>
-</span><span class='line'><span class="n">String</span><span class="o">(</span><span class="kt">int</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">count</span><span class="o">,</span> <span class="kt">char</span> <span class="n">value</span><span class="o">[])</span> <span class="o">{</span>
-</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">;</span>
-</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">offset</span> <span class="o">=</span> <span class="n">offset</span><span class="o">;</span>
-</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">count</span> <span class="o">=</span> <span class="n">count</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="c1">//Package private constructor which shares value array for speed.</span>
+</span><span class="line"><span class="nc">String</span><span class="o">(</span><span class="kt">int</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">count</span><span class="o">,</span> <span class="kt">char</span> <span class="n">value</span><span class="o">[])</span> <span class="o">{</span>
+</span><span class="line">	<span class="k">this</span><span class="o">.</span><span class="na">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">;</span>
+</span><span class="line">	<span class="k">this</span><span class="o">.</span><span class="na">offset</span> <span class="o">=</span> <span class="n">offset</span><span class="o">;</span>
+</span><span class="line">	<span class="k">this</span><span class="o">.</span><span class="na">count</span> <span class="o">=</span> <span class="n">count</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>当我们读完上述的代码，我们应该会豁然开朗，原来是这个样子啊！</p>
 
 <p>当我们调用字符串a的substring得到字符串b，其实这个操作，无非就是调整了一下b的offset和count，用到的内容还是a之前的value字符数组，并没有重新创建新的专属于b的内容字符数组。</p>
@@ -392,195 +348,162 @@
 
 <p>看到这里，大家应该可以明白上面的代码为什么出现内存溢出了。</p>
 
-<h3>共享内容字符数组</h3>
+<p>###共享内容字符数组
+其实substring中生成的字符串与原字符串共享内容数组是一个很棒的设计，这样避免了每次进行substring重新进行字符数组复制。正如其文档说明的,共享内容字符数组为了就是速度。但是对于本例中的问题，共享内容字符数组显得有点蹩脚。</p>
 
-<p>其实substring中生成的字符串与原字符串共享内容数组是一个很棒的设计，这样避免了每次进行substring重新进行字符数组复制。正如其文档说明的,共享内容字符数组为了就是速度。但是对于本例中的问题，共享内容字符数组显得有点蹩脚。</p>
-
-<h3>如何解决</h3>
-
-<p>对于之前比较不常见的1G字符串只截取2个字符的情况可以使用下面的代码，这样的话，就不会持有1G字符串的内容数组引用了。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">littleString</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="n">largeString</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span><span class="mi">2</span><span class="o">));</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>###如何解决
+对于之前比较不常见的1G字符串只截取2个字符的情况可以使用下面的代码，这样的话，就不会持有1G字符串的内容数组引用了。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">littleString</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="n">largeString</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span><span class="mi">2</span><span class="o">));</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>下面的这个构造方法，在源字符串内容数组长度大于字符串长度时，进行数组复制，新的字符串会创建一个只包含源字符串内容的字符数组。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="nf">String</span><span class="o">(</span><span class="n">String</span> <span class="n">original</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="na">count</span><span class="o">;</span>
-</span><span class='line'>  <span class="kt">char</span><span class="o">[]</span> <span class="n">originalValue</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="na">value</span><span class="o">;</span>
-</span><span class='line'>  <span class="kt">char</span><span class="o">[]</span> <span class="n">v</span><span class="o">;</span>
-</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">originalValue</span><span class="o">.</span><span class="na">length</span> <span class="o">&gt;</span> <span class="n">size</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="c1">// The array representing the String is bigger than the new</span>
-</span><span class='line'>      <span class="c1">// String itself.  Perhaps this constructor is being called</span>
-</span><span class='line'>      <span class="c1">// in order to trim the baggage, so make a copy of the array.</span>
-</span><span class='line'>      <span class="kt">int</span> <span class="n">off</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="na">offset</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">v</span> <span class="o">=</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">copyOfRange</span><span class="o">(</span><span class="n">originalValue</span><span class="o">,</span> <span class="n">off</span><span class="o">,</span> <span class="n">off</span><span class="o">+</span><span class="n">size</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>      <span class="c1">// The array representing the String is the same</span>
-</span><span class='line'>      <span class="c1">// size as the String, so no point in making a copy.</span>
-</span><span class='line'>      <span class="n">v</span> <span class="o">=</span> <span class="n">originalValue</span><span class="o">;</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">offset</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
-</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">count</span> <span class="o">=</span> <span class="n">size</span><span class="o">;</span>
-</span><span class='line'>  <span class="k">this</span><span class="o">.</span><span class="na">value</span> <span class="o">=</span> <span class="n">v</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Java 7 实现</h2>
-
-<p>在Java 7 中substring的实现抛弃了之前的内容字符数组共享的机制，对于子字符串（自身除外）采用了数组复制实现单个字符串持有自己的应该拥有的内容。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="n">String</span> <span class="nf">substring</span><span class="o">(</span><span class="kt">int</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endIndex</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">beginIndex</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">beginIndex</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">endIndex</span> <span class="o">&gt;</span> <span class="n">value</span><span class="o">.</span><span class="na">length</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">endIndex</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">subLen</span> <span class="o">=</span> <span class="n">endIndex</span> <span class="o">-</span> <span class="n">beginIndex</span><span class="o">;</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">subLen</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">subLen</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="o">((</span><span class="n">beginIndex</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">endIndex</span> <span class="o">==</span> <span class="n">value</span><span class="o">.</span><span class="na">length</span><span class="o">))</span> <span class="o">?</span> <span class="k">this</span>
-</span><span class='line'>                <span class="o">:</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="n">subLen</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="nf">String</span><span class="o">(</span><span class="nc">String</span> <span class="n">original</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="na">count</span><span class="o">;</span>
+</span><span class="line">	<span class="kt">char</span><span class="o">[]</span> <span class="n">originalValue</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="na">value</span><span class="o">;</span>
+</span><span class="line">	<span class="kt">char</span><span class="o">[]</span> <span class="n">v</span><span class="o">;</span>
+</span><span class="line">	<span class="k">if</span> <span class="o">(</span><span class="n">originalValue</span><span class="o">.</span><span class="na">length</span> <span class="o">&gt;</span> <span class="n">size</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="c1">// The array representing the String is bigger than the new</span>
+</span><span class="line">		<span class="c1">// String itself.  Perhaps this constructor is being called</span>
+</span><span class="line">		<span class="c1">// in order to trim the baggage, so make a copy of the array.</span>
+</span><span class="line">		<span class="kt">int</span> <span class="n">off</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="na">offset</span><span class="o">;</span>
+</span><span class="line">		<span class="n">v</span> <span class="o">=</span> <span class="nc">Arrays</span><span class="o">.</span><span class="na">copyOfRange</span><span class="o">(</span><span class="n">originalValue</span><span class="o">,</span> <span class="n">off</span><span class="o">,</span> <span class="n">off</span><span class="o">+</span><span class="n">size</span><span class="o">);</span>
+</span><span class="line">	<span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">		<span class="c1">// The array representing the String is the same</span>
+</span><span class="line">		<span class="c1">// size as the String, so no point in making a copy.</span>
+</span><span class="line">		<span class="n">v</span> <span class="o">=</span> <span class="n">originalValue</span><span class="o">;</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	<span class="k">this</span><span class="o">.</span><span class="na">offset</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class="line">	<span class="k">this</span><span class="o">.</span><span class="na">count</span> <span class="o">=</span> <span class="n">size</span><span class="o">;</span>
+</span><span class="line">	<span class="k">this</span><span class="o">.</span><span class="na">value</span> <span class="o">=</span> <span class="n">v</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>##Java 7 实现
+在Java 7 中substring的实现抛弃了之前的内容字符数组共享的机制，对于子字符串（自身除外）采用了数组复制实现单个字符串持有自己的应该拥有的内容。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="nc">String</span> <span class="nf">substring</span><span class="o">(</span><span class="kt">int</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endIndex</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">beginIndex</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    	<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">beginIndex</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">endIndex</span> <span class="o">&gt;</span> <span class="n">value</span><span class="o">.</span><span class="na">length</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    	<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">endIndex</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="kt">int</span> <span class="n">subLen</span> <span class="o">=</span> <span class="n">endIndex</span> <span class="o">-</span> <span class="n">beginIndex</span><span class="o">;</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">subLen</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    	<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">subLen</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">return</span> <span class="o">((</span><span class="n">beginIndex</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">endIndex</span> <span class="o">==</span> <span class="n">value</span><span class="o">.</span><span class="na">length</span><span class="o">))</span> <span class="o">?</span> <span class="k">this</span>
+</span><span class="line">                <span class="o">:</span> <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="n">subLen</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>substring方法中调用的构造方法，进行内容字符数组复制。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="nf">String</span><span class="o">(</span><span class="kt">char</span> <span class="n">value</span><span class="o">[],</span> <span class="kt">int</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">count</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">   		<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">offset</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">count</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    	<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">count</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="c1">// Note: offset or count might be near -1&gt;&gt;&gt;1.</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">offset</span> <span class="o">&gt;</span> <span class="n">value</span><span class="o">.</span><span class="na">length</span> <span class="o">-</span> <span class="n">count</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    	<span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">offset</span> <span class="o">+</span> <span class="n">count</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">this</span><span class="o">.</span><span class="na">value</span> <span class="o">=</span> <span class="nc">Arrays</span><span class="o">.</span><span class="na">copyOfRange</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="n">offset</span><span class="o">,</span> <span class="n">offset</span><span class="o">+</span><span class="n">count</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="nf">String</span><span class="o">(</span><span class="kt">char</span> <span class="n">value</span><span class="o">[],</span> <span class="kt">int</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">count</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">offset</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">count</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">count</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="c1">// Note: offset or count might be near -1&gt;&gt;&gt;1.</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">offset</span> <span class="o">&gt;</span> <span class="n">value</span><span class="o">.</span><span class="na">length</span> <span class="o">-</span> <span class="n">count</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">StringIndexOutOfBoundsException</span><span class="o">(</span><span class="n">offset</span> <span class="o">+</span> <span class="n">count</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">this</span><span class="o">.</span><span class="na">value</span> <span class="o">=</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">copyOfRange</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="n">offset</span><span class="o">,</span> <span class="n">offset</span><span class="o">+</span><span class="n">count</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>真的是内存泄露么</h2>
-
-<p>我们知道了substring某些情况下可能引起内存问题，但是这个叫做内存泄露么？</p>
+<p>##真的是内存泄露么
+我们知道了substring某些情况下可能引起内存问题，但是这个叫做内存泄露么？</p>
 
 <p>其实个人认为这个不应该算为内存泄露，使用substring生成的字符串b固然会持有原有字符串a的内容数组引用，但是当a和b都被回收之后，该字符数组的内容也是可以被垃圾回收掉的。</p>
 
-<h2>哪个版本实现的好</h2>
-
-<p>关于Java 7 对substring做的修改，收到了褒贬不一的反馈。</p>
+<p>##哪个版本实现的好
+关于Java 7 对substring做的修改，收到了褒贬不一的反馈。</p>
 
 <p>个人更加倾向于Java 6的实现，当进行substring时，使用共享内容字符数组，速度会更快，不用重新申请内存。虽然有可能出现本文中的内存性能问题，但也是有方法可以解决的。</p>
 
 <p>Java 7的实现不需要程序员特殊操作避免了本文中问题，但是进行每次substring的操作性能总会比java 6 的实现要差一些。这种实现显得有点“糟糕”。</p>
 
-<h2>问题的价值</h2>
-
-<p>虽然这个问题出现在Java 6并且Java 7中已经修复，但并不代表我们就不需要了解，况且Java 7的重新实现被喷的很厉害。</p>
+<p>##问题的价值
+虽然这个问题出现在Java 6并且Java 7中已经修复，但并不代表我们就不需要了解，况且Java 7的重新实现被喷的很厉害。</p>
 
 <p>其实这个问题的价值，还是比较宝贵的，尤其是内容字符数组共享这个优化的实现。希望可以为大家以后的设计实现提供帮助和一些想法。</p>
 
-<h2>受影响的方法</h2>
+<p>##受影响的方法
+trim和subSequence都存在调用substring的操作。Java 6和Java 7 substring实现的更改也间接影响到了这些方法。</p>
 
-<p>trim和subSequence都存在调用substring的操作。Java 6和Java 7 substring实现的更改也间接影响到了这些方法。</p>
-
-<h2>参考资源</h2>
-
-<p>以下三篇文章写得都比较不错，但是都稍微有一些问题，我都已经标明出来，大家阅读时，需要注意。</p>
+<p>##参考资源
+以下三篇文章写得都比较不错，但是都稍微有一些问题，我都已经标明出来，大家阅读时，需要注意。</p>
 
 <ul>
-<li><a href="http://www.programcreek.com/2013/09/the-substring-method-in-jdk-6-and-jdk-7/">The substring() Method in JDK 6 and JDK 7</a> 本文中解决java6中问题提到的字符串拼接<strong>不推荐</strong>，具体原因可以参考<a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a></li>
-<li><a href="http://javarevisited.blogspot.com/2011/10/how-substring-in-java-works.html">How SubString method works in Java &ndash; Memory Leak Fixed in JDK 1.7</a> 本文中提到的有一个概念错误，新的字符串不会阻止旧的字符串被回收，而是阻止旧字符串中的内容字符数组。阅读时需要注意。</li>
-<li><a href="http://bugs.java.com/view_bug.do?bug_id=4513622">JDK-4513622 : (str) keeping a substring of a field prevents GC for object</a> 本文中提到的有一个测试，使用非new的形式有一点问题，其忽视了字符串常量池的存在，具体查看下面的注意。</li>
+  <li><a href="http://www.programcreek.com/2013/09/the-substring-method-in-jdk-6-and-jdk-7/">The substring() Method in JDK 6 and JDK 7</a> 本文中解决java6中问题提到的字符串拼接<strong>不推荐</strong>，具体原因可以参考<a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a></li>
+  <li><a href="http://javarevisited.blogspot.com/2011/10/how-substring-in-java-works.html">How SubString method works in Java - Memory Leak Fixed in JDK 1.7</a> 本文中提到的有一个概念错误，新的字符串不会阻止旧的字符串被回收，而是阻止旧字符串中的内容字符数组。阅读时需要注意。</li>
+  <li><a href="http://bugs.java.com/view_bug.do?bug_id=4513622">JDK-4513622 : (str) keeping a substring of a field prevents GC for object</a> 本文中提到的有一个测试，使用非new的形式有一点问题，其忽视了字符串常量池的存在，具体查看下面的注意。</li>
 </ul>
 
-
-<h2>注意</h2>
-
-<p>上面的重现问题的代码中</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="nf">getString</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>  <span class="c1">//return this.largeString.substring(0,2);</span>
-</span><span class='line'>      <span class="k">return</span> <span class="k">new</span> <span class="nf">String</span><span class="o">(</span><span class="s">&quot;ab&quot;</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>这里最好不要写成下面这样，因为在JVM中存在字符串常量池，&#8221;ab&#8221;不会重新创建新字符串，所有的变量都会引用一个对象，而使用new String()则每次重新创建对象。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="nf">getString</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="s">&quot;ab&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##注意
+上面的重现问题的代码中</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="nf">getString</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">	<span class="c1">//return this.largeString.substring(0,2);</span>
+</span><span class="line">   	<span class="k">return</span> <span class="k">new</span> <span class="nf">String</span><span class="o">(</span><span class="s">"ab"</span><span class="o">);</span> 
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>这里最好不要写成下面这样，因为在JVM中存在字符串常量池，”ab”不会重新创建新字符串，所有的变量都会引用一个对象，而使用new String()则每次重新创建对象。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="nf">getString</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   	<span class="k">return</span> <span class="s">"ab"</span><span class="o">;</span> 
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>关于字符串常量池，以后的文章会有介绍。</p>
 
-<h3>吐血推荐</h3>
-
-<p>如果你对本文这样的内容感兴趣，可以阅读以下Joshua Bloch大神写得书，虽然有点贵，还是英文的。
+<p>###吐血推荐
+如果你对本文这样的内容感兴趣，可以阅读以下Joshua Bloch大神写得书，虽然有点贵，还是英文的。
 <a href="http://www.amazon.cn/gp/product/032133678X/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=032133678X&amp;linkCode=as2&amp;tag=droidyue-23">Java Puzzlers</a></p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -602,7 +525,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -616,8 +539,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -629,15 +550,13 @@
 
 
 
-  
 
-
-<time datetime="2014-12-14T12:02:00+08:00" pubdate data-updated="true">Dec 14<span>th</span>, 2014</time>
+<time datetime="2014-12-14T12:02:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/java/'>Java</a>
+    Java
   
 </span>
 
@@ -730,10 +649,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -742,7 +657,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -809,6 +724,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -842,7 +761,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -850,7 +769,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

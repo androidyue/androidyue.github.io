@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="简单几招提速 Kotlin Kapt编译 Aug 18th, 2019 应用Kotlin之后，涉及到注解的注解处理器依赖也会由annotationProcessor替换成kapt，和最初应用Kotlin一样，总会让人一种感觉，一番应用Kotlin和Kapt之后，编译耗时更长了， &hellip;">
+  <meta name="description" content="简单几招提速 Kotlin Kapt编译 应用Kotlin之后，涉及到注解的注解处理器依赖也会由annotationProcessor替换成kapt，和最初应用Kotlin一样，总会让人一种感觉，一番应用Kotlin和Kapt之后，编译耗时更长了，不过好在Kotlin和Google &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,206 +174,164 @@
 
 
 
-  
 
-
-<time datetime="2019-08-18T10:18:00+08:00" pubdate data-updated="true">Aug 18<span>th</span>, 2019</time>
+<time datetime="2019-08-18T10:18:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>应用Kotlin之后，涉及到注解的注解处理器依赖也会由<code>annotationProcessor</code>替换成<code>kapt</code>，和最初应用Kotlin一样，总会让人一种感觉，一番应用Kotlin和Kapt之后，编译耗时更长了，不过好在Kotlin和Google 在这一方面做了很多的优化和改进，本文将简单介绍一些配置，来实现项目编译关于kapt这方面的加速。</p>
+<div class="entry-content"><p>应用Kotlin之后，涉及到注解的注解处理器依赖也会由<code class="language-plaintext highlighter-rouge">annotationProcessor</code>替换成<code class="language-plaintext highlighter-rouge">kapt</code>，和最初应用Kotlin一样，总会让人一种感觉，一番应用Kotlin和Kapt之后，编译耗时更长了，不过好在Kotlin和Google 在这一方面做了很多的优化和改进，本文将简单介绍一些配置，来实现项目编译关于kapt这方面的加速。
+<!--more--></p>
 
-<!--more-->
-
-
-<h2>开启Gradle 构建缓存支持(Gradle build cache support)</h2>
+<h2 id="开启gradle-构建缓存支持gradle-build-cache-support">开启Gradle 构建缓存支持(Gradle build cache support)</h2>
 
 <p>默认情况下，kapt注解处理任务并没有利用开启gradle的构建缓存，需要我们手动增加配置开启</p>
 
 <p>开启方式：在项目的app module下的 build.gradle 文件增加如下代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">kapt</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">useBuildCache</span> <span class="o">=</span> <span class="kc">true</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">kapt</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">useBuildCache</span> <span class="o">=</span> <span class="kc">true</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>注意：</p>
 
 <ul>
-<li><code>kapt</code>配置和<code>android</code>配置同一层级。</li>
-<li>该特性支持从Kotlin 1.2.20开始。</li>
-<li>上述配置生效需Gradle为4.3及以上，且开启build-cache。（增加&mdash;build-cache 选项或在gradle.properties文件添加<code>org.gradle.caching=true</code>）</li>
+  <li><code class="language-plaintext highlighter-rouge">kapt</code>配置和<code class="language-plaintext highlighter-rouge">android</code>配置同一层级。</li>
+  <li>该特性支持从Kotlin 1.2.20开始。</li>
+  <li>上述配置生效需Gradle为4.3及以上，且开启build-cache。（增加–build-cache 选项或在gradle.properties文件添加<code class="language-plaintext highlighter-rouge">org.gradle.caching=true</code>）</li>
 </ul>
 
+<h2 id="并行执行kapt任务">并行执行kapt任务</h2>
+<p>为了加快构建速度，我们可以利用<code class="language-plaintext highlighter-rouge">Gradle worker API</code>实现并行执行kapt任务。</p>
 
-<h2>并行执行kapt任务</h2>
-
-<p>为了加快构建速度，我们可以利用<code>Gradle worker API</code>实现并行执行kapt任务。</p>
-
-<p>开启方式，在<code>gradle.properties</code>文件中增加</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>kapt.use.worker.api<span class="o">=</span><span class="nb">true</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<p>开启方式，在<code class="language-plaintext highlighter-rouge">gradle.properties</code>文件中增加</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">kapt.use.worker.api<span class="o">=</span><span class="nb">true</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>注意：</p>
 
 <ul>
-<li><code>Gradle worker API</code>需依赖<code>Gradle</code>4.10.3及以上。</li>
-<li>该特性支持自Kotlin 1.2.60</li>
-<li>启用并行执行，会引发更高的内存占用</li>
+  <li><code class="language-plaintext highlighter-rouge">Gradle worker API</code>需依赖<code class="language-plaintext highlighter-rouge">Gradle</code>4.10.3及以上。</li>
+  <li>该特性支持自Kotlin 1.2.60</li>
+  <li>启用并行执行，会引发更高的内存占用</li>
 </ul>
 
-
-<h2>启用kapt编译规避</h2>
-
-<p>除此之外，我们可以利用<code>Gradle compile avoidance</code>（编译规避）来避免执行注解处理。</p>
+<h2 id="启用kapt编译规避">启用kapt编译规避</h2>
+<p>除此之外，我们可以利用<code class="language-plaintext highlighter-rouge">Gradle compile avoidance</code>（编译规避）来避免执行注解处理。</p>
 
 <p>注解处理被略过的场景有</p>
 
 <ul>
-<li>项目的源文件没有改变</li>
-<li>依赖的改变是ABI(Application Binary Interface)兼容的，比如仅仅修改某个方法的方法体。</li>
+  <li>项目的源文件没有改变</li>
+  <li>依赖的改变是ABI(Application Binary Interface)兼容的，比如仅仅修改某个方法的方法体。</li>
 </ul>
-
 
 <p>开启方式：</p>
 
 <ul>
-<li>对于注解依赖需要使用<code>kapt</code>显式声明</li>
-<li>在<code>gradle.properties</code>文件中增加<code>kapt.include.compile.classpath=false</code></li>
+  <li>对于注解依赖需要使用<code class="language-plaintext highlighter-rouge">kapt</code>显式声明</li>
+  <li>在<code class="language-plaintext highlighter-rouge">gradle.properties</code>文件中增加<code class="language-plaintext highlighter-rouge">kapt.include.compile.classpath=false</code></li>
 </ul>
-
 
 <p>注意：</p>
 
 <ul>
-<li>该特性需 Kotlin 1.3.20 及以上</li>
+  <li>该特性需 Kotlin 1.3.20 及以上</li>
 </ul>
 
-
-<h2>增量注解处理</h2>
-
+<h2 id="增量注解处理">增量注解处理</h2>
 <p>Kotlin 自1.3.30引入了一个实验功能，即支持注解增量处理。</p>
 
-<p>开启需要很简单，在<code>gradle.properties</code>中加入</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>kapt.incremental.apt<span class="o">=</span><span class="nb">true</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<p>开启需要很简单，在<code class="language-plaintext highlighter-rouge">gradle.properties</code>中加入</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">kapt.incremental.apt<span class="o">=</span><span class="nb">true</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>但是还需要有一个前提，就是开启Gradle的增量编译（Kotlin 1.1.1已默认开启）。</p>
 
 <p>除此之外，关键的因素还是需要开依赖的注解处理器是否支持增量处理。</p>
 
-<h3>如何查看注解处理器是否支持增量编译</h3>
+<h3 id="如何查看注解处理器是否支持增量编译">如何查看注解处理器是否支持增量编译</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">./gradlew aDeb <span class="nt">-Pkapt</span>.verbose<span class="o">=</span><span class="nb">true</span> | <span class="nb">grep </span>KAPT
+</span><span class="line">
+</span><span class="line"><span class="o">[</span>INFO] Incremental KAPT support is disabled. Processors that are not incremental:
+</span><span class="line">	com.bumptech.glide.annotation.compiler.GlideAnnotationProcessor, 
+</span><span class="line">	dagger.internal.codegen.ComponentProcessor, 
+</span><span class="line">	android.arch.lifecycle.LifecycleProcessor.
+</span><span class="line"><span class="o">[</span>INFO] Incremental KAPT support is disabled. Processors that are not incremental: 
+</span><span class="line">	butterknife.compiler.ButterKnifeProcessor, 
+</span><span class="line">	com.alibaba.android.arouter.compiler.processor.AutowiredProcessor, 
+</span><span class="line">	com.alibaba.android.arouter.compiler.processor.InterceptorProcessor, 
+</span><span class="line">	com.alibaba.android.arouter.compiler.processor.RouteProcessor, 
+</span><span class="line">	dagger.internal.codegen.ComponentProcessor, 
+</span><span class="line">	com.google.auto.service.processor.AutoServiceProcessor.</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>./gradlew aDeb -Pkapt.verbose<span class="o">=</span><span class="nb">true</span> | grep KAPT
-</span><span class='line'>
-</span><span class='line'><span class="o">[</span>INFO<span class="o">]</span> Incremental KAPT support is disabled. Processors that are not incremental:
-</span><span class='line'>  com.bumptech.glide.annotation.compiler.GlideAnnotationProcessor,
-</span><span class='line'>  dagger.internal.codegen.ComponentProcessor,
-</span><span class='line'>  android.arch.lifecycle.LifecycleProcessor.
-</span><span class='line'><span class="o">[</span>INFO<span class="o">]</span> Incremental KAPT support is disabled. Processors that are not incremental:
-</span><span class='line'>  butterknife.compiler.ButterKnifeProcessor,
-</span><span class='line'>  com.alibaba.android.arouter.compiler.processor.AutowiredProcessor,
-</span><span class='line'>  com.alibaba.android.arouter.compiler.processor.InterceptorProcessor,
-</span><span class='line'>  com.alibaba.android.arouter.compiler.processor.RouteProcessor,
-</span><span class='line'>  dagger.internal.codegen.ComponentProcessor,
-</span><span class='line'>  com.google.auto.service.processor.AutoServiceProcessor.
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>更新依赖至最新版</h3>
-
-<p>上面我们看到了<code>glide</code>,<code>butterknife</code>等依赖，我们都可以通过将这些依赖更新到最新版来解决</p>
+<h3 id="更新依赖至最新版">更新依赖至最新版</h3>
+<p>上面我们看到了<code class="language-plaintext highlighter-rouge">glide</code>,<code class="language-plaintext highlighter-rouge">butterknife</code>等依赖，我们都可以通过将这些依赖更新到最新版来解决</p>
 
 <ul>
-<li>Glide在v4.9.0版本增加了增量处理支持，对应的github commit为 <a href="https://github.com/bumptech/glide/commit/a16a1baa140c9b87b9a68a2a3b91047fd60ba5d8">https://github.com/bumptech/glide/commit/a16a1baa140c9b87b9a68a2a3b91047fd60ba5d8</a></li>
-<li>google/auto 也在较早的时候进行了支持，对应的github commit为 <a href="https://github.com/google/auto/commit/a5673d06f687e1354f1f069cce36136538cf532c">https://github.com/google/auto/commit/a5673d06f687e1354f1f069cce36136538cf532c</a></li>
+  <li>Glide在v4.9.0版本增加了增量处理支持，对应的github commit为 https://github.com/bumptech/glide/commit/a16a1baa140c9b87b9a68a2a3b91047fd60ba5d8</li>
+  <li>google/auto 也在较早的时候进行了支持，对应的github commit为 https://github.com/google/auto/commit/a5673d06f687e1354f1f069cce36136538cf532c</li>
 </ul>
 
-
-<h3>更新加手动配置</h3>
-
+<h3 id="更新加手动配置">更新加手动配置</h3>
 <p>以Dagger为例，除了更新到最新版之外，还需要增加如下的配置</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">android</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">defaultConfig</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">javaCompileOptions</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">annotationProcessorOptions</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">arguments</span> <span class="o">&lt;&lt;</span> <span class="o">[</span><span class="s">&quot;dagger.gradle.incremental&quot;</span><span class="o">:</span> <span class="s">&quot;true&quot;</span><span class="o">]</span>
-</span><span class='line'>         <span class="o">}</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">android</span> <span class="o">{</span>
+</span><span class="line">   <span class="n">defaultConfig</span> <span class="o">{</span>
+</span><span class="line">      <span class="n">javaCompileOptions</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">annotationProcessorOptions</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">arguments</span> <span class="o">&lt;&lt;</span> <span class="o">[</span><span class="s">"dagger.gradle.incremental"</span><span class="o">:</span> <span class="s">"true"</span><span class="o">]</span>
+</span><span class="line">         <span class="o">}</span>
+</span><span class="line">      <span class="o">}</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">]</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>参考链接<a href="https://github.com/google/dagger/issues/1120">https://github.com/google/dagger/issues/1120</a></p>
-
-<h2>Troubleshooting</h2>
-
+<h2 id="troubleshooting">Troubleshooting</h2>
 <ul>
-<li>如果启用上面的方案导致问题，可以找到对应的配置，关闭该特性。</li>
+  <li>如果启用上面的方案导致问题，可以找到对应的配置，关闭该特性。</li>
 </ul>
 
-
-<h2>最后的建议</h2>
-
+<h2 id="最后的建议">最后的建议</h2>
 <ul>
-<li>积极保持依赖为最新(稳定)版，否则时间越长升级成本越大。</li>
+  <li>积极保持依赖为最新(稳定)版，否则时间越长升级成本越大。</li>
 </ul>
 
-
-<h2>References</h2>
-
+<h2 id="references">References</h2>
 <ul>
-<li><a href="https://kotlinlang.org/docs/reference/kapt.html">https://kotlinlang.org/docs/reference/kapt.html</a></li>
-<li><a href="https://medium.com/avast-engineering/making-incremental-kapt-work-speed-up-your-kotlin-projects-539db1a771cf">https://medium.com/avast-engineering/making-incremental-kapt-work-speed-up-your-kotlin-projects-539db1a771cf</a></li>
+  <li>https://kotlinlang.org/docs/reference/kapt.html</li>
+  <li>https://medium.com/avast-engineering/making-incremental-kapt-work-speed-up-your-kotlin-projects-539db1a771cf</li>
 </ul>
 
-
-<h2>相关内容</h2>
-
+<h2 id="相关内容">相关内容</h2>
 <ul>
-<li><a href="https://droidyue.com/blog/2017/04/16/speedup-gradle-building/">一些关于加速Gradle构建的个人经验</a></li>
-<li><a href="https://droidyue.com/blog/2018/01/31/how-to-speed-up-kotlin-compilation/">关于应用Kotlin后的编译速度问题</a></li>
+  <li><a href="https://droidyue.com/blog/2017/04/16/speedup-gradle-building/">一些关于加速Gradle构建的个人经验</a></li>
+  <li><a href="https://droidyue.com/blog/2018/01/31/how-to-speed-up-kotlin-compilation/">关于应用Kotlin后的编译速度问题</a></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -395,7 +353,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -409,8 +367,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -422,15 +378,13 @@
 
 
 
-  
 
-
-<time datetime="2019-08-18T10:18:00+08:00" pubdate data-updated="true">Aug 18<span>th</span>, 2019</time>
+<time datetime="2019-08-18T10:18:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/gradle/'>Gradle</a>, <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>, <a class='category' href='/blog/categories/cache/'>cache</a>, <a class='category' href='/blog/categories/katp/'>katp</a>, <a class='category' href='/blog/categories/you-hua/'>优化</a>, <a class='category' href='/blog/categories/zhu-jie-chu-li-qi/'>注解处理器</a>, <a class='category' href='/blog/categories/bian-yi/'>编译</a>
+    Kotlinkatp编译优化Gradle注解处理器cacheAndroid
   
 </span>
 
@@ -523,10 +477,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -535,7 +485,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -602,6 +552,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -635,7 +589,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -643,7 +597,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

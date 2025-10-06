@@ -11,7 +11,8 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="赶走那些Android工程中得冗余字符串 Aug 8th, 2014 Android提供了一套很方便的进行资源（语言）国际化机制，为了更好地支持多语言，很多工程的翻译往往会放到类似crowdin这样的平台上。资源是全了，但是还是会有一些问题。 哪些问题 以下使用一些语言进行举例。 &hellip;">
+  <meta name="description" content="赶走那些Android工程中得冗余字符串 Android提供了一套很方便的进行资源（语言）国际化机制，为了更好地支持多语言，很多工程的翻译往往会放到类似crowdin这样的平台上。资源是全了，但是还是会有一些问题。 ##哪些问题
+以下使用一些语言进行举例。其中values为工程默认的资源。 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +175,8 @@
 
 
 
-  
 
-
-<time datetime="2014-08-08T19:32:00+08:00" pubdate data-updated="true">Aug 8<span>th</span>, 2014</time>
+<time datetime="2014-08-08T19:32:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -187,303 +186,290 @@
 <div class="entry-content"><p>Android提供了一套很方便的进行资源（语言）国际化机制，为了更好地支持多语言，很多工程的翻译往往会放到类似crowdin这样的平台上。资源是全了，但是还是会有一些问题。</p>
 
 <!--more-->
-
-
-<h2>哪些问题</h2>
-
-<p>以下使用一些语言进行举例。其中values为工程默认的资源。</p>
+<p>##哪些问题
+以下使用一些语言进行举例。其中values为工程默认的资源。</p>
 
 <ul>
-<li>某语言的资源和某语言限定区域的资源之间。如<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，这种表现最为严重。</li>
-<li>某语言的资源和默认的资源之间。<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串，可能原因是由于<strong>values-fr</strong>存在未翻译字符串导致</li>
+  <li>某语言的资源和某语言限定区域的资源之间。如<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，这种表现最为严重。</li>
+  <li>某语言的资源和默认的资源之间。<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串，可能原因是由于<strong>values-fr</strong>存在未翻译字符串导致</li>
 </ul>
 
-
-<h2>为什么要去重</h2>
-
+<p>##为什么要去重</p>
 <ul>
-<li>洁癖，容不下半点冗余。</li>
+  <li>洁癖，容不下半点冗余。</li>
 </ul>
 
-
-<h2>解决思路</h2>
-
+<p>##解决思路</p>
 <ul>
-<li><p>如果<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，去除<strong>values-fr-rCA</strong>中的重复字符串，保留<strong>values-fr</strong>。这样可以保证在values-fr-rCA下也可以正确读取到资源。</p></li>
-<li><p>如果<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串。如去除<strong>values-fr</strong>中得重复字符串，保留values的条目。</p></li>
+  <li>
+    <p>如果<strong>values-fr-rCA</strong>存在于<strong>values-fr</strong>相同的字符串，去除<strong>values-fr-rCA</strong>中的重复字符串，保留<strong>values-fr</strong>。这样可以保证在values-fr-rCA下也可以正确读取到资源。</p>
+  </li>
+  <li>
+    <p>如果<strong>values-fr</strong>存在与<strong>values</strong>相同的字符串。如去除<strong>values-fr</strong>中得重复字符串，保留values的条目。</p>
+  </li>
 </ul>
 
+<p>##Py脚本</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>filenos:false removeRepeatedStrings.py</span><a href="https://raw.githubusercontent.com/androidyue/DroidResCleaner/master/removeRepeatedStrings.py">link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+<span class="line-number">55</span>
+<span class="line-number">56</span>
+<span class="line-number">57</span>
+<span class="line-number">58</span>
+<span class="line-number">59</span>
+<span class="line-number">60</span>
+<span class="line-number">61</span>
+<span class="line-number">62</span>
+<span class="line-number">63</span>
+<span class="line-number">64</span>
+<span class="line-number">65</span>
+<span class="line-number">66</span>
+<span class="line-number">67</span>
+<span class="line-number">68</span>
+<span class="line-number">69</span>
+<span class="line-number">70</span>
+<span class="line-number">71</span>
+<span class="line-number">72</span>
+<span class="line-number">73</span>
+<span class="line-number">74</span>
+<span class="line-number">75</span>
+<span class="line-number">76</span>
+<span class="line-number">77</span>
+<span class="line-number">78</span>
+<span class="line-number">79</span>
+<span class="line-number">80</span>
+<span class="line-number">81</span>
+<span class="line-number">82</span>
+<span class="line-number">83</span>
+<span class="line-number">84</span>
+<span class="line-number">85</span>
+<span class="line-number">86</span>
+<span class="line-number">87</span>
+<span class="line-number">88</span>
+<span class="line-number">89</span>
+<span class="line-number">90</span>
+<span class="line-number">91</span>
+<span class="line-number">92</span>
+<span class="line-number">93</span>
+<span class="line-number">94</span>
+<span class="line-number">95</span>
+<span class="line-number">96</span>
+<span class="line-number">97</span>
+<span class="line-number">98</span>
+<span class="line-number">99</span>
+<span class="line-number">100</span>
+<span class="line-number">101</span>
+<span class="line-number">102</span>
+<span class="line-number">103</span>
+<span class="line-number">104</span>
+<span class="line-number">105</span>
+<span class="line-number">106</span>
+<span class="line-number">107</span>
+<span class="line-number">108</span>
+<span class="line-number">109</span>
+<span class="line-number">110</span>
+<span class="line-number">111</span>
+<span class="line-number">112</span>
+<span class="line-number">113</span>
+<span class="line-number">114</span>
+<span class="line-number">115</span>
+<span class="line-number">116</span>
+<span class="line-number">117</span>
+<span class="line-number">118</span>
+<span class="line-number">119</span>
+<span class="line-number">120</span>
+<span class="line-number">121</span>
+<span class="line-number">122</span>
+<span class="line-number">123</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1">#!/usr/bin/env python
+</span><span class="line"># coding=utf-8
+</span><span class="line"></span><span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">listdir</span><span class="p">,</span><span class="n">path</span><span class="p">,</span> <span class="n">system</span>
+</span><span class="line"><span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">argv</span>
+</span><span class="line"><span class="k">try</span><span class="p">:</span>
+</span><span class="line">    <span class="kn">import</span> <span class="nn">xml.etree.cElementTree</span> <span class="k">as</span> <span class="n">ET</span>
+</span><span class="line"><span class="k">except</span> <span class="nb">ImportError</span><span class="p">:</span>
+</span><span class="line">    <span class="kn">import</span> <span class="nn">xml.etree.ElementTree</span> <span class="k">as</span> <span class="n">ET</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">genRegionLangPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">    <span class="n">basicLanguage</span> <span class="o">=</span> <span class="bp">None</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="s">'values'</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">)</span> <span class="p">:</span>
+</span><span class="line">        <span class="n">hasRegionLimit</span> <span class="o">=</span> <span class="p">(</span><span class="s">'r'</span> <span class="o">==</span> <span class="n">filePath</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">hasRegionLimit</span><span class="p">):</span>
+</span><span class="line">            <span class="n">basicLanguage</span> <span class="o">=</span> <span class="n">filePath</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+</span><span class="line">            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="p">.</span><span class="n">exists</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">))</span> <span class="p">:</span>
+</span><span class="line">                <span class="k">return</span> <span class="bp">None</span> 
+</span><span class="line">            <span class="n">belongsToEnglish</span> <span class="o">=</span>  <span class="p">(</span><span class="s">"values-en"</span> <span class="ow">in</span> <span class="n">basicLanguage</span><span class="p">)</span>
+</span><span class="line">            <span class="k">if</span> <span class="p">(</span><span class="n">belongsToEnglish</span><span class="p">):</span>
+</span><span class="line">                <span class="c1">#Compare with the res/values/strings.xml
+</span><span class="line"></span>                <span class="k">return</span> <span class="p">(</span><span class="n">path</span><span class="p">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">)</span> <span class="o">+</span> <span class="s">'/values/strings.xml'</span><span class="p">,</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">"/strings.xml"</span><span class="p">)</span>
+</span><span class="line">            <span class="k">else</span><span class="p">:</span>
+</span><span class="line">                <span class="k">return</span> <span class="p">(</span><span class="n">basicLanguage</span> <span class="o">+</span> <span class="s">'/strings.xml'</span><span class="p">,</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">"/strings.xml"</span><span class="p">)</span>
+</span><span class="line">    <span class="k">return</span> <span class="bp">None</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">genLangPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">    <span class="k">def</span> <span class="nf">shouldGenLanPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="s">'values'</span> <span class="ow">in</span> <span class="n">filePath</span> <span class="p">):</span>
+</span><span class="line">            <span class="k">return</span> <span class="bp">False</span>
+</span><span class="line">        <span class="k">if</span><span class="p">(</span><span class="s">'dpi'</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">            <span class="k">return</span> <span class="bp">False</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="s">'dimes'</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">            <span class="k">return</span> <span class="bp">False</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="s">'large'</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">            <span class="k">return</span> <span class="bp">False</span> 
+</span><span class="line">        <span class="k">return</span> <span class="bp">True</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">if</span><span class="p">(</span><span class="n">shouldGenLanPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">)):</span>
+</span><span class="line">        <span class="n">basicLanguage</span> <span class="o">=</span> <span class="n">path</span><span class="p">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filePath</span><span class="p">)</span> <span class="o">+</span> <span class="s">'/values/strings.xml'</span>
+</span><span class="line">        <span class="n">targetLanguage</span> <span class="o">=</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">'/strings.xml'</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="p">.</span><span class="n">exists</span><span class="p">(</span><span class="n">targetLanguage</span><span class="p">)):</span>
+</span><span class="line">           <span class="k">return</span> <span class="bp">None</span> 
+</span><span class="line">
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="p">.</span><span class="n">samefile</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">,</span><span class="n">targetLanguage</span><span class="p">))</span> <span class="p">:</span>
+</span><span class="line">            <span class="k">return</span> <span class="p">(</span><span class="n">basicLanguage</span><span class="p">,</span> <span class="n">targetLanguage</span><span class="p">)</span>
+</span><span class="line">    <span class="k">return</span> <span class="bp">None</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">genCompareList</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">    <span class="n">compareLists</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">    <span class="k">for</span> <span class="nb">file</span> <span class="ow">in</span> <span class="n">listdir</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">        <span class="n">regionPair</span> <span class="o">=</span> <span class="n">genRegionLangPair</span><span class="p">(</span><span class="n">filePath</span> <span class="o">+</span> <span class="s">'/'</span> <span class="o">+</span> <span class="nb">file</span><span class="p">)</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">regionPair</span><span class="p">):</span>
+</span><span class="line">            <span class="n">compareLists</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">regionPair</span><span class="p">)</span>
+</span><span class="line">        
+</span><span class="line">        <span class="n">languagePair</span> <span class="o">=</span> <span class="n">genLangPair</span><span class="p">(</span><span class="n">filePath</span> <span class="o">+</span> <span class="s">'/'</span> <span class="o">+</span> <span class="nb">file</span><span class="p">)</span> 
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">languagePair</span><span class="p">)</span> <span class="p">:</span>
+</span><span class="line">            <span class="n">compareLists</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">languagePair</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">return</span> <span class="n">compareLists</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">getXmlEntries</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">    <span class="n">root</span> <span class="o">=</span> <span class="n">ET</span><span class="p">.</span><span class="n">ElementTree</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="n">filePath</span><span class="p">).</span><span class="n">getroot</span><span class="p">()</span>
+</span><span class="line">    <span class="n">entries</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class="line">    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">root</span><span class="p">:</span>
+</span><span class="line">        <span class="n">attrib</span> <span class="o">=</span> <span class="n">child</span><span class="p">.</span><span class="n">attrib</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">attrib</span><span class="p">)</span> <span class="p">:</span>
+</span><span class="line">            <span class="n">entries</span><span class="p">[</span><span class="n">attrib</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'name'</span><span class="p">)]</span> <span class="o">=</span> <span class="n">child</span><span class="p">.</span><span class="n">text</span>
+</span><span class="line">    <span class="k">print</span> <span class="s">'xmlEntriesCount'</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">entries</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">rewriteRegionFile</span><span class="p">(</span><span class="n">sourceEntries</span><span class="p">,</span> <span class="n">filePath</span><span class="p">):</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="p">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filePath</span><span class="p">)):</span>
+</span><span class="line">        <span class="k">return</span> 
+</span><span class="line">    <span class="n">ET</span><span class="p">.</span><span class="n">register_namespace</span><span class="p">(</span><span class="s">'xliff'</span><span class="p">,</span><span class="s">"urn:oasis:names:tc:xliff:document:1.2"</span><span class="p">)</span>
+</span><span class="line">    <span class="n">tree</span> <span class="o">=</span> <span class="n">ET</span><span class="p">.</span><span class="n">ElementTree</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="n">filePath</span><span class="p">)</span>
+</span><span class="line">    <span class="n">root</span> <span class="o">=</span> <span class="n">tree</span><span class="p">.</span><span class="n">getroot</span><span class="p">()</span>
+</span><span class="line">    <span class="k">print</span> <span class="n">root</span>
+</span><span class="line">    <span class="n">totalCount</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class="line">    <span class="n">removeCount</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class="line">    <span class="n">unRemoveCount</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class="line">    <span class="k">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+</span><span class="line">    <span class="n">toRemoveList</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">root</span><span class="p">:</span>
+</span><span class="line">        <span class="n">totalCount</span> <span class="o">=</span> <span class="n">totalCount</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class="line">        <span class="n">attrib</span> <span class="o">=</span> <span class="n">child</span><span class="p">.</span><span class="n">attrib</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">==</span> <span class="n">attrib</span><span class="p">):</span>
+</span><span class="line">            <span class="k">continue</span>
+</span><span class="line">
+</span><span class="line">        <span class="n">childName</span> <span class="o">=</span> <span class="n">attrib</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'name'</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">sourceEntries</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">childName</span><span class="p">)</span> <span class="o">==</span> <span class="n">child</span><span class="p">.</span><span class="n">text</span><span class="p">):</span>
+</span><span class="line">            <span class="n">removeCount</span> <span class="o">=</span> <span class="n">removeCount</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class="line">            <span class="n">toRemoveList</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+</span><span class="line">        <span class="k">else</span><span class="p">:</span>
+</span><span class="line">            <span class="n">unRemoveCount</span> <span class="o">=</span> <span class="n">unRemoveCount</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class="line">            <span class="k">print</span> <span class="n">childName</span><span class="p">,</span> <span class="n">sourceEntries</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">childName</span><span class="p">),</span> <span class="n">child</span><span class="p">.</span><span class="n">text</span>
+</span><span class="line">    <span class="k">print</span> <span class="n">filePath</span><span class="p">,</span><span class="n">totalCount</span><span class="p">,</span> <span class="n">removeCount</span><span class="p">,</span><span class="n">unRemoveCount</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">for</span> <span class="n">aItem</span> <span class="ow">in</span> <span class="n">toRemoveList</span><span class="p">:</span>
+</span><span class="line">        <span class="n">root</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="n">aItem</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">):</span>
+</span><span class="line">        <span class="n">tree</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">filePath</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">"UTF-8"</span><span class="p">)</span>
+</span><span class="line">    <span class="k">else</span><span class="p">:</span>
+</span><span class="line">        <span class="n">command</span> <span class="o">=</span> <span class="s">'rm -rf %s'</span><span class="o">%</span><span class="p">(</span><span class="n">path</span><span class="p">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filePath</span><span class="p">))</span>
+</span><span class="line">        <span class="k">print</span> <span class="n">command</span>
+</span><span class="line">        <span class="n">system</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+</span><span class="line">    
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">projectDir</span><span class="p">):</span>
+</span><span class="line">    <span class="n">lists</span> <span class="o">=</span> <span class="n">genCompareList</span><span class="p">(</span><span class="n">projectDir</span> <span class="o">+</span> <span class="s">"/res/"</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">lists</span><span class="p">:</span>
+</span><span class="line">        <span class="k">print</span> <span class="n">item</span>
+</span><span class="line">        <span class="n">src</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span class="line">        <span class="n">dest</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</span><span class="line">        <span class="n">rewriteRegionFile</span><span class="p">(</span><span class="n">getXmlEntries</span><span class="p">(</span><span class="n">src</span><span class="p">),</span><span class="n">dest</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line"><span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">:</span>
+</span><span class="line">        <span class="n">main</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>Py脚本</h2>
+<p>##如何使用</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>filenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">python removeRepeatedStrings.py your_android_project_root_dir</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span>filenos:false removeRepeatedStrings.py</span><a href='https://raw.githubusercontent.com/androidyue/DroidResCleaner/master/removeRepeatedStrings.py'>link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-<span class='line-number'>120</span>
-<span class='line-number'>121</span>
-<span class='line-number'>122</span>
-<span class='line-number'>123</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
-</span><span class='line'><span class="c"># coding=utf-8</span>
-</span><span class='line'><span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">listdir</span><span class="p">,</span><span class="n">path</span><span class="p">,</span> <span class="n">system</span>
-</span><span class='line'><span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">argv</span>
-</span><span class='line'><span class="k">try</span><span class="p">:</span>
-</span><span class='line'>    <span class="kn">import</span> <span class="nn">xml.etree.cElementTree</span> <span class="kn">as</span> <span class="nn">ET</span>
-</span><span class='line'><span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-</span><span class='line'>    <span class="kn">import</span> <span class="nn">xml.etree.ElementTree</span> <span class="kn">as</span> <span class="nn">ET</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">genRegionLangPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>    <span class="n">basicLanguage</span> <span class="o">=</span> <span class="bp">None</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="s">&#39;values&#39;</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">)</span> <span class="p">:</span>
-</span><span class='line'>        <span class="n">hasRegionLimit</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;r&#39;</span> <span class="o">==</span> <span class="n">filePath</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">hasRegionLimit</span><span class="p">):</span>
-</span><span class='line'>            <span class="n">basicLanguage</span> <span class="o">=</span> <span class="n">filePath</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
-</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">))</span> <span class="p">:</span>
-</span><span class='line'>                <span class="k">return</span> <span class="bp">None</span>
-</span><span class='line'>            <span class="n">belongsToEnglish</span> <span class="o">=</span>  <span class="p">(</span><span class="s">&quot;values-en&quot;</span> <span class="ow">in</span> <span class="n">basicLanguage</span><span class="p">)</span>
-</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="n">belongsToEnglish</span><span class="p">):</span>
-</span><span class='line'>                <span class="c">#Compare with the res/values/strings.xml</span>
-</span><span class='line'>                <span class="k">return</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;/values/strings.xml&#39;</span><span class="p">,</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">&quot;/strings.xml&quot;</span><span class="p">)</span>
-</span><span class='line'>            <span class="k">else</span><span class="p">:</span>
-</span><span class='line'>                <span class="k">return</span> <span class="p">(</span><span class="n">basicLanguage</span> <span class="o">+</span> <span class="s">&#39;/strings.xml&#39;</span><span class="p">,</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">&quot;/strings.xml&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">return</span> <span class="bp">None</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">genLangPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>    <span class="k">def</span> <span class="nf">shouldGenLanPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="s">&#39;values&#39;</span> <span class="ow">in</span> <span class="n">filePath</span> <span class="p">):</span>
-</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
-</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="s">&#39;dpi&#39;</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="s">&#39;dimes&#39;</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="s">&#39;large&#39;</span> <span class="ow">in</span> <span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
-</span><span class='line'>        <span class="k">return</span> <span class="bp">True</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">shouldGenLanPair</span><span class="p">(</span><span class="n">filePath</span><span class="p">)):</span>
-</span><span class='line'>        <span class="n">basicLanguage</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filePath</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;/values/strings.xml&#39;</span>
-</span><span class='line'>        <span class="n">targetLanguage</span> <span class="o">=</span> <span class="n">filePath</span> <span class="o">+</span> <span class="s">&#39;/strings.xml&#39;</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">targetLanguage</span><span class="p">)):</span>
-</span><span class='line'>           <span class="k">return</span> <span class="bp">None</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">samefile</span><span class="p">(</span><span class="n">basicLanguage</span><span class="p">,</span><span class="n">targetLanguage</span><span class="p">))</span> <span class="p">:</span>
-</span><span class='line'>            <span class="k">return</span> <span class="p">(</span><span class="n">basicLanguage</span><span class="p">,</span> <span class="n">targetLanguage</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">return</span> <span class="bp">None</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">genCompareList</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>    <span class="n">compareLists</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span class='line'>    <span class="k">for</span> <span class="nb">file</span> <span class="ow">in</span> <span class="n">listdir</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>        <span class="n">regionPair</span> <span class="o">=</span> <span class="n">genRegionLangPair</span><span class="p">(</span><span class="n">filePath</span> <span class="o">+</span> <span class="s">&#39;/&#39;</span> <span class="o">+</span> <span class="nb">file</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">regionPair</span><span class="p">):</span>
-</span><span class='line'>            <span class="n">compareLists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">regionPair</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">languagePair</span> <span class="o">=</span> <span class="n">genLangPair</span><span class="p">(</span><span class="n">filePath</span> <span class="o">+</span> <span class="s">&#39;/&#39;</span> <span class="o">+</span> <span class="nb">file</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">languagePair</span><span class="p">)</span> <span class="p">:</span>
-</span><span class='line'>            <span class="n">compareLists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">languagePair</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">return</span> <span class="n">compareLists</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">getXmlEntries</span><span class="p">(</span><span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>    <span class="n">root</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">ElementTree</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="n">filePath</span><span class="p">)</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">entries</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span class='line'>    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">root</span><span class="p">:</span>
-</span><span class='line'>        <span class="n">attrib</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">attrib</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">!=</span> <span class="n">attrib</span><span class="p">)</span> <span class="p">:</span>
-</span><span class='line'>            <span class="n">entries</span><span class="p">[</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">text</span>
-</span><span class='line'>    <span class="k">print</span> <span class="s">&#39;xmlEntriesCount&#39;</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">entries</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">rewriteRegionFile</span><span class="p">(</span><span class="n">sourceEntries</span><span class="p">,</span> <span class="n">filePath</span><span class="p">):</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filePath</span><span class="p">)):</span>
-</span><span class='line'>        <span class="k">return</span>
-</span><span class='line'>    <span class="n">ET</span><span class="o">.</span><span class="n">register_namespace</span><span class="p">(</span><span class="s">&#39;xliff&#39;</span><span class="p">,</span><span class="s">&quot;urn:oasis:names:tc:xliff:document:1.2&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">tree</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">ElementTree</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="n">filePath</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">root</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
-</span><span class='line'>    <span class="k">print</span> <span class="n">root</span>
-</span><span class='line'>    <span class="n">totalCount</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>    <span class="n">removeCount</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>    <span class="n">unRemoveCount</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>    <span class="k">print</span> <span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">toRemoveList</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span class='line'>    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">root</span><span class="p">:</span>
-</span><span class='line'>        <span class="n">totalCount</span> <span class="o">=</span> <span class="n">totalCount</span> <span class="o">+</span> <span class="mi">1</span>
-</span><span class='line'>        <span class="n">attrib</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">attrib</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="o">==</span> <span class="n">attrib</span><span class="p">):</span>
-</span><span class='line'>            <span class="k">continue</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">childName</span> <span class="o">=</span> <span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">sourceEntries</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">childName</span><span class="p">)</span> <span class="o">==</span> <span class="n">child</span><span class="o">.</span><span class="n">text</span><span class="p">):</span>
-</span><span class='line'>            <span class="n">removeCount</span> <span class="o">=</span> <span class="n">removeCount</span> <span class="o">+</span> <span class="mi">1</span>
-</span><span class='line'>            <span class="n">toRemoveList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">else</span><span class="p">:</span>
-</span><span class='line'>            <span class="n">unRemoveCount</span> <span class="o">=</span> <span class="n">unRemoveCount</span> <span class="o">+</span> <span class="mi">1</span>
-</span><span class='line'>            <span class="k">print</span> <span class="n">childName</span><span class="p">,</span> <span class="n">sourceEntries</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">childName</span><span class="p">),</span> <span class="n">child</span><span class="o">.</span><span class="n">text</span>
-</span><span class='line'>    <span class="k">print</span> <span class="n">filePath</span><span class="p">,</span><span class="n">totalCount</span><span class="p">,</span> <span class="n">removeCount</span><span class="p">,</span><span class="n">unRemoveCount</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">for</span> <span class="n">aItem</span> <span class="ow">in</span> <span class="n">toRemoveList</span><span class="p">:</span>
-</span><span class='line'>        <span class="n">root</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">aItem</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">):</span>
-</span><span class='line'>        <span class="n">tree</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">filePath</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">&quot;UTF-8&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">else</span><span class="p">:</span>
-</span><span class='line'>        <span class="n">command</span> <span class="o">=</span> <span class="s">&#39;rm -rf </span><span class="si">%s</span><span class="s">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filePath</span><span class="p">))</span>
-</span><span class='line'>        <span class="k">print</span> <span class="n">command</span>
-</span><span class='line'>        <span class="n">system</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">projectDir</span><span class="p">):</span>
-</span><span class='line'>    <span class="n">lists</span> <span class="o">=</span> <span class="n">genCompareList</span><span class="p">(</span><span class="n">projectDir</span> <span class="o">+</span> <span class="s">&quot;/res/&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">lists</span><span class="p">:</span>
-</span><span class='line'>        <span class="k">print</span> <span class="n">item</span>
-</span><span class='line'>        <span class="n">src</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-</span><span class='line'>        <span class="n">dest</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-</span><span class='line'>        <span class="n">rewriteRegionFile</span><span class="p">(</span><span class="n">getXmlEntries</span><span class="p">(</span><span class="n">src</span><span class="p">),</span><span class="n">dest</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">:</span>
-</span><span class='line'>        <span class="n">main</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-</span></code></pre></td></tr></table></div></figure>
+<p>##工程参与
+<a href="https://github.com/androidyue/DroidResCleaner/blob/master/removeRepeatedStrings.py" target="_blank">RemoveRepeatedStrings.py</a></p>
 
-
-<h2>如何使用</h2>
-
-<figure class='code'><figcaption><span>filenos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>python removeRepeatedStrings.py your_android_project_root_dir
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>工程参与</h2>
-
-<p><a href="https://github.com/androidyue/DroidResCleaner/blob/master/removeRepeatedStrings.py" target="_blank">RemoveRepeatedStrings.py</a></p>
-
-<h3>其他</h3>
-
+<p>###其他</p>
 <ul>
-<li><a href="http://www.amazon.cn/gp/product/B00DZEX5JQ/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00DZEX5JQ&linkCode=as2&tag=droidyue-23">控制你行为的秘密</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00DZEX5JQ" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0090HBORW/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0090HBORW&linkCode=as2&tag=droidyue-23">好工作是设计出来的</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0090HBORW" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B001F7AEFI/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B001F7AEFI&linkCode=as2&tag=droidyue-23">原来这才是瑞士多功能军刀</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B001F7AEFI" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B00DZEX5JQ/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00DZEX5JQ&amp;linkCode=as2&amp;tag=droidyue-23">控制你行为的秘密</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00DZEX5JQ" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B0090HBORW/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0090HBORW&amp;linkCode=as2&amp;tag=droidyue-23">好工作是设计出来的</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B0090HBORW" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B001F7AEFI/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B001F7AEFI&amp;linkCode=as2&amp;tag=droidyue-23">原来这才是瑞士多功能军刀</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B001F7AEFI" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -505,7 +491,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -519,8 +505,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -532,15 +516,13 @@
 
 
 
-  
 
-
-<time datetime="2014-08-08T19:32:00+08:00" pubdate data-updated="true">Aug 8<span>th</span>, 2014</time>
+<time datetime="2014-08-08T19:32:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/python/'>Python</a>
+    AndroidPython
   
 </span>
 
@@ -633,10 +615,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -645,7 +623,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -712,6 +690,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -745,7 +727,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -753,7 +735,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

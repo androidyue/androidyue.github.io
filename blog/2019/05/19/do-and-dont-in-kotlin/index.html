@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="编写地道的 Kotlin 代码 May 19th, 2019 Kotlin 以其简洁实用的语法，赢得了很多Java 开发者，尤其是 Android 开发者的喜爱与应用。然而，虽然我们使用 Kotlin 进行编码，可能并没有书写出地道的 Kotlin 代码，亦或者是遵照写Java的思维， &hellip;">
+  <meta name="description" content="编写地道的 Kotlin 代码 Kotlin 以其简洁实用的语法，赢得了很多Java 开发者，尤其是 Android 开发者的喜爱与应用。然而，虽然我们使用 Kotlin 进行编码，可能并没有书写出地道的 Kotlin 代码，亦或者是遵照写Java的思维，用Kotlin的语法 来编码。 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2019-05-19T21:04:00+08:00" pubdate data-updated="true">May 19<span>th</span>, 2019</time>
+<time datetime="2019-05-19T21:04:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -186,892 +184,819 @@
 
 <div class="entry-content"><p>Kotlin 以其简洁实用的语法，赢得了很多Java 开发者，尤其是 Android 开发者的喜爱与应用。然而，虽然我们使用 Kotlin 进行编码，可能并没有书写出地道的 Kotlin 代码，亦或者是遵照写Java的思维，用Kotlin的语法 来编码。</p>
 
-<p>本文将通过多出代码示例，分为<code>Do not</code>（不建议）和<code>Do</code>（建议）两部分，分别代表着不太好的实现和推荐的实现方式，来展示地道的 Kotlin 编码方式。</p>
+<p>本文将通过多出代码示例，分为<code class="language-plaintext highlighter-rouge">Do not</code>（不建议）和<code class="language-plaintext highlighter-rouge">Do</code>（建议）两部分，分别代表着不太好的实现和推荐的实现方式，来展示地道的 Kotlin 编码方式。</p>
 
 <!--more-->
 
+<h2 id="进行非null判断">进行非null判断</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">dumpBook</span><span class="p">(</span><span class="n">book</span><span class="p">:</span> <span class="nc">Book</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">book</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">book</span><span class="p">.</span><span class="nf">dumpContent</span><span class="p">()</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">dumpBook1</span><span class="p">(</span><span class="n">book</span><span class="p">:</span> <span class="nc">Book</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">book</span><span class="o">?.</span><span class="nf">dumpContent</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>进行非null判断</h2>
+<h2 id="进行类型转换并访问一些属性">进行类型转换并访问一些属性</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">// avoid if type checks</span>
+</span><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testTypeCheck</span><span class="p">(</span><span class="n">any</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">any</span> <span class="k">is</span> <span class="nc">Book</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">println</span><span class="p">(</span><span class="n">any</span><span class="p">.</span><span class="n">isbn</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testTypeCheck0</span><span class="p">(</span><span class="n">any</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="p">(</span><span class="n">any</span> <span class="k">as</span><span class="p">?</span> <span class="nc">Book</span><span class="p">)</span><span class="o">?.</span><span class="nf">let</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">println</span><span class="p">(</span><span class="n">it</span><span class="p">.</span><span class="n">isbn</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">dumpBook</span><span class="p">(</span><span class="n">book</span><span class="p">:</span> <span class="n">Book</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">book</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">book</span><span class="p">.</span><span class="n">dumpContent</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">dumpBook1</span><span class="p">(</span><span class="n">book</span><span class="p">:</span> <span class="n">Book</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">book</span><span class="p">?.</span><span class="n">dumpContent</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>进行类型转换并访问一些属性</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">// avoid if type checks</span>
-</span><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testTypeCheck</span><span class="p">(</span><span class="n">any</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">any</span> <span class="k">is</span> <span class="n">Book</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="n">any</span><span class="p">.</span><span class="n">isbn</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testTypeCheck0</span><span class="p">(</span><span class="n">any</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="p">(</span><span class="n">any</span> <span class="k">as</span><span class="p">?</span> <span class="n">Book</span><span class="p">)?.</span><span class="n">let</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="n">it</span><span class="p">.</span><span class="n">isbn</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>避免使用<code>!!</code>非空断言</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testNotNullAssertion</span><span class="p">(</span><span class="n">feed</span><span class="p">:</span> <span class="n">Feed</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">feed</span><span class="p">.</span><span class="n">feedItemList</span><span class="p">.</span><span class="n">first</span><span class="p">().</span><span class="n">author</span><span class="p">!!.</span><span class="n">title</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testNotNullAssertion0</span><span class="p">(</span><span class="n">feed</span><span class="p">:</span> <span class="n">Feed</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">feed</span><span class="p">.</span><span class="n">feedItemList</span><span class="p">.</span><span class="n">first</span><span class="p">().</span><span class="n">author</span><span class="p">?.</span><span class="n">title</span> <span class="p">?:</span> <span class="s">&quot;fallback_author_title&quot;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<h2 id="避免使用非空断言">避免使用<code class="language-plaintext highlighter-rouge">!!</code>非空断言</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testNotNullAssertion</span><span class="p">(</span><span class="n">feed</span><span class="p">:</span> <span class="nc">Feed</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">feed</span><span class="p">.</span><span class="n">feedItemList</span><span class="p">.</span><span class="nf">first</span><span class="p">().</span><span class="n">author</span><span class="o">!!</span><span class="p">.</span><span class="n">title</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testNotNullAssertion0</span><span class="p">(</span><span class="n">feed</span><span class="p">:</span> <span class="nc">Feed</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">feed</span><span class="p">.</span><span class="n">feedItemList</span><span class="p">.</span><span class="nf">first</span><span class="p">().</span><span class="n">author</span><span class="o">?.</span><span class="n">title</span> <span class="o">?:</span> <span class="s">"fallback_author_title"</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>补充：</p>
 
 <ul>
-<li>使用<code>!!</code>断言，一旦断言条件出错，会发生运行时异常。</li>
+  <li>使用<code class="language-plaintext highlighter-rouge">!!</code>断言，一旦断言条件出错，会发生运行时异常。</li>
 </ul>
 
+<h2 id="判断可能为null的boolean值">判断可能为null的boolean值</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">// Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">comsumeNullableBoolean</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">var</span> <span class="py">isOK</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">isOK</span> <span class="p">!=</span> <span class="k">null</span> <span class="p">&amp;&amp;</span> <span class="n">isOK</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="c1">//do something</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">comsumeNullableBoolean0</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">var</span> <span class="py">isOK</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">isOK</span> <span class="p">==</span> <span class="k">true</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="c1">//do something</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>判断可能为null的boolean值</h2>
+<h2 id="利用if-elsewhentry-catch-的返回值">利用<code class="language-plaintext highlighter-rouge">if-else</code>,<code class="language-plaintext highlighter-rouge">when</code>,<code class="language-plaintext highlighter-rouge">try-catch</code> 的返回值</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testIfElse</span><span class="p">(</span><span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">var</span> <span class="py">message</span><span class="p">:</span> <span class="nc">String</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">success</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">message</span> <span class="p">=</span> <span class="s">"恭喜，成功了"</span>
+</span><span class="line">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">message</span> <span class="p">=</span> <span class="s">"再接再厉"</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">    <span class="nf">println</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testIfElse1</span><span class="p">(</span><span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">message</span> <span class="p">=</span> <span class="k">if</span> <span class="p">(</span><span class="n">success</span><span class="p">)</span>  <span class="p">{</span>
+</span><span class="line">        <span class="s">"恭喜，成功了"</span>
+</span><span class="line">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class="line">        <span class="s">"再接再厉"</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testWhen0</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">typeString</span> <span class="p">=</span> <span class="k">when</span><span class="p">(</span><span class="n">type</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="mi">1</span> <span class="p">-&gt;</span> <span class="s">"post"</span>
+</span><span class="line">        <span class="mi">2</span> <span class="p">-&gt;</span> <span class="s">"status"</span>
+</span><span class="line">        <span class="k">else</span> <span class="p">-&gt;</span> <span class="s">"page"</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">    <span class="c1">//can't reassign value to typeString</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">getWebContent</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">):</span> <span class="nc">String</span> <span class="p">=</span> <span class="nc">TODO</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testTryCatch</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">content</span> <span class="p">=</span> <span class="k">try</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">getWebContent</span><span class="p">(</span><span class="s">"https://droidyue.com"</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span> <span class="k">catch</span><span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="nc">IOException</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">null</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">    <span class="c1">//can’t reassign value to content</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">// Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">comsumeNullableBoolean</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">var</span> <span class="n">isOK</span><span class="p">:</span> <span class="n">Boolean</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">isOK</span> <span class="p">!=</span> <span class="k">null</span> <span class="p">&amp;&amp;</span> <span class="n">isOK</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="c1">//do something</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">comsumeNullableBoolean0</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">var</span> <span class="n">isOK</span><span class="p">:</span> <span class="n">Boolean</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">isOK</span> <span class="p">==</span> <span class="k">true</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="c1">//do something</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<h2 id="善用-applyalsowith">善用 <code class="language-plaintext highlighter-rouge">apply</code>/<code class="language-plaintext highlighter-rouge">also</code>/<code class="language-plaintext highlighter-rouge">with</code></h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">composeIntent</span><span class="p">():</span> <span class="nc">Intent</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">intent</span> <span class="p">=</span> <span class="nc">Intent</span><span class="p">(</span><span class="nc">Intent</span><span class="p">.</span><span class="nc">ACTION_VIEW</span><span class="p">)</span>
+</span><span class="line">    <span class="n">intent</span><span class="p">.</span><span class="n">data</span> <span class="p">=</span> <span class="nc">Uri</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="s">"https://droidyue.com"</span><span class="p">)</span>
+</span><span class="line">    <span class="n">intent</span><span class="p">.</span><span class="n">`package`</span> <span class="p">=</span> <span class="s">"com.android.chrome"</span>
+</span><span class="line">    <span class="n">intent</span><span class="p">.</span><span class="nf">addFlags</span><span class="p">(</span><span class="nc">Intent</span><span class="p">.</span><span class="nc">FLAG_ACTIVITY_NEW_TASK</span><span class="p">)</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">intent</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">composeIntent1</span><span class="p">():</span> <span class="nc">Intent</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="nc">Intent</span><span class="p">(</span><span class="nc">Intent</span><span class="p">.</span><span class="nc">ACTION_VIEW</span><span class="p">).</span><span class="nf">apply</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">data</span> <span class="p">=</span> <span class="nc">Uri</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="s">"https://droidyue.com"</span><span class="p">)</span>
+</span><span class="line">        <span class="n">`package`</span> <span class="p">=</span> <span class="s">"com.android.chrome"</span>
+</span><span class="line">        <span class="nf">addFlags</span><span class="p">(</span><span class="nc">Intent</span><span class="p">.</span><span class="nc">FLAG_ACTIVITY_NEW_TASK</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="kd">data class</span> <span class="nc">Request</span><span class="p">(</span><span class="kd">val</span> <span class="py">uri</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span>
+</span><span class="line"><span class="c1">//use also</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">handleRequest</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nc">Request</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Boolean</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="k">when</span> <span class="p">{</span>
+</span><span class="line">       <span class="n">request</span><span class="p">.</span><span class="n">uri</span><span class="p">.</span><span class="nf">startsWith</span><span class="p">(</span><span class="s">"https"</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="p">{</span>
+</span><span class="line">           <span class="nf">handleHttpsRequest</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span class="line">           <span class="k">true</span>
+</span><span class="line">       <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">       <span class="n">request</span><span class="p">.</span><span class="n">uri</span><span class="p">.</span><span class="nf">startsWith</span><span class="p">(</span><span class="s">"http"</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="p">{</span>
+</span><span class="line">           <span class="nf">handleHttpRequest</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span class="line">           <span class="k">true</span>
+</span><span class="line">       <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">       <span class="k">else</span> <span class="p">-&gt;</span> <span class="k">false</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">handleRequest1</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nc">Request</span><span class="p">):</span> <span class="nc">Boolean</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="k">when</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">request</span><span class="p">.</span><span class="n">uri</span><span class="p">.</span><span class="nf">startsWith</span><span class="p">(</span><span class="s">"https"</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="k">true</span><span class="p">.</span><span class="nf">also</span> <span class="p">{</span>
+</span><span class="line">            <span class="nf">handleHttpsRequest</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="n">request</span><span class="p">.</span><span class="n">uri</span><span class="p">.</span><span class="nf">startsWith</span><span class="p">(</span><span class="s">"http"</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="k">true</span><span class="p">.</span><span class="nf">also</span> <span class="p">{</span>
+</span><span class="line">            <span class="nf">handleHttpRequest</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="k">else</span> <span class="p">-&gt;</span> <span class="k">false</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>利用<code>if-else</code>,<code>when</code>,<code>try-catch</code> 的返回值</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="kd">class</span> <span class="nc">Navigator</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">fun</span> <span class="nf">turnLeft</span><span class="p">()</span> <span class="p">=</span> <span class="nc">Unit</span>
+</span><span class="line">    <span class="k">fun</span> <span class="nf">turnRight</span><span class="p">()</span> <span class="p">=</span> <span class="nc">Unit</span>
+</span><span class="line">    <span class="k">fun</span> <span class="nf">forward</span><span class="p">()</span> <span class="p">=</span> <span class="nc">Unit</span>
+</span><span class="line">    <span class="k">fun</span> <span class="nf">backward</span><span class="p">()</span> <span class="p">=</span> <span class="nc">Unit</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//use with</span>
+</span><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">navigate</span><span class="p">(</span><span class="n">navigator</span><span class="p">:</span> <span class="nc">Navigator</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">navigator</span><span class="p">.</span><span class="nf">forward</span><span class="p">()</span>
+</span><span class="line">    <span class="n">navigator</span><span class="p">.</span><span class="nf">turnRight</span><span class="p">()</span>
+</span><span class="line">    <span class="n">navigator</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>
+</span><span class="line">    <span class="n">navigator</span><span class="p">.</span><span class="nf">turnLeft</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">navigate1</span><span class="p">(</span><span class="n">navigator</span><span class="p">:</span> <span class="nc">Navigator</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">with</span><span class="p">(</span><span class="n">navigator</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">forward</span><span class="p">()</span>
+</span><span class="line">        <span class="nf">turnRight</span><span class="p">()</span>
+</span><span class="line">        <span class="nf">backward</span><span class="p">()</span>
+</span><span class="line">        <span class="nf">turnLeft</span><span class="p">()</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<h2 id="直接使用top-level方法而不是object里的方法">直接使用top-level方法，而不是Object里的方法</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="kd">object</span> <span class="nc">AppUtil</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">fun</span> <span class="nf">isAppEnabled</span><span class="p">(</span><span class="n">packageName</span><span class="p">:</span> <span class="nc">String</span><span class="p">):</span> <span class="nc">Boolean</span> <span class="p">{</span>
+</span><span class="line">        <span class="nc">TODO</span><span class="p">()</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="c1">//AppUtil.kt file</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">isAppEnabled</span><span class="p">(</span><span class="n">packageName</span><span class="p">:</span> <span class="nc">String</span><span class="p">):</span> <span class="nc">Boolean</span> <span class="p">{</span>
+</span><span class="line">    <span class="nc">TODO</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testIfElse</span><span class="p">(</span><span class="n">success</span><span class="p">:</span> <span class="n">Boolean</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">var</span> <span class="n">message</span><span class="p">:</span> <span class="n">String</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">success</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">message</span> <span class="p">=</span> <span class="s">&quot;恭喜，成功了&quot;</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">message</span> <span class="p">=</span> <span class="s">&quot;再接再厉&quot;</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testIfElse1</span><span class="p">(</span><span class="n">success</span><span class="p">:</span> <span class="n">Boolean</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">message</span> <span class="p">=</span> <span class="k">if</span> <span class="p">(</span><span class="n">success</span><span class="p">)</span>  <span class="p">{</span>
-</span><span class='line'>        <span class="s">&quot;恭喜，成功了&quot;</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>        <span class="s">&quot;再接再厉&quot;</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testWhen0</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="n">Int</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">typeString</span> <span class="p">=</span> <span class="k">when</span><span class="p">(</span><span class="n">type</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="m">1</span> <span class="p">-&gt;</span> <span class="s">&quot;post&quot;</span>
-</span><span class='line'>        <span class="m">2</span> <span class="p">-&gt;</span> <span class="s">&quot;status&quot;</span>
-</span><span class='line'>        <span class="k">else</span> <span class="p">-&gt;</span> <span class="s">&quot;page&quot;</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="c1">//can&#39;t reassign value to typeString</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">getWebContent</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="n">String</span><span class="p">):</span> <span class="n">String</span> <span class="p">=</span> <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testTryCatch</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">content</span> <span class="p">=</span> <span class="k">try</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">getWebContent</span><span class="p">(</span><span class="s">&quot;https://droidyue.com&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">catch</span><span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="n">IOException</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">null</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="c1">//can’t reassign value to content</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<h2 id="使用kotlin的默认参数特性而不是方法重载">使用Kotlin的默认参数特性，而不是方法重载</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="kd">class</span> <span class="nc">BadPizza</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">constructor</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">constructor</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">hasCheese</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">constructor</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">hasCheese</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">hasBacon</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="kd">class</span> <span class="nc">GoodPizza</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">constructor</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">hasCheese</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="p">=</span> <span class="k">false</span><span class="p">,</span> <span class="n">hasBacon</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="p">=</span> <span class="k">false</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<h2 id="优先定义并使用扩展方法而不是util方法">优先定义并使用扩展方法，而不是Util方法</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">isStringPhoneNumber</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">):</span> <span class="nc">Boolean</span> <span class="p">{</span>
+</span><span class="line">    <span class="nc">TODO</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nc">String</span><span class="p">.</span><span class="nf">isPhoneNumber</span><span class="p">():</span> <span class="nc">Boolean</span> <span class="p">=</span> <span class="nc">TODO</span><span class="p">()</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>善用 <code>apply</code>/<code>also</code>/<code>with</code></h2>
+<h2 id="使用方法引用">使用方法引用</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line">
+</span><span class="line"><span class="kd">data class</span> <span class="nc">NewsItem</span><span class="p">(</span><span class="kd">val</span> <span class="py">content</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="kd">val</span> <span class="py">isFake</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">normalLambda</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">arrayOf</span><span class="p">&lt;</span><span class="nc">NewsItem</span><span class="p">&gt;().</span><span class="nf">filter</span> <span class="p">{</span> <span class="n">it</span><span class="p">.</span><span class="n">isFake</span> <span class="p">}.</span><span class="nf">let</span> <span class="p">{</span> <span class="nf">print</span><span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line"><span class="c1">//Do </span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">methodReference</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">arrayOf</span><span class="p">&lt;</span><span class="nc">NewsItem</span><span class="p">&gt;().</span><span class="nf">filter</span><span class="p">(</span><span class="nc">NewsItem</span><span class="o">::</span><span class="n">isFake</span><span class="p">).</span><span class="nf">let</span><span class="p">(</span><span class="o">::</span><span class="n">print</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">composeIntent</span><span class="p">():</span> <span class="n">Intent</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">intent</span> <span class="p">=</span> <span class="n">Intent</span><span class="p">(</span><span class="n">Intent</span><span class="p">.</span><span class="n">ACTION_VIEW</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">intent</span><span class="p">.</span><span class="n">data</span> <span class="p">=</span> <span class="n">Uri</span><span class="p">.</span><span class="n">parse</span><span class="p">(</span><span class="s">&quot;https://droidyue.com&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">intent</span><span class="p">.</span><span class="err">`</span><span class="n">package</span><span class="err">`</span> <span class="p">=</span> <span class="s">&quot;com.android.chrome&quot;</span>
-</span><span class='line'>    <span class="n">intent</span><span class="p">.</span><span class="n">addFlags</span><span class="p">(</span><span class="n">Intent</span><span class="p">.</span><span class="n">FLAG_ACTIVITY_NEW_TASK</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">intent</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">composeIntent1</span><span class="p">():</span> <span class="n">Intent</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">Intent</span><span class="p">(</span><span class="n">Intent</span><span class="p">.</span><span class="n">ACTION_VIEW</span><span class="p">).</span><span class="n">apply</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">data</span> <span class="p">=</span> <span class="n">Uri</span><span class="p">.</span><span class="n">parse</span><span class="p">(</span><span class="s">&quot;https://droidyue.com&quot;</span><span class="p">)</span>
-</span><span class='line'>        <span class="err">`</span><span class="n">package</span><span class="err">`</span> <span class="p">=</span> <span class="s">&quot;com.android.chrome&quot;</span>
-</span><span class='line'>        <span class="n">addFlags</span><span class="p">(</span><span class="n">Intent</span><span class="p">.</span><span class="n">FLAG_ACTIVITY_NEW_TASK</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">data</span> <span class="k">class</span> <span class="nf">Request</span><span class="p">(</span><span class="k">val</span> <span class="n">uri</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'><span class="c1">//use also</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">handleRequest</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="p">:</span> <span class="n">Boolean</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="k">when</span> <span class="p">{</span>
-</span><span class='line'>       <span class="n">request</span><span class="p">.</span><span class="n">uri</span><span class="p">.</span><span class="n">startsWith</span><span class="p">(</span><span class="s">&quot;https&quot;</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="p">{</span>
-</span><span class='line'>           <span class="n">handleHttpsRequest</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-</span><span class='line'>           <span class="k">true</span>
-</span><span class='line'>       <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>       <span class="n">request</span><span class="p">.</span><span class="n">uri</span><span class="p">.</span><span class="n">startsWith</span><span class="p">(</span><span class="s">&quot;http&quot;</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="p">{</span>
-</span><span class='line'>           <span class="n">handleHttpRequest</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-</span><span class='line'>           <span class="k">true</span>
-</span><span class='line'>       <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>       <span class="k">else</span> <span class="p">-&gt;</span> <span class="k">false</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">handleRequest1</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span> <span class="n">Boolean</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="k">when</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">request</span><span class="p">.</span><span class="n">uri</span><span class="p">.</span><span class="n">startsWith</span><span class="p">(</span><span class="s">&quot;https&quot;</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="k">true</span><span class="p">.</span><span class="n">also</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">handleHttpsRequest</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">request</span><span class="p">.</span><span class="n">uri</span><span class="p">.</span><span class="n">startsWith</span><span class="p">(</span><span class="s">&quot;http&quot;</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="k">true</span><span class="p">.</span><span class="n">also</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">handleHttpRequest</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">else</span> <span class="p">-&gt;</span> <span class="k">false</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">class</span> <span class="nc">Navigator</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">turnLeft</span><span class="p">()</span> <span class="p">=</span> <span class="n">Unit</span>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">turnRight</span><span class="p">()</span> <span class="p">=</span> <span class="n">Unit</span>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">forward</span><span class="p">()</span> <span class="p">=</span> <span class="n">Unit</span>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">backward</span><span class="p">()</span> <span class="p">=</span> <span class="n">Unit</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//use with</span>
-</span><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">navigate</span><span class="p">(</span><span class="n">navigator</span><span class="p">:</span> <span class="n">Navigator</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">navigator</span><span class="p">.</span><span class="n">forward</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">navigator</span><span class="p">.</span><span class="n">turnRight</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">navigator</span><span class="p">.</span><span class="n">backward</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">navigator</span><span class="p">.</span><span class="n">turnLeft</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">navigate1</span><span class="p">(</span><span class="n">navigator</span><span class="p">:</span> <span class="n">Navigator</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">with</span><span class="p">(</span><span class="n">navigator</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">forward</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">turnRight</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">backward</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">turnLeft</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>直接使用top-level方法，而不是Object里的方法</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="n">object</span> <span class="n">AppUtil</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">isAppEnabled</span><span class="p">(</span><span class="n">packageName</span><span class="p">:</span> <span class="n">String</span><span class="p">):</span> <span class="n">Boolean</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="c1">//AppUtil.kt file</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">isAppEnabled</span><span class="p">(</span><span class="n">packageName</span><span class="p">:</span> <span class="n">String</span><span class="p">):</span> <span class="n">Boolean</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>使用Kotlin的默认参数特性，而不是方法重载</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">class</span> <span class="nc">BadPizza</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">constructor</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="n">Float</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">constructor</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="n">Float</span><span class="p">,</span> <span class="n">hasCheese</span><span class="p">:</span> <span class="n">Boolean</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">constructor</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="n">Float</span><span class="p">,</span> <span class="n">hasCheese</span><span class="p">:</span> <span class="n">Boolean</span><span class="p">,</span> <span class="n">hasBacon</span><span class="p">:</span> <span class="n">Boolean</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">class</span> <span class="nc">GoodPizza</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">constructor</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="n">Float</span><span class="p">,</span> <span class="n">hasCheese</span><span class="p">:</span> <span class="n">Boolean</span> <span class="p">=</span> <span class="k">false</span><span class="p">,</span> <span class="n">hasBacon</span><span class="p">:</span> <span class="n">Boolean</span> <span class="p">=</span> <span class="k">false</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>优先定义并使用扩展方法，而不是Util方法</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">isStringPhoneNumber</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">String</span><span class="p">):</span> <span class="n">Boolean</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="n">String</span><span class="p">.</span><span class="n">isPhoneNumber</span><span class="p">():</span> <span class="n">Boolean</span> <span class="p">=</span> <span class="n">TODO</span><span class="p">()</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>使用方法引用</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">data</span> <span class="k">class</span> <span class="nf">NewsItem</span><span class="p">(</span><span class="k">val</span> <span class="n">content</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">isFake</span><span class="p">:</span> <span class="n">Boolean</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">normalLambda</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">arrayOf</span><span class="p">&lt;</span><span class="n">NewsItem</span><span class="p">&gt;().</span><span class="n">filter</span> <span class="p">{</span> <span class="n">it</span><span class="p">.</span><span class="n">isFake</span> <span class="p">}.</span><span class="n">let</span> <span class="p">{</span> <span class="n">print</span><span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="c1">//Do </span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">methodReference</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">arrayOf</span><span class="p">&lt;</span><span class="n">NewsItem</span><span class="p">&gt;().</span><span class="n">filter</span><span class="p">(</span><span class="n">NewsItem</span><span class="p">::</span><span class="n">isFake</span><span class="p">).</span><span class="n">let</span><span class="p">(::</span><span class="n">print</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>使用inline修饰高阶函数（参数为函数时）</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">safeRun</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="n">Unit</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">try</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">block</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">Throwable</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">t</span><span class="p">.</span><span class="n">printStackTrace</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="n">inline</span> <span class="k">fun</span> <span class="nf">safeRun0</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="n">Unit</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">try</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">block</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">Throwable</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">t</span><span class="p">.</span><span class="n">printStackTrace</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<h2 id="使用inline修饰高阶函数参数为函数时">使用inline修饰高阶函数（参数为函数时）</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">safeRun</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">try</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">block</span><span class="p">()</span>
+</span><span class="line">    <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Throwable</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">t</span><span class="p">.</span><span class="nf">printStackTrace</span><span class="p">()</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">safeRun0</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">try</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">block</span><span class="p">()</span>
+</span><span class="line">    <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Throwable</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">t</span><span class="p">.</span><span class="nf">printStackTrace</span><span class="p">()</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>备注：</p>
 
 <ul>
-<li>关于inline的问题，可以参考<a href="https://droidyue.com/blog/2019/04/27/lambda-inline-noinline-crossinline/">Kotlin 中的 Lambda 与 Inline</a></li>
+  <li>关于inline的问题，可以参考<a href="https://droidyue.com/blog/2019/04/27/lambda-inline-noinline-crossinline/">Kotlin 中的 Lambda 与 Inline</a></li>
 </ul>
 
+<h2 id="把函数参数尽可能放到最后">把函数参数尽可能放到最后</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">delayTask</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="nc">Unit</span><span class="p">,</span> <span class="n">delayInMillSecond</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span>  <span class="p">{</span>
+</span><span class="line">    <span class="nc">TODO</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do </span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">delayTask0</span><span class="p">(</span><span class="n">delayInMillSecond</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="nc">TODO</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">testDelayTasks</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">delayTask</span><span class="p">({</span>
+</span><span class="line">        <span class="nf">println</span><span class="p">(</span><span class="s">"printing"</span><span class="p">)</span>
+</span><span class="line">    <span class="p">},</span> <span class="mi">5000L</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">    <span class="nf">delayTask0</span><span class="p">(</span><span class="mi">5000L</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">println</span><span class="p">(</span><span class="s">"printing"</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>把函数参数尽可能放到最后</h2>
+<h2 id="使用mapnotnull">使用mapNotNull</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testMapNotNull</span><span class="p">(</span><span class="n">list</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FeedItem</span><span class="p">&gt;)</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">list</span><span class="p">.</span><span class="nf">map</span> <span class="p">{</span> <span class="n">it</span><span class="p">.</span><span class="n">author</span> <span class="p">}.</span><span class="nf">filterNotNull</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testMapNotNull0</span><span class="p">(</span><span class="n">list</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FeedItem</span><span class="p">&gt;)</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">list</span><span class="p">.</span><span class="nf">mapNotNull</span> <span class="p">{</span> <span class="n">it</span><span class="p">.</span><span class="n">author</span> <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">delayTask</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="n">Unit</span><span class="p">,</span> <span class="n">delayInMillSecond</span><span class="p">:</span> <span class="n">Long</span><span class="p">)</span>  <span class="p">{</span>
-</span><span class='line'>    <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do </span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">delayTask0</span><span class="p">(</span><span class="n">delayInMillSecond</span><span class="p">:</span> <span class="n">Long</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="p">()</span> <span class="p">-&gt;</span> <span class="n">Unit</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testDelayTasks</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">delayTask</span><span class="p">({</span>
-</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="s">&quot;printing&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">},</span> <span class="m">5000L</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">delayTask0</span><span class="p">(</span><span class="m">5000L</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="s">&quot;printing&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<h2 id="尽可能使用只读集合">尽可能使用只读集合</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="nf">parseArguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;)</span> <span class="p">{</span>
+</span><span class="line">    <span class="c1">//do some bad things</span>
+</span><span class="line">    <span class="c1">//try to clear if the argument is available to be cleared.</span>
+</span><span class="line">    <span class="p">(</span><span class="n">arguments</span> <span class="k">as</span><span class="p">?</span> <span class="nc">HashMap</span><span class="p">)</span><span class="o">?.</span><span class="nf">clear</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//use read-only collections as much as possible</span>
+</span><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">useMutableCollections</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">arguments</span> <span class="p">=</span> <span class="n">hashMapOf</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;()</span>
+</span><span class="line">    <span class="n">arguments</span><span class="p">[</span><span class="s">"key"</span><span class="p">]</span> <span class="p">=</span> <span class="s">"value"</span>
+</span><span class="line">    <span class="nf">parseArguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do </span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">useReadOnlyCollections</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">arguments</span> <span class="p">=</span> <span class="nf">mapOf</span><span class="p">(</span><span class="s">"key"</span> <span class="n">to</span> <span class="s">"value"</span><span class="p">)</span>
+</span><span class="line">    <span class="nf">parseArguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<h2 id="适宜情况下使用pair或triple">适宜情况下使用<code class="language-plaintext highlighter-rouge">Pair</code>或<code class="language-plaintext highlighter-rouge">Triple</code></h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">// Use Pair or Triple</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">returnValues</span><span class="p">():</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="nc">Pair</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="s">"File Not Found"</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">returnTriple</span><span class="p">():</span> <span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="nc">Triple</span><span class="p">(</span><span class="s">"6时"</span><span class="p">,</span> <span class="s">"6分"</span><span class="p">,</span> <span class="s">"60秒"</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>使用mapNotNull</h2>
+<h2 id="使用lazy-替代繁琐的延迟初始化">使用lazy 替代繁琐的延迟初始化</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="kd">data class</span> <span class="nc">Config</span><span class="p">(</span><span class="kd">val</span> <span class="py">host</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="kd">val</span> <span class="py">port</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">loadConfigFromFile</span><span class="p">():</span> <span class="nc">Config</span> <span class="p">=</span> <span class="nc">TODO</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="kd">object</span> <span class="nc">ConfigManager</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">var</span> <span class="py">config</span><span class="p">:</span> <span class="nc">Config</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">fun</span> <span class="nf">getConfig0</span><span class="p">()</span> <span class="p">:</span> <span class="nc">Config</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="n">config</span> <span class="p">==</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">            <span class="n">config</span> <span class="p">=</span> <span class="nf">loadConfigFromFile</span><span class="p">()</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">config</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="kd">object</span> <span class="nc">ConfigManager1</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">config</span><span class="p">:</span> <span class="nc">Config</span> <span class="k">by</span> <span class="nf">lazy</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">loadConfigFromFile</span><span class="p">()</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testMapNotNull</span><span class="p">(</span><span class="n">list</span><span class="p">:</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">FeedItem</span><span class="p">&gt;)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">list</span><span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">it</span><span class="p">.</span><span class="n">author</span> <span class="p">}.</span><span class="n">filterNotNull</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testMapNotNull0</span><span class="p">(</span><span class="n">list</span><span class="p">:</span> <span class="n">List</span><span class="p">&lt;</span><span class="n">FeedItem</span><span class="p">&gt;)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">list</span><span class="p">.</span><span class="n">mapNotNull</span> <span class="p">{</span> <span class="n">it</span><span class="p">.</span><span class="n">author</span> <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<h2 id="使用lateinit-处理无法再构造函数初始化的变量">使用lateinit 处理无法再构造函数初始化的变量</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="kd">class</span> <span class="nc">FeedItem</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">var</span> <span class="py">author</span><span class="p">:</span> <span class="nc">Feed</span><span class="p">.</span><span class="nc">Author</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="kd">class</span> <span class="nc">FeedItem0</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">lateinit</span> <span class="kd">var</span> <span class="py">author</span><span class="p">:</span> <span class="nc">Feed</span><span class="p">.</span><span class="nc">Author</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<h2 id="善用data-class的copy方法">善用Data class的copy方法</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="kd">class</span> <span class="nc">Car</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">private</span> <span class="kd">var</span> <span class="py">engine</span><span class="p">:</span> <span class="nc">String</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">constructor</span><span class="p">(</span><span class="n">theEngine</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">engine</span> <span class="p">=</span> <span class="n">theEngine</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">constructor</span><span class="p">(</span><span class="n">car</span><span class="p">:</span> <span class="nc">Car</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">engine</span> <span class="p">=</span> <span class="n">car</span><span class="p">.</span><span class="n">engine</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="kd">data class</span> <span class="nc">Car0</span><span class="p">(</span><span class="kd">val</span> <span class="py">engine</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">test</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">firstCar</span> <span class="p">=</span> <span class="nc">Car</span><span class="p">(</span><span class="s">"Honda"</span><span class="p">)</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">secondCar</span> <span class="p">=</span> <span class="nc">Car</span><span class="p">(</span><span class="n">firstCar</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">val</span> <span class="py">thirdCar</span> <span class="p">=</span> <span class="nc">Car0</span><span class="p">(</span><span class="s">"Nissan"</span><span class="p">)</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">fourthCar</span> <span class="p">=</span> <span class="n">thirdCar</span><span class="p">.</span><span class="nf">copy</span><span class="p">()</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">fifthCar</span> <span class="p">=</span> <span class="n">thirdCar</span><span class="p">.</span><span class="nf">copy</span><span class="p">(</span><span class="n">engine</span> <span class="p">=</span> <span class="s">"Ford"</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>尽可能使用只读集合</h2>
+<h2 id="针对函数类型和集合使用typealias">针对函数类型和集合使用<code class="language-plaintext highlighter-rouge">typealias</code></h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">interface</span> <span class="nc">OnValueChangedListener</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">fun</span> <span class="nf">onValueChanged</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">typealias</span> <span class="nc">OnValueChangedListener0</span> <span class="p">=</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="nc">Unit</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">val</span> <span class="py">value</span> <span class="p">:</span> <span class="nc">OnValueChangedListener0</span> <span class="p">=</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">println</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//Do</span>
+</span><span class="line"><span class="k">typealias</span> <span class="nc">BookSet</span> <span class="p">=</span> <span class="nc">HashSet</span><span class="p">&lt;</span><span class="nc">Book</span><span class="p">&gt;</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">val</span> <span class="py">bookSet</span> <span class="p">=</span> <span class="nc">BookSet</span><span class="p">().</span><span class="nf">apply</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">add</span><span class="p">(</span><span class="nc">Book</span><span class="p">(</span><span class="s">"978-0131872486"</span><span class="p">))</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">parseArguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">:</span> <span class="n">Map</span><span class="p">&lt;</span><span class="n">String</span><span class="p">,</span> <span class="n">String</span><span class="p">&gt;)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">//do some bad things</span>
-</span><span class='line'>    <span class="c1">//try to clear if the argument is available to be cleared.</span>
-</span><span class='line'>    <span class="p">(</span><span class="n">arguments</span> <span class="k">as</span><span class="p">?</span> <span class="n">HashMap</span><span class="p">)?.</span><span class="n">clear</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//use read-only collections as much as possible</span>
-</span><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">useMutableCollections</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">arguments</span> <span class="p">=</span> <span class="n">hashMapOf</span><span class="p">&lt;</span><span class="n">String</span><span class="p">,</span> <span class="n">String</span><span class="p">&gt;()</span>
-</span><span class='line'>    <span class="n">arguments</span><span class="p">[</span><span class="s">&quot;key&quot;</span><span class="p">]</span> <span class="p">=</span> <span class="s">&quot;value&quot;</span>
-</span><span class='line'>    <span class="n">parseArguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do </span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">useReadOnlyCollections</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">arguments</span> <span class="p">=</span> <span class="n">mapOf</span><span class="p">(</span><span class="s">&quot;key&quot;</span> <span class="n">to</span> <span class="s">&quot;value&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">parseArguments</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>适宜情况下使用<code>Pair</code>或<code>Triple</code></h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">// Use Pair or Triple</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">returnValues</span><span class="p">():</span> <span class="n">Pair</span><span class="p">&lt;</span><span class="n">Int</span><span class="p">,</span> <span class="n">String</span><span class="p">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">Pair</span><span class="p">(</span><span class="m">404</span><span class="p">,</span> <span class="s">&quot;File Not Found&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">returnTriple</span><span class="p">():</span> <span class="n">Triple</span><span class="p">&lt;</span><span class="n">String</span><span class="p">,</span> <span class="n">String</span><span class="p">,</span> <span class="n">String</span><span class="p">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">Triple</span><span class="p">(</span><span class="s">&quot;6时&quot;</span><span class="p">,</span> <span class="s">&quot;6分&quot;</span><span class="p">,</span> <span class="s">&quot;60秒&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>使用lazy 替代繁琐的延迟初始化</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">data</span> <span class="k">class</span> <span class="nf">Config</span><span class="p">(</span><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">port</span><span class="p">:</span> <span class="n">Int</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">loadConfigFromFile</span><span class="p">():</span> <span class="n">Config</span> <span class="p">=</span> <span class="n">TODO</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="n">object</span> <span class="n">ConfigManager</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">var</span> <span class="n">config</span><span class="p">:</span> <span class="n">Config</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">getConfig0</span><span class="p">()</span> <span class="p">:</span> <span class="n">Config</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">config</span> <span class="p">==</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">config</span> <span class="p">=</span> <span class="n">loadConfigFromFile</span><span class="p">()</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">config</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="n">object</span> <span class="n">ConfigManager1</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="n">Config</span> <span class="n">by</span> <span class="n">lazy</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">loadConfigFromFile</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>使用lateinit 处理无法再构造函数初始化的变量</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">class</span> <span class="nc">FeedItem</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">var</span> <span class="n">author</span><span class="p">:</span> <span class="n">Feed</span><span class="p">.</span><span class="n">Author</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="k">class</span> <span class="nc">FeedItem0</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">lateinit</span> <span class="k">var</span> <span class="n">author</span><span class="p">:</span> <span class="n">Feed</span><span class="p">.</span><span class="n">Author</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>善用Data class的copy方法</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">class</span> <span class="nc">Car</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">private</span> <span class="k">var</span> <span class="n">engine</span><span class="p">:</span> <span class="n">String</span><span class="p">?</span> <span class="p">=</span> <span class="k">null</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">constructor</span><span class="p">(</span><span class="n">theEngine</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">engine</span> <span class="p">=</span> <span class="n">theEngine</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">constructor</span><span class="p">(</span><span class="n">car</span><span class="p">:</span> <span class="n">Car</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">engine</span> <span class="p">=</span> <span class="n">car</span><span class="p">.</span><span class="n">engine</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="n">data</span> <span class="k">class</span> <span class="nf">Car0</span><span class="p">(</span><span class="k">val</span> <span class="n">engine</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">test</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">firstCar</span> <span class="p">=</span> <span class="n">Car</span><span class="p">(</span><span class="s">&quot;Honda&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">secondCar</span> <span class="p">=</span> <span class="n">Car</span><span class="p">(</span><span class="n">firstCar</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">val</span> <span class="n">thirdCar</span> <span class="p">=</span> <span class="n">Car0</span><span class="p">(</span><span class="s">&quot;Nissan&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">fourthCar</span> <span class="p">=</span> <span class="n">thirdCar</span><span class="p">.</span><span class="n">copy</span><span class="p">()</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">fifthCar</span> <span class="p">=</span> <span class="n">thirdCar</span><span class="p">.</span><span class="n">copy</span><span class="p">(</span><span class="n">engine</span> <span class="p">=</span> <span class="s">&quot;Ford&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>针对函数类型和集合使用<code>typealias</code></h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">interface</span> <span class="n">OnValueChangedListener</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">onValueChanged</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="n">typealias</span> <span class="n">OnValueChangedListener0</span> <span class="p">=</span> <span class="p">(</span><span class="n">String</span><span class="p">)</span> <span class="p">-&gt;</span> <span class="n">Unit</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">val</span> <span class="n">value</span> <span class="p">:</span> <span class="n">OnValueChangedListener0</span> <span class="p">=</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//Do</span>
-</span><span class='line'><span class="n">typealias</span> <span class="n">BookSet</span> <span class="p">=</span> <span class="n">HashSet</span><span class="p">&lt;</span><span class="n">Book</span><span class="p">&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">val</span> <span class="n">bookSet</span> <span class="p">=</span> <span class="n">BookSet</span><span class="p">().</span><span class="n">apply</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">add</span><span class="p">(</span><span class="n">Book</span><span class="p">(</span><span class="s">&quot;978-0131872486&quot;</span><span class="p">))</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>使用含义更加清晰的<code>substringBefore</code>和<code>substringAfter</code></h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Do not</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testSubstring</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">message</span> <span class="p">=</span> <span class="s">&quot;user|password&quot;</span>
-</span><span class='line'>    <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;testSubstring.user=&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="n">substring</span><span class="p">(</span><span class="m">0</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="n">indexOf</span><span class="p">(</span><span class="s">&quot;|&quot;</span><span class="p">)))</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;testSubstring.password=&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="n">substring</span><span class="p">(</span><span class="n">message</span><span class="p">.</span><span class="n">indexOf</span><span class="p">(</span><span class="s">&quot;|&quot;</span><span class="p">)</span> <span class="p">+</span> <span class="m">1</span><span class="p">))</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testSubstring0</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">message</span> <span class="p">=</span> <span class="s">&quot;user|password&quot;</span>
-</span><span class='line'>    <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;testSubstring.user=&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="n">substringBefore</span><span class="p">(</span><span class="s">&quot;|&quot;</span><span class="p">))</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;testSubstring.password=&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="n">substringAfter</span><span class="p">(</span><span class="s">&quot;|&quot;</span><span class="p">))</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<h2 id="使用含义更加清晰的substringbefore和substringafter">使用含义更加清晰的<code class="language-plaintext highlighter-rouge">substringBefore</code>和<code class="language-plaintext highlighter-rouge">substringAfter</code></h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Do not</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">testSubstring</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">message</span> <span class="p">=</span> <span class="s">"user|password"</span>
+</span><span class="line">    <span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"testSubstring.user="</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="nf">substring</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="nf">indexOf</span><span class="p">(</span><span class="s">"|"</span><span class="p">)))</span>
+</span><span class="line">
+</span><span class="line">    <span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"testSubstring.password="</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="nf">substring</span><span class="p">(</span><span class="n">message</span><span class="p">.</span><span class="nf">indexOf</span><span class="p">(</span><span class="s">"|"</span><span class="p">)</span> <span class="p">+</span> <span class="mi">1</span><span class="p">))</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">testSubstring0</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">message</span> <span class="p">=</span> <span class="s">"user|password"</span>
+</span><span class="line">    <span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"testSubstring.user="</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="nf">substringBefore</span><span class="p">(</span><span class="s">"|"</span><span class="p">))</span>
+</span><span class="line">
+</span><span class="line">    <span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"testSubstring.password="</span><span class="p">,</span> <span class="n">message</span><span class="p">.</span><span class="nf">substringAfter</span><span class="p">(</span><span class="s">"|"</span><span class="p">))</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>以上就是一些相对更加Kotlin style的代码示例，如有补充，请在下方评论指出。谢谢。</p>
 
-<h2>相关阅读</h2>
-
+<h2 id="相关阅读">相关阅读</h2>
 <ul>
-<li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
-<li><a href="https://droidyue.com/blog/2019/04/27/lambda-inline-noinline-crossinline/">Kotlin 中的 Lambda 与 inline</a></li>
-<li><a href="https://droidyue.com/blog/2018/10/14/dive-into-kotlin-default-arguments-and-jvmoverloads/">有点意思的Kotlin的默认参数与JVMOverloads</a></li>
+  <li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
+  <li><a href="https://droidyue.com/blog/2019/04/27/lambda-inline-noinline-crossinline/">Kotlin 中的 Lambda 与 inline</a></li>
+  <li><a href="https://droidyue.com/blog/2018/10/14/dive-into-kotlin-default-arguments-and-jvmoverloads/">有点意思的Kotlin的默认参数与JVMOverloads</a></li>
 </ul>
 
-
 <p style="text-align: center;max-width: 100%;">
-<img src="https://asset.droidyue.com/image/2019_05/kotlin_hexin_biancheng.png" style="max-width: 100%;width: 100%;">
+<img src="https://asset.droidyue.com/image/2019_05/kotlin_hexin_biancheng.png" style="max-width: 100%;width: 100%;" />
 </p>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -1093,7 +1018,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -1107,8 +1032,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -1120,15 +1043,13 @@
 
 
 
-  
 
-
-<time datetime="2019-05-19T21:04:00+08:00" pubdate data-updated="true">May 19<span>th</span>, 2019</time>
+<time datetime="2019-05-19T21:04:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>
+    KotlinJava
   
 </span>
 
@@ -1221,10 +1142,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -1233,7 +1150,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -1300,6 +1217,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -1333,7 +1254,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -1341,7 +1262,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

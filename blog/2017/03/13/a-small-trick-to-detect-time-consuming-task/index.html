@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Android中一个简单有用的发现性能问题的方法 Mar 13th, 2017 在Android中，性能优化是我们持之不懈的工作。这其中，在主线程执行耗时的任务，可能会导致界面卡顿，甚至是ANR（程序未响应）。当然Android提供了很多优秀的工具，比如StrictMode，Method &hellip;">
+  <meta name="description" content="Android中一个简单有用的发现性能问题的方法 在Android中，性能优化是我们持之不懈的工作。这其中，在主线程执行耗时的任务，可能会导致界面卡顿，甚至是ANR（程序未响应）。当然Android提供了很多优秀的工具，比如StrictMode，Method Tracing等，便于我们检测问题 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2017-03-13T21:57:00+08:00" pubdate data-updated="true">Mar 13<span>th</span>, 2017</time>
+<time datetime="2017-03-13T21:57:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -189,206 +187,181 @@
 <p>这里，本文将介绍一个更加简单有效的方法。相比StrictMode来说更加便于发现问题，相比Method Tracing来说更加容易操作。</p>
 
 <!--more-->
-
-
 <p>首先，我们有这样一个程序代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">writeContentToFile</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">writeContentToFile</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">File</span> <span class="n">log</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="n">Environment</span><span class="o">.</span><span class="na">getExternalStorageDirectory</span><span class="o">(),</span> <span class="s">&quot;Log.txt&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">Writer</span> <span class="n">outWriter</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">outWriter</span> <span class="o">=</span> <span class="k">new</span> <span class="n">BufferedWriter</span><span class="o">(</span><span class="k">new</span> <span class="n">FileWriter</span><span class="o">(</span><span class="n">log</span><span class="o">.</span><span class="na">getAbsolutePath</span><span class="o">(),</span> <span class="kc">false</span><span class="o">));</span>
-</span><span class='line'>        <span class="n">outWriter</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="k">new</span> <span class="n">Date</span><span class="o">().</span><span class="na">toString</span><span class="o">());</span>
-</span><span class='line'>        <span class="n">outWriter</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="s">&quot; : \n&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">outWriter</span><span class="o">.</span><span class="na">flush</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">outWriter</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">outWriter</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
-</span><span class='line'>            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nd">@Override</span>
+</span><span class="line"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="nc">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class="line">    <span class="n">setContentView</span><span class="o">(</span><span class="no">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
+</span><span class="line">    <span class="n">writeContentToFile</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">writeContentToFile</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">File</span> <span class="n">log</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="nc">Environment</span><span class="o">.</span><span class="na">getExternalStorageDirectory</span><span class="o">(),</span> <span class="s">"Log.txt"</span><span class="o">);</span>
+</span><span class="line">    <span class="nc">Writer</span> <span class="n">outWriter</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">    <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">outWriter</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">BufferedWriter</span><span class="o">(</span><span class="k">new</span> <span class="nc">FileWriter</span><span class="o">(</span><span class="n">log</span><span class="o">.</span><span class="na">getAbsolutePath</span><span class="o">(),</span> <span class="kc">false</span><span class="o">));</span>
+</span><span class="line">        <span class="n">outWriter</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="k">new</span> <span class="nc">Date</span><span class="o">().</span><span class="na">toString</span><span class="o">());</span>
+</span><span class="line">        <span class="n">outWriter</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="s">" : \n"</span><span class="o">);</span>
+</span><span class="line">        <span class="n">outWriter</span><span class="o">.</span><span class="na">flush</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">outWriter</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">                <span class="n">outWriter</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class="line">            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">                <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>上面的代码需要优化，因为</p>
 
 <ul>
-<li>writeContentToFile 是一个本地文件写操作，比较耗时</li>
-<li>而writeContentToFile 这个方法却放在了主线程中，必然会阻塞主线程其他的工作顺利执行。</li>
+  <li>writeContentToFile 是一个本地文件写操作，比较耗时</li>
+  <li>而writeContentToFile 这个方法却放在了主线程中，必然会阻塞主线程其他的工作顺利执行。</li>
 </ul>
 
-
 <p>上面介绍StrictMode和Method Traing都可以检测这个问题，这里我们我们用一个更简单的方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkWorkerThread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kt">boolean</span> <span class="n">isMainThread</span> <span class="o">=</span> <span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">()</span> <span class="o">==</span> <span class="n">Looper</span><span class="o">.</span><span class="na">getMainLooper</span><span class="o">();</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">isMainThread</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">BuildConfig</span><span class="o">.</span><span class="na">DEBUG</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;Do not do time-consuming work in the Main thread&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkWorkerThread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="kt">boolean</span> <span class="n">isMainThread</span> <span class="o">=</span> <span class="nc">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">()</span> <span class="o">==</span> <span class="nc">Looper</span><span class="o">.</span><span class="na">getMainLooper</span><span class="o">();</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">isMainThread</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="nc">BuildConfig</span><span class="o">.</span><span class="na">DEBUG</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">"Do not do time-consuming work in the Main thread"</span><span class="o">);</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>这段方法有几点注意的。</p>
 
 <ul>
-<li>主线程判断，使用<code>Looper.myLooper() == Looper.getMainLooper()</code>可以准确判断当前线程是否为主线程。</li>
-<li>BuildConfig.DEBUG 条件控制，只有在debug环境下抛出异常，给予开发者明显的提示。当然也可以使用自定义的是否抛出异常的逻辑</li>
-<li>如果当前线程不是主线程，那么就被认为是工作者线程。</li>
+  <li>主线程判断，使用<code class="language-plaintext highlighter-rouge">Looper.myLooper() == Looper.getMainLooper()</code>可以准确判断当前线程是否为主线程。</li>
+  <li>BuildConfig.DEBUG 条件控制，只有在debug环境下抛出异常，给予开发者明显的提示。当然也可以使用自定义的是否抛出异常的逻辑</li>
+  <li>如果当前线程不是主线程，那么就被认为是工作者线程。</li>
 </ul>
 
-
 <p>比如上面的方法加入checkWorkerThread检查</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">writeContentToFile</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">checkWorkerThread</span><span class="o">();</span>
-</span><span class='line'>    <span class="c1">//代码省略，具体实现参考上面</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">writeContentToFile</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">checkWorkerThread</span><span class="o">();</span>
+</span><span class="line">    <span class="c1">//代码省略，具体实现参考上面</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>再次执行程序，会曝出异常。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Unable</span> <span class="n">to</span> <span class="n">start</span> <span class="n">activity</span> <span class="n">ComponentInfo</span><span class="o">{</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">}:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Do</span> <span class="n">not</span> <span class="k">do</span> <span class="n">time</span><span class="o">-</span><span class="n">consuming</span> <span class="n">work</span> <span class="n">in</span> <span class="n">the</span> <span class="n">Main</span> <span class="n">thread</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2664</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2733</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="n">$900</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">187</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1584</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">111</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">194</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5869</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">372</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1019</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">814</span><span class="o">)</span>
-</span><span class='line'> <span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Do</span> <span class="n">not</span> <span class="k">do</span> <span class="n">time</span><span class="o">-</span><span class="n">consuming</span> <span class="n">work</span> <span class="n">in</span> <span class="n">the</span> <span class="n">Main</span> <span class="n">thread</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">checkWorkerThread</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">34</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">writeContentToFile</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">40</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">27</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="n">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6127</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="n">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1123</span><span class="o">)</span>
-</span><span class='line'>          <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2617</span><span class="o">)</span>
-</span><span class='line'>          <span class="o">...</span> <span class="mi">10</span> <span class="n">more</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="nc">Unable</span> <span class="n">to</span> <span class="n">start</span> <span class="n">activity</span> <span class="nc">ComponentInfo</span><span class="o">{</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">}:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="nc">Do</span> <span class="n">not</span> <span class="k">do</span> <span class="n">time</span><span class="o">-</span><span class="n">consuming</span> <span class="n">work</span> <span class="n">in</span> <span class="n">the</span> <span class="nc">Main</span> <span class="n">thread</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2664</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2733</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="err">$</span><span class="mi">900</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">187</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1584</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">111</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">194</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5869</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="nc">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">372</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1019</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">814</span><span class="o">)</span>
+</span><span class="line"> <span class="nc">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="nc">Do</span> <span class="n">not</span> <span class="k">do</span> <span class="n">time</span><span class="o">-</span><span class="n">consuming</span> <span class="n">work</span> <span class="n">in</span> <span class="n">the</span> <span class="nc">Main</span> <span class="n">thread</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">checkWorkerThread</span><span class="o">(</span><span class="nc">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">34</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">writeContentToFile</span><span class="o">(</span><span class="nc">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">40</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">checkthreadsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="nc">MainActivity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">27</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="nc">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6127</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="nc">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1123</span><span class="o">)</span>
+</span><span class="line">       	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2617</span><span class="o">)</span>
+</span><span class="line">       	<span class="o">...</span> <span class="mi">10</span> <span class="n">more</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>通过分析crash stacktrace 我们可以很轻松的发现问题的根源并解决。</p>
 
-<h2>哪些方法需要加上检查</h2>
+<h2 id="哪些方法需要加上检查">哪些方法需要加上检查</h2>
 
 <ul>
-<li>本地IO读写</li>
-<li>网络操作</li>
-<li>Bitmap相关的缩放等</li>
-<li>其他耗时的任务</li>
+  <li>本地IO读写</li>
+  <li>网络操作</li>
+  <li>Bitmap相关的缩放等</li>
+  <li>其他耗时的任务</li>
 </ul>
 
-
-<h2>如何选择工作者线程</h2>
-
+<h2 id="如何选择工作者线程">如何选择工作者线程</h2>
 <p>Android中的工作者线程API有很多，简单的有Thread,AsyncTask，也有ThreadPool，HandlerThread等。关于如何选择，可以参考这篇文章。<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F12%2F20%2Fworker-thread-in-android%2F">关于Android中工作者线程的思考</a></p>
 
-<h2>对比</h2>
-
+<h2 id="对比">对比</h2>
 <ul>
-<li>StrictMode 是一把利器，但是检测的东西很多，打印出来的日志可能也有很多，查找定位问题可能不如文章的方法方便。</li>
-<li>Method Tracing，需要刻意并时不时进行设置start和stop操作，文章的方法，可以说是一劳永逸。</li>
+  <li>StrictMode 是一把利器，但是检测的东西很多，打印出来的日志可能也有很多，查找定位问题可能不如文章的方法方便。</li>
+  <li>Method Tracing，需要刻意并时不时进行设置start和stop操作，文章的方法，可以说是一劳永逸。</li>
 </ul>
 
-
-<h2>检测会不会有性能问题</h2>
-
+<h2 id="检测会不会有性能问题">检测会不会有性能问题</h2>
 <ul>
-<li>理论上是不会的，通常这个检测的代价要远远比耗时任务要小很多。</li>
-<li>如果想进一步优化的，可以在编译期屏蔽这个方法的调用，即assumenosideeffects，具体可以参考<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F11%2F01%2Fthinking-about-android-log%2F">关于Android Log的一些思考</a>中的编译期屏蔽 的内容。</li>
+  <li>理论上是不会的，通常这个检测的代价要远远比耗时任务要小很多。</li>
+  <li>如果想进一步优化的，可以在编译期屏蔽这个方法的调用，即assumenosideeffects，具体可以参考<a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F11%2F01%2Fthinking-about-android-log%2F">关于Android Log的一些思考</a>中的编译期屏蔽 的内容。</li>
 </ul>
 
-
-<h2>延伸阅读</h2>
-
+<h2 id="延伸阅读">延伸阅读</h2>
 <ul>
-<li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F11%2F08%2Fmake-use-of-handlerthread%2F">详解 Android 中的 HandlerThread</a></li>
-<li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F09%2F26%2Fandroid-tuning-tool-strictmode%2F">Android性能调优利器StrictMode</a></li>
-<li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2014%2F07%2F12%2Fcheck-main-thread-in-android-chinese-edition%2F">Android中检测当前是否为主线程</a></li>
-<li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F07%2F18%2Fanr-in-android%2F">说说Android中的ANR</a></li>
+  <li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F11%2F08%2Fmake-use-of-handlerthread%2F">详解 Android 中的 HandlerThread</a></li>
+  <li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F09%2F26%2Fandroid-tuning-tool-strictmode%2F">Android性能调优利器StrictMode</a></li>
+  <li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2014%2F07%2F12%2Fcheck-main-thread-in-android-chinese-edition%2F">Android中检测当前是否为主线程</a></li>
+  <li><a href="http://droidyue.com/newtab.html?url=http%3A%2F%2Fdroidyue.com%2Fblog%2F2015%2F07%2F18%2Fanr-in-android%2F">说说Android中的ANR</a></li>
 </ul>
-
 
 <p>当你刚刚写完一个方法时，考虑这一下这个方法会不会很耗时，如果耗时，不妨增加一个线程的check。注意，一定要加载debug版，不要影响到线上的用户。</p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -410,7 +383,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -424,8 +397,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -437,15 +408,13 @@
 
 
 
-  
 
-
-<time datetime="2017-03-13T21:57:00+08:00" pubdate data-updated="true">Mar 13<span>th</span>, 2017</time>
+<time datetime="2017-03-13T21:57:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/xing-neng/'>性能</a>
+    Android性能
   
 </span>
 
@@ -538,10 +507,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -550,7 +515,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -617,6 +582,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -650,7 +619,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -658,7 +627,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

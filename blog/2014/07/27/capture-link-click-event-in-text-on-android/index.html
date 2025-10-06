@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="捕获Android文本中链接点击事件 Jul 27th, 2014 Android中的TTextView很强大，我们可以不仅可以设置纯文本为其内容，还可以设置包含网址和电子邮件地址的内容，并且使得这些点击可以点击。但是我们可以捕获并控制这些链接的点击事件么，当然是可以的。 &hellip;">
+  <meta name="description" content="捕获Android文本中链接点击事件 Android中的TTextView很强大，我们可以不仅可以设置纯文本为其内容，还可以设置包含网址和电子邮件地址的内容，并且使得这些点击可以点击。但是我们可以捕获并控制这些链接的点击事件么，当然是可以的。 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2014-07-27T09:33:00+08:00" pubdate data-updated="true">Jul 27<span>th</span>, 2014</time>
+<time datetime="2014-07-27T09:33:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -190,122 +188,105 @@
 
 <!--more-->
 
+<p>##关键实现
+实现原理就是将所有的URL设置成ClickSpan，然后在它的onClick事件中加入你想要的控制逻辑就可以了。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">setLinkClickable</span><span class="o">(</span><span class="kd">final</span> <span class="nc">SpannableStringBuilder</span> <span class="n">clickableHtmlBuilder</span><span class="o">,</span> 
+</span><span class="line">		<span class="kd">final</span> <span class="nc">URLSpan</span> <span class="n">urlSpan</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="kt">int</span> <span class="n">start</span> <span class="o">=</span> <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">getSpanStart</span><span class="o">(</span><span class="n">urlSpan</span><span class="o">);</span>
+</span><span class="line">    <span class="kt">int</span> <span class="n">end</span> <span class="o">=</span> <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">getSpanEnd</span><span class="o">(</span><span class="n">urlSpan</span><span class="o">);</span>
+</span><span class="line">    <span class="kt">int</span> <span class="n">flags</span> <span class="o">=</span> <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">getSpanFlags</span><span class="o">(</span><span class="n">urlSpan</span><span class="o">);</span>
+</span><span class="line">    <span class="nc">ClickableSpan</span> <span class="n">clickableSpan</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ClickableSpan</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onClick</span><span class="o">(</span><span class="nc">View</span> <span class="n">view</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        	  <span class="c1">//Do something with URL here.</span>
+</span><span class="line">        	  
+</span><span class="line">          <span class="o">}</span>
+</span><span class="line">    <span class="o">};</span>
+</span><span class="line">    <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">setSpan</span><span class="o">(</span><span class="n">clickableSpan</span><span class="o">,</span> <span class="n">start</span><span class="o">,</span> <span class="n">end</span><span class="o">,</span> <span class="n">flags</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">private</span> <span class="nc">CharSequence</span> <span class="nf">getClickableHtml</span><span class="o">(</span><span class="nc">String</span> <span class="n">html</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">Spanned</span> <span class="n">spannedHtml</span> <span class="o">=</span> <span class="nc">Html</span><span class="o">.</span><span class="na">fromHtml</span><span class="o">(</span><span class="n">html</span><span class="o">);</span>
+</span><span class="line">    <span class="nc">SpannableStringBuilder</span> <span class="n">clickableHtmlBuilder</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SpannableStringBuilder</span><span class="o">(</span><span class="n">spannedHtml</span><span class="o">);</span>
+</span><span class="line">    <span class="nc">URLSpan</span><span class="o">[]</span> <span class="n">urls</span> <span class="o">=</span> <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">getSpans</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">spannedHtml</span><span class="o">.</span><span class="na">length</span><span class="o">(),</span> <span class="nc">URLSpan</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>   
+</span><span class="line">    <span class="k">for</span><span class="o">(</span><span class="kd">final</span> <span class="nc">URLSpan</span> <span class="n">span</span> <span class="o">:</span> <span class="n">urls</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    	<span class="n">setLinkClickable</span><span class="o">(</span><span class="n">clickableHtmlBuilder</span><span class="o">,</span> <span class="n">span</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">clickableHtmlBuilder</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>关键实现</h2>
+<p>##如何使用</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line">	<span class="nc">TextView</span> <span class="n">myTextView</span> <span class="o">=</span> <span class="o">(</span><span class="nc">TextView</span><span class="o">)</span><span class="n">findViewById</span><span class="o">(</span><span class="no">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">myTextView</span><span class="o">);</span>
+</span><span class="line">	<span class="nc">String</span> <span class="n">url</span> <span class="o">=</span> <span class="s">"This is a page with lots of URLs. &lt;a href=\"http://droidyue.com\"&gt;droidyue.com&lt;/&gt; "</span> <span class="o">+</span>
+</span><span class="line">			<span class="s">"This left is a very good blog. There are so many great blogs there. You can find what"</span> <span class="o">+</span>
+</span><span class="line">			<span class="s">"you want in that blog."</span>  
+</span><span class="line">			<span class="o">+</span> <span class="s">"The Next Link is &lt;a href=\"http://www.google.com.hk\"&gt;Google HK&lt;/a&gt;"</span><span class="o">;</span>
+</span><span class="line">	<span class="n">myTextView</span><span class="o">.</span><span class="na">setText</span><span class="o">(</span><span class="n">getClickableHtml</span><span class="o">(</span><span class="n">url</span><span class="o">));</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<p>实现原理就是将所有的URL设置成ClickSpan，然后在它的onClick事件中加入你想要的控制逻辑就可以了。</p>
+<p>##实现自己的控制
+我们需要在ClickSpan的onClick方法中加入自己的控制逻辑，比如我们使用傲游浏览器打开点击的链接。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onClick</span><span class="o">(</span><span class="nc">View</span> <span class="n">view</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"onClick url="</span> <span class="o">+</span> <span class="n">urlSpan</span><span class="o">.</span><span class="na">getURL</span><span class="o">()</span> <span class="o">);</span>
+</span><span class="line">    <span class="nc">Intent</span> <span class="n">intent</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Intent</span><span class="o">(</span><span class="nc">Intent</span><span class="o">.</span><span class="na">ACTION_VIEW</span><span class="o">);</span>
+</span><span class="line">	<span class="n">intent</span><span class="o">.</span><span class="na">setData</span><span class="o">(</span><span class="nc">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="n">urlSpan</span><span class="o">.</span><span class="na">getURL</span><span class="o">()));</span>
+</span><span class="line">	<span class="n">intent</span><span class="o">.</span><span class="na">setPackage</span><span class="o">(</span><span class="s">"com.mx.browser"</span><span class="o">);</span>
+</span><span class="line">	<span class="n">startActivity</span><span class="o">(</span><span class="n">intent</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">setLinkClickable</span><span class="o">(</span><span class="kd">final</span> <span class="n">SpannableStringBuilder</span> <span class="n">clickableHtmlBuilder</span><span class="o">,</span>
-</span><span class='line'>      <span class="kd">final</span> <span class="n">URLSpan</span> <span class="n">urlSpan</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">start</span> <span class="o">=</span> <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">getSpanStart</span><span class="o">(</span><span class="n">urlSpan</span><span class="o">);</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">end</span> <span class="o">=</span> <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">getSpanEnd</span><span class="o">(</span><span class="n">urlSpan</span><span class="o">);</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">flags</span> <span class="o">=</span> <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">getSpanFlags</span><span class="o">(</span><span class="n">urlSpan</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">ClickableSpan</span> <span class="n">clickableSpan</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ClickableSpan</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onClick</span><span class="o">(</span><span class="n">View</span> <span class="n">view</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="c1">//Do something with URL here.</span>
-</span><span class='line'>          
-</span><span class='line'>          <span class="o">}</span>
-</span><span class='line'>    <span class="o">};</span>
-</span><span class='line'>    <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">setSpan</span><span class="o">(</span><span class="n">clickableSpan</span><span class="o">,</span> <span class="n">start</span><span class="o">,</span> <span class="n">end</span><span class="o">,</span> <span class="n">flags</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">private</span> <span class="n">CharSequence</span> <span class="nf">getClickableHtml</span><span class="o">(</span><span class="n">String</span> <span class="n">html</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">Spanned</span> <span class="n">spannedHtml</span> <span class="o">=</span> <span class="n">Html</span><span class="o">.</span><span class="na">fromHtml</span><span class="o">(</span><span class="n">html</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">SpannableStringBuilder</span> <span class="n">clickableHtmlBuilder</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SpannableStringBuilder</span><span class="o">(</span><span class="n">spannedHtml</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">URLSpan</span><span class="o">[]</span> <span class="n">urls</span> <span class="o">=</span> <span class="n">clickableHtmlBuilder</span><span class="o">.</span><span class="na">getSpans</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">spannedHtml</span><span class="o">.</span><span class="na">length</span><span class="o">(),</span> <span class="n">URLSpan</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
-</span><span class='line'>    <span class="k">for</span><span class="o">(</span><span class="kd">final</span> <span class="n">URLSpan</span> <span class="n">span</span> <span class="o">:</span> <span class="n">urls</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">setLinkClickable</span><span class="o">(</span><span class="n">clickableHtmlBuilder</span><span class="o">,</span> <span class="n">span</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">clickableHtmlBuilder</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<p>##提醒
+不要忘了设置TextView的autoLink属性。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="xml"><span class="line"><span class="nt">&lt;TextView</span>
+</span><span class="line">    <span class="na">android:layout_width=</span><span class="s">"wrap_content"</span>
+</span><span class="line">    <span class="na">android:layout_height=</span><span class="s">"wrap_content"</span>
+</span><span class="line">    <span class="na">android:text=</span><span class="s">"@string/hello_world"</span> 
+</span><span class="line">    <span class="na">android:id=</span><span class="s">"@+id/myTextView"</span>
+</span><span class="line">    <span class="na">android:autoLink=</span><span class="s">"web"</span> 
+</span><span class="line"><span class="nt">/&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-
-<h2>如何使用</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">TextView</span> <span class="n">myTextView</span> <span class="o">=</span> <span class="o">(</span><span class="n">TextView</span><span class="o">)</span><span class="n">findViewById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">myTextView</span><span class="o">);</span>
-</span><span class='line'>  <span class="n">String</span> <span class="n">url</span> <span class="o">=</span> <span class="s">&quot;This is a page with lots of URLs. &lt;a href=\&quot;http://droidyue.com\&quot;&gt;droidyue.com&lt;/&gt; &quot;</span> <span class="o">+</span>
-</span><span class='line'>          <span class="s">&quot;This left is a very good blog. There are so many great blogs there. You can find what&quot;</span> <span class="o">+</span>
-</span><span class='line'>          <span class="s">&quot;you want in that blog.&quot;</span>
-</span><span class='line'>          <span class="o">+</span> <span class="s">&quot;The Next Link is &lt;a href=\&quot;http://www.google.com.hk\&quot;&gt;Google HK&lt;/a&gt;&quot;</span><span class="o">;</span>
-</span><span class='line'>  <span class="n">myTextView</span><span class="o">.</span><span class="na">setText</span><span class="o">(</span><span class="n">getClickableHtml</span><span class="o">(</span><span class="n">url</span><span class="o">));</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>实现自己的控制</h2>
-
-<p>我们需要在ClickSpan的onClick方法中加入自己的控制逻辑，比如我们使用傲游浏览器打开点击的链接。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onClick</span><span class="o">(</span><span class="n">View</span> <span class="n">view</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onClick url=&quot;</span> <span class="o">+</span> <span class="n">urlSpan</span><span class="o">.</span><span class="na">getURL</span><span class="o">()</span> <span class="o">);</span>
-</span><span class='line'>    <span class="n">Intent</span> <span class="n">intent</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_VIEW</span><span class="o">);</span>
-</span><span class='line'>  <span class="n">intent</span><span class="o">.</span><span class="na">setData</span><span class="o">(</span><span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="n">urlSpan</span><span class="o">.</span><span class="na">getURL</span><span class="o">()));</span>
-</span><span class='line'>  <span class="n">intent</span><span class="o">.</span><span class="na">setPackage</span><span class="o">(</span><span class="s">&quot;com.mx.browser&quot;</span><span class="o">);</span>
-</span><span class='line'>  <span class="n">startActivity</span><span class="o">(</span><span class="n">intent</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>提醒</h2>
-
-<p>不要忘了设置TextView的autoLink属性。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;TextView</span>
-</span><span class='line'>    <span class="na">android:layout_width=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>    <span class="na">android:layout_height=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>    <span class="na">android:text=</span><span class="s">&quot;@string/hello_world&quot;</span>
-</span><span class='line'>    <span class="na">android:id=</span><span class="s">&quot;@+id/myTextView&quot;</span>
-</span><span class='line'>    <span class="na">android:autoLink=</span><span class="s">&quot;web&quot;</span>
-</span><span class='line'><span class="nt">/&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>demo源码</h2>
-
-<p><a href="http://pan.baidu.com/s/1i3kQ1RB" target="_blank">百度云盘</a></p>
+<p>##demo源码
+<a href="http://pan.baidu.com/s/1i3kQ1RB" target="_blank">百度云盘</a></p>
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -327,7 +308,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -341,8 +322,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -354,15 +333,13 @@
 
 
 
-  
 
-
-<time datetime="2014-07-27T09:33:00+08:00" pubdate data-updated="true">Jul 27<span>th</span>, 2014</time>
+<time datetime="2014-07-27T09:33:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>
+    Android
   
 </span>
 
@@ -455,10 +432,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -467,7 +440,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -534,6 +507,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -567,7 +544,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -575,7 +552,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

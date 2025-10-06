@@ -11,7 +11,8 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="使用Kotlin Reified 让泛型更简单安全 Jul 28th, 2019 我们在编程中，出于复用和高效的目的，我们使用到了泛型。但是泛型在JVM底层采取了类型擦除的实现机制，Kotlin也是这样。然后这也带来了一些问题和对应的解决方案。这里我们介绍一个reified用法， &hellip;">
+  <meta name="description" content="使用Kotlin Reified 让泛型更简单安全 我们在编程中，出于复用和高效的目的，我们使用到了泛型。但是泛型在JVM底层采取了类型擦除的实现机制，Kotlin也是这样。然后这也带来了一些问题和对应的解决方案。这里我们介绍一个reified用法，来实现更好的处理泛型。 类型擦除
+如下面的代码 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +175,8 @@
 
 
 
-  
 
-
-<time datetime="2019-07-28T18:59:00+08:00" pubdate data-updated="true">Jul 28<span>th</span>, 2019</time>
+<time datetime="2019-07-28T18:59:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -187,573 +186,508 @@
 <div class="entry-content"><p>我们在编程中，出于复用和高效的目的，我们使用到了泛型。但是泛型在JVM底层采取了类型擦除的实现机制，Kotlin也是这样。然后这也带来了一些问题和对应的解决方案。这里我们介绍一个reified用法，来实现更好的处理泛型。</p>
 
 <!--more-->
-
-
-<h2>类型擦除</h2>
-
+<h2 id="类型擦除">类型擦除</h2>
 <p>如下面的代码，在编译成class文件后，就采用了类型擦除</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestTypeErasure</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;123&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">list</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestTypeErasure</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">public</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ArrayList</span><span class="o">&lt;&gt;();</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"123"</span><span class="o">);</span>
+</span><span class="line">        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">list</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <ul>
-<li>list实例真实的保存是多个<code>Object</code></li>
-<li><code>list.add("123")</code>实际上是<code>"123"</code>作为<code>Object</code>存入集合中</li>
-<li><code>System.out.println(list.get(0));</code>是从<code>list</code>实例中读取出来<code>Object</code>然后转换成<code>String</code>才能使用的</li>
+  <li>list实例真实的保存是多个<code class="language-plaintext highlighter-rouge">Object</code></li>
+  <li><code class="language-plaintext highlighter-rouge">list.add("123")</code>实际上是<code class="language-plaintext highlighter-rouge">"123"</code>作为<code class="language-plaintext highlighter-rouge">Object</code>存入集合中</li>
+  <li><code class="language-plaintext highlighter-rouge">System.out.println(list.get(0));</code>是从<code class="language-plaintext highlighter-rouge">list</code>实例中读取出来<code class="language-plaintext highlighter-rouge">Object</code>然后转换成<code class="language-plaintext highlighter-rouge">String</code>才能使用的</li>
 </ul>
 
-
 <p>辅助证明的字节码内容</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;TestTypeErasure.java&quot;</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestTypeErasure</span> <span class="o">{</span>
-</span><span class='line'>  <span class="c1">//省略部分代码</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">();</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">getfield</span>      <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// Field list:Ljava/util/List;</span>
-</span><span class='line'>       <span class="mi">4</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// String 123</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">invokeinterface</span> <span class="err">#</span><span class="mi">6</span><span class="o">,</span>  <span class="mi">2</span>            <span class="c1">// InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z</span>
-</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="n">pop</span>
-</span><span class='line'>      <span class="mi">12</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">getfield</span>      <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// Field list:Ljava/util/List;</span>
-</span><span class='line'>      <span class="mi">19</span><span class="o">:</span> <span class="n">iconst_0</span>
-</span><span class='line'>      <span class="mi">20</span><span class="o">:</span> <span class="n">invokeinterface</span> <span class="err">#</span><span class="mi">8</span><span class="o">,</span>  <span class="mi">2</span>            <span class="c1">// InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;</span>
-</span><span class='line'>      <span class="mi">25</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// class java/lang/String</span>
-</span><span class='line'>      <span class="mi">28</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">10</span>                 <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">Compiled</span> <span class="n">from</span> <span class="s">"TestTypeErasure.java"</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestTypeErasure</span> <span class="o">{</span>
+</span><span class="line">  <span class="c1">//省略部分代码</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">();</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">       <span class="mi">1</span><span class="o">:</span> <span class="n">getfield</span>      <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// Field list:Ljava/util/List;</span>
+</span><span class="line">       <span class="mi">4</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// String 123</span>
+</span><span class="line">       <span class="mi">6</span><span class="o">:</span> <span class="n">invokeinterface</span> <span class="err">#</span><span class="mi">6</span><span class="o">,</span>  <span class="mi">2</span>            <span class="c1">// InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z</span>
+</span><span class="line">      <span class="mi">11</span><span class="o">:</span> <span class="n">pop</span>
+</span><span class="line">      <span class="mi">12</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">      <span class="mi">16</span><span class="o">:</span> <span class="n">getfield</span>      <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// Field list:Ljava/util/List;</span>
+</span><span class="line">      <span class="mi">19</span><span class="o">:</span> <span class="n">iconst_0</span>
+</span><span class="line">      <span class="mi">20</span><span class="o">:</span> <span class="n">invokeinterface</span> <span class="err">#</span><span class="mi">8</span><span class="o">,</span>  <span class="mi">2</span>            <span class="c1">// InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;</span>
+</span><span class="line">      <span class="mi">25</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// class java/lang/String</span>
+</span><span class="line">      <span class="mi">28</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">10</span>                 <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">31</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>其中</p>
 
 <ul>
-<li>第6行对应的<code>6: invokeinterface #6,  2            // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z</code> 对应添加元素参数的类型为<code>Object</code></li>
-<li>第20行对应的<code>20: invokeinterface #8,  2            // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;</code> 对应的获取元素的返回类型为<code>Object</code></li>
-<li>第25行为进行类型转换操作</li>
+  <li>第6行对应的<code class="language-plaintext highlighter-rouge">6: invokeinterface #6,  2            // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z</code> 对应添加元素参数的类型为<code class="language-plaintext highlighter-rouge">Object</code></li>
+  <li>第20行对应的<code class="language-plaintext highlighter-rouge">20: invokeinterface #8,  2            // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;</code> 对应的获取元素的返回类型为<code class="language-plaintext highlighter-rouge">Object</code></li>
+  <li>第25行为进行类型转换操作</li>
 </ul>
 
-
-<h2>类型擦除带来的问题</h2>
-
-<h3>安全问题:未检查的异常</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//unchecked cast</span>
-</span><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">Int</span><span class="p">.</span><span class="n">toType</span><span class="p">():</span> <span class="n">T</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="p">(</span><span class="k">this</span> <span class="k">as</span><span class="p">?</span> <span class="n">T</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<h2 id="类型擦除带来的问题">类型擦除带来的问题</h2>
+<h3 id="安全问题未检查的异常">安全问题:未检查的异常</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//unchecked cast</span>
+</span><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Int</span><span class="p">.</span><span class="nf">toType</span><span class="p">():</span> <span class="nc">T</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="p">(</span><span class="k">this</span> <span class="k">as</span><span class="p">?</span> <span class="nc">T</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <ul>
-<li>上面的代码会导致编译器警告<code>unchecked cast</code></li>
-<li>上面的代码由于在转换类型时，没有进行检查，所以有可能会导致运行时崩溃</li>
+  <li>上面的代码会导致编译器警告<code class="language-plaintext highlighter-rouge">unchecked cast</code></li>
+  <li>上面的代码由于在转换类型时，没有进行检查，所以有可能会导致运行时崩溃</li>
 </ul>
-
 
 <p>当我们执行这样的代码时</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="nf">testCast</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">println</span><span class="p">(</span><span class="mi">1</span><span class="p">.</span><span class="n">toType</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;()</span><span class="o">?.</span><span class="nf">substring</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>会得到<code class="language-plaintext highlighter-rouge">java.lang.Integer cannot be cast to java.lang.String</code>的类型错误。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testCast</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="m">1.</span><span class="n">toType</span><span class="p">&lt;</span><span class="n">String</span><span class="p">&gt;()?.</span><span class="n">substring</span><span class="p">(</span><span class="m">0</span><span class="p">))</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>会得到<code>java.lang.Integer cannot be cast to java.lang.String</code>的类型错误。</p>
-
-<h3>显式传递Class</h3>
-
+<h3 id="显式传递class">显式传递Class</h3>
 <p>针对前面的问题，我们最常用的办法就是显式传递class信息</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//need pass class explicitly</span>
-</span><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">Any</span><span class="p">.</span><span class="n">toType</span><span class="p">(</span><span class="n">clazz</span><span class="p">:</span> <span class="n">Class</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;):</span> <span class="n">T</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">if</span> <span class="p">(</span><span class="n">clazz</span><span class="p">.</span><span class="n">isInstance</span><span class="p">(</span><span class="k">this</span><span class="p">))</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">this</span> <span class="k">as</span><span class="p">?</span> <span class="n">T</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">null</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//need pass class explicitly</span>
+</span><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Any</span><span class="p">.</span><span class="nf">toType</span><span class="p">(</span><span class="n">clazz</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;):</span> <span class="nc">T</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="k">if</span> <span class="p">(</span><span class="n">clazz</span><span class="p">.</span><span class="nf">isInstance</span><span class="p">(</span><span class="k">this</span><span class="p">))</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">this</span> <span class="k">as</span><span class="p">?</span> <span class="nc">T</span>
+</span><span class="line">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">null</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>但是显式传递Class信息也会感觉有一些问题，尤其是下面这段代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">plus</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">,</span> <span class="n">clazz</span><span class="p">:</span> <span class="n">Class</span><span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">when</span><span class="p">(</span><span class="n">clazz</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">Long</span><span class="p">::</span><span class="n">class</span><span class="p">.</span><span class="n">java</span> <span class="p">-&gt;</span> <span class="n">putLong</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="k">as</span> <span class="n">Long</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">String</span><span class="p">::</span><span class="n">class</span><span class="p">.</span><span class="n">java</span> <span class="p">-&gt;</span> <span class="n">putString</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="k">as</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">Char</span><span class="p">::</span><span class="n">class</span><span class="p">.</span><span class="n">java</span> <span class="p">-&gt;</span> <span class="n">putChar</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="k">as</span> <span class="n">Char</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">Int</span><span class="p">::</span><span class="n">class</span><span class="p">.</span><span class="n">java</span> <span class="p">-&gt;</span> <span class="n">putInt</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="k">as</span> <span class="n">Int</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Bundle</span><span class="p">.</span><span class="nf">plus</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">,</span> <span class="n">clazz</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">when</span><span class="p">(</span><span class="n">clazz</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nc">Long</span><span class="o">::</span><span class="k">class</span><span class="p">.</span><span class="n">java</span> <span class="p">-&gt;</span> <span class="nf">putLong</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="k">as</span> <span class="nc">Long</span><span class="p">)</span>
+</span><span class="line">        <span class="nc">String</span><span class="o">::</span><span class="k">class</span><span class="p">.</span><span class="n">java</span> <span class="p">-&gt;</span> <span class="nf">putString</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="k">as</span> <span class="nc">String</span><span class="p">)</span>
+</span><span class="line">        <span class="nc">Char</span><span class="o">::</span><span class="k">class</span><span class="p">.</span><span class="n">java</span> <span class="p">-&gt;</span> <span class="nf">putChar</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="k">as</span> <span class="nc">Char</span><span class="p">)</span>
+</span><span class="line">        <span class="nc">Int</span><span class="o">::</span><span class="k">class</span><span class="p">.</span><span class="n">java</span> <span class="p">-&gt;</span> <span class="nf">putInt</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="k">as</span> <span class="nc">Int</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <ul>
-<li>上面的代码（传value值和clazz）我们会感觉到明显的有一些笨拙，不够智能。</li>
-<li>但是这也是基于Java的类型擦除机制导致无法再运行时得到<code>T</code>的类型信息，无法改进（至少在Java中）</li>
+  <li>上面的代码（传value值和clazz）我们会感觉到明显的有一些笨拙，不够智能。</li>
+  <li>但是这也是基于Java的类型擦除机制导致无法再运行时得到<code class="language-plaintext highlighter-rouge">T</code>的类型信息，无法改进（至少在Java中）</li>
 </ul>
 
-
-<h3>可能导致更多方法的产生</h3>
-
+<h3 id="可能导致更多方法的产生">可能导致更多方法的产生</h3>
 <p>同时，由于上面的显式传递Class信息比较麻烦和崩溃，我们有时候会增加更多的方法，比如下面的这样。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">class</span> <span class="nc">Bundle</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">putInt</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Int</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="s">&quot;Bundle.putInt key=$key;value=$value&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">putLong</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Long</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">putString</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">putChar</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Char</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="kd">class</span> <span class="nc">Bundle</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">fun</span> <span class="nf">putInt</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">println</span><span class="p">(</span><span class="s">"Bundle.putInt key=$key;value=$value"</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">fun</span> <span class="nf">putLong</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">fun</span> <span class="nf">putString</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">fun</span> <span class="nf">putChar</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">Char</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <ul>
-<li>上面的<code>putInt</code>,<code>putLong</code>,<code>putString</code>和<code>putChar</code>没有泛型引入</li>
-<li>我们没有排除显式传递Class参数之外的优雅实现，比如我们只提供一个叫做<code>put(key: String,value: T)</code></li>
+  <li>上面的<code class="language-plaintext highlighter-rouge">putInt</code>,<code class="language-plaintext highlighter-rouge">putLong</code>,<code class="language-plaintext highlighter-rouge">putString</code>和<code class="language-plaintext highlighter-rouge">putChar</code>没有泛型引入</li>
+  <li>我们没有排除显式传递Class参数之外的优雅实现，比如我们只提供一个叫做<code class="language-plaintext highlighter-rouge">put(key: String,value: T)</code></li>
 </ul>
 
-
-<h2>reified 方式</h2>
-
+<h2 id="reified-方式">reified 方式</h2>
 <p>不过，好在Kotlin有一个对应的解决方案，这就是我们今天文章标题提到的reified（中文意思：具体化）</p>
 
 <p>使用reified很简单，主要分为两步</p>
 
 <ul>
-<li>在泛型类型前面增加<code>reified</code></li>
-<li>在方法前面增加<code>inline</code>（必需的）</li>
+  <li>在泛型类型前面增加<code class="language-plaintext highlighter-rouge">reified</code></li>
+  <li>在方法前面增加<code class="language-plaintext highlighter-rouge">inline</code>（必需的）</li>
 </ul>
-
 
 <p>接下来我们使用reified改进之前的方法</p>
 
-<h3>类型转换改进后的代码</h3>
+<h3 id="类型转换改进后的代码">类型转换改进后的代码</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//much better way using reified</span>
+</span><span class="line"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Any</span><span class="p">.</span><span class="nf">asType</span><span class="p">():</span> <span class="nc">T</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="k">is</span> <span class="nc">T</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">this</span>
+</span><span class="line">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">null</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<h3 id="方法传参不需要多余传递参数类型信息">方法传参不需要多余传递参数类型信息</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Bundle</span><span class="p">.</span><span class="nf">plus</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">when</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">is</span> <span class="nc">Long</span> <span class="p">-&gt;</span> <span class="nf">putLong</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">        <span class="k">is</span> <span class="nc">String</span> <span class="p">-&gt;</span> <span class="nf">putString</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">        <span class="k">is</span> <span class="nc">Char</span> <span class="p">-&gt;</span> <span class="nf">putChar</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">        <span class="k">is</span> <span class="nc">Int-</span><span class="p">&gt;</span> <span class="nf">putInt</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//much better way using reified</span>
-</span><span class='line'><span class="n">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="n">reified</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">Any</span><span class="p">.</span><span class="n">asType</span><span class="p">():</span> <span class="n">T</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">if</span> <span class="p">(</span><span class="k">this</span> <span class="k">is</span> <span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">this</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">null</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<h2 id="reified实现原理">reified实现原理</h2>
+<p>不是说，泛型是使用了类型擦除么，为什么运行时能得到<code class="language-plaintext highlighter-rouge">T</code>的类型信息呢？</p>
 
-
-<h3>方法传参不需要多余传递参数类型信息</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="n">reified</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">plus</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">when</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">is</span> <span class="n">Long</span> <span class="p">-&gt;</span> <span class="n">putLong</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">is</span> <span class="n">String</span> <span class="p">-&gt;</span> <span class="n">putString</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">is</span> <span class="n">Char</span> <span class="p">-&gt;</span> <span class="n">putChar</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">is</span> <span class="n">Int</span><span class="p">-&gt;</span> <span class="n">putInt</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>reified实现原理</h2>
-
-<p>不是说，泛型是使用了类型擦除么，为什么运行时能得到<code>T</code>的类型信息呢？</p>
-
-<p>是的，采用类型擦除没有错，至于能在运行时得到<code>T</code>的类型信息是如何做到的，就需要了解<code>reified</code>的内部机制了。</p>
+<p>是的，采用类型擦除没有错，至于能在运行时得到<code class="language-plaintext highlighter-rouge">T</code>的类型信息是如何做到的，就需要了解<code class="language-plaintext highlighter-rouge">reified</code>的内部机制了。</p>
 
 <p>其原理为</p>
 
 <ul>
-<li>Kotlin编译器会将reified方法<code>asType</code>内联(inline)到调用的地方(call-site)</li>
-<li>方法被内联到调用的地方后，泛型T会被替换成具体的类型</li>
+  <li>Kotlin编译器会将reified方法<code class="language-plaintext highlighter-rouge">asType</code>内联(inline)到调用的地方(call-site)</li>
+  <li>方法被内联到调用的地方后，泛型T会被替换成具体的类型</li>
 </ul>
-
 
 <p>所以 <strong>reified 使得泛型的方法假装在运行时能够获取泛型的类信息</strong></p>
 
 <p>为了便于理解，我们举个例子，如下是我们的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testCast2</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="m">1.</span><span class="n">asType</span><span class="p">&lt;</span><span class="n">String</span><span class="p">&gt;()?.</span><span class="n">substring</span><span class="p">(</span><span class="m">0</span><span class="p">))</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="nf">testCast2</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">println</span><span class="p">(</span><span class="mi">1</span><span class="p">.</span><span class="n">asType</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;()</span><span class="o">?.</span><span class="nf">substring</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>对应的反编译后的java代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testCast2</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">      <span class="nc">Object</span> <span class="n">$this$asType$iv</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class="line">      <span class="kt">int</span> <span class="n">$i$f$asType</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">      <span class="nc">String</span> <span class="n">var10000</span> <span class="o">=</span> <span class="o">(</span><span class="nc">String</span><span class="o">)(</span><span class="n">$this$asType$iv</span> <span class="k">instanceof</span> <span class="nc">String</span> <span class="o">?</span> <span class="n">$this$asType$iv</span> <span class="o">:</span> <span class="kc">null</span><span class="o">);</span>
+</span><span class="line">      <span class="nc">String</span> <span class="n">var3</span><span class="o">;</span>
+</span><span class="line">      <span class="cm">/**
+</span><span class="line">	  * 后续的代码对应的Kotlin代码(也包含了部分call-site的逻辑，比如substring)
+</span><span class="line">	  return if (this is T) {
+</span><span class="line">        this
+</span><span class="line">      } else {
+</span><span class="line">        null
+</span><span class="line">      }
+</span><span class="line">      */</span>
+</span><span class="line">
+</span><span class="line">      <span class="c1">//inline和reified替换开始</span>
+</span><span class="line">      <span class="k">if</span> <span class="o">((</span><span class="nc">String</span><span class="o">)(</span><span class="n">$this$asType$iv</span> <span class="k">instanceof</span> <span class="nc">String</span> <span class="o">?</span> <span class="n">$this$asType$iv</span> <span class="o">:</span> <span class="kc">null</span><span class="o">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">var3</span> <span class="o">=</span> <span class="n">var10000</span><span class="o">;</span>
+</span><span class="line">         <span class="kt">byte</span> <span class="n">var4</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class="line">         <span class="kt">boolean</span> <span class="n">var2</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">         <span class="k">if</span> <span class="o">(</span><span class="n">var3</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="k">throw</span> <span class="k">new</span> <span class="nf">TypeCastException</span><span class="o">(</span><span class="s">"null cannot be cast to non-null type java.lang.String"</span><span class="o">);</span>
+</span><span class="line">         <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">         <span class="n">var10000</span> <span class="o">=</span> <span class="n">var3</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="n">var4</span><span class="o">);</span>
+</span><span class="line">         <span class="nc">Intrinsics</span><span class="o">.</span><span class="na">checkExpressionValueIsNotNull</span><span class="o">(</span><span class="n">var10000</span><span class="o">,</span> <span class="s">"(this as java.lang.String).substring(startIndex)"</span><span class="o">);</span>
+</span><span class="line">      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">var10000</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">      <span class="o">}</span>
+</span><span class="line">      <span class="c1">//inline和reified替换结束</span>
+</span><span class="line">      <span class="n">var3</span> <span class="o">=</span> <span class="n">var10000</span><span class="o">;</span>
+</span><span class="line">      <span class="n">$i$f$asType</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">      <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">var3</span><span class="o">);</span>
+</span><span class="line">   <span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testCast2</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Object</span> <span class="n">$this$asType$iv</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
-</span><span class='line'>      <span class="kt">int</span> <span class="n">$i$f$asType</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">var10000</span> <span class="o">=</span> <span class="o">(</span><span class="n">String</span><span class="o">)(</span><span class="n">$this$asType$iv</span> <span class="k">instanceof</span> <span class="n">String</span> <span class="o">?</span> <span class="n">$this$asType$iv</span> <span class="o">:</span> <span class="kc">null</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">var3</span><span class="o">;</span>
-</span><span class='line'>      <span class="cm">/**</span>
-</span><span class='line'><span class="cm">   * 后续的代码对应的Kotlin代码(也包含了部分call-site的逻辑，比如substring)</span>
-</span><span class='line'><span class="cm">   return if (this is T) {</span>
-</span><span class='line'><span class="cm">        this</span>
-</span><span class='line'><span class="cm">      } else {</span>
-</span><span class='line'><span class="cm">        null</span>
-</span><span class='line'><span class="cm">      }</span>
-</span><span class='line'><span class="cm">      */</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">//inline和reified替换开始</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">((</span><span class="n">String</span><span class="o">)(</span><span class="n">$this$asType$iv</span> <span class="k">instanceof</span> <span class="n">String</span> <span class="o">?</span> <span class="n">$this$asType$iv</span> <span class="o">:</span> <span class="kc">null</span><span class="o">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">var3</span> <span class="o">=</span> <span class="n">var10000</span><span class="o">;</span>
-</span><span class='line'>         <span class="kt">byte</span> <span class="n">var4</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
-</span><span class='line'>         <span class="kt">boolean</span> <span class="n">var2</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">var3</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="k">throw</span> <span class="k">new</span> <span class="nf">TypeCastException</span><span class="o">(</span><span class="s">&quot;null cannot be cast to non-null type java.lang.String&quot;</span><span class="o">);</span>
-</span><span class='line'>         <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>         <span class="n">var10000</span> <span class="o">=</span> <span class="n">var3</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="n">var4</span><span class="o">);</span>
-</span><span class='line'>         <span class="n">Intrinsics</span><span class="o">.</span><span class="na">checkExpressionValueIsNotNull</span><span class="o">(</span><span class="n">var10000</span><span class="o">,</span> <span class="s">&quot;(this as java.lang.String).substring(startIndex)&quot;</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">var10000</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>      <span class="c1">//inline和reified替换结束</span>
-</span><span class='line'>      <span class="n">var3</span> <span class="o">=</span> <span class="n">var10000</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">$i$f$asType</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">var3</span><span class="o">);</span>
-</span><span class='line'>   <span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>all in(lined)?</h2>
-
+<h2 id="all-inlined">all in(lined)?</h2>
 <p>既然是inline，应该是把被inline的方法全部提取到调用处(call-site)吧？</p>
 
 <ul>
-<li>是的，通常是这样，不过reified可能有一些差异</li>
-<li>reified方法并不会完全inline所有的方法实现，而是更加智能一些的类型匹配中断提取。</li>
+  <li>是的，通常是这样，不过reified可能有一些差异</li>
+  <li>reified方法并不会完全inline所有的方法实现，而是更加智能一些的类型匹配中断提取。</li>
 </ul>
 
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">testBundlePlusLong</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">Bundle</span><span class="p">().</span><span class="n">plus</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">,</span> <span class="m">1000L</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testBundlePlusString</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">Bundle</span><span class="p">().</span><span class="n">plus</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testBundlePlusChar</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">Bundle</span><span class="p">().</span><span class="n">plus</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">,</span> <span class="sc">&#39;h&#39;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="nf">testBundlePlusInt</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">Bundle</span><span class="p">().</span><span class="n">plus</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">,</span> <span class="m">1</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="nf">testBundlePlusLong</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="nc">Bundle</span><span class="p">().</span><span class="nf">plus</span><span class="p">(</span><span class="s">"hello"</span><span class="p">,</span> <span class="mi">1000L</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">testBundlePlusString</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="nc">Bundle</span><span class="p">().</span><span class="nf">plus</span><span class="p">(</span><span class="s">"hello"</span><span class="p">,</span> <span class="s">"World"</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">testBundlePlusChar</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="nc">Bundle</span><span class="p">().</span><span class="nf">plus</span><span class="p">(</span><span class="s">"hello"</span><span class="p">,</span> <span class="sc">'h'</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">testBundlePlusInt</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="nc">Bundle</span><span class="p">().</span><span class="nf">plus</span><span class="p">(</span><span class="s">"hello"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>再次贴一些Bundle.plus实现</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="n">reified</span> <span class="n">T</span><span class="p">&gt;</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">plus</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">when</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">is</span> <span class="n">Long</span> <span class="p">-&gt;</span> <span class="n">putLong</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">is</span> <span class="n">String</span> <span class="p">-&gt;</span> <span class="n">putString</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">is</span> <span class="n">Char</span> <span class="p">-&gt;</span> <span class="n">putChar</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>        <span class="k">is</span> <span class="n">Int</span><span class="p">-&gt;</span> <span class="n">putInt</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Bundle</span><span class="p">.</span><span class="nf">plus</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">when</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">is</span> <span class="nc">Long</span> <span class="p">-&gt;</span> <span class="nf">putLong</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">        <span class="k">is</span> <span class="nc">String</span> <span class="p">-&gt;</span> <span class="nf">putString</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">        <span class="k">is</span> <span class="nc">Char</span> <span class="p">-&gt;</span> <span class="nf">putChar</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">        <span class="k">is</span> <span class="nc">Int-</span><span class="p">&gt;</span> <span class="nf">putInt</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>上面的when表达式的类型检查次序依次为</p>
 
 <ul>
-<li>Long</li>
-<li>String</li>
-<li>Char</li>
-<li>Int</li>
+  <li>Long</li>
+  <li>String</li>
+  <li>Char</li>
+  <li>Int</li>
 </ul>
 
-
 <p>反编译后的方法如下(类型不同，提取的方法体也不同)</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testBundlePlusLong</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Bundle</span> <span class="n">$this$plus$iv</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Bundle</span><span class="o">();</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">key$iv</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="kt">long</span> <span class="n">value$iv</span> <span class="o">=</span> <span class="mi">1000L</span><span class="o">;</span>
-</span><span class='line'>      <span class="kt">int</span> <span class="n">$i$f$plus</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="c1">//第一个就是Long类型，无需包含后面的检查代码</span>
-</span><span class='line'>      <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="n">value$iv</span><span class="o">);</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testBundlePlusString</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Bundle</span> <span class="n">$this$plus$iv</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Bundle</span><span class="o">();</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">key$iv</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">Object</span> <span class="n">value$iv</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="kt">int</span> <span class="n">$i$f$plus</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="c1">//不是Long类型，需要继续匹配，找到String类型，终止inline后续代码</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="n">Long</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">((</span><span class="n">Number</span><span class="o">)</span><span class="n">value$iv</span><span class="o">).</span><span class="na">longValue</span><span class="o">());</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putString</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="n">value$iv</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testBundlePlusChar</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Bundle</span> <span class="n">$this$plus$iv</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Bundle</span><span class="o">();</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">key$iv</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">Object</span> <span class="n">value$iv</span> <span class="o">=</span> <span class="sc">&#39;h&#39;</span><span class="o">;</span>
-</span><span class='line'>      <span class="kt">int</span> <span class="n">$i$f$plus</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="c1">//不是Long类型，需要继续匹配，</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="n">Long</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">((</span><span class="n">Number</span><span class="o">)</span><span class="n">value$iv</span><span class="o">).</span><span class="na">longValue</span><span class="o">());</span>
-</span><span class='line'>          <span class="c1">//不是String类型，需要继续匹配，</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="n">String</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putString</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">(</span><span class="n">String</span><span class="o">)</span><span class="n">value$iv</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>         <span class="c1">//找到String类型，终止inline后续代码</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putChar</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="n">value$iv</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testBundlePlusInt</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Bundle</span> <span class="n">$this$plus$iv</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Bundle</span><span class="o">();</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">key$iv</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">Object</span> <span class="n">value$iv</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
-</span><span class='line'>      <span class="kt">int</span> <span class="n">$i$f$plus</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="c1">//最差的一种情况，inline全部的方法体实现</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="n">Long</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">((</span><span class="n">Number</span><span class="o">)</span><span class="n">value$iv</span><span class="o">).</span><span class="na">longValue</span><span class="o">());</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="n">String</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putString</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">(</span><span class="n">String</span><span class="o">)</span><span class="n">value$iv</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="n">Character</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putChar</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">(</span><span class="n">Character</span><span class="o">)</span><span class="n">value$iv</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">((</span><span class="n">Number</span><span class="o">)</span><span class="n">value$iv</span><span class="o">).</span><span class="na">intValue</span><span class="o">());</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+<span class="line-number">55</span>
+<span class="line-number">56</span>
+<span class="line-number">57</span>
+<span class="line-number">58</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testBundlePlusLong</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">      <span class="nc">Bundle</span> <span class="n">$this$plus$iv</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Bundle</span><span class="o">();</span>
+</span><span class="line">      <span class="nc">String</span> <span class="n">key$iv</span> <span class="o">=</span> <span class="s">"hello"</span><span class="o">;</span>
+</span><span class="line">      <span class="kt">long</span> <span class="n">value$iv</span> <span class="o">=</span> <span class="mi">1000L</span><span class="o">;</span>
+</span><span class="line">      <span class="kt">int</span> <span class="n">$i$f$plus</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">      <span class="c1">//第一个就是Long类型，无需包含后面的检查代码</span>
+</span><span class="line">      <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="n">value$iv</span><span class="o">);</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testBundlePlusString</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">      <span class="nc">Bundle</span> <span class="n">$this$plus$iv</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Bundle</span><span class="o">();</span>
+</span><span class="line">      <span class="nc">String</span> <span class="n">key$iv</span> <span class="o">=</span> <span class="s">"hello"</span><span class="o">;</span>
+</span><span class="line">      <span class="nc">Object</span> <span class="n">value$iv</span> <span class="o">=</span> <span class="s">"World"</span><span class="o">;</span>
+</span><span class="line">      <span class="kt">int</span> <span class="n">$i$f$plus</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">      <span class="c1">//不是Long类型，需要继续匹配，找到String类型，终止inline后续代码</span>
+</span><span class="line">      <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="nc">Long</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">((</span><span class="nc">Number</span><span class="o">)</span><span class="n">value$iv</span><span class="o">).</span><span class="na">longValue</span><span class="o">());</span>
+</span><span class="line">      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putString</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="n">value$iv</span><span class="o">);</span>
+</span><span class="line">      <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testBundlePlusChar</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">      <span class="nc">Bundle</span> <span class="n">$this$plus$iv</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Bundle</span><span class="o">();</span>
+</span><span class="line">      <span class="nc">String</span> <span class="n">key$iv</span> <span class="o">=</span> <span class="s">"hello"</span><span class="o">;</span>
+</span><span class="line">      <span class="nc">Object</span> <span class="n">value$iv</span> <span class="o">=</span> <span class="sc">'h'</span><span class="o">;</span>
+</span><span class="line">      <span class="kt">int</span> <span class="n">$i$f$plus</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">      <span class="c1">//不是Long类型，需要继续匹配，</span>
+</span><span class="line">      <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="nc">Long</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">((</span><span class="nc">Number</span><span class="o">)</span><span class="n">value$iv</span><span class="o">).</span><span class="na">longValue</span><span class="o">());</span>
+</span><span class="line">      	<span class="c1">//不是String类型，需要继续匹配，</span>
+</span><span class="line">      <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="nc">String</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putString</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">(</span><span class="nc">String</span><span class="o">)</span><span class="n">value$iv</span><span class="o">);</span>
+</span><span class="line">      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">         <span class="c1">//找到String类型，终止inline后续代码</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putChar</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="n">value$iv</span><span class="o">);</span>
+</span><span class="line">      <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">testBundlePlusInt</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">      <span class="nc">Bundle</span> <span class="n">$this$plus$iv</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Bundle</span><span class="o">();</span>
+</span><span class="line">      <span class="nc">String</span> <span class="n">key$iv</span> <span class="o">=</span> <span class="s">"hello"</span><span class="o">;</span>
+</span><span class="line">      <span class="nc">Object</span> <span class="n">value$iv</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class="line">      <span class="kt">int</span> <span class="n">$i$f$plus</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">      <span class="c1">//最差的一种情况，inline全部的方法体实现</span>
+</span><span class="line">      <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="nc">Long</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">((</span><span class="nc">Number</span><span class="o">)</span><span class="n">value$iv</span><span class="o">).</span><span class="na">longValue</span><span class="o">());</span>
+</span><span class="line">      <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="nc">String</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putString</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">(</span><span class="nc">String</span><span class="o">)</span><span class="n">value$iv</span><span class="o">);</span>
+</span><span class="line">      <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">value$iv</span> <span class="k">instanceof</span> <span class="nc">Character</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putChar</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">(</span><span class="nc">Character</span><span class="o">)</span><span class="n">value$iv</span><span class="o">);</span>
+</span><span class="line">      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">         <span class="n">$this$plus$iv</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="n">key$iv</span><span class="o">,</span> <span class="o">((</span><span class="nc">Number</span><span class="o">)</span><span class="n">value$iv</span><span class="o">).</span><span class="na">intValue</span><span class="o">());</span>
+</span><span class="line">      <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>以上就是关于reified的内容，其实在Kotlin中有很多的特性是依赖于编译器的工作来实现的。</p>
 
@@ -777,7 +711,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -791,8 +725,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -804,15 +736,13 @@
 
 
 
-  
 
-
-<time datetime="2019-07-28T18:59:00+08:00" pubdate data-updated="true">Jul 28<span>th</span>, 2019</time>
+<time datetime="2019-07-28T18:59:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/generics/'>Generics</a>, <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>, <a class='category' href='/blog/categories/kotlinc/'>Kotlinc</a>, <a class='category' href='/blog/categories/inline/'>inline</a>, <a class='category' href='/blog/categories/reified/'>reified</a>, <a class='category' href='/blog/categories/fan-xing/'>泛型</a>, <a class='category' href='/blog/categories/bian-yi-qi/'>编译器</a>
+    Kotlin泛型reified编译器inlineJavaGenericsKotlinc
   
 </span>
 
@@ -905,10 +835,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -917,7 +843,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -984,6 +910,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -1017,7 +947,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -1025,7 +955,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

@@ -11,7 +11,13 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="TransactionTooLargeException 问题分析与解决 Jul 12th, 2021 在处理 App 崩溃时，有一种崩溃问题着实难以解决，甚至是令人挠头。比如像是今天将讨论的TransactionTooLargeException。下面就是该异常出现时的 stacktrace &hellip;">
+  <meta name="description" content="TransactionTooLargeException 问题分析与解决 在处理 App 崩溃时，有一种崩溃问题着实难以解决，甚至是令人挠头。比如像是今天将讨论的TransactionTooLargeException。下面就是该异常出现时的 stacktrace 信息。
+1
+2
+3
+4
+5
+6 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,401 +180,361 @@
 
 
 
-  
 
-
-<time datetime="2021-07-12T11:44:00+08:00" pubdate data-updated="true">Jul 12<span>th</span>, 2021</time>
+<time datetime="2021-07-12T11:44:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>在处理 App 崩溃时，有一种崩溃问题着实难以解决，甚至是令人挠头。比如像是今天将讨论的<code>TransactionTooLargeException</code>。下面就是该异常出现时的 stacktrace 信息。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Adding</span> <span class="n">window</span> <span class="n">failed</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="n">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">548</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">406</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">320</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="n">$CompatModeWrapper</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">152</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">Window</span><span class="n">$LocalWindowManager</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">Window</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">557</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleResumeActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2897</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2245</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="n">$600</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">139</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1262</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">99</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">154</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">4977</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invokeNative</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">511</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">551</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">NativeStart</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'><span class="n">Caused</span> <span class="nl">by:</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">TransactionTooLargeException</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">BinderProxy</span><span class="o">.</span><span class="na">transact</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">IWindowSession</span><span class="n">$Stub$Proxy</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">IWindowSession</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">569</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="n">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">538</span><span class="o">)</span>
-</span><span class='line'><span class="o">...</span> <span class="mi">16</span> <span class="n">more</span>
-</span><span class='line'><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">TransactionTooLargeException</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">BinderProxy</span><span class="o">.</span><span class="na">transact</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">IWindowSession</span><span class="n">$Stub$Proxy</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">IWindowSession</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">569</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="n">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">538</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">406</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">320</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="n">$CompatModeWrapper</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">152</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">Window</span><span class="n">$LocalWindowManager</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="n">Window</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">557</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleResumeActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2897</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2245</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="n">$600</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">139</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1262</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">99</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">154</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">4977</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invokeNative</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">511</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">551</span><span class="o">)</span>
-</span><span class='line'><span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">NativeStart</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="entry-content"><p>在处理 App 崩溃时，有一种崩溃问题着实难以解决，甚至是令人挠头。比如像是今天将讨论的<code class="language-plaintext highlighter-rouge">TransactionTooLargeException</code>。下面就是该异常出现时的 stacktrace 信息。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="nc">Adding</span> <span class="n">window</span> <span class="n">failed</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="nc">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">548</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="nc">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">406</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="nc">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">320</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="n">$CompatModeWrapper</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="nc">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">152</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">Window</span><span class="n">$LocalWindowManager</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="nc">Window</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">557</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleResumeActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2897</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2245</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="err">$</span><span class="mi">600</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">139</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1262</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">99</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">154</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">4977</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invokeNative</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="nc">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">511</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">551</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">NativeStart</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"><span class="nc">Caused</span> <span class="nl">by:</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">TransactionTooLargeException</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">BinderProxy</span><span class="o">.</span><span class="na">transact</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">IWindowSession</span><span class="n">$Stub$Proxy</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="nc">IWindowSession</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">569</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="nc">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">538</span><span class="o">)</span>
+</span><span class="line"><span class="o">...</span> <span class="mi">16</span> <span class="n">more</span>
+</span><span class="line"><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">TransactionTooLargeException</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">BinderProxy</span><span class="o">.</span><span class="na">transact</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">IWindowSession</span><span class="n">$Stub$Proxy</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="nc">IWindowSession</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">569</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">ViewRootImpl</span><span class="o">.</span><span class="na">setView</span><span class="o">(</span><span class="nc">ViewRootImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">538</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="nc">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">406</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="nc">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">320</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">WindowManagerImpl</span><span class="n">$CompatModeWrapper</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="nc">WindowManagerImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">152</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">view</span><span class="o">.</span><span class="na">Window</span><span class="n">$LocalWindowManager</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="nc">Window</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">557</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleResumeActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2897</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2245</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">access</span><span class="err">$</span><span class="mi">600</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">139</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1262</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">99</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">154</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">4977</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invokeNative</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="nc">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">511</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">551</span><span class="o">)</span>
+</span><span class="line"><span class="n">at</span> <span class="n">dalvik</span><span class="o">.</span><span class="na">system</span><span class="o">.</span><span class="na">NativeStart</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>在上面的 stacktrace 中 我们 没有找到任何应用相关的代码信息，这让解决这类问题变得更加棘手。</p>
 
 <!--more-->
-
-
-<h2>TransactionTooLargeException 是什么</h2>
-
+<h2 id="transactiontoolargeexception-是什么">TransactionTooLargeException 是什么</h2>
 <ul>
-<li>发生在 远程程序调用（remote procedure call）, 这个过程中，参数和返回值会以 <code>Parcel</code>存储 Binder 事务缓冲(transaction buffer)中，当参数和返回值过大，会发生该异常。</li>
-<li>目前的限制值是1 MB，超过这个值，就会出现该异常。</li>
-<li>避免<code>TransactionTooLargeException</code>的关键是确保 binder 事务尽可能的小。降低 Binder 事务的参数和 返回值的 大小。</li>
-<li>避免传递巨大的字符串数组和 Bitmap。</li>
-<li>举个例子，当实现一个服务时，可以通过限制 调用端频率和控制返回值结果（只返回或者分批次返回必要信息的方式）来进行处理。</li>
+  <li>发生在 远程程序调用（remote procedure call）, 这个过程中，参数和返回值会以 <code class="language-plaintext highlighter-rouge">Parcel</code>存储 Binder 事务缓冲(transaction buffer)中，当参数和返回值过大，会发生该异常。</li>
+  <li>目前的限制值是1 MB，超过这个值，就会出现该异常。</li>
+  <li>避免<code class="language-plaintext highlighter-rouge">TransactionTooLargeException</code>的关键是确保 binder 事务尽可能的小。降低 Binder 事务的参数和 返回值的 大小。</li>
+  <li>避免传递巨大的字符串数组和 Bitmap。</li>
+  <li>举个例子，当实现一个服务时，可以通过限制 调用端频率和控制返回值结果（只返回或者分批次返回必要信息的方式）来进行处理。</li>
 </ul>
 
-
-<h2>收集崩溃现场数据，为复现提供依据</h2>
-
+<h2 id="收集崩溃现场数据为复现提供依据">收集崩溃现场数据，为复现提供依据</h2>
 <p>上面的 stacktrace 对我们解决问题没法提供帮助信息，想要复现就需要进行额外的现场数据收集。</p>
 
 <p>一些有帮助的现场数据有</p>
 
 <ul>
-<li>崩溃前的轨迹（可能部分 崩溃收集SDK 默认支持）</li>
-<li>崩溃前的 最近 Activity 列表</li>
-<li>崩溃前的 最近 Fragment 列表</li>
-<li>崩溃前的 最近点击的视图id</li>
-<li>当前app所在的状态 前台后台</li>
-<li>其他等信息。</li>
+  <li>崩溃前的轨迹（可能部分 崩溃收集SDK 默认支持）</li>
+  <li>崩溃前的 最近 Activity 列表</li>
+  <li>崩溃前的 最近 Fragment 列表</li>
+  <li>崩溃前的 最近点击的视图id</li>
+  <li>当前app所在的状态 前台后台</li>
+  <li>其他等信息。</li>
 </ul>
-
 
 <p>利用分析上面的信息，我们大概率是可以根据上面的信息复现崩溃场景。</p>
 
-<h2>利器 TooLargeTool</h2>
-
+<h2 id="利器-toolargetool">利器 TooLargeTool</h2>
 <ul>
-<li>它是一个调试 <code>TransactionTooLargeException</code> 的工具</li>
-<li>它能够打印出关于 Bundle 的大小信息，便于调试发现问题</li>
-<li>地址是 <a href="https://github.com/guardian/toolargetool">https://github.com/guardian/toolargetool</a></li>
+  <li>它是一个调试 <code class="language-plaintext highlighter-rouge">TransactionTooLargeException</code> 的工具</li>
+  <li>它能够打印出关于 Bundle 的大小信息，便于调试发现问题</li>
+  <li>地址是 <a href="https://github.com/guardian/toolargetool">https://github.com/guardian/toolargetool</a></li>
 </ul>
 
-
-<h3>集成使用</h3>
-
+<h3 id="集成使用">集成使用</h3>
 <ul>
-<li>这个库存放在 <code>mavenCentral()</code> 中</li>
-<li>在需要的模块下，增加<code>implementation 'com.gu.android:toolargetool:0.3.0'</code> 依赖</li>
-<li>在应用初始化的时候，比如<code>Application.onCreate</code>增加<code>TooLargeTool.startLogging(this);</code></li>
-<li>使用<code>adb logcat -s TooLargeTool</code> 过滤除调试信息</li>
+  <li>这个库存放在 <code class="language-plaintext highlighter-rouge">mavenCentral()</code> 中</li>
+  <li>在需要的模块下，增加<code class="language-plaintext highlighter-rouge">implementation 'com.gu.android:toolargetool:0.3.0'</code> 依赖</li>
+  <li>在应用初始化的时候，比如<code class="language-plaintext highlighter-rouge">Application.onCreate</code>增加<code class="language-plaintext highlighter-rouge">TooLargeTool.startLogging(this);</code></li>
+  <li>使用<code class="language-plaintext highlighter-rouge">adb logcat -s TooLargeTool</code> 过滤除调试信息</li>
 </ul>
-
 
 <p>如下为示例的调试信息</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="no">D</span><span class="o">/</span><span class="nl">TooLargeTool:</span> <span class="nc">MainActivity</span><span class="o">.</span><span class="na">onSaveInstanceState</span> <span class="nl">wrote:</span> <span class="nc">Bundle</span><span class="err">@</span><span class="mi">200090398</span> <span class="n">contains</span> <span class="mi">1</span> <span class="n">keys</span> <span class="n">and</span> <span class="n">measures</span> <span class="mf">0.6</span> <span class="no">KB</span> <span class="n">when</span> <span class="n">serialized</span> <span class="n">as</span> <span class="n">a</span> <span class="nc">Parcel</span>
+</span><span class="line">                                                                        <span class="o">*</span> <span class="nl">android:</span><span class="n">viewHierarchyState</span> <span class="o">=</span> <span class="mf">0.6</span> <span class="no">KB</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">D</span><span class="o">/</span><span class="nl">TooLargeTool:</span> <span class="n">MainActivity</span><span class="o">.</span><span class="na">onSaveInstanceState</span> <span class="nl">wrote:</span> <span class="n">Bundle</span><span class="err">@</span><span class="mi">200090398</span> <span class="n">contains</span> <span class="mi">1</span> <span class="n">keys</span> <span class="n">and</span> <span class="n">measures</span> <span class="mf">0.6</span> <span class="n">KB</span> <span class="n">when</span> <span class="n">serialized</span> <span class="n">as</span> <span class="n">a</span> <span class="n">Parcel</span>
-</span><span class='line'>                                                                        <span class="o">*</span> <span class="nl">android:</span><span class="n">viewHierarchyState</span> <span class="o">=</span> <span class="mf">0.6</span> <span class="n">KB</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
-
-<h3>TooLargeTool 原理</h3>
+<h3 id="toolargetool-原理">TooLargeTool 原理</h3>
 
 <ul>
-<li>TooLargeTool 通过注册监听<code>Activity</code>和<code>Fragment</code> 的一些回调。</li>
-<li>利用<code>Activity</code>的<code>onActivitySaveInstanceState</code>和Fragment 的 <code>onFragmentSaveInstanceState</code> 两个方法记录 state 数据</li>
-<li>在<code>Activity</code>的<code>onActivityStopped</code>和<code>onActivityDestroyed</code> 进行分析数据并输出调试信息</li>
-<li>在 <code>Fragment</code> 的 <code>onFragmentStopped</code> 和 <code>onFragmentDestroyed</code> 进行分析数据并输出调试信息</li>
+  <li>TooLargeTool 通过注册监听<code class="language-plaintext highlighter-rouge">Activity</code>和<code class="language-plaintext highlighter-rouge">Fragment</code> 的一些回调。</li>
+  <li>利用<code class="language-plaintext highlighter-rouge">Activity</code>的<code class="language-plaintext highlighter-rouge">onActivitySaveInstanceState</code>和Fragment 的 <code class="language-plaintext highlighter-rouge">onFragmentSaveInstanceState</code> 两个方法记录 state 数据</li>
+  <li>在<code class="language-plaintext highlighter-rouge">Activity</code>的<code class="language-plaintext highlighter-rouge">onActivityStopped</code>和<code class="language-plaintext highlighter-rouge">onActivityDestroyed</code> 进行分析数据并输出调试信息</li>
+  <li>在 <code class="language-plaintext highlighter-rouge">Fragment</code> 的 <code class="language-plaintext highlighter-rouge">onFragmentStopped</code> 和 <code class="language-plaintext highlighter-rouge">onFragmentDestroyed</code> 进行分析数据并输出调试信息</li>
 </ul>
 
+<h4 id="activity-相关的核心代码activitysavedstateloggerkt">Activity 相关的核心代码(<a href="https://github.com/guardian/toolargetool/blob/main/toolargetool/src/main/java/com/gu/toolargetool/ActivitySavedStateLogger.kt">ActivitySavedStateLogger.kt</a>)</h4>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onActivityDestroyed</span><span class="p">(</span><span class="n">activity</span><span class="p">:</span> <span class="nc">Activity</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">logAndRemoveSavedState</span><span class="p">(</span><span class="n">activity</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onActivitySaveInstanceState</span><span class="p">(</span><span class="n">activity</span><span class="p">:</span> <span class="nc">Activity</span><span class="p">,</span> <span class="n">outState</span><span class="p">:</span> <span class="nc">Bundle</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">isLogging</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">savedStates</span><span class="p">[</span><span class="n">activity</span><span class="p">]</span> <span class="p">=</span> <span class="n">outState</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onActivityStopped</span><span class="p">(</span><span class="n">activity</span><span class="p">:</span> <span class="nc">Activity</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">logAndRemoveSavedState</span><span class="p">(</span><span class="n">activity</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">private</span> <span class="k">fun</span> <span class="nf">logAndRemoveSavedState</span><span class="p">(</span><span class="n">activity</span><span class="p">:</span> <span class="nc">Activity</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">savedState</span> <span class="p">=</span> <span class="n">savedStates</span><span class="p">.</span><span class="nf">remove</span><span class="p">(</span><span class="n">activity</span><span class="p">)</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">savedState</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">try</span> <span class="p">{</span>
+</span><span class="line">            <span class="kd">val</span> <span class="py">message</span> <span class="p">=</span> <span class="n">formatter</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="n">activity</span><span class="p">,</span> <span class="n">savedState</span><span class="p">)</span>
+</span><span class="line">            <span class="n">logger</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</span><span class="line">        <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">            <span class="n">logger</span><span class="p">.</span><span class="nf">logException</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h4>Activity 相关的核心代码(<a href="https://github.com/guardian/toolargetool/blob/main/toolargetool/src/main/java/com/gu/toolargetool/ActivitySavedStateLogger.kt">ActivitySavedStateLogger.kt</a>)</h4>
+<h4 id="fragment-相关的核心代码fragmentsavedstateloggerkt">Fragment 相关的核心代码(<a href="https://github.com/guardian/toolargetool/blob/main/toolargetool/src/main/java/com/gu/toolargetool/FragmentSavedStateLogger.kt">FragmentSavedStateLogger.kt</a>)</h4>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onFragmentSaveInstanceState</span><span class="p">(</span><span class="n">fm</span><span class="p">:</span> <span class="nc">FragmentManager</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="nc">Fragment</span><span class="p">,</span> <span class="n">outState</span><span class="p">:</span> <span class="nc">Bundle</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">isLogging</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">savedStates</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="p">=</span> <span class="n">outState</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onFragmentStopped</span><span class="p">(</span><span class="n">fm</span><span class="p">:</span> <span class="nc">FragmentManager</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="nc">Fragment</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">logAndRemoveSavedState</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">fm</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onFragmentDestroyed</span><span class="p">(</span><span class="n">fm</span><span class="p">:</span> <span class="nc">FragmentManager</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="nc">Fragment</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">logAndRemoveSavedState</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">fm</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">private</span> <span class="k">fun</span> <span class="nf">logAndRemoveSavedState</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">Fragment</span><span class="p">,</span> <span class="n">fm</span><span class="p">:</span> <span class="nc">FragmentManager</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">savedState</span> <span class="p">=</span> <span class="n">savedStates</span><span class="p">.</span><span class="nf">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">savedState</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">try</span> <span class="p">{</span>
+</span><span class="line">            <span class="kd">val</span> <span class="py">message</span> <span class="p">=</span> <span class="n">formatter</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="n">fm</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">savedState</span><span class="p">)</span>
+</span><span class="line">            <span class="n">logger</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</span><span class="line">        <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">            <span class="n">logger</span><span class="p">.</span><span class="nf">logException</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">override</span> <span class="k">fun</span> <span class="nf">onActivityDestroyed</span><span class="p">(</span><span class="n">activity</span><span class="p">:</span> <span class="n">Activity</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">logAndRemoveSavedState</span><span class="p">(</span><span class="n">activity</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">override</span> <span class="k">fun</span> <span class="nf">onActivitySaveInstanceState</span><span class="p">(</span><span class="n">activity</span><span class="p">:</span> <span class="n">Activity</span><span class="p">,</span> <span class="n">outState</span><span class="p">:</span> <span class="n">Bundle</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">isLogging</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">savedStates</span><span class="p">[</span><span class="n">activity</span><span class="p">]</span> <span class="p">=</span> <span class="n">outState</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">override</span> <span class="k">fun</span> <span class="nf">onActivityStopped</span><span class="p">(</span><span class="n">activity</span><span class="p">:</span> <span class="n">Activity</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">logAndRemoveSavedState</span><span class="p">(</span><span class="n">activity</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">logAndRemoveSavedState</span><span class="p">(</span><span class="n">activity</span><span class="p">:</span> <span class="n">Activity</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">savedState</span> <span class="p">=</span> <span class="n">savedStates</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="n">activity</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">savedState</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">try</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">val</span> <span class="n">message</span> <span class="p">=</span> <span class="n">formatter</span><span class="p">.</span><span class="n">format</span><span class="p">(</span><span class="n">activity</span><span class="p">,</span> <span class="n">savedState</span><span class="p">)</span>
-</span><span class='line'>            <span class="n">logger</span><span class="p">.</span><span class="n">log</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="n">RuntimeException</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">logger</span><span class="p">.</span><span class="n">logException</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Fragment 相关的核心代码(<a href="https://github.com/guardian/toolargetool/blob/main/toolargetool/src/main/java/com/gu/toolargetool/FragmentSavedStateLogger.kt">FragmentSavedStateLogger.kt</a>)</h4>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">override</span> <span class="k">fun</span> <span class="nf">onFragmentSaveInstanceState</span><span class="p">(</span><span class="n">fm</span><span class="p">:</span> <span class="n">FragmentManager</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">Fragment</span><span class="p">,</span> <span class="n">outState</span><span class="p">:</span> <span class="n">Bundle</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">isLogging</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">savedStates</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="p">=</span> <span class="n">outState</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">override</span> <span class="k">fun</span> <span class="nf">onFragmentStopped</span><span class="p">(</span><span class="n">fm</span><span class="p">:</span> <span class="n">FragmentManager</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">Fragment</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">logAndRemoveSavedState</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">fm</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">override</span> <span class="k">fun</span> <span class="nf">onFragmentDestroyed</span><span class="p">(</span><span class="n">fm</span><span class="p">:</span> <span class="n">FragmentManager</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">Fragment</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">logAndRemoveSavedState</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">fm</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">logAndRemoveSavedState</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Fragment</span><span class="p">,</span> <span class="n">fm</span><span class="p">:</span> <span class="n">FragmentManager</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">savedState</span> <span class="p">=</span> <span class="n">savedStates</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">savedState</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">try</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">val</span> <span class="n">message</span> <span class="p">=</span> <span class="n">formatter</span><span class="p">.</span><span class="n">format</span><span class="p">(</span><span class="n">fm</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">savedState</span><span class="p">)</span>
-</span><span class='line'>            <span class="n">logger</span><span class="p">.</span><span class="n">log</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">e</span><span class="p">:</span> <span class="n">RuntimeException</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">logger</span><span class="p">.</span><span class="n">logException</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>锦上添花</h2>
+<h2 id="锦上添花">锦上添花</h2>
 
 <ul>
-<li>上面的TooLargeTool 仅仅实现了对于savedInstance 的处理</li>
-<li>对于常见的<code>startActivtity</code>没有进行处理，这里需要我们自行实现。</li>
+  <li>上面的TooLargeTool 仅仅实现了对于savedInstance 的处理</li>
+  <li>对于常见的<code class="language-plaintext highlighter-rouge">startActivtity</code>没有进行处理，这里需要我们自行实现。</li>
 </ul>
-
 
 <p>基础的检测 Intent 内容的方法</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">checkBigIntent</span><span class="p">(</span><span class="n">intent</span><span class="p">:</span> <span class="n">Intent</span><span class="p">?,</span> <span class="n">from</span><span class="p">:</span> <span class="n">String</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">bundle</span> <span class="p">=</span> <span class="n">intent</span><span class="p">?.</span><span class="n">extras</span> <span class="p">?:</span> <span class="k">return</span>
-</span><span class='line'>    <span class="n">debugRun</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">smartLog</span> <span class="p">{</span>
-</span><span class='line'>            <span class="s">&quot;checkBigIntent from=$from;bundle=${TooLargeTool.bundleBreakdown(bundle).replace(&quot;</span><span class="err">\</span><span class="n">n</span><span class="s">&quot;, &quot;</span><span class="p">;</span><span class="s">&quot;)}&quot;</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="nf">checkBigIntent</span><span class="p">(</span><span class="n">intent</span><span class="p">:</span> <span class="nc">Intent</span><span class="p">?,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">bundle</span> <span class="p">=</span> <span class="n">intent</span><span class="o">?.</span><span class="n">extras</span> <span class="o">?:</span> <span class="k">return</span>
+</span><span class="line">    <span class="nf">debugRun</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">smartLog</span> <span class="p">{</span>
+</span><span class="line">            <span class="s">"checkBigIntent from=$from;bundle=${TooLargeTool.bundleBreakdown(bundle).replace("</span><span class="err">\</span><span class="n">n</span><span class="s">", "</span><span class="p">;</span><span class="s">")}"</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<p>针对 基础 Activity 进行 <code class="language-plaintext highlighter-rouge">startActivity**</code> 进行 Intent 检测</p>
 
-<p>针对 基础 Activity 进行 <code>startActivity**</code> 进行 Intent 检测</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">open</span> <span class="kd">class</span> <span class="nc">DiagnosableActivity</span> <span class="p">:</span> <span class="nc">AppCompatActivity</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="cm">/**
+</span><span class="line">     * 用来对 startActivity/startActivityForResulst 进行 Intent 数据量进行记录
+</span><span class="line">     */</span>
+</span><span class="line">    <span class="k">override</span> <span class="k">fun</span> <span class="nf">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">:</span> <span class="nc">Intent</span><span class="p">?,</span> <span class="n">requestCode</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Bundle</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nc">TooLargeToolProxy</span><span class="p">.</span><span class="nf">checkBigIntent</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="s">"Activity.startActivity*****"</span><span class="p">)</span>
+</span><span class="line">        <span class="nf">smartLog</span> <span class="p">{</span>
+</span><span class="line">            <span class="s">"startActivityForResult intent=$intent;requestCode=$requestCode;options=$options"</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">        <span class="k">super</span><span class="p">.</span><span class="nf">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="n">requestCode</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">open</span> <span class="k">class</span> <span class="nc">DiagnosableActivity</span> <span class="p">:</span> <span class="n">AppCompatActivity</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="cm">/**</span>
-</span><span class='line'><span class="cm">     * 用来对 startActivity/startActivityForResulst 进行 Intent 数据量进行记录</span>
-</span><span class='line'><span class="cm">     */</span>
-</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">:</span> <span class="n">Intent</span><span class="p">?,</span> <span class="n">requestCode</span><span class="p">:</span> <span class="n">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">Bundle</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">TooLargeToolProxy</span><span class="p">.</span><span class="n">checkBigIntent</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="s">&quot;Activity.startActivity*****&quot;</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">smartLog</span> <span class="p">{</span>
-</span><span class='line'>            <span class="s">&quot;startActivityForResult intent=$intent;requestCode=$requestCode;options=$options&quot;</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="n">requestCode</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>针对 基础 Fragment 进行<code>startActivty</code>和<code>startActivityResult</code> 进行 Intent 检测</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">open</span> <span class="k">class</span> <span class="nc">DiagnosableFragment</span><span class="p">:</span> <span class="n">Fragment</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">startActivity</span><span class="p">(</span><span class="n">intent</span><span class="p">:</span> <span class="n">Intent</span><span class="p">?,</span> <span class="n">options</span><span class="p">:</span> <span class="n">Bundle</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">TooLargeToolProxy</span><span class="p">.</span><span class="n">checkBigIntent</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="s">&quot;Fragment.startActivity&quot;</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">startActivity</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">override</span> <span class="k">fun</span> <span class="nf">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">:</span> <span class="n">Intent</span><span class="p">?,</span> <span class="n">requestCode</span><span class="p">:</span> <span class="n">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">Bundle</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">TooLargeToolProxy</span><span class="p">.</span><span class="n">checkBigIntent</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="s">&quot;Fragment.startActivityForResult&quot;</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="n">requestCode</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>针对 基础 Fragment 进行<code class="language-plaintext highlighter-rouge">startActivty</code>和<code class="language-plaintext highlighter-rouge">startActivityResult</code> 进行 Intent 检测</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">open</span> <span class="kd">class</span> <span class="nc">DiagnosableFragment</span><span class="p">:</span> <span class="nc">Fragment</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">override</span> <span class="k">fun</span> <span class="nf">startActivity</span><span class="p">(</span><span class="n">intent</span><span class="p">:</span> <span class="nc">Intent</span><span class="p">?,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Bundle</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nc">TooLargeToolProxy</span><span class="p">.</span><span class="nf">checkBigIntent</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="s">"Fragment.startActivity"</span><span class="p">)</span>
+</span><span class="line">        <span class="k">super</span><span class="p">.</span><span class="nf">startActivity</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">override</span> <span class="k">fun</span> <span class="nf">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">:</span> <span class="nc">Intent</span><span class="p">?,</span> <span class="n">requestCode</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Bundle</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nc">TooLargeToolProxy</span><span class="p">.</span><span class="nf">checkBigIntent</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="s">"Fragment.startActivityForResult"</span><span class="p">)</span>
+</span><span class="line">        <span class="k">super</span><span class="p">.</span><span class="nf">startActivityForResult</span><span class="p">(</span><span class="n">intent</span><span class="p">,</span> <span class="n">requestCode</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>实验后的日志输出效果如下</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">TooLargeToolProxy<span class="p">;</span>checkBigIntent <span class="nv">from</span><span class="o">=</span>Fragment.startActivity<span class="p">;</span><span class="nv">bundle</span><span class="o">=</span>Bundle220059345 contains 1 keys and measures 1,048.7 KB when serialized as a Parcel<span class="p">;</span><span class="k">*</span> extra <span class="o">=</span> 1,048.6 KB
+</span><span class="line">TooLargeToolProxy<span class="p">;</span>checkBigIntent <span class="nv">from</span><span class="o">=</span>Activity.startActivity<span class="k">*****</span><span class="p">;</span><span class="nv">bundle</span><span class="o">=</span>Bundle63853878 contains 1 keys and measures 1,048.7 KB when serialized as a Parcel<span class="p">;</span><span class="k">*</span> extra <span class="o">=</span> 1,048.6 KB</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>TooLargeToolProxy;checkBigIntent <span class="nv">from</span><span class="o">=</span>Fragment.startActivity;bundle<span class="o">=</span>Bundle220059345 contains 1 keys and measures 1,048.7 KB when serialized as a Parcel;* <span class="nv">extra</span> <span class="o">=</span> 1,048.6 KB
-</span><span class='line'>TooLargeToolProxy;checkBigIntent <span class="nv">from</span><span class="o">=</span>Activity.startActivity*****;bundle<span class="o">=</span>Bundle63853878 contains 1 keys and measures 1,048.7 KB when serialized as a Parcel;* <span class="nv">extra</span> <span class="o">=</span> 1,048.6 KB
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>真实案例</h2>
-
+<h2 id="真实案例">真实案例</h2>
 <ul>
-<li>我们使用了 <code>ViewPager2</code> 实现了一个直播列表，每一个直播占据一个整屏</li>
-<li>当我们滑动很多个直播后，应用发生了<code>TransactionTooLargeException</code></li>
-<li>后利用<code>TooLargeTool</code>分析得到是<code>ViewPager2</code>的保存机制导致的。通过设置<code>ViewPager2</code>的<code>android:saveEnabled="false"</code>解决问题</li>
+  <li>我们使用了 <code class="language-plaintext highlighter-rouge">ViewPager2</code> 实现了一个直播列表，每一个直播占据一个整屏</li>
+  <li>当我们滑动很多个直播后，应用发生了<code class="language-plaintext highlighter-rouge">TransactionTooLargeException</code></li>
+  <li>后利用<code class="language-plaintext highlighter-rouge">TooLargeTool</code>分析得到是<code class="language-plaintext highlighter-rouge">ViewPager2</code>的保存机制导致的。通过设置<code class="language-plaintext highlighter-rouge">ViewPager2</code>的<code class="language-plaintext highlighter-rouge">android:saveEnabled="false"</code>解决问题</li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -590,7 +556,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -604,8 +570,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -617,15 +581,13 @@
 
 
 
-  
 
-
-<time datetime="2021-07-12T11:44:00+08:00" pubdate data-updated="true">Jul 12<span>th</span>, 2021</time>
+<time datetime="2021-07-12T11:44:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/error/'>Error</a>, <a class='category' href='/blog/categories/exception/'>Exception</a>, <a class='category' href='/blog/categories/transactiontoolargeexception/'>TransactionTooLargeException</a>
+    AndroidTransactionTooLargeExceptionExceptionError
   
 </span>
 
@@ -718,10 +680,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -730,7 +688,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -797,6 +755,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -830,7 +792,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -838,7 +800,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

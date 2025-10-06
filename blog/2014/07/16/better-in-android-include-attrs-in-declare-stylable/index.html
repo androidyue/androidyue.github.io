@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="自定义控件进阶:declare-styleable重用attr Jul 16th, 2014 最近接触了Android自定义控件,涉及到自定义xml中得属性(attribute),其实也很简单,但是写着写着,发现代码不完美了,就是在attrs.xml这个文件中,发现属性冗余, &hellip;">
+  <meta name="description" content="自定义控件进阶:declare-styleable重用attr 最近接触了Android自定义控件,涉及到自定义xml中得属性(attribute),其实也很简单,但是写着写着,发现代码不完美了,就是在attrs.xml这个文件中,发现属性冗余, &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,139 +174,116 @@
 
 
 
-  
 
-
-<time datetime="2014-07-16T19:37:00+08:00" pubdate data-updated="true">Jul 16<span>th</span>, 2014</time>
+<time datetime="2014-07-16T19:37:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>最近接触了Android自定义控件,涉及到自定义xml中得属性(attribute),其实也很简单,但是写着写着,发现代码不完美了,就是在attrs.xml这个文件中,发现属性冗余,于是就想有没有类似属性继承或者include之类的方法.本文将就declare-stylable中属性重用记录一下.</p>
-
+<div class="entry-content"><p>最近接触了Android自定义控件,涉及到自定义xml中得属性(attribute),其实也很简单,但是写着写着,发现代码不完美了,就是在attrs.xml这个文件中,发现属性冗余,于是就想有没有类似属性继承或者include之类的方法.本文将就declare-stylable中属性重用记录一下.
 <!--more-->
-
-
-<h2>不完美的代码</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;resources&gt;</span>
-</span><span class='line'>  
-</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExTextView&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span> <span class="na">format=</span><span class="s">&quot;boolean&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>     <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span> <span class="na">format=</span><span class="s">&quot;reference&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExEditText&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span> <span class="na">format=</span><span class="s">&quot;boolean&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>     <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span> <span class="na">format=</span><span class="s">&quot;reference&quot;</span><span class="nt">/&gt;</span>  
-</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
-</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+##不完美的代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="xml"><span class="line"><span class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
+</span><span class="line"><span class="nt">&lt;resources&gt;</span>
+</span><span class="line">	
+</span><span class="line">    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">"ExTextView"</span><span class="nt">&gt;</span>
+</span><span class="line">       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"enableOnPad"</span> <span class="na">format=</span><span class="s">"boolean"</span> <span class="nt">/&gt;</span>
+</span><span class="line">	   <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"supportDeviceType"</span> <span class="na">format=</span><span class="s">"reference"</span><span class="nt">/&gt;</span>
+</span><span class="line">    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class="line">    
+</span><span class="line">    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">"ExEditText"</span><span class="nt">&gt;</span>
+</span><span class="line">       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"enableOnPad"</span> <span class="na">format=</span><span class="s">"boolean"</span> <span class="nt">/&gt;</span>
+</span><span class="line">	   <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"supportDeviceType"</span> <span class="na">format=</span><span class="s">"reference"</span><span class="nt">/&gt;</span>	
+</span><span class="line">    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class="line"><span class="nt">&lt;/resources&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>如上面代码,在ExTextView和ExEditText这个stylable中有着重复的属性申明.虽然上面可以工作,但是总感觉写的不专业,于是寻找优化方法.</p>
 
-<h2>这样可以么</h2>
-
-<p>尝试着为declare-stylable指定一个parent,如下代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;resources&gt;</span>
-</span><span class='line'>  
-</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExTextView&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span> <span class="na">format=</span><span class="s">&quot;boolean&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>     <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span> <span class="na">format=</span><span class="s">&quot;reference&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExEditText&quot;</span> <span class="na">parent=</span><span class="s">&quot;ExTextView&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>          
-</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
-</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##这样可以么
+尝试着为declare-stylable指定一个parent,如下代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="xml"><span class="line"><span class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
+</span><span class="line"><span class="nt">&lt;resources&gt;</span>
+</span><span class="line">	
+</span><span class="line">    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">"ExTextView"</span><span class="nt">&gt;</span>
+</span><span class="line">       <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"enableOnPad"</span> <span class="na">format=</span><span class="s">"boolean"</span> <span class="nt">/&gt;</span>
+</span><span class="line">	   <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"supportDeviceType"</span> <span class="na">format=</span><span class="s">"reference"</span><span class="nt">/&gt;</span>
+</span><span class="line">    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class="line">    
+</span><span class="line">    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">"ExEditText"</span> <span class="na">parent=</span><span class="s">"ExTextView"</span><span class="nt">&gt;</span>
+</span><span class="line">       	
+</span><span class="line">    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class="line"><span class="nt">&lt;/resources&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>attrs.xml没有报告语法错误.但是当我使用<strong>R.styleable.ExEditText_supportDeviceType</strong>时候,R文件却没有生成,重新清理了工程还是不生效,不知道是否为adt插件的问题.其他人也遇到了这样的问题. <strong>这个方法目前是不行的</strong>.</p>
 
-<h2>终极答案</h2>
-
-<p>实际上我们可以在declare-stylable之前,申明要多次使用的属性,在declare-stylable节点内部,只需调用即可.具体代码如下.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;resources&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span> <span class="na">format=</span><span class="s">&quot;boolean&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span> <span class="na">format=</span><span class="s">&quot;reference&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>  
-</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExTextView&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">&quot;ExEditText&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;enableOnPad&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">&quot;supportDeviceType&quot;</span><span class="nt">/&gt;</span> 
-</span><span class='line'>    <span class="nt">&lt;/declare-styleable&gt;</span>
-</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##终极答案
+实际上我们可以在declare-stylable之前,申明要多次使用的属性,在declare-stylable节点内部,只需调用即可.具体代码如下.</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="xml"><span class="line"><span class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
+</span><span class="line"><span class="nt">&lt;resources&gt;</span>
+</span><span class="line">	<span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"enableOnPad"</span> <span class="na">format=</span><span class="s">"boolean"</span> <span class="nt">/&gt;</span>
+</span><span class="line">	<span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"supportDeviceType"</span> <span class="na">format=</span><span class="s">"reference"</span><span class="nt">/&gt;</span>
+</span><span class="line">	
+</span><span class="line">    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">"ExTextView"</span><span class="nt">&gt;</span>
+</span><span class="line">        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"enableOnPad"</span><span class="nt">/&gt;</span>
+</span><span class="line">        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"supportDeviceType"</span><span class="nt">/&gt;</span>
+</span><span class="line">    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class="line">    
+</span><span class="line">    <span class="nt">&lt;declare-styleable</span> <span class="na">name=</span><span class="s">"ExEditText"</span><span class="nt">&gt;</span>
+</span><span class="line">        <span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"enableOnPad"</span><span class="nt">/&gt;</span>
+</span><span class="line">		<span class="nt">&lt;attr</span> <span class="na">name=</span><span class="s">"supportDeviceType"</span><span class="nt">/&gt;</span>	
+</span><span class="line">    <span class="nt">&lt;/declare-styleable&gt;</span>
+</span><span class="line"><span class="nt">&lt;/resources&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>每次引用attr后,建议清理一下工程,确保R文件重新生成.</p>
 
-<h2>延伸阅读</h2>
-
+<p>##延伸阅读</p>
 <ul>
-<li><a href="http://stackoverflow.com/questions/18827875/how-to-declare-several-stylable-attributes-with-the-same-name-for-different-tags">http://stackoverflow.com/questions/18827875/how-to-declare-several-stylable-attributes-with-the-same-name-for-different-tags</a></li>
+  <li>http://stackoverflow.com/questions/18827875/how-to-declare-several-stylable-attributes-with-the-same-name-for-different-tags</li>
 </ul>
 
-
-<h3>其他</h3>
-
+<p>###其他</p>
 <ul>
-<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B009OLU8EE&amp;linkCode=as2&amp;tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -328,7 +305,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -342,8 +319,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -355,15 +330,13 @@
 
 
 
-  
 
-
-<time datetime="2014-07-16T19:37:00+08:00" pubdate data-updated="true">Jul 16<span>th</span>, 2014</time>
+<time datetime="2014-07-16T19:37:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/ui/'>UI</a>
+    AndroidUI
   
 </span>
 
@@ -456,10 +429,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -468,7 +437,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -535,6 +504,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -568,7 +541,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -576,7 +549,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

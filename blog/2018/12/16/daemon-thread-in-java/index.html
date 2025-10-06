@@ -11,9 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="JVM 中的守护线程 Dec 16th, 2018 在之前的《详解JVM如何处理异常》提到了守护线程，当时没有详细解释，所以打算放到今天来解释说明一下JVM守护线程的内容。 特点 通常由JVM启动
-运行在后台处理任务，比如垃圾回收等
-用户启动线程执行结束或者JVM结束时， &hellip;">
+  <meta name="description" content="JVM 中的守护线程 在之前的《详解JVM如何处理异常》提到了守护线程，当时没有详细解释，所以打算放到今天来解释说明一下JVM守护线程的内容。 特点 通常由JVM启动 运行在后台处理任务，比如垃圾回收等 用户启动线程执行结束或者JVM结束时，会等待所有的非守护线程执行结束， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -176,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2018-12-16T19:22:00+08:00" pubdate data-updated="true">Dec 16<span>th</span>, 2018</time>
+<time datetime="2018-12-16T19:22:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -188,260 +184,237 @@
 
 <div class="entry-content"><p>在之前的<a href="https://droidyue.com/blog/2018/10/21/how-jvm-handle-exceptions/">《详解JVM如何处理异常》</a>提到了守护线程，当时没有详细解释，所以打算放到今天来解释说明一下JVM守护线程的内容。</p>
 
-<h2>特点</h2>
-
+<h2 id="特点">特点</h2>
 <ul>
-<li>通常由JVM启动</li>
-<li>运行在后台处理任务，比如垃圾回收等</li>
-<li>用户启动线程执行结束或者JVM结束时，会等待所有的非守护线程执行结束，但是不会因为守护线程的存在而影响关闭。</li>
+  <li>通常由JVM启动</li>
+  <li>运行在后台处理任务，比如垃圾回收等</li>
+  <li>用户启动线程执行结束或者JVM结束时，会等待所有的非守护线程执行结束，但是不会因为守护线程的存在而影响关闭。</li>
 </ul>
-
 
 <!--more-->
 
-
-<h2>判断线程是否为守护线程</h2>
-
+<h2 id="判断线程是否为守护线程">判断线程是否为守护线程</h2>
 <p>判断一个线程是否为守护线程，主要依据如下的内容</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/* Whether or not the thread is a daemon thread. */</span>
-</span><span class='line'><span class="kd">private</span> <span class="kt">boolean</span>     <span class="n">daemon</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/**</span>
-</span><span class='line'><span class="cm">* Tests if this thread is a daemon thread.</span>
-</span><span class='line'><span class="cm">*</span>
-</span><span class='line'><span class="cm">* @return  &lt;code&gt;true&lt;/code&gt; if this thread is a daemon thread;</span>
-</span><span class='line'><span class="cm">*          &lt;code&gt;false&lt;/code&gt; otherwise.</span>
-</span><span class='line'><span class="cm">* @see     #setDaemon(boolean)</span>
-</span><span class='line'><span class="cm">*/</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">isDaemon</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="k">return</span> <span class="n">daemon</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="cm">/* Whether or not the thread is a daemon thread. */</span>
+</span><span class="line"><span class="kd">private</span> <span class="kt">boolean</span>     <span class="n">daemon</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">
+</span><span class="line"><span class="cm">/**
+</span><span class="line">* Tests if this thread is a daemon thread.
+</span><span class="line">*
+</span><span class="line">* @return  &lt;code&gt;true&lt;/code&gt; if this thread is a daemon thread;
+</span><span class="line">*          &lt;code&gt;false&lt;/code&gt; otherwise.
+</span><span class="line">* @see     #setDaemon(boolean)
+</span><span class="line">*/</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">isDaemon</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="k">return</span> <span class="n">daemon</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>下面我们进行一些简单的代码，验证一些关于守护线程的特性和一些猜测。</p>
 
-<h2>辅助方法</h2>
+<h2 id="辅助方法">辅助方法</h2>
 
 <p>打印线程信息的方法，输出线程的组，是否为守护线程以及对应的优先级。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">dumpAllThreadsInfo</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">Set</span><span class="o">&lt;</span><span class="n">Thread</span><span class="o">&gt;</span> <span class="n">threadSet</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">getAllStackTraces</span><span class="o">().</span><span class="na">keySet</span><span class="o">();</span>
-</span><span class='line'>   <span class="k">for</span><span class="o">(</span><span class="n">Thread</span> <span class="nl">thread:</span> <span class="n">threadSet</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;dumpAllThreadsInfo thread.name=&quot;</span> <span class="o">+</span> <span class="n">thread</span><span class="o">.</span><span class="na">getName</span><span class="o">()</span>
-</span><span class='line'>               <span class="o">+</span> <span class="s">&quot;;group=&quot;</span> <span class="o">+</span> <span class="n">thread</span><span class="o">.</span><span class="na">getThreadGroup</span><span class="o">()</span>
-</span><span class='line'>               <span class="o">+</span> <span class="s">&quot;;isDaemon=&quot;</span> <span class="o">+</span> <span class="n">thread</span><span class="o">.</span><span class="na">isDaemon</span><span class="o">()</span>
-</span><span class='line'>               <span class="o">+</span> <span class="s">&quot;;priority=&quot;</span> <span class="o">+</span> <span class="n">thread</span><span class="o">.</span><span class="na">getPriority</span><span class="o">());</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">dumpAllThreadsInfo</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="nc">Set</span><span class="o">&lt;</span><span class="nc">Thread</span><span class="o">&gt;</span> <span class="n">threadSet</span> <span class="o">=</span> <span class="nc">Thread</span><span class="o">.</span><span class="na">getAllStackTraces</span><span class="o">().</span><span class="na">keySet</span><span class="o">();</span>
+</span><span class="line">   <span class="k">for</span><span class="o">(</span><span class="nc">Thread</span> <span class="nl">thread:</span> <span class="n">threadSet</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"dumpAllThreadsInfo thread.name="</span> <span class="o">+</span> <span class="n">thread</span><span class="o">.</span><span class="na">getName</span><span class="o">()</span>
+</span><span class="line">               <span class="o">+</span> <span class="s">";group="</span> <span class="o">+</span> <span class="n">thread</span><span class="o">.</span><span class="na">getThreadGroup</span><span class="o">()</span>
+</span><span class="line">               <span class="o">+</span> <span class="s">";isDaemon="</span> <span class="o">+</span> <span class="n">thread</span><span class="o">.</span><span class="na">isDaemon</span><span class="o">()</span>
+</span><span class="line">               <span class="o">+</span> <span class="s">";priority="</span> <span class="o">+</span> <span class="n">thread</span><span class="o">.</span><span class="na">getPriority</span><span class="o">());</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>线程睡眠的方法</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">makeThreadSleep</span><span class="o">(</span><span class="kt">long</span> <span class="n">durationInMillSeconds</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">   <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">       <span class="nc">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="n">durationInMillSeconds</span><span class="o">);</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">makeThreadSleep</span><span class="o">(</span><span class="kt">long</span> <span class="n">durationInMillSeconds</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="n">durationInMillSeconds</span><span class="o">);</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>验证普通的(非守护线程)线程会影响进程(JVM)退出</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">testNormalThread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="kt">long</span> <span class="n">startTime</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
-</span><span class='line'>   <span class="k">new</span> <span class="nf">Thread</span><span class="o">(</span><span class="s">&quot;NormalThread&quot;</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="nd">@Override</span>
-</span><span class='line'>       <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>           <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
-</span><span class='line'>           <span class="c1">//保持睡眠，确保在执行dumpAllThreadsInfo时，该线程不会因为退出导致dumpAllThreadsInfo无法打印信息。</span>
-</span><span class='line'>           <span class="n">makeThreadSleep</span><span class="o">(</span><span class="mi">10</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">);</span>
-</span><span class='line'>           <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;startNormalThread normalThread.time cost=&quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">));</span>
-</span><span class='line'>       <span class="o">}</span>
-</span><span class='line'>   <span class="o">}.</span><span class="na">start</span><span class="o">();</span>
-</span><span class='line'>   <span class="c1">//主线程暂定3秒，确保子线程都启动完成</span>
-</span><span class='line'>   <span class="n">makeThreadSleep</span><span class="o">(</span><span class="mi">3</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">);</span>
-</span><span class='line'>   <span class="n">dumpAllThreadsInfo</span><span class="o">();</span>
-</span><span class='line'>   <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;MainThread.time cost = &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">));</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<h2 id="验证普通的非守护线程线程会影响进程jvm退出">验证普通的(非守护线程)线程会影响进程(JVM)退出</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">testNormalThread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="kt">long</span> <span class="n">startTime</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+</span><span class="line">   <span class="k">new</span> <span class="nf">Thread</span><span class="o">(</span><span class="s">"NormalThread"</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="nd">@Override</span>
+</span><span class="line">       <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">           <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+</span><span class="line">           <span class="c1">//保持睡眠，确保在执行dumpAllThreadsInfo时，该线程不会因为退出导致dumpAllThreadsInfo无法打印信息。</span>
+</span><span class="line">           <span class="n">makeThreadSleep</span><span class="o">(</span><span class="mi">10</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">);</span>
+</span><span class="line">           <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"startNormalThread normalThread.time cost="</span> <span class="o">+</span> <span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">));</span>
+</span><span class="line">       <span class="o">}</span>
+</span><span class="line">   <span class="o">}.</span><span class="na">start</span><span class="o">();</span>
+</span><span class="line">   <span class="c1">//主线程暂定3秒，确保子线程都启动完成</span>
+</span><span class="line">   <span class="n">makeThreadSleep</span><span class="o">(</span><span class="mi">3</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">);</span>
+</span><span class="line">   <span class="n">dumpAllThreadsInfo</span><span class="o">();</span>
+</span><span class="line">   <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"MainThread.time cost = "</span> <span class="o">+</span> <span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">));</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>获取输出日志</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Signal</span> <span class="n">Dispatcher</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">9</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Attach</span> <span class="n">Listener</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">9</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Monitor</span> <span class="n">Ctrl</span><span class="o">-</span><span class="n">Break</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Reference</span> <span class="n">Handler</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">10</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">main</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">false</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">NormalThread</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">false</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Finalizer</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">8</span>
-</span><span class='line'><span class="n">MainThread</span><span class="o">.</span><span class="na">time</span> <span class="n">cost</span> <span class="o">=</span> <span class="mi">3009</span>
-</span><span class='line'><span class="n">startNormalThread</span> <span class="n">normalThread</span><span class="o">.</span><span class="na">time</span> <span class="n">cost</span><span class="o">=</span><span class="mi">10003</span>
-</span><span class='line'><span class="n">Process</span> <span class="n">finished</span> <span class="n">with</span> <span class="n">exit</span> <span class="n">code</span> <span class="mi">0</span>   <span class="err">结束进程</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Signal</span> <span class="nc">Dispatcher</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">9</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Attach</span> <span class="nc">Listener</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">9</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Monitor</span> <span class="nc">Ctrl</span><span class="o">-</span><span class="nc">Break</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Reference</span> <span class="nc">Handler</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">10</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">main</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">false</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">NormalThread</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">false</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Finalizer</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">8</span>
+</span><span class="line"><span class="nc">MainThread</span><span class="o">.</span><span class="na">time</span> <span class="n">cost</span> <span class="o">=</span> <span class="mi">3009</span>  
+</span><span class="line"><span class="n">startNormalThread</span> <span class="n">normalThread</span><span class="o">.</span><span class="na">time</span> <span class="n">cost</span><span class="o">=</span><span class="mi">10003</span> 
+</span><span class="line"><span class="nc">Process</span> <span class="n">finished</span> <span class="n">with</span> <span class="n">exit</span> <span class="n">code</span> <span class="mi">0</span>   <span class="n">结束进程</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>我们根据上面的日志，我们可以发现</p>
 
 <ul>
-<li> <code>startNormalThread normalThread.time cost=10003</code>代表着子线程执行结束，先于后面的进程结束执行。</li>
-<li> <code>Process finished with exit code 0</code>  代表 结束进程</li>
+  <li><code class="language-plaintext highlighter-rouge">startNormalThread normalThread.time cost=10003</code>代表着子线程执行结束，先于后面的进程结束执行。</li>
+  <li><code class="language-plaintext highlighter-rouge">Process finished with exit code 0</code>  代表 结束进程</li>
 </ul>
-
 
 <p>以上日志可以验证进程是在我们启动的子线程结束之后才退出的。</p>
 
-<h2>验证JVM不等待守护线程就会结束</h2>
+<h2 id="验证jvm不等待守护线程就会结束">验证JVM不等待守护线程就会结束</h2>
 
 <p>其实上面的例子也可以验证JVM不等待JVM启动的守护线程(Reference Handler,Signal Dispatcher等)执行结束就退出。</p>
 
 <p>这里我们再次用一段代码验证一下JVM不等待用户启动的守护线程结束就退出的事实。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">testDaemonThread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="kt">long</span> <span class="n">startTime</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
-</span><span class='line'>   <span class="n">Thread</span> <span class="n">daemonThreadSetByUser</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Thread</span><span class="o">(</span><span class="s">&quot;daemonThreadSetByUser&quot;</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="nd">@Override</span>
-</span><span class='line'>       <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>           <span class="n">makeThreadSleep</span><span class="o">(</span><span class="mi">10</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">);</span>
-</span><span class='line'>           <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
-</span><span class='line'>           <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;daemonThreadSetByUser.time cost=&quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">));</span>
-</span><span class='line'>       <span class="o">}</span>
-</span><span class='line'>   <span class="o">};</span>
-</span><span class='line'>   <span class="n">daemonThreadSetByUser</span><span class="o">.</span><span class="na">setDaemon</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>   <span class="n">daemonThreadSetByUser</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
-</span><span class='line'>   <span class="c1">//主线程暂定3秒，确保子线程都启动完成</span>
-</span><span class='line'>   <span class="n">makeThreadSleep</span><span class="o">(</span><span class="mi">3</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">);</span>
-</span><span class='line'>   <span class="n">dumpAllThreadsInfo</span><span class="o">();</span>
-</span><span class='line'>   <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;MainThread.time cost = &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">));</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">testDaemonThread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="kt">long</span> <span class="n">startTime</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+</span><span class="line">   <span class="nc">Thread</span> <span class="n">daemonThreadSetByUser</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Thread</span><span class="o">(</span><span class="s">"daemonThreadSetByUser"</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="nd">@Override</span>
+</span><span class="line">       <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">           <span class="n">makeThreadSleep</span><span class="o">(</span><span class="mi">10</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">);</span>
+</span><span class="line">           <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+</span><span class="line">           <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"daemonThreadSetByUser.time cost="</span> <span class="o">+</span> <span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">));</span>
+</span><span class="line">       <span class="o">}</span>
+</span><span class="line">   <span class="o">};</span>
+</span><span class="line">   <span class="n">daemonThreadSetByUser</span><span class="o">.</span><span class="na">setDaemon</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line">   <span class="n">daemonThreadSetByUser</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+</span><span class="line">   <span class="c1">//主线程暂定3秒，确保子线程都启动完成</span>
+</span><span class="line">   <span class="n">makeThreadSleep</span><span class="o">(</span><span class="mi">3</span> <span class="o">*</span> <span class="mi">1000</span><span class="o">);</span>
+</span><span class="line">   <span class="n">dumpAllThreadsInfo</span><span class="o">();</span>
+</span><span class="line">   <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"MainThread.time cost = "</span> <span class="o">+</span> <span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">));</span>
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>上面的结果得到的输出日志为</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Signal</span> <span class="n">Dispatcher</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">9</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Attach</span> <span class="n">Listener</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">9</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Monitor</span> <span class="n">Ctrl</span><span class="o">-</span><span class="n">Break</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Reference</span> <span class="n">Handler</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">10</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">main</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">false</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">daemonThreadSetByUser</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
-</span><span class='line'><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">Finalizer</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">8</span>
-</span><span class='line'><span class="n">MainThread</span><span class="o">.</span><span class="na">time</span> <span class="n">cost</span> <span class="o">=</span> <span class="mi">3006</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">Process</span> <span class="n">finished</span> <span class="n">with</span> <span class="n">exit</span> <span class="n">code</span> <span class="mi">0</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Signal</span> <span class="nc">Dispatcher</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">9</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Attach</span> <span class="nc">Listener</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">9</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Monitor</span> <span class="nc">Ctrl</span><span class="o">-</span><span class="nc">Break</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Reference</span> <span class="nc">Handler</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">10</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">main</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">false</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="n">daemonThreadSetByUser</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">main</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span>
+</span><span class="line"><span class="n">dumpAllThreadsInfo</span> <span class="n">thread</span><span class="o">.</span><span class="na">name</span><span class="o">=</span><span class="nc">Finalizer</span><span class="o">;</span><span class="n">group</span><span class="o">=</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">ThreadGroup</span><span class="o">[</span><span class="n">name</span><span class="o">=</span><span class="n">system</span><span class="o">,</span><span class="n">maxpri</span><span class="o">=</span><span class="mi">10</span><span class="o">];</span><span class="n">isDaemon</span><span class="o">=</span><span class="kc">true</span><span class="o">;</span><span class="n">priority</span><span class="o">=</span><span class="mi">8</span>
+</span><span class="line"><span class="nc">MainThread</span><span class="o">.</span><span class="na">time</span> <span class="n">cost</span> <span class="o">=</span> <span class="mi">3006</span>
+</span><span class="line">
+</span><span class="line"><span class="nc">Process</span> <span class="n">finished</span> <span class="n">with</span> <span class="n">exit</span> <span class="n">code</span> <span class="mi">0</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>我们可以看到，上面的日志没有类似daemonThreadSetByUser.time cost=的信息。可以确定JVM没有等待守护线程结束就退出了。</p>
 
 <p>注意：</p>
 
 <ul>
-<li>新的线程是否初始为守护线程，取决于启动该线程的线程是否为守护线程。</li>
-<li>守护线程默认启动的线程为守护线程，非守护线程启动的线程默认为非守护线程。</li>
-<li>主线程（非守护线程）启用一个守护线程，需要调用Thread.setDaemon来设置启动线程为守护线程。</li>
+  <li>新的线程是否初始为守护线程，取决于启动该线程的线程是否为守护线程。</li>
+  <li>守护线程默认启动的线程为守护线程，非守护线程启动的线程默认为非守护线程。</li>
+  <li>主线程（非守护线程）启用一个守护线程，需要调用Thread.setDaemon来设置启动线程为守护线程。</li>
 </ul>
 
-
-<h2>关于Priority与守护线程的关系</h2>
-
+<h2 id="关于priority与守护线程的关系">关于Priority与守护线程的关系</h2>
 <p>有一种传言为守护线程的优先级要低，然而事实是</p>
 
 <ul>
-<li>优先级与是否为守护线程没有必然的联系</li>
-<li>新的线程的优先级与创建该线程的线程优先级一致。</li>
-<li>但是建议将守护线程的优先级降低一些。</li>
+  <li>优先级与是否为守护线程没有必然的联系</li>
+  <li>新的线程的优先级与创建该线程的线程优先级一致。</li>
+  <li>但是建议将守护线程的优先级降低一些。</li>
 </ul>
-
 
 <p>感兴趣的可以自己验证一下（其实上面的代码已经有验证了）</p>
 
@@ -465,7 +438,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -479,8 +452,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -492,15 +463,13 @@
 
 
 
-  
 
-
-<time datetime="2018-12-16T19:22:00+08:00" pubdate data-updated="true">Dec 16<span>th</span>, 2018</time>
+<time datetime="2018-12-16T19:22:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/jvm/'>JVM</a>, <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/thread/'>Thread</a>, <a class='category' href='/blog/categories/xian-cheng/'>线程</a>
+    JavaJVM线程Thread
   
 </span>
 
@@ -593,10 +562,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -605,7 +570,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -672,6 +637,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -705,7 +674,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -713,7 +682,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

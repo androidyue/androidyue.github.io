@@ -11,7 +11,8 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="详解JVM如何处理异常 Oct 21st, 2018 无论你是使用何种编程语言，在日常的开发过程中，都会不可避免的要处理异常。今天本文将尝试讲解一些JVM如何处理异常问题，希望能够讲清楚这个内部的机制，如果对大家有所启发和帮助，则甚好。 当异常不仅仅是异常 我们在标题中提到了异常， &hellip;">
+  <meta name="description" content="详解JVM如何处理异常 无论你是使用何种编程语言，在日常的开发过程中，都会不可避免的要处理异常。今天本文将尝试讲解一些JVM如何处理异常问题，希望能够讲清楚这个内部的机制，如果对大家有所启发和帮助，则甚好。 当异常不仅仅是异常
+我们在标题中提到了异常， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +175,8 @@
 
 
 
-  
 
-
-<time datetime="2018-10-21T20:14:00+08:00" pubdate data-updated="true">Oct 21<span>st</span>, 2018</time>
+<time datetime="2018-10-21T20:14:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -186,53 +185,43 @@
 
 <div class="entry-content"><p>无论你是使用何种编程语言，在日常的开发过程中，都会不可避免的要处理异常。今天本文将尝试讲解一些JVM如何处理异常问题，希望能够讲清楚这个内部的机制，如果对大家有所启发和帮助，则甚好。</p>
 
-<h2>当异常不仅仅是异常</h2>
-
+<h2 id="当异常不仅仅是异常">当异常不仅仅是异常</h2>
 <p>我们在标题中提到了异常，然而这里指的异常并不是单纯的Exception，而是更为宽泛的Throwable。只是我们工作中习以为常的将它们（错误地）这样称谓。</p>
 
 <p>关于Exception和Throwable的关系简单描述一下</p>
 
 <ul>
-<li>Exception属于Throwable的子类，Throwable的另一个重要的子类是Error</li>
-<li>throw可以抛出的都是Throwable和其子类，catch可捕获的也是Throwable和其子类。</li>
+  <li>Exception属于Throwable的子类，Throwable的另一个重要的子类是Error</li>
+  <li>throw可以抛出的都是Throwable和其子类，catch可捕获的也是Throwable和其子类。</li>
 </ul>
 
-
 <!--more-->
-
-
 <p>除此之外，但是Exception也有一些需要我们再次强调的</p>
 
 <ul>
-<li>Exception分为两种类型，一种为Checked Exception，另一种为unchecked Exception</li>
-<li>Checked Exception，比如最常见的IOException，这种异常需要调用处显式处理，要么使用try catch捕获，要么再次抛出去。</li>
-<li>Unchecked Exception指的是所有继承自Error（包含自身）或者是RuntimeException（包含自身）的类。这些异常不强制在调用处进行处理。但是也可以try catch处理。</li>
+  <li>Exception分为两种类型，一种为Checked Exception，另一种为unchecked Exception</li>
+  <li>Checked Exception，比如最常见的IOException，这种异常需要调用处显式处理，要么使用try catch捕获，要么再次抛出去。</li>
+  <li>Unchecked Exception指的是所有继承自Error（包含自身）或者是RuntimeException（包含自身）的类。这些异常不强制在调用处进行处理。但是也可以try catch处理。</li>
 </ul>
-
 
 <p>注：本文暂不做Checked Exception设计的好坏的分析。</p>
 
-<h2>Exception Table 异常表</h2>
-
+<h2 id="exception-table-异常表">Exception Table 异常表</h2>
 <p>提到JVM处理异常的机制，就需要提及Exception Table，以下称为异常表。我们暂且不急于介绍异常表，先看一个简单的Java处理异常的小例子。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatch</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">testNPE</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatch</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">testNPE</span><span class="o">();</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>上面的代码是一个很简单的例子，用来捕获处理一个潜在的空指针异常。</p>
 
 <p>当然如果只是看简简单单的代码，我们很难看出什么高深之处，更没有了今天文章要谈论的内容。</p>
@@ -240,47 +229,42 @@
 <p>所以这里我们需要借助一把神兵利器，它就是javap,一个用来拆解class文件的工具，和javac一样由JDK提供。</p>
 
 <p>然后我们使用javap来分析这段代码（需要先使用javac编译）</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//javap -c Main</span>
-</span><span class='line'> <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatch</span><span class="o">();</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">11</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">astore_0</span>
-</span><span class='line'>       <span class="mi">7</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
-</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'>    <span class="n">Exception</span> <span class="nl">table:</span>
-</span><span class='line'>       <span class="n">from</span>    <span class="n">to</span>  <span class="n">target</span> <span class="n">type</span>
-</span><span class='line'>           <span class="mi">0</span>     <span class="mi">3</span>     <span class="mi">6</span>   <span class="n">Class</span> <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Exception</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="c1">//javap -c Main</span>
+</span><span class="line"> <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatch</span><span class="o">();</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
+</span><span class="line">       <span class="mi">3</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">11</span>
+</span><span class="line">       <span class="mi">6</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class="line">       <span class="mi">7</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
+</span><span class="line">      <span class="mi">11</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line">    <span class="nc">Exception</span> <span class="nl">table:</span>
+</span><span class="line">       <span class="n">from</span>    <span class="n">to</span>  <span class="n">target</span> <span class="n">type</span>
+</span><span class="line">           <span class="mi">0</span>     <span class="mi">3</span>     <span class="mi">6</span>   <span class="nc">Class</span> <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">Exception</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>看到上面的代码，应该会有会心一笑，因为终于看到了Exception table，也就是我们要研究的异常表。</p>
 
 <p>异常表中包含了一个或多个异常处理者(Exception Handler)的信息，这些信息包含如下</p>
 
 <ul>
-<li>from 可能发生异常的起始点</li>
-<li>to 可能发生异常的结束点</li>
-<li>target 上述from和to之前发生异常后的异常处理者的位置</li>
-<li>type 异常处理者处理的异常的类信息</li>
+  <li>from 可能发生异常的起始点</li>
+  <li>to 可能发生异常的结束点</li>
+  <li>target 上述from和to之前发生异常后的异常处理者的位置</li>
+  <li>type 异常处理者处理的异常的类信息</li>
 </ul>
 
-
-<h2>那么异常表用在什么时候呢</h2>
+<h2 id="那么异常表用在什么时候呢">那么异常表用在什么时候呢</h2>
 
 <p>答案是异常发生的时候，当一个异常发生时</p>
 
@@ -298,280 +282,255 @@
 
 <p>以上就是JVM处理异常的一些机制。</p>
 
-<h2>try catch -finally</h2>
-
+<h2 id="try-catch--finally">try catch -finally</h2>
 <p>除了简单的try-catch外，我们还常常和finally做结合使用。比如这样的代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">testNPE</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Finally&quot;</span><span class="o">);</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">testNPE</span><span class="o">();</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class="line">       <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Finally"</span><span class="o">);</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>同样我们使用javap分析一下代码</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">();</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
-</span><span class='line'>       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
-</span><span class='line'>      <span class="mi">14</span><span class="o">:</span> <span class="n">astore_0</span>
-</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
-</span><span class='line'>      <span class="mi">19</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">22</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
-</span><span class='line'>      <span class="mi">24</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">27</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
-</span><span class='line'>      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_1</span>
-</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
-</span><span class='line'>      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_1</span>
-</span><span class='line'>      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>
-</span><span class='line'>      <span class="mi">41</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'>    <span class="n">Exception</span> <span class="nl">table:</span>
-</span><span class='line'>       <span class="n">from</span>    <span class="n">to</span>  <span class="n">target</span> <span class="n">type</span>
-</span><span class='line'>           <span class="mi">0</span>     <span class="mi">3</span>    <span class="mi">14</span>   <span class="n">Class</span> <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Exception</span>
-</span><span class='line'>           <span class="mi">0</span>     <span class="mi">3</span>    <span class="mi">30</span>   <span class="n">any</span>
-</span><span class='line'>          <span class="mi">14</span>    <span class="mi">19</span>    <span class="mi">30</span>   <span class="n">any</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">();</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
+</span><span class="line">       <span class="mi">3</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">       <span class="mi">6</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class="line">       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">11</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
+</span><span class="line">      <span class="mi">14</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class="line">      <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">      <span class="mi">16</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
+</span><span class="line">      <span class="mi">19</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">22</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class="line">      <span class="mi">24</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">27</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
+</span><span class="line">      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_1</span>
+</span><span class="line">      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class="line">      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class="line">      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>
+</span><span class="line">      <span class="mi">41</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line">    <span class="nc">Exception</span> <span class="nl">table:</span>
+</span><span class="line">       <span class="n">from</span>    <span class="n">to</span>  <span class="n">target</span> <span class="n">type</span>
+</span><span class="line">           <span class="mi">0</span>     <span class="mi">3</span>    <span class="mi">14</span>   <span class="nc">Class</span> <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">Exception</span>
+</span><span class="line">           <span class="mi">0</span>     <span class="mi">3</span>    <span class="mi">30</span>   <span class="n">any</span>
+</span><span class="line">          <span class="mi">14</span>    <span class="mi">19</span>    <span class="mi">30</span>   <span class="n">any</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>和之前有所不同，这次</p>
 
 <ul>
-<li>异常表中，有三条数据，而我们仅仅捕获了一个Exception</li>
-<li>异常表的后两个item的type为any</li>
+  <li>异常表中，有三条数据，而我们仅仅捕获了一个Exception</li>
+  <li>异常表的后两个item的type为any</li>
 </ul>
-
 
 <p>上面的三条异常表item的意思为</p>
 
 <ul>
-<li>如果0到3之间，发生了Exception类型的异常，调用14位置的异常处理者。</li>
-<li>如果0到3之间，无论发生什么异常，都调用30位置的处理者</li>
-<li>如果14到19之间（即catch部分），不论发生什么异常，都调用30位置的处理者。</li>
+  <li>如果0到3之间，发生了Exception类型的异常，调用14位置的异常处理者。</li>
+  <li>如果0到3之间，无论发生什么异常，都调用30位置的处理者</li>
+  <li>如果14到19之间（即catch部分），不论发生什么异常，都调用30位置的处理者。</li>
 </ul>
-
 
 <p>再次分析上面的Java代码，finally里面的部分已经被提取到了try部分和catch部分。我们再次调一下代码来看一下</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">();</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>      <span class="c1">//try 部分提取finally代码，如果没有异常发生，则执行输出finally操作，直至goto到41位置，执行返回操作。  </span>
-</span><span class='line'>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
-</span><span class='line'>       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">//catch部分提取finally代码，如果没有异常发生，则执行输出finally操作，直至执行got到41位置，执行返回操作。</span>
-</span><span class='line'>      <span class="mi">14</span><span class="o">:</span> <span class="n">astore_0</span>
-</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
-</span><span class='line'>      <span class="mi">19</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">22</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
-</span><span class='line'>      <span class="mi">24</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">27</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
-</span><span class='line'>      <span class="c1">//finally部分的代码如果被调用，有可能是try部分，也有可能是catch部分发生异常。</span>
-</span><span class='line'>      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_1</span>
-</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
-</span><span class='line'>      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_1</span>
-</span><span class='line'>      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>     <span class="c1">//如果异常没有被catch捕获，而是到了这里，执行完finally的语句后，仍然要把这个异常抛出去，传递给调用处。</span>
-</span><span class='line'>      <span class="mi">41</span><span class="o">:</span> <span class="k">return</span>
-</span></code></pre></td></tr></table></div></figure>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">simpleTryCatchFinally</span><span class="o">();</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">      <span class="c1">//try 部分提取finally代码，如果没有异常发生，则执行输出finally操作，直至goto到41位置，执行返回操作。  </span>
+</span><span class="line">
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
+</span><span class="line">       <span class="mi">3</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">       <span class="mi">6</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class="line">       <span class="mi">8</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">11</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
+</span><span class="line">
+</span><span class="line">      <span class="c1">//catch部分提取finally代码，如果没有异常发生，则执行输出finally操作，直至执行got到41位置，执行返回操作。</span>
+</span><span class="line">      <span class="mi">14</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class="line">      <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">      <span class="mi">16</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/Exception.printStackTrace:()V</span>
+</span><span class="line">      <span class="mi">19</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">22</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class="line">      <span class="mi">24</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">27</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">41</span>
+</span><span class="line">      <span class="c1">//finally部分的代码如果被调用，有可能是try部分，也有可能是catch部分发生异常。</span>
+</span><span class="line">      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_1</span>
+</span><span class="line">      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// String Finally</span>
+</span><span class="line">      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class="line">      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>     <span class="c1">//如果异常没有被catch捕获，而是到了这里，执行完finally的语句后，仍然要把这个异常抛出去，传递给调用处。</span>
+</span><span class="line">      <span class="mi">41</span><span class="o">:</span> <span class="k">return</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-
-<h2>Catch先后顺序的问题</h2>
+<h2 id="catch先后顺序的问题">Catch先后顺序的问题</h2>
 
 <p>我们在代码中的catch的顺序决定了异常处理者在异常表的位置，所以，越是具体的异常要先处理，否则就会出现下面的问题</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">misuseCatchException</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">testNPE</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">t</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="c1">//error occurs during compilings with tips Exception Java.lang.Exception has already benn caught.</span>
-</span><span class='line'>       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">misuseCatchException</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">testNPE</span><span class="o">();</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">t</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="c1">//error occurs during compilings with tips Exception Java.lang.Exception has already benn caught.</span>
+</span><span class="line">       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>这段代码会导致编译失败，因为先捕获Throwable后捕获Exception，会导致后面的catch永远无法被执行。</p>
 
-<h2>Return 和finally的问题</h2>
-
+<h2 id="return-和finally的问题">Return 和finally的问题</h2>
 <p>这算是我们扩展的一个相对比较极端的问题，就是类似这样的代码，既有return，又有finally，那么finally导致会不会执行</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">String</span> <span class="nf">tryCatchReturn</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">testNPE</span><span class="o">();</span>
-</span><span class='line'>       <span class="k">return</span>  <span class="s">&quot;OK&quot;</span><span class="o">;</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="k">return</span> <span class="s">&quot;ERROR&quot;</span><span class="o">;</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;tryCatchReturn&quot;</span><span class="o">);</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="nc">String</span> <span class="nf">tryCatchReturn</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">testNPE</span><span class="o">();</span>
+</span><span class="line">       <span class="k">return</span>  <span class="s">"OK"</span><span class="o">;</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="k">return</span> <span class="s">"ERROR"</span><span class="o">;</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class="line">       <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"tryCatchReturn"</span><span class="o">);</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>答案是finally会执行，那么还是使用上面的方法，我们来看一下为什么finally会执行。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="nf">tryCatchReturn</span><span class="o">();</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// String OK</span>
-</span><span class='line'>       <span class="mi">5</span><span class="o">:</span> <span class="n">astore_0</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>       <span class="mi">9</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
-</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">14</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="n">areturn</span>       <span class="err">返回</span><span class="n">OK</span><span class="err">字符串，</span><span class="n">areturn</span><span class="err">意思为</span><span class="k">return</span> <span class="n">a</span> <span class="n">reference</span> <span class="n">from</span> <span class="n">a</span> <span class="n">method</span>
-</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">astore_0</span>
-</span><span class='line'>      <span class="mi">17</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">10</span>                 <span class="c1">// String ERROR</span>
-</span><span class='line'>      <span class="mi">19</span><span class="o">:</span> <span class="n">astore_1</span>
-</span><span class='line'>      <span class="mi">20</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">23</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
-</span><span class='line'>      <span class="mi">25</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">28</span><span class="o">:</span> <span class="n">aload_1</span>
-</span><span class='line'>      <span class="mi">29</span><span class="o">:</span> <span class="n">areturn</span>  <span class="c1">//返回ERROR字符串</span>
-</span><span class='line'>      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_2</span>
-</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
-</span><span class='line'>      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
-</span><span class='line'>      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_2</span>
-</span><span class='line'>      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>  <span class="err">如果</span><span class="k">catch</span><span class="err">有未处理的异常，抛出去。</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span> <span class="nf">tryCatchReturn</span><span class="o">();</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Method testNPE:()V</span>
+</span><span class="line">       <span class="mi">3</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// String OK</span>
+</span><span class="line">       <span class="mi">5</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class="line">       <span class="mi">6</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">       <span class="mi">9</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
+</span><span class="line">      <span class="mi">11</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">14</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">      <span class="mi">15</span><span class="o">:</span> <span class="n">areturn</span>       <span class="n">返回OK字符串</span><span class="err">，</span><span class="n">areturn意思为return</span> <span class="n">a</span> <span class="n">reference</span> <span class="n">from</span> <span class="n">a</span> <span class="n">method</span>
+</span><span class="line">      <span class="mi">16</span><span class="o">:</span> <span class="n">astore_0</span>
+</span><span class="line">      <span class="mi">17</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">10</span>                 <span class="c1">// String ERROR</span>
+</span><span class="line">      <span class="mi">19</span><span class="o">:</span> <span class="n">astore_1</span>
+</span><span class="line">      <span class="mi">20</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">23</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
+</span><span class="line">      <span class="mi">25</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">28</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class="line">      <span class="mi">29</span><span class="o">:</span> <span class="n">areturn</span>  <span class="c1">//返回ERROR字符串</span>
+</span><span class="line">      <span class="mi">30</span><span class="o">:</span> <span class="n">astore_2</span>
+</span><span class="line">      <span class="mi">31</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">34</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// String tryCatchReturn</span>
+</span><span class="line">      <span class="mi">36</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/String;)V</span>
+</span><span class="line">      <span class="mi">39</span><span class="o">:</span> <span class="n">aload_2</span>
+</span><span class="line">      <span class="mi">40</span><span class="o">:</span> <span class="n">athrow</span>  <span class="n">如果catch有未处理的异常</span><span class="err">，</span><span class="n">抛出去</span><span class="err">。</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>行文仓促，加之本人水平有限，有错误的地方，请指出。</p>
 
 <p>参考文章：</p>
 
 <ul>
-<li><a href="http://blog.jamesdbloom.com/JVMInternals.html#exception_table">http://blog.jamesdbloom.com/JVMInternals.html#exception_table</a></li>
-<li><a href="https://blog.takipi.com/the-surprising-truth-of-java-exceptions-what-is-really-going-on-under-the-hood/">https://blog.takipi.com/the-surprising-truth-of-java-exceptions-what-is-really-going-on-under-the-hood/</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings">https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings</a></li>
-<li><a href="https://dzone.com/articles/the-truth-of-java-exceptions-whats-really-going-on">https://dzone.com/articles/the-truth-of-java-exceptions-whats-really-going-on</a></li>
+  <li><a href="http://blog.jamesdbloom.com/JVMInternals.html#exception_table">http://blog.jamesdbloom.com/JVMInternals.html#exception_table</a></li>
+  <li><a href="https://blog.takipi.com/the-surprising-truth-of-java-exceptions-what-is-really-going-on-under-the-hood/">https://blog.takipi.com/the-surprising-truth-of-java-exceptions-what-is-really-going-on-under-the-hood/</a></li>
+  <li><a href="https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings">https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings</a></li>
+  <li><a href="https://dzone.com/articles/the-truth-of-java-exceptions-whats-really-going-on">https://dzone.com/articles/the-truth-of-java-exceptions-whats-really-going-on</a></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -593,7 +552,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -607,8 +566,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -620,10 +577,8 @@
 
 
 
-  
 
-
-<time datetime="2018-10-21T20:14:00+08:00" pubdate data-updated="true">Oct 21<span>st</span>, 2018</time>
+<time datetime="2018-10-21T20:14:00+08:00" pubdate data-updated="true"></time>
       
 
 
@@ -715,10 +670,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -727,7 +678,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -794,6 +745,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -827,7 +782,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -835,7 +790,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

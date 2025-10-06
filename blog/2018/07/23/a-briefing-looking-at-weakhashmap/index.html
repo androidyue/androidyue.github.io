@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="浅析WeakHashMap Jul 23rd, 2018 在Java或者是Android编程中，我们一般都会使用到Map，比如HashMap这样的具体实现。更高级一点，我们可能会使用WeakHashMap。 WeakHashMap其实和HashMap大多数行为是一样的， &hellip;">
+  <meta name="description" content="浅析WeakHashMap 在Java或者是Android编程中，我们一般都会使用到Map，比如HashMap这样的具体实现。更高级一点，我们可能会使用WeakHashMap。 WeakHashMap其实和HashMap大多数行为是一样的，只是WeakHashMap不会阻止GC回收key对象（ &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2018-07-23T17:24:00+08:00" pubdate data-updated="true">Jul 23<span>rd</span>, 2018</time>
+<time datetime="2018-07-23T17:24:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -186,207 +184,188 @@
 
 <div class="entry-content"><p>在Java或者是Android编程中，我们一般都会使用到Map，比如HashMap这样的具体实现。更高级一点，我们可能会使用WeakHashMap。</p>
 
-<p>WeakHashMap其实和HashMap大多数行为是一样的，只是WeakHashMap不会阻止GC回收key对象（不是value），那么WeakHashMap是怎么做到的呢，这就是我们研究的主要问题。</p>
-
-<!--more-->
-
+<p>WeakHashMap其实和HashMap大多数行为是一样的，只是WeakHashMap不会阻止GC回收key对象（不是value），那么WeakHashMap是怎么做到的呢，这就是我们研究的主要问题。
+<!--more--></p>
 
 <p>在开始WeakHashMap之前，我们先要对弱引用有一定的了解。</p>
 
 <p>在Java中，有四种引用类型</p>
 
 <ul>
-<li>强引用(Strong Reference)，我们正常编码时默认的引用类型，强应用之所以为强，是因为如果一个对象到GC Roots强引用可到达，就可以阻止GC回收该对象</li>
-<li>软引用（Soft Reference）阻止GC回收的能力相对弱一些，如果是软引用可以到达，那么这个对象会停留在内存更时间上长一些。当内存不足时垃圾回收器才会回收这些软引用可到达的对象</li>
-<li>弱引用（WeakReference）无法阻止GC回收，如果一个对象时弱引用可到达，那么在下一个GC回收执行时，该对象就会被回收掉。</li>
-<li>虚引用（Phantom Reference）十分脆弱，它的唯一作用就是当其指向的对象被回收之后，自己被加入到引用队列，用作记录该引用指向的对象已被销毁</li>
+  <li>强引用(Strong Reference)，我们正常编码时默认的引用类型，强应用之所以为强，是因为如果一个对象到GC Roots强引用可到达，就可以阻止GC回收该对象</li>
+  <li>软引用（Soft Reference）阻止GC回收的能力相对弱一些，如果是软引用可以到达，那么这个对象会停留在内存更时间上长一些。当内存不足时垃圾回收器才会回收这些软引用可到达的对象</li>
+  <li>弱引用（WeakReference）无法阻止GC回收，如果一个对象时弱引用可到达，那么在下一个GC回收执行时，该对象就会被回收掉。</li>
+  <li>虚引用（Phantom Reference）十分脆弱，它的唯一作用就是当其指向的对象被回收之后，自己被加入到引用队列，用作记录该引用指向的对象已被销毁</li>
 </ul>
-
 
 <p>这其中还有一个概念叫做引用队列(Reference Queue)</p>
 
 <ul>
-<li>一般情况下，一个对象标记为垃圾（并不代表回收了）后，会加入到引用队列。</li>
-<li>对于虚引用来说，它指向的对象会只有被回收后才会加入引用队列，所以可以用作记录该引用指向的对象是否回收。</li>
+  <li>一般情况下，一个对象标记为垃圾（并不代表回收了）后，会加入到引用队列。</li>
+  <li>对于虚引用来说，它指向的对象会只有被回收后才会加入引用队列，所以可以用作记录该引用指向的对象是否回收。</li>
 </ul>
 
+<h3 id="weakhashmap如何不阻止对象回收呢">WeakHashMap如何不阻止对象回收呢</h3>
 
-<h3>WeakHashMap如何不阻止对象回收呢</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="kd">implements</span>
-</span><span class='line'>       <span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>   <span class="kt">int</span> <span class="n">hash</span><span class="o">;</span>
-</span><span class='line'>   <span class="kt">boolean</span> <span class="n">isNull</span><span class="o">;</span>
-</span><span class='line'>   <span class="n">V</span> <span class="n">value</span><span class="o">;</span>
-</span><span class='line'>   <span class="n">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">next</span><span class="o">;</span>
-</span><span class='line'>   <span class="kd">interface</span> <span class="nc">Type</span><span class="o">&lt;</span><span class="n">R</span><span class="o">,</span> <span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">R</span> <span class="nf">get</span><span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">entry</span><span class="o">);</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>   <span class="n">Entry</span><span class="o">(</span><span class="n">K</span> <span class="n">key</span><span class="o">,</span> <span class="n">V</span> <span class="n">object</span><span class="o">,</span> <span class="n">ReferenceQueue</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">queue</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="kd">super</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">queue</span><span class="o">);</span>
-</span><span class='line'>       <span class="n">isNull</span> <span class="o">=</span> <span class="n">key</span> <span class="o">==</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>       <span class="n">hash</span> <span class="o">=</span> <span class="n">isNull</span> <span class="o">?</span> <span class="mi">0</span> <span class="o">:</span> <span class="n">key</span><span class="o">.</span><span class="na">hashCode</span><span class="o">();</span>
-</span><span class='line'>       <span class="n">value</span> <span class="o">=</span> <span class="n">object</span><span class="o">;</span>
-</span><span class='line'>   <span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">Entry</span><span class="o">&lt;</span><span class="no">K</span><span class="o">,</span> <span class="no">V</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="nc">WeakReference</span><span class="o">&lt;</span><span class="no">K</span><span class="o">&gt;</span> <span class="kd">implements</span>
+</span><span class="line">       <span class="nc">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="no">K</span><span class="o">,</span> <span class="no">V</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class="line">   <span class="kt">int</span> <span class="n">hash</span><span class="o">;</span>
+</span><span class="line">   <span class="kt">boolean</span> <span class="n">isNull</span><span class="o">;</span>
+</span><span class="line">   <span class="no">V</span> <span class="n">value</span><span class="o">;</span>
+</span><span class="line">   <span class="nc">Entry</span><span class="o">&lt;</span><span class="no">K</span><span class="o">,</span> <span class="no">V</span><span class="o">&gt;</span> <span class="n">next</span><span class="o">;</span>
+</span><span class="line">   <span class="kd">interface</span> <span class="nc">Type</span><span class="o">&lt;</span><span class="no">R</span><span class="o">,</span> <span class="no">K</span><span class="o">,</span> <span class="no">V</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class="line">       <span class="no">R</span> <span class="nf">get</span><span class="o">(</span><span class="nc">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="no">K</span><span class="o">,</span> <span class="no">V</span><span class="o">&gt;</span> <span class="n">entry</span><span class="o">);</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">   <span class="nc">Entry</span><span class="o">(</span><span class="no">K</span> <span class="n">key</span><span class="o">,</span> <span class="no">V</span> <span class="n">object</span><span class="o">,</span> <span class="nc">ReferenceQueue</span><span class="o">&lt;</span><span class="no">K</span><span class="o">&gt;</span> <span class="n">queue</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="kd">super</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">queue</span><span class="o">);</span>
+</span><span class="line">       <span class="n">isNull</span> <span class="o">=</span> <span class="n">key</span> <span class="o">==</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">       <span class="n">hash</span> <span class="o">=</span> <span class="n">isNull</span> <span class="o">?</span> <span class="mi">0</span> <span class="o">:</span> <span class="n">key</span><span class="o">.</span><span class="na">hashCode</span><span class="o">();</span>
+</span><span class="line">       <span class="n">value</span> <span class="o">=</span> <span class="n">object</span><span class="o">;</span>
+</span><span class="line">   <span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>如源码所示，</p>
 
 <ul>
-<li>WeakHashMap的Entry继承了WeakReference。</li>
-<li>其中Key作为了WeakReference指向的对象</li>
-<li>因此WeakHashMap利用了WeakReference的机制来实现不阻止GC回收Key</li>
+  <li>WeakHashMap的Entry继承了WeakReference。</li>
+  <li>其中Key作为了WeakReference指向的对象</li>
+  <li>因此WeakHashMap利用了WeakReference的机制来实现不阻止GC回收Key</li>
 </ul>
 
-
-<h3>如何删除被回收的key数据呢</h3>
-
+<h3 id="如何删除被回收的key数据呢">如何删除被回收的key数据呢</h3>
 <p>在Javadoc中关于WeakHashMap有这样的描述，当key不再引用时，其对应的key/value也会被移除。</p>
 
 <p>那么是如何移除的呢，这里我们通常有两种假设策略</p>
 
 <ul>
-<li>当对象被回收的时候，进行通知</li>
-<li>WeakHashMap轮询处理时效的Entry</li>
+  <li>当对象被回收的时候，进行通知</li>
+  <li>WeakHashMap轮询处理时效的Entry</li>
 </ul>
 
-
 <p>而WeakHashMap采用的是轮询的形式，在其put/get/size等方法调用的时候都会预先调用一个poll的方法，来检查并删除失效的Entry</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kt">void</span> <span class="nf">poll</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">toRemove</span><span class="o">;</span>
-</span><span class='line'>   <span class="k">while</span> <span class="o">((</span><span class="n">toRemove</span> <span class="o">=</span> <span class="o">(</span><span class="n">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;)</span> <span class="n">referenceQueue</span><span class="o">.</span><span class="na">poll</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">removeEntry</span><span class="o">(</span><span class="n">toRemove</span><span class="o">);</span>
-</span><span class='line'>       <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;removeEntry=&quot;</span> <span class="o">+</span> <span class="n">toRemove</span><span class="o">.</span><span class="na">value</span><span class="o">);</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kt">void</span> <span class="nf">poll</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="nc">Entry</span><span class="o">&lt;</span><span class="no">K</span><span class="o">,</span> <span class="no">V</span><span class="o">&gt;</span> <span class="n">toRemove</span><span class="o">;</span>
+</span><span class="line">   <span class="k">while</span> <span class="o">((</span><span class="n">toRemove</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Entry</span><span class="o">&lt;</span><span class="no">K</span><span class="o">,</span> <span class="no">V</span><span class="o">&gt;)</span> <span class="n">referenceQueue</span><span class="o">.</span><span class="na">poll</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">removeEntry</span><span class="o">(</span><span class="n">toRemove</span><span class="o">);</span>
+</span><span class="line">       <span class="nc">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"removeEntry="</span> <span class="o">+</span> <span class="n">toRemove</span><span class="o">.</span><span class="na">value</span><span class="o">);</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>为什么没有使用看似更好的通知呢，我想是因为在Java中没有一个可靠的通知回调，比如大家常说的finalize方法，其实也不是标准的，不同的JVM可以实现不同，甚至是不调用这个方法。</p>
 
 <p>当然除了单纯的看源码，进行合理的验证是检验分析正确的一个重要方法。</p>
 
 <p>这里首先，我们定义一个MyObject类，处理一下finalize方法（在我的测试机上可以正常调用，仅仅做为辅助验证手段）</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nf">MyObject</span><span class="o">(</span><span class="n">val</span> <span class="nl">id:</span> <span class="n">String</span><span class="o">)</span> <span class="o">:</span> <span class="n">Any</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="kd">protected</span> <span class="n">fun</span> <span class="nf">finalize</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;MainActivity&quot;</span><span class="o">,</span> <span class="s">&quot;Object($id) finalize method is called&quot;</span><span class="o">)</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">class</span> <span class="nf">MyObject</span><span class="o">(</span><span class="n">val</span> <span class="nl">id:</span> <span class="nc">String</span><span class="o">)</span> <span class="o">:</span> <span class="nc">Any</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="kd">protected</span> <span class="n">fun</span> <span class="nf">finalize</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">       <span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">"MainActivity"</span><span class="o">,</span> <span class="s">"Object($id) finalize method is called"</span><span class="o">)</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>然后是调用者的代码，如下</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">val</span> <span class="n">weakHashMap</span> <span class="o">=</span> <span class="n">WeakHashMap</span><span class="o">&lt;</span><span class="n">Any</span><span class="o">,</span> <span class="n">Int</span><span class="o">&gt;()</span>
-</span><span class='line'><span class="n">var</span> <span class="n">count</span> <span class="o">:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'><span class="n">override</span> <span class="n">fun</span> <span class="nf">onCreate</span><span class="o">(</span><span class="nl">savedInstanceState:</span> <span class="n">Bundle</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">)</span>
-</span><span class='line'>   <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">)</span>
-</span><span class='line'>   <span class="n">setSupportActionBar</span><span class="o">(</span><span class="n">toolbar</span><span class="o">)</span>
-</span><span class='line'>   <span class="n">dumpWeakInfo</span><span class="o">()</span>
-</span><span class='line'>   <span class="n">fab</span><span class="o">.</span><span class="na">setOnClickListener</span> <span class="o">{</span> <span class="n">view</span> <span class="o">-&gt;</span>
-</span><span class='line'>       <span class="c1">//System.gc()// this seldom works use Android studio force gc stop</span>
-</span><span class='line'>       <span class="n">weakHashMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">MyObject</span><span class="o">(</span><span class="n">count</span><span class="o">.</span><span class="na">toString</span><span class="o">()),</span> <span class="n">count</span><span class="o">)</span>
-</span><span class='line'>       <span class="n">count</span> <span class="o">++</span>
-</span><span class='line'>       <span class="n">dumpWeakInfo</span><span class="o">()</span>
-</span><span class='line'>       <span class="n">Snackbar</span><span class="o">.</span><span class="na">make</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="s">&quot;Replace with your own action&quot;</span><span class="o">,</span> <span class="n">Snackbar</span><span class="o">.</span><span class="na">LENGTH_LONG</span><span class="o">)</span>
-</span><span class='line'>               <span class="o">.</span><span class="na">setAction</span><span class="o">(</span><span class="s">&quot;Action&quot;</span><span class="o">,</span> <span class="kc">null</span><span class="o">).</span><span class="na">show</span><span class="o">()</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">fun</span> <span class="nf">dumpWeakInfo</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;MainActivity&quot;</span><span class="o">,</span> <span class="s">&quot;dumpWeakInfo weakInfo.size=${weakHashMap.size}&quot;</span><span class="o">)</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="n">val</span> <span class="n">weakHashMap</span> <span class="o">=</span> <span class="nc">WeakHashMap</span><span class="o">&lt;</span><span class="nc">Any</span><span class="o">,</span> <span class="nc">Int</span><span class="o">&gt;()</span>
+</span><span class="line"><span class="kt">var</span> <span class="n">count</span> <span class="o">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class="line"><span class="n">override</span> <span class="n">fun</span> <span class="nf">onCreate</span><span class="o">(</span><span class="nl">savedInstanceState:</span> <span class="nc">Bundle</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">   <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">)</span>
+</span><span class="line">   <span class="n">setContentView</span><span class="o">(</span><span class="no">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">)</span>
+</span><span class="line">   <span class="n">setSupportActionBar</span><span class="o">(</span><span class="n">toolbar</span><span class="o">)</span>
+</span><span class="line">   <span class="n">dumpWeakInfo</span><span class="o">()</span>
+</span><span class="line">   <span class="n">fab</span><span class="o">.</span><span class="na">setOnClickListener</span> <span class="o">{</span> <span class="n">view</span> <span class="o">-&gt;</span>
+</span><span class="line">       <span class="c1">//System.gc()// this seldom works use Android studio force gc stop</span>
+</span><span class="line">       <span class="n">weakHashMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="nc">MyObject</span><span class="o">(</span><span class="n">count</span><span class="o">.</span><span class="na">toString</span><span class="o">()),</span> <span class="n">count</span><span class="o">)</span>
+</span><span class="line">       <span class="n">count</span> <span class="o">++</span>
+</span><span class="line">       <span class="n">dumpWeakInfo</span><span class="o">()</span>
+</span><span class="line">       <span class="nc">Snackbar</span><span class="o">.</span><span class="na">make</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="s">"Replace with your own action"</span><span class="o">,</span> <span class="nc">Snackbar</span><span class="o">.</span><span class="na">LENGTH_LONG</span><span class="o">)</span>
+</span><span class="line">               <span class="o">.</span><span class="na">setAction</span><span class="o">(</span><span class="s">"Action"</span><span class="o">,</span> <span class="kc">null</span><span class="o">).</span><span class="na">show</span><span class="o">()</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="n">fun</span> <span class="nf">dumpWeakInfo</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">"MainActivity"</span><span class="o">,</span> <span class="s">"dumpWeakInfo weakInfo.size=${weakHashMap.size}"</span><span class="o">)</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>我们按照如下操作</p>
 
 <ul>
-<li>点击fab控件，每次对WeakhashMap对象增加一个Entry，并打印WeakHashMap的size 执行3此</li>
-<li>在没有强制触发GC时，WeakHashMap对象size一直会增加</li>
-<li>手动出发Force GC，我们会看到MyObject有finalize方法被调用</li>
-<li>再次点击fab空间，然后输出的WeakHashMap size急剧减少。</li>
-<li>同样我们收到在WeakHashMap增加的日志也会输出</li>
+  <li>点击fab控件，每次对WeakhashMap对象增加一个Entry，并打印WeakHashMap的size 执行3此</li>
+  <li>在没有强制触发GC时，WeakHashMap对象size一直会增加</li>
+  <li>手动出发Force GC，我们会看到MyObject有finalize方法被调用</li>
+  <li>再次点击fab空间，然后输出的WeakHashMap size急剧减少。</li>
+  <li>同样我们收到在WeakHashMap增加的日志也会输出</li>
 </ul>
 
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">dumpWeakInfo</span> <span class="n">weakInfo</span><span class="o">.</span><span class="na">size</span><span class="o">=</span><span class="mi">1</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">dumpWeakInfo</span> <span class="n">weakInfo</span><span class="o">.</span><span class="na">size</span><span class="o">=</span><span class="mi">2</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">dumpWeakInfo</span> <span class="n">weakInfo</span><span class="o">.</span><span class="na">size</span><span class="o">=</span><span class="mi">3</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">Object</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span> <span class="n">finalize</span> <span class="n">method</span> <span class="n">is</span> <span class="n">called</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">Object</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="n">finalize</span> <span class="n">method</span> <span class="n">is</span> <span class="n">called</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">Object</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span> <span class="n">finalize</span> <span class="n">method</span> <span class="n">is</span> <span class="n">called</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">WeakHashMap</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">removeEntry</span><span class="o">=</span><span class="mi">2</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">WeakHashMap</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">removeEntry</span><span class="o">=</span><span class="mi">0</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">WeakHashMap</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">removeEntry</span><span class="o">=</span><span class="mi">1</span>
-</span><span class='line'><span class="n">I</span><span class="o">/</span><span class="n">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">dumpWeakInfo</span> <span class="n">weakInfo</span><span class="o">.</span><span class="na">size</span><span class="o">=</span><span class="mi">1</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">dumpWeakInfo</span> <span class="n">weakInfo</span><span class="o">.</span><span class="na">size</span><span class="o">=</span><span class="mi">1</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">dumpWeakInfo</span> <span class="n">weakInfo</span><span class="o">.</span><span class="na">size</span><span class="o">=</span><span class="mi">2</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">dumpWeakInfo</span> <span class="n">weakInfo</span><span class="o">.</span><span class="na">size</span><span class="o">=</span><span class="mi">3</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="nc">Object</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span> <span class="n">finalize</span> <span class="n">method</span> <span class="n">is</span> <span class="n">called</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="nc">Object</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="n">finalize</span> <span class="n">method</span> <span class="n">is</span> <span class="n">called</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="nc">Object</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span> <span class="n">finalize</span> <span class="n">method</span> <span class="n">is</span> <span class="n">called</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">WeakHashMap</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">removeEntry</span><span class="o">=</span><span class="mi">2</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">WeakHashMap</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">removeEntry</span><span class="o">=</span><span class="mi">0</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">WeakHashMap</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">removeEntry</span><span class="o">=</span><span class="mi">1</span>
+</span><span class="line"><span class="no">I</span><span class="o">/</span><span class="nc">MainActivity</span><span class="o">(</span><span class="mi">10202</span><span class="o">):</span> <span class="n">dumpWeakInfo</span> <span class="n">weakInfo</span><span class="o">.</span><span class="na">size</span><span class="o">=</span><span class="mi">1</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>注意：System.gc()并不一定可以工作,建议使用Android Studio的Force GC</p>
 
 <p>完整的测试代码可以访问这里  <a href="https://github.com/androidyue/WeakHashMapSample">https://github.com/androidyue/WeakHashMapSample</a></p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -408,7 +387,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -422,8 +401,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -435,15 +412,13 @@
 
 
 
-  
 
-
-<time datetime="2018-07-23T17:24:00+08:00" pubdate data-updated="true">Jul 23<span>rd</span>, 2018</time>
+<time datetime="2018-07-23T17:24:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/hashmap/'>HashMap</a>, <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/weakhashmap/'>WeakHashMap</a>
+    JavaHashMapWeakHashMap
   
 </span>
 
@@ -536,10 +511,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -548,7 +519,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -615,6 +586,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -648,7 +623,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -656,7 +631,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

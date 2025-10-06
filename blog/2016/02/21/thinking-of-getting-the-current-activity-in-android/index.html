@@ -11,7 +11,8 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="关于获取当前Activity的一些思考 Feb 21st, 2016 在Android开发过程中，我们有时候需要获取当前的Activity实例，比如弹出Dialog操作，必须要用到这个。关于如何实现由很多种思路，这其中有的简单，有的复杂，这里简单总结一下个人的一些经验吧。 反射 &hellip;">
+  <meta name="description" content="关于获取当前Activity的一些思考 在Android开发过程中，我们有时候需要获取当前的Activity实例，比如弹出Dialog操作，必须要用到这个。关于如何实现由很多种思路，这其中有的简单，有的复杂，这里简单总结一下个人的一些经验吧。 ##反射
+反射是我们经常会想到的方法，思路大概为 1 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +175,8 @@
 
 
 
-  
 
-
-<time datetime="2016-02-21T20:53:00+08:00" pubdate data-updated="true">Feb 21<span>st</span>, 2016</time>
+<time datetime="2016-02-21T20:53:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -187,280 +186,261 @@
 <div class="entry-content"><p>在Android开发过程中，我们有时候需要获取当前的Activity实例，比如弹出Dialog操作，必须要用到这个。关于如何实现由很多种思路，这其中有的简单，有的复杂，这里简单总结一下个人的一些经验吧。</p>
 
 <!--more-->
+<p>##反射
+反射是我们经常会想到的方法，思路大概为</p>
 
-
-<h2>反射</h2>
-
-<p>反射是我们经常会想到的方法，思路大概为</p>
-
-<p>  1 获取ActivityThread中所有的ActivityRecord <br/>
-  2 从ActivityRecord中获取状态不是<code>pause</code>的Activity并返回</p>
+<p>1 获取ActivityThread中所有的ActivityRecord <br />
+  2 从ActivityRecord中获取状态不是<code class="language-plaintext highlighter-rouge">pause</code>的Activity并返回</p>
 
 <p>一个使用反射来实现的代码大致如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">Activity</span> <span class="nf">getActivity</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">Class</span> <span class="n">activityThreadClass</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">activityThreadClass</span> <span class="o">=</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="s">&quot;android.app.ActivityThread&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">Object</span> <span class="n">activityThread</span> <span class="o">=</span> <span class="n">activityThreadClass</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="s">&quot;currentActivityThread&quot;</span><span class="o">).</span><span class="na">invoke</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">Field</span> <span class="n">activitiesField</span> <span class="o">=</span> <span class="n">activityThreadClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">&quot;mActivities&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">activitiesField</span><span class="o">.</span><span class="na">setAccessible</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">Map</span> <span class="n">activities</span> <span class="o">=</span> <span class="o">(</span><span class="n">Map</span><span class="o">)</span> <span class="n">activitiesField</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">activityThread</span><span class="o">);</span>
-</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="n">Object</span> <span class="n">activityRecord</span> <span class="o">:</span> <span class="n">activities</span><span class="o">.</span><span class="na">values</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">Class</span> <span class="n">activityRecordClass</span> <span class="o">=</span> <span class="n">activityRecord</span><span class="o">.</span><span class="na">getClass</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">Field</span> <span class="n">pausedField</span> <span class="o">=</span> <span class="n">activityRecordClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">&quot;paused&quot;</span><span class="o">);</span>
-</span><span class='line'>            <span class="n">pausedField</span><span class="o">.</span><span class="na">setAccessible</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>            <span class="k">if</span> <span class="o">(!</span><span class="n">pausedField</span><span class="o">.</span><span class="na">getBoolean</span><span class="o">(</span><span class="n">activityRecord</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">Field</span> <span class="n">activityField</span> <span class="o">=</span> <span class="n">activityRecordClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">&quot;activity&quot;</span><span class="o">);</span>
-</span><span class='line'>                <span class="n">activityField</span><span class="o">.</span><span class="na">setAccessible</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>                <span class="n">Activity</span> <span class="n">activity</span> <span class="o">=</span> <span class="o">(</span><span class="n">Activity</span><span class="o">)</span> <span class="n">activityField</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">activityRecord</span><span class="o">);</span>
-</span><span class='line'>                <span class="k">return</span> <span class="n">activity</span><span class="o">;</span>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">NoSuchMethodException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IllegalAccessException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InvocationTargetException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">NoSuchFieldException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="nc">Activity</span> <span class="nf">getActivity</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">Class</span> <span class="n">activityThreadClass</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">    <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">activityThreadClass</span> <span class="o">=</span> <span class="nc">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="s">"android.app.ActivityThread"</span><span class="o">);</span>
+</span><span class="line">        <span class="nc">Object</span> <span class="n">activityThread</span> <span class="o">=</span> <span class="n">activityThreadClass</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="s">"currentActivityThread"</span><span class="o">).</span><span class="na">invoke</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
+</span><span class="line">        <span class="nc">Field</span> <span class="n">activitiesField</span> <span class="o">=</span> <span class="n">activityThreadClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"mActivities"</span><span class="o">);</span>
+</span><span class="line">        <span class="n">activitiesField</span><span class="o">.</span><span class="na">setAccessible</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line">        <span class="nc">Map</span> <span class="n">activities</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Map</span><span class="o">)</span> <span class="n">activitiesField</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">activityThread</span><span class="o">);</span>
+</span><span class="line">        <span class="k">for</span> <span class="o">(</span><span class="nc">Object</span> <span class="n">activityRecord</span> <span class="o">:</span> <span class="n">activities</span><span class="o">.</span><span class="na">values</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">            <span class="nc">Class</span> <span class="n">activityRecordClass</span> <span class="o">=</span> <span class="n">activityRecord</span><span class="o">.</span><span class="na">getClass</span><span class="o">();</span>
+</span><span class="line">            <span class="nc">Field</span> <span class="n">pausedField</span> <span class="o">=</span> <span class="n">activityRecordClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"paused"</span><span class="o">);</span>
+</span><span class="line">            <span class="n">pausedField</span><span class="o">.</span><span class="na">setAccessible</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line">            <span class="k">if</span> <span class="o">(!</span><span class="n">pausedField</span><span class="o">.</span><span class="na">getBoolean</span><span class="o">(</span><span class="n">activityRecord</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">                <span class="nc">Field</span> <span class="n">activityField</span> <span class="o">=</span> <span class="n">activityRecordClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"activity"</span><span class="o">);</span>
+</span><span class="line">                <span class="n">activityField</span><span class="o">.</span><span class="na">setAccessible</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line">                <span class="nc">Activity</span> <span class="n">activity</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Activity</span><span class="o">)</span> <span class="n">activityField</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">activityRecord</span><span class="o">);</span>
+</span><span class="line">                <span class="k">return</span> <span class="n">activity</span><span class="o">;</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">NoSuchMethodException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IllegalAccessException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">InvocationTargetException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">NoSuchFieldException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>然而这种方法并不是很推荐，主要是有以下的不足：</p>
 
 <ul>
-<li>反射通常会比较慢</li>
-<li>不稳定性，这个才是不推荐的原因，Android框架代码存在修改的可能性，谁要无法100%保证<code>mActivities</code>，<code>paused</code>固定不变。所以可靠性不是完全可靠。</li>
+  <li>反射通常会比较慢</li>
+  <li>不稳定性，这个才是不推荐的原因，Android框架代码存在修改的可能性，谁要无法100%保证<code class="language-plaintext highlighter-rouge">mActivities</code>，<code class="language-plaintext highlighter-rouge">paused</code>固定不变。所以可靠性不是完全可靠。</li>
 </ul>
 
+<p>##Activity基类
+既然反射不是很可靠，那么有一种比较可靠的方式，就是使用Activity基类。</p>
 
-<h2>Activity基类</h2>
-
-<p>既然反射不是很可靠，那么有一种比较可靠的方式，就是使用Activity基类。</p>
-
-<p>在Activity的<code>onResume</code>方法中，将当前的Activity实例保存到一个变量中。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BaseActivity</span> <span class="kd">extends</span> <span class="n">Activity</span><span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onResume</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onResume</span><span class="o">();</span>
-</span><span class='line'>        <span class="n">MyActivityManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">setCurrentActivity</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<p>在Activity的<code class="language-plaintext highlighter-rouge">onResume</code>方法中，将当前的Activity实例保存到一个变量中。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BaseActivity</span> <span class="kd">extends</span> <span class="nc">Activity</span><span class="o">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onResume</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="kd">super</span><span class="o">.</span><span class="na">onResume</span><span class="o">();</span>
+</span><span class="line">        <span class="nc">MyActivityManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">setCurrentActivity</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>然而，这一种方法也不仅完美，因为这种方法是基于约定的，所以必须每个Activity都继承BaseActivity，如果一旦出现没有继承BaseActivity的就可能有问题。</p>
 
-<h2>回调方法</h2>
+<p>##回调方法
+介绍了上面两种不是尽善尽美的方法，这里实际上还是有一种更便捷的方法，那就是通过Framework提供的回调来实现。</p>
 
-<p>介绍了上面两种不是尽善尽美的方法，这里实际上还是有一种更便捷的方法，那就是通过Framework提供的回调来实现。</p>
-
-<p>Android自 API 14开始引入了一个方法，即Application的<code>registerActivityLifecycleCallbacks</code>方法，用来监听所有Activity的生命周期回调，比如<code>onActivityCreated</code>,<code>onActivityResumed</code>等。</p>
+<p>Android自 API 14开始引入了一个方法，即Application的<code class="language-plaintext highlighter-rouge">registerActivityLifecycleCallbacks</code>方法，用来监听所有Activity的生命周期回调，比如<code class="language-plaintext highlighter-rouge">onActivityCreated</code>,<code class="language-plaintext highlighter-rouge">onActivityResumed</code>等。</p>
 
 <p>So，一个简单的实现如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyApplication</span> <span class="kd">extends</span> <span class="n">Application</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">();</span>
-</span><span class='line'>        <span class="n">registerActivityLifecycleCallbacks</span><span class="o">(</span><span class="k">new</span> <span class="n">ActivityLifecycleCallbacks</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityCreated</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">,</span> <span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityStarted</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityResumed</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">MyActivityManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">setCurrentActivity</span><span class="o">(</span><span class="n">activity</span><span class="o">);</span>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityPaused</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityStopped</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivitySaveInstanceState</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">,</span> <span class="n">Bundle</span> <span class="n">outState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityDestroyed</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>        <span class="o">});</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyApplication</span> <span class="kd">extends</span> <span class="nc">Application</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">();</span>
+</span><span class="line">        <span class="n">registerActivityLifecycleCallbacks</span><span class="o">(</span><span class="k">new</span> <span class="nc">ActivityLifecycleCallbacks</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">            <span class="nd">@Override</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityCreated</span><span class="o">(</span><span class="nc">Activity</span> <span class="n">activity</span><span class="o">,</span> <span class="nc">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">            <span class="nd">@Override</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityStarted</span><span class="o">(</span><span class="nc">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">            <span class="nd">@Override</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityResumed</span><span class="o">(</span><span class="nc">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">                <span class="nc">MyActivityManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">setCurrentActivity</span><span class="o">(</span><span class="n">activity</span><span class="o">);</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">            <span class="nd">@Override</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityPaused</span><span class="o">(</span><span class="nc">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">            <span class="nd">@Override</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityStopped</span><span class="o">(</span><span class="nc">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">            <span class="nd">@Override</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivitySaveInstanceState</span><span class="o">(</span><span class="nc">Activity</span> <span class="n">activity</span><span class="o">,</span> <span class="nc">Bundle</span> <span class="n">outState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">            <span class="nd">@Override</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityDestroyed</span><span class="o">(</span><span class="nc">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">        <span class="o">});</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>然而，金无足赤人无完人，这种方法唯一的遗憾就是只支持API 14即其以上。不过还在现在大多数设备都满足了这个要求。</p>
 
-<h3>为什么是弱引用</h3>
-
-<p>可能有人会带着疑问看到这里，MyActivityManager是个什么鬼，好，我们现在看一下这个类的实现</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyActivityManager</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="n">MyActivityManager</span> <span class="n">sInstance</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MyActivityManager</span><span class="o">();</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">Activity</span><span class="o">&gt;</span> <span class="n">sCurrentActivityWeakRef</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">private</span> <span class="nf">MyActivityManager</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">MyActivityManager</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">sInstance</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">Activity</span> <span class="nf">getCurrentActivity</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">Activity</span> <span class="n">currentActivity</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">sCurrentActivityWeakRef</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">currentActivity</span> <span class="o">=</span> <span class="n">sCurrentActivityWeakRef</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">currentActivity</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setCurrentActivity</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">sCurrentActivityWeakRef</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">Activity</span><span class="o">&gt;(</span><span class="n">activity</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<p>###为什么是弱引用
+可能有人会带着疑问看到这里，MyActivityManager是个什么鬼，好，我们现在看一下这个类的实现</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyActivityManager</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="kd">static</span> <span class="nc">MyActivityManager</span> <span class="n">sInstance</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MyActivityManager</span><span class="o">();</span>
+</span><span class="line">    <span class="kd">private</span> <span class="nc">WeakReference</span><span class="o">&lt;</span><span class="nc">Activity</span><span class="o">&gt;</span> <span class="n">sCurrentActivityWeakRef</span><span class="o">;</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">    <span class="kd">private</span> <span class="nf">MyActivityManager</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">MyActivityManager</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">sInstance</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">public</span> <span class="nc">Activity</span> <span class="nf">getCurrentActivity</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">Activity</span> <span class="n">currentActivity</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">sCurrentActivityWeakRef</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">currentActivity</span> <span class="o">=</span> <span class="n">sCurrentActivityWeakRef</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">currentActivity</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setCurrentActivity</span><span class="o">(</span><span class="nc">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">sCurrentActivityWeakRef</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">WeakReference</span><span class="o">&lt;</span><span class="nc">Activity</span><span class="o">&gt;(</span><span class="n">activity</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>这个类，实现了当前Activity的设置和获取。</p>
 
@@ -468,12 +448,10 @@
 
 <p>其实最主要的目的就是避免内存泄露，因为使用默认的强引用会导致Activity实例无法释放，导致内存泄露的出现。详细了解弱引用，请参考本文<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">译文：理解Java中的弱引用</a></p>
 
-<h2>Demo源码</h2>
-
+<p>##Demo源码</p>
 <ul>
-<li><a href="https://github.com/androidyue/GetCurrentActivityDemo">GetCurrentActivityDemo</a></li>
+  <li><a href="https://github.com/androidyue/GetCurrentActivityDemo">GetCurrentActivityDemo</a></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -495,7 +473,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -509,8 +487,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -522,15 +498,13 @@
 
 
 
-  
 
-
-<time datetime="2016-02-21T20:53:00+08:00" pubdate data-updated="true">Feb 21<span>st</span>, 2016</time>
+<time datetime="2016-02-21T20:53:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/si-kao/'>思考</a>
+    Android思考
   
 </span>
 
@@ -623,10 +597,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -635,7 +605,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -702,6 +672,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -735,7 +709,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -743,7 +717,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="利用WebView实现网页的i18n Sep 30th, 2014 软件如果想在全球获得更多的用户，国际化与本地化（internationalization and localization 简称：i18n 和L10n）是非常必要的。 &hellip;">
+  <meta name="description" content="利用WebView实现网页的i18n 软件如果想在全球获得更多的用户，国际化与本地化（internationalization and localization 简称：i18n 和L10n）是非常必要的。本文将介绍一个很geeky的方法来利用webview实现html的i18n。 ##基本概念 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,182 +174,149 @@
 
 
 
-  
 
-
-<time datetime="2014-09-30T21:44:00+08:00" pubdate data-updated="true">Sep 30<span>th</span>, 2014</time>
+<time datetime="2014-09-30T21:44:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>软件如果想在全球获得更多的用户，国际化与本地化（internationalization and localization 简称：i18n 和L10n）是非常必要的。本文将介绍一个很geeky的方法来利用webview实现html的i18n。</p>
-
+<div class="entry-content"><p>软件如果想在全球获得更多的用户，国际化与本地化（internationalization and localization 简称：i18n 和L10n）是非常必要的。本文将介绍一个很geeky的方法来利用webview实现html的i18n。
 <!--more-->
-
-
-<h2>基本概念</h2>
-
-<p>国际化是指在设计软件，将软件与特定语言及地区脱钩的过程。当软件被移植到不同的语言及地区时，软件本身不用做内部工程上的改变或修正。本地化则是指当移植软件时，加上与特定区域设置有关的信息和翻译文件的过程。</p>
+##基本概念
+国际化是指在设计软件，将软件与特定语言及地区脱钩的过程。当软件被移植到不同的语言及地区时，软件本身不用做内部工程上的改变或修正。本地化则是指当移植软件时，加上与特定区域设置有关的信息和翻译文件的过程。</p>
 
 <p>国际化和本地化之间的区别虽然微妙，但却很重要。国际化意味着产品有适用于任何地方的“潜力”；本地化则是为了更适合于“特定”地方的使用，而另外增添的特色。用一项产品来说，国际化只需做一次，但本地化则要针对不同的区域各做一次。 这两者之间是互补的，并且两者合起来才能让一个系统适用于各地。</p>
 
 <p>上述摘自<a href="http://zh.wikipedia.org/wiki/%E5%9B%BD%E9%99%85%E5%8C%96%E4%B8%8E%E6%9C%AC%E5%9C%B0%E5%8C%96">维基百科 国际化与本地化</a></p>
 
-<h2>问题</h2>
-
-<p>如何实现网页的国际化和本地化，支持更多的语言呢？最简单的逻辑可能类似如下伪代码实现</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nx">isChinese</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">lable</span><span class="p">.</span><span class="nx">innerText</span> <span class="o">=</span> <span class="s2">&quot;中文&quot;</span>
-</span><span class='line'><span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isEnglish</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">lable</span><span class="p">.</span><span class="nx">innerText</span> <span class="o">=</span> <span class="s2">&quot;English&quot;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##问题
+如何实现网页的国际化和本地化，支持更多的语言呢？最简单的逻辑可能类似如下伪代码实现</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="k">if</span> <span class="p">(</span><span class="nx">isChinese</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">	<span class="nx">lable</span><span class="p">.</span><span class="nx">innerText</span> <span class="o">=</span> <span class="dl">"</span><span class="s2">中文</span><span class="dl">"</span>
+</span><span class="line"><span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isEnglish</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">	<span class="nx">lable</span><span class="p">.</span><span class="nx">innerText</span> <span class="o">=</span> <span class="dl">"</span><span class="s2">English</span><span class="dl">"</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>但是这样是很有问题的，如果增加了语言必然要修改代码代码，违背了对修改关闭的原则。所以上述并不是一种很好的方法</p>
 
-<h2>更Hacky的实现</h2>
-
-<p>实现思路主要是借助强大的Android系统的资源适配机制（基于设备设备的信息Locale等匹配最合适的资源）。貌似这个是Chrome中网页实现i18n的逻辑。实现步骤主要如下</p>
-
-<ul>
-<li>Android程序提供必要多个Locale的资源</li>
-<li>将网页需要的文字资源组成JSON交换格式</li>
-<li>WebView注入一个变量，变量内容为上一步的JSON数据</li>
-<li>网页实现读取资源，为元素设置内容</li>
-<li>加载网页</li>
-</ul>
-
-
-<h3>提供多个Locale文字资源</h3>
-
-<h4>values/strings.xml</h4>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;resources&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;city_beijing&quot;</span><span class="nt">&gt;</span>Beijing<span class="nt">&lt;/string&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;country_china&quot;</span><span class="nt">&gt;</span>China<span class="nt">&lt;/string&gt;</span>
-</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>values-zh-rCN/strings.xml</h4>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;resources&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;city_beijing&quot;</span><span class="nt">&gt;</span>北京<span class="nt">&lt;/string&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">&quot;country_china&quot;</span><span class="nt">&gt;</span>中国<span class="nt">&lt;/string&gt;</span>
-</span><span class='line'><span class="nt">&lt;/resources&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>接下来的代码</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">WebView</span> <span class="n">myWebView</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WebView</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'><span class="n">addContentView</span><span class="o">(</span><span class="n">myWebView</span><span class="o">,</span> <span class="k">new</span> <span class="n">LayoutParams</span><span class="o">(</span><span class="n">LayoutParams</span><span class="o">.</span><span class="na">MATCH_PARENT</span><span class="o">,</span> <span class="n">LayoutParams</span><span class="o">.</span><span class="na">MATCH_PARENT</span><span class="o">));</span>
-</span><span class='line'><span class="c1">//将网页需要的文字资源组成JSON交换格式</span>
-</span><span class='line'><span class="n">JSONObject</span> <span class="n">jsObj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JSONObject</span><span class="o">();</span>
-</span><span class='line'><span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">jsObj</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;country&quot;</span><span class="o">,</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">country_china</span><span class="o">));</span>
-</span><span class='line'>  <span class="n">jsObj</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;city&quot;</span><span class="o">,</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">city_beijing</span><span class="o">));</span>
-</span><span class='line'><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">JSONException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'><span class="c1">//WebView注入一个变量，变量内容为上一步的JSON数据</span>
-</span><span class='line'><span class="n">String</span> <span class="n">injectString</span> <span class="o">=</span> <span class="s">&quot;var textRes = &quot;</span> <span class="o">+</span> <span class="n">jsObj</span><span class="o">;</span>
-</span><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;injuectString = &quot;</span> <span class="o">+</span> <span class="n">injectString</span><span class="o">);</span>
-</span><span class='line'><span class="n">WebSettings</span> <span class="n">settings</span> <span class="o">=</span> <span class="n">myWebView</span><span class="o">.</span><span class="na">getSettings</span><span class="o">();</span>
-</span><span class='line'><span class="n">settings</span><span class="o">.</span><span class="na">setJavaScriptEnabled</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'><span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">&quot;javascript:&quot;</span> <span class="o">+</span> <span class="n">injectString</span><span class="o">);</span>
-</span><span class='line'><span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">&quot;file:///android_asset/location.html&quot;</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>网页实现</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;html&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;head&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;title&gt;</span>i18n Test<span class="nt">&lt;/title&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;/head&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;body&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;label</span> <span class="na">id=</span><span class="s">&quot;country&quot;</span><span class="nt">&gt;&lt;/label&gt;</span>
-</span><span class='line'>      <span class="nt">&lt;lable</span> <span class="na">id=</span><span class="s">&quot;city&quot;</span><span class="nt">&gt;&lt;/lable&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;/body&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;country&#39;</span><span class="p">).</span><span class="nx">innerText</span><span class="o">=</span> <span class="nx">textRes</span><span class="p">.</span><span class="nx">country</span>
-</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;city&#39;</span><span class="p">).</span><span class="nx">innerText</span> <span class="o">=</span> <span class="nx">textRes</span><span class="p">.</span><span class="nx">city</span>
-</span><span class='line'>  <span class="nt">&lt;/script&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>结果</h3>
+<p>##更Hacky的实现
+实现思路主要是借助强大的Android系统的资源适配机制（基于设备设备的信息Locale等匹配最合适的资源）。貌似这个是Chrome中网页实现i18n的逻辑。实现步骤主要如下</p>
 
 <ul>
-<li>当系统语言为中文简体环境下网页显示<strong>中国 北京</strong></li>
-<li>当系统语言为非中文简体环境下网页显示<strong>China Beijing</strong></li>
+  <li>Android程序提供必要多个Locale的资源</li>
+  <li>将网页需要的文字资源组成JSON交换格式</li>
+  <li>WebView注入一个变量，变量内容为上一步的JSON数据</li>
+  <li>网页实现读取资源，为元素设置内容</li>
+  <li>加载网页</li>
 </ul>
 
+<p>###提供多个Locale文字资源
+####values/strings.xml</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="xml"><span class="line"><span class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
+</span><span class="line"><span class="nt">&lt;resources&gt;</span>    
+</span><span class="line">    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">"city_beijing"</span><span class="nt">&gt;</span>Beijing<span class="nt">&lt;/string&gt;</span>
+</span><span class="line">    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">"country_china"</span><span class="nt">&gt;</span>China<span class="nt">&lt;/string&gt;</span>
+</span><span class="line"><span class="nt">&lt;/resources&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####values-zh-rCN/strings.xml</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="xml"><span class="line"><span class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
+</span><span class="line"><span class="nt">&lt;resources&gt;</span>
+</span><span class="line">    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">"city_beijing"</span><span class="nt">&gt;</span>北京<span class="nt">&lt;/string&gt;</span>
+</span><span class="line">    <span class="nt">&lt;string</span> <span class="na">name=</span><span class="s">"country_china"</span><span class="nt">&gt;</span>中国<span class="nt">&lt;/string&gt;</span>
+</span><span class="line"><span class="nt">&lt;/resources&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h3>Demo源码下载</h3>
+<p>###接下来的代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">WebView</span> <span class="n">myWebView</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">WebView</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class="line"><span class="n">addContentView</span><span class="o">(</span><span class="n">myWebView</span><span class="o">,</span> <span class="k">new</span> <span class="nc">LayoutParams</span><span class="o">(</span><span class="nc">LayoutParams</span><span class="o">.</span><span class="na">MATCH_PARENT</span><span class="o">,</span> <span class="nc">LayoutParams</span><span class="o">.</span><span class="na">MATCH_PARENT</span><span class="o">));</span>
+</span><span class="line"><span class="c1">//将网页需要的文字资源组成JSON交换格式</span>
+</span><span class="line"><span class="nc">JSONObject</span> <span class="n">jsObj</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">JSONObject</span><span class="o">();</span>
+</span><span class="line"><span class="k">try</span> <span class="o">{</span>
+</span><span class="line">	<span class="n">jsObj</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"country"</span><span class="o">,</span> <span class="n">getString</span><span class="o">(</span><span class="no">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">country_china</span><span class="o">));</span>
+</span><span class="line">	<span class="n">jsObj</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"city"</span><span class="o">,</span> <span class="n">getString</span><span class="o">(</span><span class="no">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">city_beijing</span><span class="o">));</span>
+</span><span class="line"><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">JSONException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line"><span class="c1">//WebView注入一个变量，变量内容为上一步的JSON数据</span>
+</span><span class="line"><span class="nc">String</span> <span class="n">injectString</span> <span class="o">=</span> <span class="s">"var textRes = "</span> <span class="o">+</span> <span class="n">jsObj</span><span class="o">;</span>
+</span><span class="line"><span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"injuectString = "</span> <span class="o">+</span> <span class="n">injectString</span><span class="o">);</span>
+</span><span class="line"><span class="nc">WebSettings</span> <span class="n">settings</span> <span class="o">=</span> <span class="n">myWebView</span><span class="o">.</span><span class="na">getSettings</span><span class="o">();</span>
+</span><span class="line"><span class="n">settings</span><span class="o">.</span><span class="na">setJavaScriptEnabled</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line"><span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">"javascript:"</span> <span class="o">+</span> <span class="n">injectString</span><span class="o">);</span>
+</span><span class="line"><span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">"file:///android_asset/location.html"</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<p><a href="http://pan.baidu.com/s/1sjwNamL">@百度网盘</a></p>
-
-<h3>其他</h3>
-
+<p>###网页实现</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="html"><span class="line"><span class="nt">&lt;html&gt;</span>
+</span><span class="line">	<span class="nt">&lt;head&gt;</span>
+</span><span class="line">		<span class="nt">&lt;title&gt;</span>i18n Test<span class="nt">&lt;/title&gt;</span>
+</span><span class="line">	<span class="nt">&lt;/head&gt;</span>
+</span><span class="line">	<span class="nt">&lt;body&gt;</span>
+</span><span class="line">		<span class="nt">&lt;label</span> <span class="na">id=</span><span class="s">"country"</span><span class="nt">&gt;&lt;/label&gt;</span>
+</span><span class="line">		<span class="nt">&lt;lable</span> <span class="na">id=</span><span class="s">"city"</span><span class="nt">&gt;&lt;/lable&gt;</span>
+</span><span class="line">	<span class="nt">&lt;/body&gt;</span>
+</span><span class="line">	<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/javascript"</span><span class="nt">&gt;</span>
+</span><span class="line">		<span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="dl">'</span><span class="s1">country</span><span class="dl">'</span><span class="p">).</span><span class="nx">innerText</span><span class="o">=</span> <span class="nx">textRes</span><span class="p">.</span><span class="nx">country</span>
+</span><span class="line">		<span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="dl">'</span><span class="s1">city</span><span class="dl">'</span><span class="p">).</span><span class="nx">innerText</span> <span class="o">=</span> <span class="nx">textRes</span><span class="p">.</span><span class="nx">city</span>
+</span><span class="line">	<span class="nt">&lt;/script&gt;</span>
+</span><span class="line"><span class="nt">&lt;/html&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>###结果</p>
 <ul>
-<li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00ASIN7G8&linkCode=as2&tag=droidyue-23">这样才可以精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B002JCU2TG/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002JCU2TG&linkCode=as2&tag=droidyue-23">瞬间之美:Web界面设计如何让用户心动</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002JCU2TG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li>当系统语言为中文简体环境下网页显示<strong>中国 北京</strong></li>
+  <li>当系统语言为非中文简体环境下网页显示<strong>China Beijing</strong></li>
 </ul>
 
+<p>###Demo源码下载
+<a href="http://pan.baidu.com/s/1sjwNamL">@百度网盘</a></p>
+
+<p>###其他</p>
+<ul>
+  <li><a href="http://www.amazon.cn/gp/product/B00ASIN7G8/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00ASIN7G8&amp;linkCode=as2&amp;tag=droidyue-23">这样才可以精通Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00ASIN7G8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B002JCU2TG/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B002JCU2TG&amp;linkCode=as2&amp;tag=droidyue-23">瞬间之美:Web界面设计如何让用户心动</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B002JCU2TG" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ul>
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -371,7 +338,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -385,8 +352,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -398,15 +363,13 @@
 
 
 
-  
 
-
-<time datetime="2014-09-30T21:44:00+08:00" pubdate data-updated="true">Sep 30<span>th</span>, 2014</time>
+<time datetime="2014-09-30T21:44:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/javascript/'>Javascript</a>, <a class='category' href='/blog/categories/l10n/'>L10n</a>, <a class='category' href='/blog/categories/i18n/'>i18n</a>
+    JavascriptAndroidi18nL10n
   
 </span>
 
@@ -499,10 +462,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -511,7 +470,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -578,6 +537,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -611,7 +574,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -619,7 +582,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

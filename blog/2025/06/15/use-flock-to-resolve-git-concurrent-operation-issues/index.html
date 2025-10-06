@@ -11,8 +11,8 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="使用 Flock 解决 Git `unable to Read Tree` 问题 Jun 15th, 2025 背景 在 CI/CD 环境下，团队常遇到以下错误： 1
-fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发操作同一个 Git 仓库 &hellip;">
+  <meta name="description" content="使用 Flock 解决 Git `unable to Read Tree` 问题 背景 在 CI/CD 环境下，团队常遇到以下错误： 1
+fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发操作同一个 Git 仓库，导致元数据损坏或锁冲突。 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -175,160 +175,142 @@ fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发�
 
 
 
-  
 
-
-<time datetime="2025-06-15T08:49:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2025</time>
+<time datetime="2025-06-15T08:49:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><h2>背景</h2>
+<div class="entry-content"><h2 id="背景">背景</h2>
 
 <p>在 CI/CD 环境下，团队常遇到以下错误：</p>
 
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>fatal: unable to read tree &lt;SHA&gt;</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class=""><span class="line">fatal: unable to read tree &lt;SHA&gt;</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>这通常是多个进程或脚本并发操作同一个 Git 仓库，导致元数据损坏或锁冲突。Git 并非为高并发本地操作设计，因此需要解决并发问题。</p>
 
 <!--more-->
 
-
-<h2>问题复现</h2>
+<h2 id="问题复现">问题复现</h2>
 
 <p>在自动化脚本中，例如：</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>git fetch origin
-</span><span class='line'>git checkout some-branch</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">git fetch origin
+</span><span class="line">git checkout some-branch</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>如果多个任务同时执行，可能导致锁冲突或元数据损坏。</p>
 
-<h2>解决思路</h2>
+<h2 id="解决思路">解决思路</h2>
 
-<p>通过加锁机制，让所有 Git 操作串行执行。<code>flock</code> 是一个简单高效的工具，专为这种场景设计。</p>
+<p>通过加锁机制，让所有 Git 操作串行执行。<code class="language-plaintext highlighter-rouge">flock</code> 是一个简单高效的工具，专为这种场景设计。</p>
 
-<h2>flock 安装</h2>
+<h2 id="flock-安装">flock 安装</h2>
 
-<h3>Linux</h3>
+<h3 id="linux">Linux</h3>
 
-<p>大多数 Linux 发行版自带 <code>flock</code>（属于 <code>util-linux</code> 套件）。如果没有，可按以下方式安装：</p>
-
-<ul>
-<li><strong>Debian/Ubuntu</strong>:</li>
-</ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo apt-get update
-</span><span class='line'>sudo apt-get install util-linux</span></code></pre></td></tr></table></div></figure>
-
+<p>大多数 Linux 发行版自带 <code class="language-plaintext highlighter-rouge">flock</code>（属于 <code class="language-plaintext highlighter-rouge">util-linux</code> 套件）。如果没有，可按以下方式安装：</p>
 
 <ul>
-<li><strong>CentOS/RHEL</strong>:</li>
+  <li><strong>Debian/Ubuntu</strong>:</li>
 </ul>
 
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo yum install util-linux</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">sudo </span>apt-get update
+</span><span class="line"><span class="nb">sudo </span>apt-get <span class="nb">install </span>util-linux</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <ul>
-<li><strong>Arch</strong>:</li>
+  <li><strong>CentOS/RHEL</strong>:</li>
 </ul>
 
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">sudo </span>yum <span class="nb">install </span>util-linux</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo pacman -S util-linux</span></code></pre></td></tr></table></div></figure>
+<ul>
+  <li><strong>Arch</strong>:</li>
+</ul>
 
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">sudo </span>pacman <span class="nt">-S</span> util-linux</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<p>安装后即可使用 <code>flock</code> 命令。</p>
+<p>安装后即可使用 <code class="language-plaintext highlighter-rouge">flock</code> 命令。</p>
 
-<h3>macOS</h3>
+<h3 id="macos">macOS</h3>
 
-<p>macOS 默认不包含 <code>flock</code>，但可通过 Homebrew 安装兼容版本：</p>
+<p>macOS 默认不包含 <code class="language-plaintext highlighter-rouge">flock</code>，但可通过 Homebrew 安装兼容版本：</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>brew install flock</span></code></pre></td></tr></table></div></figure>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">brew <span class="nb">install </span>flock</span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<p>安装的是 Ben Noordhuis 的 <code class="language-plaintext highlighter-rouge">flock</code>，语法与 Linux 版本基本一致。</p>
 
-<p>安装的是 Ben Noordhuis 的 <code>flock</code>，语法与 Linux 版本基本一致。</p>
+<p><strong>提示</strong>：在 CI 服务（如 GitHub Actions）中，可在步骤中提前安装 <code class="language-plaintext highlighter-rouge">flock</code>。</p>
 
-<p><strong>提示</strong>：在 CI 服务（如 GitHub Actions）中，可在步骤中提前安装 <code>flock</code>。</p>
+<h2 id="flock-用法">flock 用法</h2>
 
-<h2>flock 用法</h2>
+<p><code class="language-plaintext highlighter-rouge">flock</code> 用于在 shell 脚本中对文件加锁：</p>
 
-<p><code>flock</code> 用于在 shell 脚本中对文件加锁：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">flock &lt;lockfile&gt; &lt;<span class="nb">command</span><span class="o">&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>flock <lockfile> <command></span></code></pre></td></tr></table></div></figure>
+<p>建议将锁文件放在 <code class="language-plaintext highlighter-rouge">.git</code> 目录下，避免污染业务代码目录。</p>
 
+<h2 id="实战例子">实战例子</h2>
 
-<p>建议将锁文件放在 <code>.git</code> 目录下，避免污染业务代码目录。</p>
+<p>假设有一个 <code class="language-plaintext highlighter-rouge">deploy.sh</code> 脚本：</p>
 
-<h2>实战例子</h2>
-
-<p>假设有一个 <code>deploy.sh</code> 脚本：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>#!/bin/bash
-</span><span class='line'>git fetch origin
-</span><span class='line'>git checkout some-branch
-</span><span class='line'># ...more commands...</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="c">#!/bin/bash</span>
+</span><span class="line">git fetch origin
+</span><span class="line">git checkout some-branch
+</span><span class="line"><span class="c"># ...more commands...</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>加锁后修改为：</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>#!/bin/bash
-</span><span class='line'>LOCK_FILE="/path/to/your/repo/.git/deploy.lock"
-</span><span class='line'>
-</span><span class='line'>flock -n "$LOCK_FILE" bash <<'EOF'
-</span><span class='line'>git fetch origin
-</span><span class='line'>git checkout some-branch
-</span><span class='line'># ...more commands...
-</span><span class='line'>EOF</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="c">#!/bin/bash</span>
+</span><span class="line"><span class="nv">LOCK_FILE</span><span class="o">=</span><span class="s2">"/path/to/your/repo/.git/deploy.lock"</span>
+</span><span class="line">
+</span><span class="line">flock <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$LOCK_FILE</span><span class="s2">"</span> bash <span class="o">&lt;&lt;</span><span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+</span><span class="line">git fetch origin
+</span><span class="line">git checkout some-branch
+</span><span class="line"># ...more commands...
+</span><span class="line">EOF</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>或者直接锁定整个脚本：</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>flock -n /path/to/your/repo/.git/deploy.lock ./deploy.sh</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>-n</code>：表示拿不到锁时立即退出（可选）。</li>
-<li>建议将锁文件放在 <code>.git</code> 目录下。</li>
-</ul>
-
-
-<h2>总结</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">flock <span class="nt">-n</span> /path/to/your/repo/.git/deploy.lock ./deploy.sh</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <ul>
-<li>避免并发操作同一个 Git 仓库！</li>
-<li>使用 <code>flock</code> 使 Git 操作串行，防止元数据损坏。</li>
-<li>Linux 下直接使用，macOS 通过 Homebrew 安装 <code>flock</code>。</li>
-<li>锁粒度可适当放宽，确保安全优先。</li>
-<li>本地自动化操作 Git 时，<code>flock</code> 是必备工具，简单高效！</li>
+  <li><code class="language-plaintext highlighter-rouge">-n</code>：表示拿不到锁时立即退出（可选）。</li>
+  <li>建议将锁文件放在 <code class="language-plaintext highlighter-rouge">.git</code> 目录下。</li>
 </ul>
 
+<h2 id="总结">总结</h2>
+
+<ul>
+  <li>避免并发操作同一个 Git 仓库！</li>
+  <li>使用 <code class="language-plaintext highlighter-rouge">flock</code> 使 Git 操作串行，防止元数据损坏。</li>
+  <li>Linux 下直接使用，macOS 通过 Homebrew 安装 <code class="language-plaintext highlighter-rouge">flock</code>。</li>
+  <li>锁粒度可适当放宽，确保安全优先。</li>
+  <li>本地自动化操作 Git 时，<code class="language-plaintext highlighter-rouge">flock</code> 是必备工具，简单高效！</li>
+</ul>
 
 <p>如有问题，请在评论区讨论。</p>
 
@@ -352,7 +334,7 @@ fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发�
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -366,8 +348,6 @@ fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发�
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -379,15 +359,13 @@ fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发�
 
 
 
-  
 
-
-<time datetime="2025-06-15T08:49:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2025</time>
+<time datetime="2025-06-15T08:49:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/flock/'>Flock</a>, <a class='category' href='/blog/categories/git/'>Git</a>, <a class='category' href='/blog/categories/linux/'>Linux</a>, <a class='category' href='/blog/categories/mac/'>Mac</a>
+    GitLinuxFlockMac
   
 </span>
 
@@ -395,7 +373,7 @@ fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发�
     </p>
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/" title="Previous Post: Could not create task ':generateDebugRFile' 问题小记">&laquo; Could not create task ':generateDebugRFile' 问题小记</a>
+        <a class="basic-alignment left" href="/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/" title="Previous Post: Could not create task ':generateDebugRFile' 问题小记">&laquo; Could not create task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       
       
         <a class="basic-alignment right" href="/blog/2025/06/23/fix-three-build-error-in-android/" title="Next Post: Android 开发中的三个常见构建错误及解决方案">Android 开发中的三个常见构建错误及解决方案 &raquo;</a>
@@ -480,10 +458,6 @@ fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发�
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -492,7 +466,7 @@ fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发�
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -559,6 +533,10 @@ fatal: unable to read tree &lt;SHA&gt; 这通常是多个进程或脚本并发�
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -592,7 +570,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -600,7 +578,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

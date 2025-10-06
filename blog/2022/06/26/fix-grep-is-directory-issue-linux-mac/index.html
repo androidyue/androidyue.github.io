@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Linux 下解决 Grep Is Directory 问题 Jun 26th, 2022 Grep 是一个很便捷有用的终端工具，它可以帮助我们快速过滤筛选出一些内容。通常配合 find 命令，可以实现更加强大的能力。 比如这个这样的组合，可以快速发现并定位到 哪个.gradle 文件包含 &hellip;">
+  <meta name="description" content="Linux 下解决 Grep Is Directory 问题 Grep 是一个很便捷有用的终端工具，它可以帮助我们快速过滤筛选出一些内容。通常配合 find 命令，可以实现更加强大的能力。 比如这个这样的组合，可以快速发现并定位到 哪个.gradle 文件包含 maven.aliyun.com &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2022-06-26T20:52:00+08:00" pubdate data-updated="true">Jun 26<span>th</span>, 2022</time>
+<time datetime="2022-06-26T20:52:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -188,84 +186,66 @@
 
 <p>比如这个这样的组合，可以快速发现并定位到 哪个.gradle 文件包含 maven.aliyun.com 。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always <span class="s2">&quot;maven.aliyun.com&quot;</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">find <span class="nb">.</span> <span class="nt">-name</span> <span class="s2">"*.gradle"</span> | xargs <span class="nb">grep</span> <span class="nt">-E</span> <span class="nt">-n</span> <span class="nt">--color</span><span class="o">=</span>always <span class="s2">"maven.aliyun.com"</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>但是我们在执行的时候，总会遇到这样的错误提示输出。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>grep: ./example/android/.gradle: Is a directory
-</span></code></pre></td></tr></table></div></figure>
-
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">grep</span>: ./example/android/.gradle: Is a directory</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <!--more-->
 
-
-<p>之所以出现这个问题，原因是 <code>find . -name "*.gradle"</code> 匹配到了 .gradle 目录，而使用 grep 只是单纯扫描这个目录（非包含内部文件）没有任何意义。</p>
+<p>之所以出现这个问题，原因是 <code class="language-plaintext highlighter-rouge">find . -name "*.gradle"</code> 匹配到了 .gradle 目录，而使用 grep 只是单纯扫描这个目录（非包含内部文件）没有任何意义。</p>
 
 <p>还在解决方法有很多，可以轻松规避这个错误输出。</p>
 
-<h2>方法一，递归查找该目录</h2>
+<h2 id="方法一递归查找该目录">方法一，递归查找该目录</h2>
+<p>我们可以通过 <code class="language-plaintext highlighter-rouge">-r</code> 指令，递归目录内部的文件查找</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">find <span class="nb">.</span> <span class="nt">-name</span> <span class="s2">"*.gradle"</span> | xargs <span class="nb">grep</span> <span class="nt">-E</span> <span class="nt">-n</span> <span class="nt">--color</span><span class="o">=</span>always <span class="nt">-r</span> <span class="s2">"maven.aliyun.com"</span>
+</span><span class="line">./example/android/.gradle/build.gradle:7:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span><span class="line">./example/android/.gradle/build.gradle:23:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span><span class="line">./example/android/.gradle/build.gradle:7:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span><span class="line">./example/android/.gradle/build.gradle:23:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<p>我们可以通过 <code>-r</code> 指令，递归目录内部的文件查找</p>
+<h2 id="方法二跳过目录">方法二，跳过目录</h2>
+<p>我们可以通过 <code class="language-plaintext highlighter-rouge">--directories=skip</code> 跳过对文件夹的查找</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">find <span class="nb">.</span> <span class="nt">-name</span> <span class="s2">"*.gradle"</span> | xargs <span class="nb">grep</span> <span class="nt">-E</span> <span class="nt">-n</span> <span class="nt">--color</span><span class="o">=</span>always  <span class="s2">"maven.aliyun.com"</span> <span class="nt">--directories</span><span class="o">=</span>skip
+</span><span class="line"> find <span class="nb">.</span> <span class="nt">-name</span> <span class="s2">"*.gradle"</span> | xargs <span class="nb">grep</span> <span class="nt">-E</span> <span class="nt">-n</span> <span class="nt">--color</span><span class="o">=</span>always  <span class="s2">"maven.aliyun.com"</span> <span class="nt">--directories</span><span class="o">=</span>skip
+</span><span class="line">./example/android/.gradle/build.gradle:7:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span><span class="line">./example/android/.gradle/build.gradle:23:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always -r <span class="s2">&quot;maven.aliyun.com&quot;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
+<h2 id="方案三设置环境变量跳过目录">方案三，设置环境变量，跳过目录</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">export </span><span class="nv">GREP_OPTIONS</span><span class="o">=</span><span class="s2">"--directories=skip"</span>
+</span><span class="line">find <span class="nb">.</span> <span class="nt">-name</span> <span class="s2">"*.gradle"</span> | xargs <span class="nb">grep</span> <span class="nt">-E</span> <span class="nt">-n</span> <span class="nt">--color</span><span class="o">=</span>always <span class="s2">"maven.aliyun.com"</span>
+</span><span class="line">./example/android/.gradle/build.gradle:7:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span><span class="line">./example/android/.gradle/build.gradle:23:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<h2 id="方案四-grep-输入源控制">方案四， grep 输入源控制</h2>
+<p>我们可以使用 find 的 <code class="language-plaintext highlighter-rouge">-type f</code> 来只查找文件类型，排除目录类型。</p>
 
-<h2>方法二，跳过目录</h2>
-
-<p>我们可以通过 <code>--directories=skip</code> 跳过对文件夹的查找</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always  <span class="s2">&quot;maven.aliyun.com&quot;</span> --directories<span class="o">=</span>skip
-</span><span class='line'> find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always  <span class="s2">&quot;maven.aliyun.com&quot;</span> --directories<span class="o">=</span>skip
-</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>方案三，设置环境变量，跳过目录</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">export </span><span class="nv">GREP_OPTIONS</span><span class="o">=</span><span class="s2">&quot;--directories=skip&quot;</span>
-</span><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> | xargs grep -E -n --color<span class="o">=</span>always <span class="s2">&quot;maven.aliyun.com&quot;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>方案四， grep 输入源控制</h2>
-
-<p>我们可以使用 find 的 <code>-type f</code> 来只查找文件类型，排除目录类型。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>find . -name <span class="s2">&quot;*.gradle&quot;</span> -type f |  xargs grep -E -n --color<span class="o">=</span>always <span class="s2">&quot;maven.aliyun.com&quot;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:7:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span><span class='line'>./example/android/.gradle/build.gradle:23:            url <span class="s1">&#39;http://maven.aliyun.com/nexus/content/repositories/releases/&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">find <span class="nb">.</span> <span class="nt">-name</span> <span class="s2">"*.gradle"</span> <span class="nt">-type</span> f |  xargs <span class="nb">grep</span> <span class="nt">-E</span> <span class="nt">-n</span> <span class="nt">--color</span><span class="o">=</span>always <span class="s2">"maven.aliyun.com"</span>
+</span><span class="line">./example/android/.gradle/build.gradle:7:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span><span class="line">./example/android/.gradle/build.gradle:23:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>上面的方法都可以解决这个问题，大家可以随意选择偏好的方案处理使用。</p>
 
@@ -289,7 +269,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -303,8 +283,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -316,15 +294,13 @@
 
 
 
-  
 
-
-<time datetime="2022-06-26T20:52:00+08:00" pubdate data-updated="true">Jun 26<span>th</span>, 2022</time>
+<time datetime="2022-06-26T20:52:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/grep/'>Grep</a>, <a class='category' href='/blog/categories/linux/'>Linux</a>, <a class='category' href='/blog/categories/mac/'>Mac</a>, <a class='category' href='/blog/categories/bash/'>bash</a>, <a class='category' href='/blog/categories/find/'>find</a>
+    LinuxGrepMacfindbash
   
 </span>
 
@@ -417,10 +393,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -429,7 +401,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -496,6 +468,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -529,7 +505,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -537,7 +513,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

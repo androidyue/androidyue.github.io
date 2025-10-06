@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="剖析Android中进程与线程调度之nice Sep 5th, 2015 在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题 &hellip;">
+  <meta name="description" content="剖析Android中进程与线程调度之nice 在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,205 +174,160 @@
 
 
 
-  
 
-
-<time datetime="2015-09-05T11:35:00+08:00" pubdate data-updated="true">Sep 5<span>th</span>, 2015</time>
+<time datetime="2015-09-05T11:35:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题，研究nice在Linux以及Android系统中的应用。</p>
-
+<div class="entry-content"><p>在计算机操作系统中，进程是进行资源分配和调度的基本单位，同时每个进程之内也可以存在多个线程。那么在Android系统（Linux Kernel）中，进程是如何去抢占资源，线程又是如何根据优先级切换呢，本文将尝试剖析这个问题，研究nice在Linux以及Android系统中的应用。
 <!--more-->
-
-
-<h2>一些概念</h2>
-
+##一些概念</p>
 <ul>
-<li>进程 是计算机系统中，程序运行的实体，也是线程的容器。</li>
-<li>线程 是进程中实际执行单位，一个线程是程序执行流的最小单元。在一个进程中可以有多个线程存在。</li>
+  <li>进程 是计算机系统中，程序运行的实体，也是线程的容器。</li>
+  <li>线程 是进程中实际执行单位，一个线程是程序执行流的最小单元。在一个进程中可以有多个线程存在。</li>
 </ul>
 
-
-<h2>nice与进程调度</h2>
-
-<p>Linux中，使用nice value（以下成为nice值）来设定一个进程的优先级，系统任务调度器根据nice值合理安排调度。</p>
+<p>##nice与进程调度
+Linux中，使用nice value（以下成为nice值）来设定一个进程的优先级，系统任务调度器根据nice值合理安排调度。</p>
 
 <ul>
-<li>nice的取值范围为-20到19。</li>
-<li>通常情况下，nice的默认值为0。视具体操作系统而定。</li>
-<li>nice的值越大，进程的优先级就越低，获得CPU调用的机会越少，nice值越小，进程的优先级则越高，获得CPU调用的机会越多。</li>
-<li>一个nice值为-20的进程优先级最高，nice值为19的进程优先级最低。</li>
-<li>父进程fork出来的子进程nice值与父进程相同。父进程renice，子进程nice值不会随之改变。</li>
+  <li>nice的取值范围为-20到19。</li>
+  <li>通常情况下，nice的默认值为0。视具体操作系统而定。</li>
+  <li>nice的值越大，进程的优先级就越低，获得CPU调用的机会越少，nice值越小，进程的优先级则越高，获得CPU调用的机会越多。</li>
+  <li>一个nice值为-20的进程优先级最高，nice值为19的进程优先级最低。</li>
+  <li>父进程fork出来的子进程nice值与父进程相同。父进程renice，子进程nice值不会随之改变。</li>
 </ul>
 
+<p>###词源考究
+nice这个命令的来源几乎没有资料提到，于是便尝试自己来推断一下。在诸如词霸，沪江等词典给出的意思均为<code class="language-plaintext highlighter-rouge">好的；美好的；可爱的；好心的，友好的</code>。而有道词典则稍微给出了一个其他词典没有的<code class="language-plaintext highlighter-rouge">和蔼的</code>。个人认为有道给出的这个比较合理。要想做到和蔼，就需要做到谦让，因此或多或少牺牲自己一点，成全他人。所以nice值越高，越和蔼，但是自己的优先级也会越低。</p>
 
-<h3>词源考究</h3>
-
-<p>nice这个命令的来源几乎没有资料提到，于是便尝试自己来推断一下。在诸如词霸，沪江等词典给出的意思均为<code>好的；美好的；可爱的；好心的，友好的</code>。而有道词典则稍微给出了一个其他词典没有的<code>和蔼的</code>。个人认为有道给出的这个比较合理。要想做到和蔼，就需要做到谦让，因此或多或少牺牲自己一点，成全他人。所以nice值越高，越和蔼，但是自己的优先级也会越低。</p>
-
-<h3>renice</h3>
-
-<p>对于一个新的进程我们可以按照下面的代码为一个进程设定nice值。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>nice -n 10 adb logcat
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>###renice
+对于一个新的进程我们可以按照下面的代码为一个进程设定nice值。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">nice</span> <span class="nt">-n</span> 10 adb logcat</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>对于已经创建的进程，我们可以使用renice来修改nice值</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo renice -n 0 -p 24161
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">sudo </span>renice <span class="nt">-n</span> 0 <span class="nt">-p</span> 24161</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>该命令需要使用root权限，-p对应的值为进程id。</p>
 
 <p>注意renice命令在Linux发行版中-n 的值应该为进程的目标优先级。而Mac下-n，则是代表对当前权限的增加值。
-比如在Mac下，讲一个进程的nice值由19改成10，可以这样操作<code>sudo renice -n -9  -p 24161</code>,这一点需要注意，避免掉进坑里。</p>
+比如在Mac下，讲一个进程的nice值由19改成10，可以这样操作<code class="language-plaintext highlighter-rouge">sudo renice -n -9  -p 24161</code>,这一点需要注意，避免掉进坑里。</p>
 
-<h3>Android中的nice</h3>
-
-<p>由于Android基于Linux Kernel，在Android中也存在nice值。但是一般情况下我们无法控制，原因如下：</p>
-
-<ul>
-<li>Android系统并不像其他Linux发行版那样便捷地使用nice命令操作。</li>
-<li>renice需要root权限，一般应用无法实现。</li>
-</ul>
-
-
-<h2>线程调度</h2>
-
-<p>虽然对于进程的优先级，我们无法控制，但是我们可以控制进程中的线程的优先级。在Android中有两种线程的优先级，一种为Android API版本，另一种是 Java 原生版本。</p>
-
-<h3>Android API</h3>
-
-<p>Android中的线程优先级别目前规定了如下，了解了进程优先级与nice值的关系，那么线程优先级与值之间的关系也就更加容易理解。</p>
+<p>###Android中的nice
+由于Android基于Linux Kernel，在Android中也存在nice值。但是一般情况下我们无法控制，原因如下：</p>
 
 <ul>
-<li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
-<li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
-<li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
-<li>THREAD_PRIORITY_FOREGROUND 用户正在交互的UI线程，代码中无法设置该优先级，系统会按照情况调整到该优先级，值为-2。</li>
-<li>THREAD_PRIORITY_DISPLAY 也是与UI交互相关的优先级界别，但是要比THREAD_PRIORITY_FOREGROUND优先，代码中无法设置，由系统按照情况调整，值为-4。</li>
-<li>THREAD_PRIORITY_URGENT_DISPLAY 显示线程的最高级别，用来处理绘制画面和检索输入事件，代码中无法设置成该优先级。值为-8。</li>
-<li>THREAD_PRIORITY_AUDIO 声音线程的标准级别，代码中无法设置为该优先级，值为 -16。</li>
-<li>THREAD_PRIORITY_URGENT_AUDIO 声音线程的最高级别，优先程度较THREAD_PRIORITY_AUDIO要高。代码中无法设置为该优先级。值为-19。</li>
-<li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
-<li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
+  <li>Android系统并不像其他Linux发行版那样便捷地使用nice命令操作。</li>
+  <li>renice需要root权限，一般应用无法实现。</li>
 </ul>
 
+<p>##线程调度
+虽然对于进程的优先级，我们无法控制，但是我们可以控制进程中的线程的优先级。在Android中有两种线程的优先级，一种为Android API版本，另一种是 Java 原生版本。</p>
+
+<p>###Android API
+Android中的线程优先级别目前规定了如下，了解了进程优先级与nice值的关系，那么线程优先级与值之间的关系也就更加容易理解。</p>
+
+<ul>
+  <li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
+  <li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
+  <li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
+  <li>THREAD_PRIORITY_FOREGROUND 用户正在交互的UI线程，代码中无法设置该优先级，系统会按照情况调整到该优先级，值为-2。</li>
+  <li>THREAD_PRIORITY_DISPLAY 也是与UI交互相关的优先级界别，但是要比THREAD_PRIORITY_FOREGROUND优先，代码中无法设置，由系统按照情况调整，值为-4。</li>
+  <li>THREAD_PRIORITY_URGENT_DISPLAY 显示线程的最高级别，用来处理绘制画面和检索输入事件，代码中无法设置成该优先级。值为-8。</li>
+  <li>THREAD_PRIORITY_AUDIO 声音线程的标准级别，代码中无法设置为该优先级，值为 -16。</li>
+  <li>THREAD_PRIORITY_URGENT_AUDIO 声音线程的最高级别，优先程度较THREAD_PRIORITY_AUDIO要高。代码中无法设置为该优先级。值为-19。</li>
+  <li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
+  <li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
+</ul>
 
 <p>使用Android API为线程设置优先级也很简单，只需要在线程执行时调用android.os.Process.setThreadPriority方法即可。这种在线程运行时进行修改优先级，效果类似renice。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">new Thread <span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    @Override
+</span><span class="line">    public void run<span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    	super.run<span class="o">()</span><span class="p">;</span>
+</span><span class="line">        android.os.Process.setThreadPriority<span class="o">(</span>Process.THREAD_PRIORITY_BACKGROUND<span class="o">)</span><span class="p">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>.start<span class="o">()</span><span class="p">;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>new Thread <span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    @Override
-</span><span class='line'>    public void run<span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      super.run<span class="o">()</span>;
-</span><span class='line'>        android.os.Process.setThreadPriority<span class="o">(</span>Process.THREAD_PRIORITY_BACKGROUND<span class="o">)</span>;
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>.start<span class="o">()</span>;
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Java原生API</h3>
-
-<p>Java为Thread提供了三个级别的设置，</p>
+<p>###Java原生API
+Java为Thread提供了三个级别的设置，</p>
 
 <ul>
-<li>MAX_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY，值为10。</li>
-<li>MIN_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_LOWEST，值为0。</li>
-<li>NORM_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_DEFAULT，值为5。</li>
+  <li>MAX_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY，值为10。</li>
+  <li>MIN_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_LOWEST，值为0。</li>
+  <li>NORM_PRIORITY，相当于android.os.Process.THREAD_PRIORITY_DEFAULT，值为5。</li>
 </ul>
-
 
 <p>使用setPriority我们可以为某个线程设置优先级，使用getPriority可以获得某个线程的优先级。</p>
 
 <p>在Android系统中，不建议使用Java原生的API，因为Android提供的API划分的级别更多，更适合在Android系统中进行设定细致的优先级。</p>
 
-<h2>注意</h2>
-
-<p>Android API的线程优先级和Java原生API的优先级是相对独立的，比如使用android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)后，使用Java原生API,Thread.getPriority()得到的值不会改变。如下面代码：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>new Thread<span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    @Override
-</span><span class='line'>    public void run<span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        super.run<span class="o">()</span>;
-</span><span class='line'>        Log.i<span class="o">(</span>LOGTAG, <span class="s2">&quot;Java Thread Priority Before=&quot;</span> + Thread.currentThread<span class="o">()</span>.getPriority<span class="o">())</span>;
-</span><span class='line'>        Process.setThreadPriority<span class="o">(</span>Process.THREAD_PRIORITY_LOWEST<span class="o">)</span>;
-</span><span class='line'>        Log.i<span class="o">(</span>LOGTAG, <span class="s2">&quot;Java Thread Priority=&quot;</span> + Thread.currentThread<span class="o">()</span>.getPriority<span class="o">())</span>;
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>.start<span class="o">()</span>;
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##注意
+Android API的线程优先级和Java原生API的优先级是相对独立的，比如使用android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)后，使用Java原生API,Thread.getPriority()得到的值不会改变。如下面代码：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">new Thread<span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    @Override
+</span><span class="line">    public void run<span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        super.run<span class="o">()</span><span class="p">;</span>
+</span><span class="line">        Log.i<span class="o">(</span>LOGTAG, <span class="s2">"Java Thread Priority Before="</span> + Thread.currentThread<span class="o">()</span>.getPriority<span class="o">())</span><span class="p">;</span>
+</span><span class="line">        Process.setThreadPriority<span class="o">(</span>Process.THREAD_PRIORITY_LOWEST<span class="o">)</span><span class="p">;</span>
+</span><span class="line">        Log.i<span class="o">(</span>LOGTAG, <span class="s2">"Java Thread Priority="</span> + Thread.currentThread<span class="o">()</span>.getPriority<span class="o">())</span><span class="p">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>.start<span class="o">()</span><span class="p">;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>上述代码的运行日志为</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">I/MainActivity<span class="o">(</span> 3679<span class="o">)</span>: Java Thread Priority <span class="nv">Before</span><span class="o">=</span>5
+</span><span class="line">I/MainActivity<span class="o">(</span> 3679<span class="o">)</span>: Java Thread <span class="nv">Priority</span><span class="o">=</span>5</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>I/MainActivity<span class="o">(</span> 3679<span class="o">)</span>: Java Thread Priority <span class="nv">Before</span><span class="o">=</span>5
-</span><span class='line'>I/MainActivity<span class="o">(</span> 3679<span class="o">)</span>: Java Thread <span class="nv">Priority</span><span class="o">=</span>5
-</span></code></pre></td></tr></table></div></figure>
+<p>由于上面的这一点缺陷，导致我们在分析ANR trace时需要注意，在下面的ANR日志信息中，<code class="language-plaintext highlighter-rouge">prio=5</code>中proi的值对应的Java原生API的线程优先级。而<code class="language-plaintext highlighter-rouge">nice=-6</code>中的nice表示的Android API版本的线程优先级。</p>
 
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="s2">"main"</span> <span class="nv">prio</span><span class="o">=</span>5 <span class="nv">tid</span><span class="o">=</span>1 NATIVE
+</span><span class="line">  | <span class="nv">group</span><span class="o">=</span><span class="s2">"main"</span> <span class="nv">sCount</span><span class="o">=</span>1 <span class="nv">dsCount</span><span class="o">=</span>0 <span class="nv">obj</span><span class="o">=</span>0x41690f18 <span class="nv">self</span><span class="o">=</span>0x4167e650
+</span><span class="line">  | <span class="nv">sysTid</span><span class="o">=</span>1765 <span class="nb">nice</span><span class="o">=</span><span class="nt">-6</span> <span class="nv">sched</span><span class="o">=</span>0/0 <span class="nv">cgrp</span><span class="o">=</span>apps <span class="nv">handle</span><span class="o">=</span>1074196888
+</span><span class="line">  | <span class="nv">state</span><span class="o">=</span>S <span class="nv">schedstat</span><span class="o">=(</span> 0 0 0 <span class="o">)</span> <span class="nv">utm</span><span class="o">=</span>5764 <span class="nv">stm</span><span class="o">=</span>3654 <span class="nv">core</span><span class="o">=</span>2
+</span><span class="line">  <span class="c">#00  pc 00022624  /system/lib/libc.so (__futex_syscall3+8)</span>
+</span><span class="line">  <span class="c">#01  pc 0000f054  /system/lib/libc.so (__pthread_cond_timedwait_relative+48)</span>
+</span><span class="line">  <span class="c">#02  pc 0000f0b4  /system/lib/libc.so (__pthread_cond_timedwait+64)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<p>由于上面的这一点缺陷，导致我们在分析ANR trace时需要注意，在下面的ANR日志信息中，<code>prio=5</code>中proi的值对应的Java原生API的线程优先级。而<code>nice=-6</code>中的nice表示的Android API版本的线程优先级。</p>
+<p>##避免ANR
+我在之前的文章<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>中提到使用WorkerThread处理耗时IO操作，同时将WorkerThread的优先级降低，对于耗时IO操作，比如读取数据库，文件等，我们可以设置该workerThread优先级为THREAD_PRIORITY_BACKGROUND，以此降低与主线程竞争的能力。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="s2">&quot;main&quot;</span> <span class="nv">prio</span><span class="o">=</span>5 <span class="nv">tid</span><span class="o">=</span>1 NATIVE
-</span><span class='line'>  | <span class="nv">group</span><span class="o">=</span><span class="s2">&quot;main&quot;</span> <span class="nv">sCount</span><span class="o">=</span>1 <span class="nv">dsCount</span><span class="o">=</span>0 <span class="nv">obj</span><span class="o">=</span>0x41690f18 <span class="nv">self</span><span class="o">=</span>0x4167e650
-</span><span class='line'>  | <span class="nv">sysTid</span><span class="o">=</span>1765 <span class="nv">nice</span><span class="o">=</span>-6 <span class="nv">sched</span><span class="o">=</span>0/0 <span class="nv">cgrp</span><span class="o">=</span>apps <span class="nv">handle</span><span class="o">=</span>1074196888
-</span><span class='line'>  | <span class="nv">state</span><span class="o">=</span>S <span class="nv">schedstat</span><span class="o">=(</span> 0 0 0 <span class="o">)</span> <span class="nv">utm</span><span class="o">=</span>5764 <span class="nv">stm</span><span class="o">=</span>3654 <span class="nv">core</span><span class="o">=</span>2
-</span><span class='line'>  <span class="c">#00  pc 00022624  /system/lib/libc.so (__futex_syscall3+8)</span>
-</span><span class='line'>  <span class="c">#01  pc 0000f054  /system/lib/libc.so (__pthread_cond_timedwait_relative+48)</span>
-</span><span class='line'>  <span class="c">#02  pc 0000f0b4  /system/lib/libc.so (__pthread_cond_timedwait+64)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>避免ANR</h2>
-
-<p>我在之前的文章<a href="http://droidyue.com/blog/2015/07/18/anr-in-android/">说说Android中的ANR</a>中提到使用WorkerThread处理耗时IO操作，同时将WorkerThread的优先级降低，对于耗时IO操作，比如读取数据库，文件等，我们可以设置该workerThread优先级为THREAD_PRIORITY_BACKGROUND，以此降低与主线程竞争的能力。</p>
-
-<h3>同系列文章</h3>
-
+<p>###同系列文章</p>
 <ul>
-<li><a href="/blog/2015/09/17/android-process-and-thread-schedule-cgroups/?droid_refer=series">剖析Android中进程与线程调度之cgroups</a></li>
+  <li><a href="/blog/2015/09/17/android-process-and-thread-schedule-cgroups/?droid_refer=series">剖析Android中进程与线程调度之cgroups</a></li>
 </ul>
-
 
 <script type="text/javascript" src="http://droidyue.b0.upaiyun.com/js/blog/book_copyright.js"></script>
 
-
 <script type="text/javascript">
-    showBookCopyright();
+	showBookCopyright();
 </script>
-
-
 
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
@@ -395,7 +350,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -409,8 +364,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -422,15 +375,13 @@
 
 
 
-  
 
-
-<time datetime="2015-09-05T11:35:00+08:00" pubdate data-updated="true">Sep 5<span>th</span>, 2015</time>
+<time datetime="2015-09-05T11:35:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>
+    Android
   
 </span>
 
@@ -523,10 +474,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -535,7 +482,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -602,6 +549,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -635,7 +586,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -643,7 +594,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

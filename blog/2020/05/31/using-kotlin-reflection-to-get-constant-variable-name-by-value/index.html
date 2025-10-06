@@ -11,14 +11,15 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="巧用Kotlin反射实现按值取名，调试做到多快好省 May 31st, 2020 痛点 我们经常会定义一些常量，比如 1
+  <meta name="description" content="巧用Kotlin反射实现按值取名，调试做到多快好省 痛点
+我们经常会定义一些常量，比如 1
 2
 3
 4
 5
 6
 7
-public interface ItemType { public static final int TYPE_TEXT = 0; public &hellip;">
+public interface ItemType { public static final int TYPE_TEXT = 0; public static final int &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -181,348 +182,302 @@ public interface ItemType { public static final int TYPE_TEXT = 0; public &helli
 
 
 
-  
 
-
-<time datetime="2020-05-31T20:55:00+08:00" pubdate data-updated="true">May 31<span>st</span>, 2020</time>
+<time datetime="2020-05-31T20:55:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><h2>痛点</h2>
-
+<div class="entry-content"><h2 id="痛点">痛点</h2>
 <p>我们经常会定义一些常量，比如</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ItemType</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_TEXT</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_IMG</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_VIDEO</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_AUDIO</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TYPE_LINK</span> <span class="o">=</span> <span class="mi">4</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ItemType</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="no">TYPE_TEXT</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="no">TYPE_IMG</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="no">TYPE_VIDEO</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="no">TYPE_AUDIO</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="no">TYPE_LINK</span> <span class="o">=</span> <span class="mi">4</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 <!--more-->
 
-
 <p>当我们打印查看是哪种类型的时候，如果单纯是打印int值，并不能足够解释业务信息，所以，为了更好的输出信息，我们通常会这样做</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">fun</span> <span class="nf">inspectItemTypeUgly</span><span class="o">(</span><span class="nl">itemType:</span> <span class="n">Int</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">val</span> <span class="n">type</span> <span class="o">=</span> <span class="n">when</span><span class="o">(</span><span class="n">itemType</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">ItemType</span><span class="o">.</span><span class="na">TYPE_TEXT</span> <span class="o">-&gt;</span> <span class="s">&quot;text&quot;</span>
-</span><span class='line'>        <span class="n">ItemType</span><span class="o">.</span><span class="na">TYPE_AUDIO</span> <span class="o">-&gt;</span> <span class="s">&quot;audio&quot;</span>
-</span><span class='line'>        <span class="n">ItemType</span><span class="o">.</span><span class="na">TYPE_IMG</span> <span class="o">-&gt;</span> <span class="s">&quot;image&quot;</span>
-</span><span class='line'>        <span class="n">ItemType</span><span class="o">.</span><span class="na">TYPE_LINK</span> <span class="o">-&gt;</span> <span class="s">&quot;link&quot;</span>
-</span><span class='line'>        <span class="n">ItemType</span><span class="o">.</span><span class="na">TYPE_VIDEO</span> <span class="o">-&gt;</span> <span class="s">&quot;video&quot;</span>
-</span><span class='line'>        <span class="k">else</span> <span class="o">-&gt;</span> <span class="kc">null</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="n">println</span><span class="o">(</span><span class="s">&quot;inspect item type =${inspectItemTypeUgly(itemType)};originalValue=$itemType&quot;</span><span class="o">)</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="n">fun</span> <span class="nf">inspectItemTypeUgly</span><span class="o">(</span><span class="nl">itemType:</span> <span class="nc">Int</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">val</span> <span class="n">type</span> <span class="o">=</span> <span class="n">when</span><span class="o">(</span><span class="n">itemType</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">ItemType</span><span class="o">.</span><span class="na">TYPE_TEXT</span> <span class="o">-&gt;</span> <span class="s">"text"</span>
+</span><span class="line">        <span class="nc">ItemType</span><span class="o">.</span><span class="na">TYPE_AUDIO</span> <span class="o">-&gt;</span> <span class="s">"audio"</span>
+</span><span class="line">        <span class="nc">ItemType</span><span class="o">.</span><span class="na">TYPE_IMG</span> <span class="o">-&gt;</span> <span class="s">"image"</span>
+</span><span class="line">        <span class="nc">ItemType</span><span class="o">.</span><span class="na">TYPE_LINK</span> <span class="o">-&gt;</span> <span class="s">"link"</span>
+</span><span class="line">        <span class="nc">ItemType</span><span class="o">.</span><span class="na">TYPE_VIDEO</span> <span class="o">-&gt;</span> <span class="s">"video"</span>
+</span><span class="line">        <span class="k">else</span> <span class="o">-&gt;</span> <span class="kc">null</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="n">println</span><span class="o">(</span><span class="s">"inspect item type =${inspectItemTypeUgly(itemType)};originalValue=$itemType"</span><span class="o">)</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>然后这样调用</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="n">itemType</span> <span class="o">=</span> <span class="n">getRandomItemType</span><span class="o">()</span>
-</span><span class='line'><span class="n">print</span><span class="o">(</span><span class="n">inspectItemTypeUgly</span><span class="o">(</span><span class="n">itemType</span><span class="o">))</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">val</span> <span class="n">itemType</span> <span class="o">=</span> <span class="n">getRandomItemType</span><span class="o">()</span>
+</span><span class="line"><span class="n">print</span><span class="o">(</span><span class="n">inspectItemTypeUgly</span><span class="o">(</span><span class="n">itemType</span><span class="o">))</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>这样做能打印出更加有意义的信息，但是需要编写额外的将int转换成String的方法，可谓是费时费力。</p>
 
-<h2>有没有好办法</h2>
+<h2 id="有没有好办法">有没有好办法</h2>
 
 <p>方法是有的。</p>
 
-<p>比如我们定义<code>public static final int TYPE_TEXT = 0;</code>的时候，我们定义了常量名和常量值。那么</p>
+<p>比如我们定义<code class="language-plaintext highlighter-rouge">public static final int TYPE_TEXT = 0;</code>的时候，我们定义了常量名和常量值。那么</p>
 
 <ul>
-<li>我们可以利用变量值查找对应的变量名</li>
-<li>借助 Kotlin便捷的特性和反射库，我们可以更好更轻松实现。</li>
+  <li>我们可以利用变量值查找对应的变量名</li>
+  <li>借助 Kotlin便捷的特性和反射库，我们可以更好更轻松实现。</li>
 </ul>
 
+<h2 id="秀代码">秀代码</h2>
 
-<h2>秀代码</h2>
+<h3 id="针对-java-类接口和普通的-kotlin类">针对 Java 类（接口）和普通的 Kotlin类</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">getConstantNameByValueFromNormalClass</span><span class="p">(</span><span class="n">kClass</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="err">*</span><span class="p">&gt;,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">):</span> <span class="nc">String</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">value</span> <span class="o">?:</span> <span class="k">return</span> <span class="k">null</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">kClass</span><span class="p">.</span><span class="n">staticProperties</span><span class="p">.</span><span class="nf">filter</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
+</span><span class="line">    <span class="p">}.</span><span class="nf">firstOrNull</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="nf">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
+</span><span class="line">    <span class="p">}</span><span class="o">?.</span><span class="n">name</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h3>针对 Java 类（接口）和普通的 Kotlin类</h3>
+<h4 id="调用示例">调用示例</h4>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="nf">println</span><span class="p">(</span><span class="s">"itemType=${ItemType::class.getConstantNameByValueFromNormalClass(itemType)}"</span><span class="p">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">getConstantNameByValueFromNormalClass</span><span class="p">(</span><span class="n">kClass</span><span class="p">:</span> <span class="n">KClass</span><span class="p">&lt;*&gt;,</span> <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">):</span> <span class="n">String</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">value</span> <span class="p">?:</span> <span class="k">return</span> <span class="k">null</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">kClass</span><span class="p">.</span><span class="n">staticProperties</span><span class="p">.</span><span class="n">filter</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
-</span><span class='line'>    <span class="p">}.</span><span class="n">firstOrNull</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="n">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
-</span><span class='line'>    <span class="p">}?.</span><span class="n">name</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<h3 id="针对-kotlin-object">针对 Kotlin object</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">getConstantNameByValueForObject</span><span class="p">(</span><span class="n">kClass</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="err">*</span><span class="p">&gt;,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">):</span> <span class="nc">String</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">value</span> <span class="o">?:</span> <span class="k">return</span> <span class="k">null</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">kClass</span><span class="p">.</span><span class="n">memberProperties</span><span class="p">.</span><span class="nf">filter</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
+</span><span class="line">    <span class="p">}.</span><span class="nf">firstOrNull</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="nf">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
+</span><span class="line">    <span class="p">}</span><span class="o">?.</span><span class="n">name</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<h4 id="调用示例-1">调用示例</h4>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//定义常量在Object对象中</span>
+</span><span class="line"><span class="kd">object</span> <span class="nc">ErrorCodes</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">const</span> <span class="kd">val</span> <span class="py">ERROR_OK</span> <span class="p">=</span> <span class="mi">0</span>
+</span><span class="line">    <span class="k">const</span> <span class="kd">val</span> <span class="py">ERROR_INVALID_PARAM</span> <span class="p">=</span> <span class="mi">1</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//调用处</span>
+</span><span class="line"><span class="nf">println</span><span class="p">(</span><span class="s">"errorCode="</span> <span class="p">+</span> <span class="nc">ErrorCodes</span><span class="o">::</span><span class="k">class</span><span class="p">.</span><span class="nf">getConstantNameByValueForObject</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h4>调用示例</h4>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">println</span><span class="p">(</span><span class="s">&quot;itemType=${ItemType::class.getConstantNameByValueFromNormalClass(itemType)}&quot;</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>针对 Kotlin object</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">getConstantNameByValueForObject</span><span class="p">(</span><span class="n">kClass</span><span class="p">:</span> <span class="n">KClass</span><span class="p">&lt;*&gt;,</span> <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">):</span> <span class="n">String</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">value</span> <span class="p">?:</span> <span class="k">return</span> <span class="k">null</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">kClass</span><span class="p">.</span><span class="n">memberProperties</span><span class="p">.</span><span class="n">filter</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
-</span><span class='line'>    <span class="p">}.</span><span class="n">firstOrNull</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="n">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
-</span><span class='line'>    <span class="p">}?.</span><span class="n">name</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>调用示例</h4>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//定义常量在Object对象中</span>
-</span><span class='line'><span class="n">object</span> <span class="n">ErrorCodes</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">const</span> <span class="k">val</span> <span class="n">ERROR_OK</span> <span class="p">=</span> <span class="m">0</span>
-</span><span class='line'>    <span class="n">const</span> <span class="k">val</span> <span class="n">ERROR_INVALID_PARAM</span> <span class="p">=</span> <span class="m">1</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//调用处</span>
-</span><span class='line'><span class="n">println</span><span class="p">(</span><span class="s">&quot;errorCode=&quot;</span> <span class="p">+</span> <span class="n">ErrorCodes</span><span class="p">::</span><span class="n">class</span><span class="p">.</span><span class="n">getConstantNameByValueForObject</span><span class="p">(</span><span class="m">0</span><span class="p">))</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>针对 Kotlin Top Level 变量的问题</h3>
+<h3 id="针对-kotlin-top-level-变量的问题">针对 Kotlin Top Level 变量的问题</h3>
 
 <ul>
-<li>对于 Kotlin变量定义，我们推荐是定义在top level层级。</li>
-<li>但是 Kotlin无法直接访问到 top level 层级的类</li>
-<li>我们需要借助一些变量来辅助获取 top level 层级的类</li>
-<li>但是 Kotlin的反射无法top level类，所以我们必须使用java class</li>
+  <li>对于 Kotlin变量定义，我们推荐是定义在top level层级。</li>
+  <li>但是 Kotlin无法直接访问到 top level 层级的类</li>
+  <li>我们需要借助一些变量来辅助获取 top level 层级的类</li>
+  <li>但是 Kotlin的反射无法top level类，所以我们必须使用java class</li>
 </ul>
 
+<h4 id="借助一个变量或者顶层类">借助一个变量或者顶层类</h4>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">const</span> <span class="kd">val</span> <span class="py">SOURCE_REMOTE</span> <span class="p">=</span> <span class="mi">0</span>
+</span><span class="line"><span class="k">const</span> <span class="kd">val</span> <span class="py">SOURCE_LOCAL</span> <span class="p">=</span> <span class="mi">1</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">val</span> <span class="py">myConstantTopClass</span> <span class="p">=</span> <span class="kd">object</span> <span class="err">: </span><span class="nc">Any</span><span class="p">()</span> <span class="p">{}.</span><span class="n">javaClass</span><span class="p">.</span><span class="n">enclosingClass</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h4>借助一个变量或者顶层类</h4>
+<h4 id="借助-java-class来获取常量用kclass会抛出不支持异常">借助 Java class来获取常量（用KClass会抛出不支持异常）</h4>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">Class</span><span class="p">&lt;*&gt;.</span><span class="nf">getConstantNameByValues</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">):</span> <span class="nc">String</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">value</span> <span class="o">?:</span> <span class="k">return</span> <span class="k">null</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">declaredFields</span><span class="p">.</span><span class="nf">mapNotNull</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">kotlinProperty</span>
+</span><span class="line">    <span class="p">}.</span><span class="nf">filter</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
+</span><span class="line">    <span class="p">}.</span><span class="nf">firstOrNull</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="nf">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
+</span><span class="line">    <span class="p">}</span><span class="o">?.</span><span class="n">name</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">const</span> <span class="k">val</span> <span class="n">SOURCE_REMOTE</span> <span class="p">=</span> <span class="m">0</span>
-</span><span class='line'><span class="n">const</span> <span class="k">val</span> <span class="n">SOURCE_LOCAL</span> <span class="p">=</span> <span class="m">1</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">val</span> <span class="n">myConstantTopClass</span> <span class="p">=</span> <span class="n">object</span> <span class="p">:</span> <span class="n">Any</span><span class="p">()</span> <span class="p">{}.</span><span class="n">javaClass</span><span class="p">.</span><span class="n">enclosingClass</span>
-</span></code></pre></td></tr></table></div></figure>
+<h4 id="调用处">调用处</h4>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="nf">println</span><span class="p">(</span><span class="s">"sourceType="</span> <span class="p">+</span> <span class="n">myConstantTopClass</span><span class="p">.</span><span class="nf">getConstantNameByValues</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<h2 id="总代码">总代码</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">import</span> <span class="nn">kotlin.reflect.KClass</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">kotlin.reflect.full.memberProperties</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">kotlin.reflect.full.staticProperties</span>
+</span><span class="line"><span class="k">import</span> <span class="nn">kotlin.reflect.jvm.kotlinProperty</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">KClass</span><span class="p">&lt;*&gt;.</span><span class="nf">findConstantNameByValue</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">):</span> <span class="nc">String</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nf">isKotlinObject</span><span class="p">())</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">getConstantNameByValueForObject</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">getConstantNameByValueFromNormalClass</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">getConstantNameByValueFromNormalClass</span><span class="p">(</span><span class="n">kClass</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="err">*</span><span class="p">&gt;,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">):</span> <span class="nc">String</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">value</span> <span class="o">?:</span> <span class="k">return</span> <span class="k">null</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">kClass</span><span class="p">.</span><span class="n">staticProperties</span><span class="p">.</span><span class="nf">filter</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
+</span><span class="line">    <span class="p">}.</span><span class="nf">firstOrNull</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="nf">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
+</span><span class="line">    <span class="p">}</span><span class="o">?.</span><span class="n">name</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">getConstantNameByValueForObject</span><span class="p">(</span><span class="n">kClass</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="err">*</span><span class="p">&gt;,</span> <span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">):</span> <span class="nc">String</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">value</span> <span class="o">?:</span> <span class="k">return</span> <span class="k">null</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">kClass</span><span class="p">.</span><span class="n">memberProperties</span><span class="p">.</span><span class="nf">filter</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
+</span><span class="line">    <span class="p">}.</span><span class="nf">firstOrNull</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="nf">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
+</span><span class="line">    <span class="p">}</span><span class="o">?.</span><span class="n">name</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">Class</span><span class="p">&lt;*&gt;.</span><span class="nf">getConstantNameByValues</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">):</span> <span class="nc">String</span><span class="p">?</span> <span class="p">{</span>
+</span><span class="line">    <span class="n">value</span> <span class="o">?:</span> <span class="k">return</span> <span class="k">null</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">declaredFields</span><span class="p">.</span><span class="nf">mapNotNull</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">kotlinProperty</span>
+</span><span class="line">    <span class="p">}.</span><span class="nf">filter</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
+</span><span class="line">    <span class="p">}.</span><span class="nf">firstOrNull</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="nf">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
+</span><span class="line">    <span class="p">}</span><span class="o">?.</span><span class="n">name</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nf">KClass</span><span class="p">&lt;*&gt;.</span><span class="nf">isKotlinObject</span><span class="p">():</span> <span class="nc">Boolean</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="n">objectInstance</span> <span class="p">!=</span> <span class="k">null</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h4>借助 Java class来获取常量（用KClass会抛出不支持异常）</h4>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">Class</span><span class="p">&lt;*&gt;.</span><span class="n">getConstantNameByValues</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">):</span> <span class="n">String</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">value</span> <span class="p">?:</span> <span class="k">return</span> <span class="k">null</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">declaredFields</span><span class="p">.</span><span class="n">mapNotNull</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">kotlinProperty</span>
-</span><span class='line'>    <span class="p">}.</span><span class="n">filter</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
-</span><span class='line'>    <span class="p">}.</span><span class="n">firstOrNull</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="n">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
-</span><span class='line'>    <span class="p">}?.</span><span class="n">name</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>调用处</h4>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">println</span><span class="p">(</span><span class="s">&quot;sourceType=&quot;</span> <span class="p">+</span> <span class="n">myConstantTopClass</span><span class="p">.</span><span class="n">getConstantNameByValues</span><span class="p">(</span><span class="m">0</span><span class="p">))</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>总代码</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">import</span> <span class="n">kotlin</span><span class="p">.</span><span class="n">reflect</span><span class="p">.</span><span class="n">KClass</span>
-</span><span class='line'><span class="n">import</span> <span class="n">kotlin</span><span class="p">.</span><span class="n">reflect</span><span class="p">.</span><span class="n">full</span><span class="p">.</span><span class="n">memberProperties</span>
-</span><span class='line'><span class="n">import</span> <span class="n">kotlin</span><span class="p">.</span><span class="n">reflect</span><span class="p">.</span><span class="n">full</span><span class="p">.</span><span class="n">staticProperties</span>
-</span><span class='line'><span class="n">import</span> <span class="n">kotlin</span><span class="p">.</span><span class="n">reflect</span><span class="p">.</span><span class="n">jvm</span><span class="p">.</span><span class="n">kotlinProperty</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">KClass</span><span class="p">&lt;*&gt;.</span><span class="n">findConstantNameByValue</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">):</span> <span class="n">String</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">isKotlinObject</span><span class="p">())</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">getConstantNameByValueForObject</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">getConstantNameByValueFromNormalClass</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">getConstantNameByValueFromNormalClass</span><span class="p">(</span><span class="n">kClass</span><span class="p">:</span> <span class="n">KClass</span><span class="p">&lt;*&gt;,</span> <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">):</span> <span class="n">String</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">value</span> <span class="p">?:</span> <span class="k">return</span> <span class="k">null</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">kClass</span><span class="p">.</span><span class="n">staticProperties</span><span class="p">.</span><span class="n">filter</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
-</span><span class='line'>    <span class="p">}.</span><span class="n">firstOrNull</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="n">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
-</span><span class='line'>    <span class="p">}?.</span><span class="n">name</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">getConstantNameByValueForObject</span><span class="p">(</span><span class="n">kClass</span><span class="p">:</span> <span class="n">KClass</span><span class="p">&lt;*&gt;,</span> <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">):</span> <span class="n">String</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">value</span> <span class="p">?:</span> <span class="k">return</span> <span class="k">null</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">kClass</span><span class="p">.</span><span class="n">memberProperties</span><span class="p">.</span><span class="n">filter</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
-</span><span class='line'>    <span class="p">}.</span><span class="n">firstOrNull</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="n">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
-</span><span class='line'>    <span class="p">}?.</span><span class="n">name</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="p">&lt;</span><span class="n">T</span><span class="p">&gt;</span> <span class="n">Class</span><span class="p">&lt;*&gt;.</span><span class="n">getConstantNameByValues</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">):</span> <span class="n">String</span><span class="p">?</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">value</span> <span class="p">?:</span> <span class="k">return</span> <span class="k">null</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">declaredFields</span><span class="p">.</span><span class="n">mapNotNull</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">kotlinProperty</span>
-</span><span class='line'>    <span class="p">}.</span><span class="n">filter</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">isFinal</span>
-</span><span class='line'>    <span class="p">}.</span><span class="n">firstOrNull</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">it</span><span class="p">.</span><span class="n">getter</span><span class="p">.</span><span class="n">call</span><span class="p">()</span> <span class="p">==</span> <span class="n">value</span>
-</span><span class='line'>    <span class="p">}?.</span><span class="n">name</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="n">KClass</span><span class="p">&lt;*&gt;.</span><span class="n">isKotlinObject</span><span class="p">():</span> <span class="n">Boolean</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="n">objectInstance</span> <span class="p">!=</span> <span class="k">null</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Android 工程增加依赖(Kotlin 反射库)</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">implementation</span> <span class="s">&quot;org.jetbrains.kotlin:kotlin-reflect:$kotlin_version&quot;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>性能问题</h2>
-
+<h2 id="android-工程增加依赖kotlin-反射库">Android 工程增加依赖(Kotlin 反射库)</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">implementation</span> <span class="s">"org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<h2 id="性能问题">性能问题</h2>
 <ul>
-<li>都说，反射的话性能比较差，是的，但是也不是那么的差。</li>
-<li>如果担心性能，可以限定在非release版本下执行</li>
+  <li>都说，反射的话性能比较差，是的，但是也不是那么的差。</li>
+  <li>如果担心性能，可以限定在非release版本下执行</li>
 </ul>
 
-
-<h2>注意事项</h2>
-
+<h2 id="注意事项">注意事项</h2>
 <ul>
-<li>这种方法不适合于代码混淆后进行处理</li>
-<li>定义变量的地方，保持业务单一，不要出现多个变量名对应一个变量值的问题</li>
+  <li>这种方法不适合于代码混淆后进行处理</li>
+  <li>定义变量的地方，保持业务单一，不要出现多个变量名对应一个变量值的问题</li>
 </ul>
 
-
-<h2>完整代码</h2>
-
+<h2 id="完整代码">完整代码</h2>
 <ul>
-<li><a href="https://github.com/androidyue/KotlinReflectionSample">https://github.com/androidyue/KotlinReflectionSample</a></li>
+  <li>https://github.com/androidyue/KotlinReflectionSample</li>
 </ul>
 
-
-<h2>Kotlin其他内容推荐</h2>
-
+<h2 id="kotlin其他内容推荐">Kotlin其他内容推荐</h2>
 <ul>
-<li><a href="https://droidyue.com/blog/2019/05/19/do-and-dont-in-kotlin/">编写地道的 Kotlin 代码</a></li>
-<li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
-<li><a href="https://droidyue.com/blog/categories/kotlin/">更多Kotlin系列文章</a></li>
+  <li><a href="https://droidyue.com/blog/2019/05/19/do-and-dont-in-kotlin/">编写地道的 Kotlin 代码</a></li>
+  <li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
+  <li><a href="https://droidyue.com/blog/categories/kotlin/">更多Kotlin系列文章</a></li>
 </ul>
 
 
@@ -546,7 +501,7 @@ public interface ItemType { public static final int TYPE_TEXT = 0; public &helli
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -560,8 +515,6 @@ public interface ItemType { public static final int TYPE_TEXT = 0; public &helli
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -573,15 +526,13 @@ public interface ItemType { public static final int TYPE_TEXT = 0; public &helli
 
 
 
-  
 
-
-<time datetime="2020-05-31T20:55:00+08:00" pubdate data-updated="true">May 31<span>st</span>, 2020</time>
+<time datetime="2020-05-31T20:55:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>, <a class='category' href='/blog/categories/object/'>Object</a>, <a class='category' href='/blog/categories/reflection/'>Reflection</a>, <a class='category' href='/blog/categories/fan-she/'>反射</a>
+    KotlinReflection反射JavaObject
   
 </span>
 
@@ -674,10 +625,6 @@ public interface ItemType { public static final int TYPE_TEXT = 0; public &helli
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -686,7 +633,7 @@ public interface ItemType { public static final int TYPE_TEXT = 0; public &helli
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -753,6 +700,10 @@ public interface ItemType { public static final int TYPE_TEXT = 0; public &helli
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -786,7 +737,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -794,7 +745,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

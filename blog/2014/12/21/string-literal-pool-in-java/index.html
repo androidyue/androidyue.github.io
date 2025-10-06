@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Java中的字符串常量池 Dec 21st, 2014 Java中字符串对象创建有两种形式，一种为字面量形式，如String str = "droid";，另一种就是使用new这种标准的构造对象的方法，如String str = new String("droid");， &hellip;">
+  <meta name="description" content="Java中的字符串常量池 Java中字符串对象创建有两种形式，一种为字面量形式，如String str = "droid";，另一种就是使用new这种标准的构造对象的方法，如String str = new String("droid");，这两种方式我们在代码编写时都经常使用， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,309 +174,246 @@
 
 
 
-  
 
-
-<time datetime="2014-12-21T19:09:00+08:00" pubdate data-updated="true">Dec 21<span>st</span>, 2014</time>
+<time datetime="2014-12-21T19:09:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>Java中字符串对象创建有两种形式，一种为字面量形式，如<code>String str = "droid";</code>，另一种就是使用<strong>new</strong>这种标准的构造对象的方法，如<code>String str = new String("droid");</code>，这两种方式我们在代码编写时都经常使用，尤其是字面量的方式。然而这两种实现其实存在着一些性能和内存占用的差别。这一切都是源于JVM为了减少字符串对象的重复创建，其维护了一个特殊的内存，这段内存被成为字符串常量池或者字符串字面量池。</p>
-
+<div class="entry-content"><p>Java中字符串对象创建有两种形式，一种为字面量形式，如<code class="language-plaintext highlighter-rouge">String str = "droid";</code>，另一种就是使用<strong>new</strong>这种标准的构造对象的方法，如<code class="language-plaintext highlighter-rouge">String str = new String("droid");</code>，这两种方式我们在代码编写时都经常使用，尤其是字面量的方式。然而这两种实现其实存在着一些性能和内存占用的差别。这一切都是源于JVM为了减少字符串对象的重复创建，其维护了一个特殊的内存，这段内存被成为字符串常量池或者字符串字面量池。
 <!--more-->
+##工作原理
+当代码中出现字面量形式创建字符串对象时，JVM首先会对这个字面量进行检查，如果字符串常量池中存在相同内容的字符串对象的引用，则将这个引用返回，否则新的字符串对象被创建，然后将这个引用放入字符串常量池，并返回该引用。</p>
 
-
-<h2>工作原理</h2>
-
-<p>当代码中出现字面量形式创建字符串对象时，JVM首先会对这个字面量进行检查，如果字符串常量池中存在相同内容的字符串对象的引用，则将这个引用返回，否则新的字符串对象被创建，然后将这个引用放入字符串常量池，并返回该引用。</p>
-
-<h2>举例说明</h2>
-
-<h3>字面量创建形式</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str1</span> <span class="o">=</span> <span class="s">&quot;droid&quot;</span><span class="o">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>JVM检测这个字面量，这里我们认为没有内容为<code>droid</code>的对象存在。JVM通过字符串常量池查找不到内容为<code>droid</code>的字符串对象存在，那么会创建这个字符串对象，然后将刚创建的对象的引用放入到字符串常量池中,并且将引用返回给变量str1。</p>
+<p>##举例说明
+###字面量创建形式</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">str1</span> <span class="o">=</span> <span class="s">"droid"</span><span class="o">;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>JVM检测这个字面量，这里我们认为没有内容为<code class="language-plaintext highlighter-rouge">droid</code>的对象存在。JVM通过字符串常量池查找不到内容为<code class="language-plaintext highlighter-rouge">droid</code>的字符串对象存在，那么会创建这个字符串对象，然后将刚创建的对象的引用放入到字符串常量池中,并且将引用返回给变量str1。</p>
 
 <p>如果接下来有这样一段代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str2</span> <span class="o">=</span> <span class="s">&quot;droid&quot;</span><span class="o">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>同样JVM还是要检测这个字面量，JVM通过查找字符串常量池，发现内容为&#8221;droid&#8221;字符串对象存在，于是将已经存在的字符串对象的引用返回给变量str2。注意这里不会重新创建新的字符串对象。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">str2</span> <span class="o">=</span> <span class="s">"droid"</span><span class="o">;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>同样JVM还是要检测这个字面量，JVM通过查找字符串常量池，发现内容为”droid”字符串对象存在，于是将已经存在的字符串对象的引用返回给变量str2。注意这里不会重新创建新的字符串对象。</p>
 
 <p>验证是否为str1和str2是否指向同一对象，我们可以通过这段代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str1</span> <span class="o">==</span> <span class="n">str2</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>结果为<code class="language-plaintext highlighter-rouge">true</code>。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str1</span> <span class="o">==</span> <span class="n">str2</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>结果为<code>true</code>。</p>
-
-<h3>使用new创建</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str3</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="s">&quot;droid&quot;</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>###使用new创建</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">str3</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="s">"droid"</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>当我们使用了new来构造字符串对象的时候，不管字符串常量池中有没有相同内容的对象的引用，新的字符串对象都会创建。因此我们使用下面代码测试一下，</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">str3</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="s">"droid"</span><span class="o">);</span>
+</span><span class="line"><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str1</span> <span class="o">==</span> <span class="n">str3</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>结果如我们所想，为<code class="language-plaintext highlighter-rouge">false</code>，表明这两个变量指向的为不同的对象。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str3</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">(</span><span class="s">&quot;droid&quot;</span><span class="o">);</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str1</span> <span class="o">==</span> <span class="n">str3</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>结果如我们所想，为<code>false</code>，表明这两个变量指向的为不同的对象。</p>
-
-<h3>intern</h3>
-
-<p>对于上面使用new创建的字符串对象，如果想将这个对象的引用加入到字符串常量池，可以使用intern方法。</p>
+<p>###intern
+对于上面使用new创建的字符串对象，如果想将这个对象的引用加入到字符串常量池，可以使用intern方法。</p>
 
 <p>调用intern后，首先检查字符串常量池中是否有该对象的引用，如果存在，则将这个引用返回给变量，否则将引用加入并返回给变量。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">str4</span> <span class="o">=</span> <span class="n">str3</span><span class="o">.</span><span class="na">intern</span><span class="o">();</span>
+</span><span class="line"><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str4</span> <span class="o">==</span> <span class="n">str1</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>输出的结果为<code class="language-plaintext highlighter-rouge">true</code>。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">str4</span> <span class="o">=</span> <span class="n">str3</span><span class="o">.</span><span class="na">intern</span><span class="o">();</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">str4</span> <span class="o">==</span> <span class="n">str1</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
+<p>##疑难问题
+###前提条件？
+字符串常量池实现的前提条件就是Java中String对象是不可变的，这样可以安全保证多个变量共享同一个对象。如果Java中的String对象可变的话，一个引用操作改变了对象的值，那么其他的变量也会受到影响，显然这样是不合理的。</p>
 
-
-<p>输出的结果为<code>true</code>。</p>
-
-<h2>疑难问题</h2>
-
-<h3>前提条件？</h3>
-
-<p>字符串常量池实现的前提条件就是Java中String对象是不可变的，这样可以安全保证多个变量共享同一个对象。如果Java中的String对象可变的话，一个引用操作改变了对象的值，那么其他的变量也会受到影响，显然这样是不合理的。</p>
-
-<h3>引用 or 对象</h3>
-
-<p>字符串常量池中存放的时引用还是对象，这个问题是最常见的。字符串常量池存放的是对象引用，不是对象。<strong>在Java中，对象都创建在堆内存中</strong>。</p>
+<p>###引用 or 对象
+字符串常量池中存放的时引用还是对象，这个问题是最常见的。字符串常量池存放的是对象引用，不是对象。<strong>在Java中，对象都创建在堆内存中</strong>。</p>
 
 <p>更新验证，收到的很多评论也在讨论这个问题，我简单的进行了验证。
 验证环境</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">22</span><span class="o">:</span><span class="mi">18</span><span class="o">:</span><span class="mi">54</span><span class="o">-</span><span class="n">androidyue</span><span class="o">~/</span><span class="n">Videos$</span> <span class="n">cat</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">os</span><span class="o">-</span><span class="n">release</span>
-</span><span class='line'><span class="n">NAME</span><span class="o">=</span><span class="n">Fedora</span>
-</span><span class='line'><span class="n">VERSION</span><span class="o">=</span><span class="s">&quot;17 (Beefy Miracle)&quot;</span>
-</span><span class='line'><span class="n">ID</span><span class="o">=</span><span class="n">fedora</span>
-</span><span class='line'><span class="n">VERSION_ID</span><span class="o">=</span><span class="mi">17</span>
-</span><span class='line'><span class="n">PRETTY_NAME</span><span class="o">=</span><span class="s">&quot;Fedora 17 (Beefy Miracle)&quot;</span>
-</span><span class='line'><span class="n">ANSI_COLOR</span><span class="o">=</span><span class="s">&quot;0;34&quot;</span>
-</span><span class='line'><span class="n">CPE_NAME</span><span class="o">=</span><span class="s">&quot;cpe:/o:fedoraproject:fedora:17&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="mi">22</span><span class="o">:</span><span class="mi">19</span><span class="o">:</span><span class="mi">04</span><span class="o">-</span><span class="n">androidyue</span><span class="o">~/</span><span class="n">Videos$</span> <span class="n">java</span> <span class="o">-</span><span class="n">version</span>
-</span><span class='line'><span class="n">java</span> <span class="n">version</span> <span class="s">&quot;1.7.0_25&quot;</span>
-</span><span class='line'><span class="n">OpenJDK</span> <span class="n">Runtime</span> <span class="nf">Environment</span> <span class="o">(</span><span class="n">fedora</span><span class="o">-</span><span class="mf">2.3</span><span class="o">.</span><span class="mf">12.1</span><span class="o">.</span><span class="na">fc17</span><span class="o">-</span><span class="n">x86_64</span><span class="o">)</span>
-</span><span class='line'><span class="n">OpenJDK</span> <span class="mi">64</span><span class="o">-</span><span class="n">Bit</span> <span class="n">Server</span> <span class="n">VM</span> <span class="o">(</span><span class="n">build</span> <span class="mf">23.7</span><span class="o">-</span><span class="n">b01</span><span class="o">,</span> <span class="n">mixed</span> <span class="n">mode</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="mi">22</span><span class="o">:</span><span class="mi">18</span><span class="o">:</span><span class="mi">54</span><span class="o">-</span><span class="n">androidyue</span><span class="o">~/</span><span class="nc">Videos</span><span class="err">$</span> <span class="n">cat</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">os</span><span class="o">-</span><span class="n">release</span>
+</span><span class="line"><span class="no">NAME</span><span class="o">=</span><span class="nc">Fedora</span>
+</span><span class="line"><span class="no">VERSION</span><span class="o">=</span><span class="s">"17 (Beefy Miracle)"</span>
+</span><span class="line"><span class="no">ID</span><span class="o">=</span><span class="n">fedora</span>
+</span><span class="line"><span class="no">VERSION_ID</span><span class="o">=</span><span class="mi">17</span>
+</span><span class="line"><span class="no">PRETTY_NAME</span><span class="o">=</span><span class="s">"Fedora 17 (Beefy Miracle)"</span>
+</span><span class="line"><span class="no">ANSI_COLOR</span><span class="o">=</span><span class="s">"0;34"</span>
+</span><span class="line"><span class="no">CPE_NAME</span><span class="o">=</span><span class="s">"cpe:/o:fedoraproject:fedora:17"</span>
+</span><span class="line">
+</span><span class="line"><span class="mi">22</span><span class="o">:</span><span class="mi">19</span><span class="o">:</span><span class="mo">04</span><span class="o">-</span><span class="n">androidyue</span><span class="o">~/</span><span class="nc">Videos</span><span class="err">$</span> <span class="n">java</span> <span class="o">-</span><span class="n">version</span>
+</span><span class="line"><span class="n">java</span> <span class="n">version</span> <span class="s">"1.7.0_25"</span>
+</span><span class="line"><span class="nc">OpenJDK</span> <span class="nc">Runtime</span> <span class="nf">Environment</span> <span class="o">(</span><span class="n">fedora</span><span class="o">-</span><span class="mf">2.3</span><span class="o">.</span><span class="mf">12.1</span><span class="o">.</span><span class="na">fc17</span><span class="o">-</span><span class="n">x86_64</span><span class="o">)</span>
+</span><span class="line"><span class="nc">OpenJDK</span> <span class="mi">64</span><span class="o">-</span><span class="nc">Bit</span> <span class="nc">Server</span> <span class="nf">VM</span> <span class="o">(</span><span class="n">build</span> <span class="mf">23.7</span><span class="o">-</span><span class="n">b01</span><span class="o">,</span> <span class="n">mixed</span> <span class="n">mode</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>验证思路：以下的Java程序读取一个大小为82M的视频文件，以字符串形式进行intern操作。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>22:01:17-androidyue~/Videos<span class="nv">$ </span>ll -lh | grep why_to_learn.mp4
-</span><span class='line'>-rw-rw-r--. 1 androidyue androidyue  82M Oct 20  2013 why_to_learn.mp4
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">22:01:17-androidyue~/Videos<span class="nv">$ </span>ll <span class="nt">-lh</span> | <span class="nb">grep </span>why_to_learn.mp4 
+</span><span class="line"><span class="nt">-rw-rw-r--</span><span class="nb">.</span> 1 androidyue androidyue  82M Oct 20  2013 why_to_learn.mp4</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>验证代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">import</span> <span class="nn">java.io.BufferedReader</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">java.io.FileNotFoundException</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">java.io.FileReader</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">java.io.IOException</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestMain</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="n">String</span> <span class="n">fileContent</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">fileContent</span> <span class="o">=</span> <span class="n">readFileToString</span><span class="o">(</span><span class="n">args</span><span class="o">[</span><span class="mi">0</span><span class="o">]);</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">!=</span> <span class="n">fileContent</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">fileContent</span> <span class="o">=</span> <span class="n">fileContent</span><span class="o">.</span><span class="na">intern</span><span class="o">();</span>
-</span><span class='line'>          <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Not Null&quot;</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  
-</span><span class='line'>  
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="n">String</span> <span class="nf">readFileToString</span><span class="o">(</span><span class="n">String</span> <span class="n">file</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">BufferedReader</span> <span class="n">reader</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>      <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">reader</span> <span class="o">=</span> <span class="k">new</span> <span class="n">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="n">FileReader</span><span class="o">(</span><span class="n">file</span><span class="o">));</span>
-</span><span class='line'>          <span class="n">StringBuffer</span> <span class="n">buff</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringBuffer</span><span class="o">();</span>
-</span><span class='line'>          <span class="n">String</span> <span class="n">line</span><span class="o">;</span>
-</span><span class='line'>          <span class="k">while</span> <span class="o">((</span><span class="n">line</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="na">readLine</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>              <span class="n">buff</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">line</span><span class="o">);</span>
-</span><span class='line'>          <span class="o">}</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">buff</span><span class="o">.</span><span class="na">toString</span><span class="o">();</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">FileNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
-</span><span class='line'>          <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">!=</span> <span class="n">reader</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>              <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>                  <span class="n">reader</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
-</span><span class='line'>              <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                  <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>              <span class="o">}</span>
-</span><span class='line'>          <span class="o">}</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>      <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>由于字符串常量池存在于堆内存中的永久代，适用于Java8之前。我们通过设置永久代一个很小的值来进行验证。如果字符串对象存在字符串常量池中，那么必然抛出<code>java.lang.OutOfMemoryError permgen space</code>错误。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>java -XX:PermSize<span class="o">=</span>6m TestMain ~/Videos/why_to_learn.mp4
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kn">import</span> <span class="nn">java.io.BufferedReader</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">java.io.FileNotFoundException</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">java.io.FileReader</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">java.io.IOException</span><span class="o">;</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestMain</span> <span class="o">{</span>
+</span><span class="line">	<span class="kd">private</span> <span class="kd">static</span> <span class="nc">String</span> <span class="n">fileContent</span><span class="o">;</span>
+</span><span class="line">	<span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="n">fileContent</span> <span class="o">=</span> <span class="n">readFileToString</span><span class="o">(</span><span class="n">args</span><span class="o">[</span><span class="mi">0</span><span class="o">]);</span>
+</span><span class="line">		<span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">!=</span> <span class="n">fileContent</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">			<span class="n">fileContent</span> <span class="o">=</span> <span class="n">fileContent</span><span class="o">.</span><span class="na">intern</span><span class="o">();</span>
+</span><span class="line">			<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Not Null"</span><span class="o">);</span>
+</span><span class="line">		<span class="o">}</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	
+</span><span class="line">	
+</span><span class="line">	<span class="kd">private</span> <span class="kd">static</span> <span class="nc">String</span> <span class="nf">readFileToString</span><span class="o">(</span><span class="nc">String</span> <span class="n">file</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="nc">BufferedReader</span> <span class="n">reader</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">		<span class="k">try</span> <span class="o">{</span>
+</span><span class="line">			<span class="n">reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="nc">FileReader</span><span class="o">(</span><span class="n">file</span><span class="o">));</span>
+</span><span class="line">			<span class="nc">StringBuffer</span> <span class="n">buff</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">StringBuffer</span><span class="o">();</span>
+</span><span class="line">			<span class="nc">String</span> <span class="n">line</span><span class="o">;</span>
+</span><span class="line">			<span class="k">while</span> <span class="o">((</span><span class="n">line</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="na">readLine</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">				<span class="n">buff</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">line</span><span class="o">);</span>
+</span><span class="line">			<span class="o">}</span>
+</span><span class="line">			<span class="k">return</span> <span class="n">buff</span><span class="o">.</span><span class="na">toString</span><span class="o">();</span>
+</span><span class="line">		<span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">FileNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">			<span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">		<span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">			<span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">		<span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class="line">			<span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">!=</span> <span class="n">reader</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">				<span class="k">try</span> <span class="o">{</span>
+</span><span class="line">					<span class="n">reader</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class="line">				<span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">					<span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">				<span class="o">}</span>
+</span><span class="line">			<span class="o">}</span>
+</span><span class="line">		<span class="o">}</span>
+</span><span class="line">		<span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>由于字符串常量池存在于堆内存中的永久代，适用于Java8之前。我们通过设置永久代一个很小的值来进行验证。如果字符串对象存在字符串常量池中，那么必然抛出<code class="language-plaintext highlighter-rouge">java.lang.OutOfMemoryError permgen space</code>错误。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">java <span class="nt">-XX</span>:PermSize<span class="o">=</span>6m TestMain ~/Videos/why_to_learn.mp4</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>运行证明程序没有抛出OOM，其实这个不能很好的证明存储的是对象还是引用。</p>
 
 <p>但是这个至少证明了字符串的实际内容对象char[]不存放在字符串常量池中。既然这样的话，其实字符串常量池存储字符串对象还是字符串对象的引用反而不是那么重要。但个人还是倾向于存储的为引用。</p>
 
-<h3>优缺点</h3>
-
-<p>字符串常量池的好处就是减少相同内容字符串的创建，节省内存空间。</p>
+<p>###优缺点
+字符串常量池的好处就是减少相同内容字符串的创建，节省内存空间。</p>
 
 <p>如果硬要说弊端的话，就是牺牲了CPU计算时间来换空间。CPU计算时间主要用于在字符串常量池中查找是否有内容相同对象的引用。不过其内部实现为HashTable，所以计算成本较低。</p>
 
-<h3>GC回收？</h3>
-
-<p>因为字符串常量池中持有了共享的字符串对象的引用，这就是说是不是会导致这些对象无法回收？</p>
+<p>###GC回收？
+因为字符串常量池中持有了共享的字符串对象的引用，这就是说是不是会导致这些对象无法回收？</p>
 
 <p>首先问题中共享的对象一般情况下都比较小。据我查证了解，在早期的版本中确实存在这样的问题，但是随着<a href="http://droidyue.com/blog/2014/10/12/understanding-weakreference-in-java/">弱引用</a>的引入，目前这个问题应该没有了。</p>
 
 <p>关于这个问题，可以具体了解这片文章<a href="http://mindprod.com/jgloss/interned.html#GC">interned Strings : Java Glossary</a></p>
 
-<h3>intern使用？</h3>
+<p>###intern使用？
+关于使用intern的前提就是你清楚自己确实需要使用。比如，我们这里有一份上百万的记录，其中记录的某个值多次为<strong>美国加利福尼亚州</strong>，我们不想创建上百万条这样的字符串对象，我们可以使用intern只在内存中保留一份即可。关于intern更深入的了解请参考<a href="http://tech.meituan.com/in_depth_understanding_string_intern.html">深入解析String#intern</a>。</p>
 
-<p>关于使用intern的前提就是你清楚自己确实需要使用。比如，我们这里有一份上百万的记录，其中记录的某个值多次为<strong>美国加利福尼亚州</strong>，我们不想创建上百万条这样的字符串对象，我们可以使用intern只在内存中保留一份即可。关于intern更深入的了解请参考<a href="http://tech.meituan.com/in_depth_understanding_string_intern.html">深入解析String#intern</a>。</p>
-
-<h3>总有例外？</h3>
-
-<p>你知道下面的代码，会创建几个字符串对象，在字符串常量池中保存几个引用么？</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">test</span> <span class="o">=</span> <span class="s">&quot;a&quot;</span> <span class="o">+</span> <span class="s">&quot;b&quot;</span> <span class="o">+</span> <span class="s">&quot;c&quot;</span><span class="o">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>###总有例外？
+你知道下面的代码，会创建几个字符串对象，在字符串常量池中保存几个引用么？</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">test</span> <span class="o">=</span> <span class="s">"a"</span> <span class="o">+</span> <span class="s">"b"</span> <span class="o">+</span> <span class="s">"c"</span><span class="o">;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>答案是只创建了一个对象，在常量池中也只保存一个引用。我们使用javap反编译看一下即可得知。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">17</span><span class="o">:</span><span class="mi">02</span> <span class="n">$</span> <span class="n">javap</span> <span class="o">-</span><span class="n">c</span> <span class="n">TestInternedPoolGC</span>
-</span><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;TestInternedPoolGC.java&quot;</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestInternedPoolGC</span> <span class="kd">extends</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">{</span>
-</span><span class='line'><span class="kd">public</span> <span class="nf">TestInternedPoolGC</span><span class="o">();</span>
-</span><span class='line'>  <span class="nl">Code:</span>
-</span><span class='line'>   <span class="mi">0</span><span class="o">:</span>  <span class="n">aload_0</span>
-</span><span class='line'>   <span class="mi">1</span><span class="o">:</span>  <span class="n">invokespecial</span>    <span class="err">#</span><span class="mi">1</span><span class="o">;</span> <span class="c1">//Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>   <span class="mi">4</span><span class="o">:</span>  <span class="k">return</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[])</span>   <span class="kd">throws</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Exception</span><span class="o">;</span>
-</span><span class='line'>  <span class="nl">Code:</span>
-</span><span class='line'>   <span class="mi">0</span><span class="o">:</span>  <span class="n">ldc</span>  <span class="err">#</span><span class="mi">2</span><span class="o">;</span> <span class="c1">//String abc</span>
-</span><span class='line'>   <span class="mi">2</span><span class="o">:</span>  <span class="n">astore_1</span>
-</span><span class='line'>   <span class="mi">3</span><span class="o">:</span>  <span class="k">return</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="mi">17</span><span class="o">:</span><span class="mo">02</span> <span class="err">$</span> <span class="n">javap</span> <span class="o">-</span><span class="n">c</span> <span class="nc">TestInternedPoolGC</span>
+</span><span class="line"><span class="nc">Compiled</span> <span class="n">from</span> <span class="s">"TestInternedPoolGC.java"</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestInternedPoolGC</span> <span class="kd">extends</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">{</span>
+</span><span class="line"><span class="kd">public</span> <span class="nf">TestInternedPoolGC</span><span class="o">();</span>
+</span><span class="line">  <span class="nl">Code:</span>
+</span><span class="line">   <span class="mi">0</span><span class="o">:</span>	<span class="n">aload_0</span>
+</span><span class="line">   <span class="mi">1</span><span class="o">:</span>	<span class="n">invokespecial</span>	<span class="err">#</span><span class="mi">1</span><span class="o">;</span> <span class="c1">//Method java/lang/Object."&lt;init&gt;":()V</span>
+</span><span class="line">   <span class="mi">4</span><span class="o">:</span>	<span class="k">return</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[])</span>   <span class="kd">throws</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Exception</span><span class="o">;</span>
+</span><span class="line">  <span class="nl">Code:</span>
+</span><span class="line">   <span class="mi">0</span><span class="o">:</span>	<span class="n">ldc</span>	<span class="err">#</span><span class="mi">2</span><span class="o">;</span> <span class="c1">//String abc</span>
+</span><span class="line">   <span class="mi">2</span><span class="o">:</span>	<span class="n">astore_1</span>
+</span><span class="line">   <span class="mi">3</span><span class="o">:</span>	<span class="k">return</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>看到了么，实际上在编译期间，已经将这三个字面量合成了一个。这样做实际上是一种优化，避免了创建多余的字符串对象，也没有发生字符串拼接问题。关于字符串拼接，可以查看<a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a>。</p>
 
-<h2>参考文章</h2>
-
+<p>##参考文章</p>
 <ul>
-<li><a href="http://blog.jamesdbloom.com/JVMInternals.html">JVMInternals</a></li>
-<li><a href="http://www.javaranch.com/journal/200409/ScjpTipLine-StringsLiterally.html">Strings, Literally</a></li>
-<li><a href="http://theopentutorials.com/tutorials/java/strings/string-literal-pool/">STRING LITERAL POOL</a></li>
-<li><a href="http://mindprod.com/jgloss/interned.html">interned Strings : Java Glossary</a></li>
+  <li><a href="http://blog.jamesdbloom.com/JVMInternals.html">JVMInternals</a></li>
+  <li><a href="http://www.javaranch.com/journal/200409/ScjpTipLine-StringsLiterally.html">Strings, Literally</a></li>
+  <li><a href="http://theopentutorials.com/tutorials/java/strings/string-literal-pool/">STRING LITERAL POOL</a></li>
+  <li><a href="http://mindprod.com/jgloss/interned.html">interned Strings : Java Glossary</a></li>
 </ul>
 
 
@@ -500,7 +437,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -514,8 +451,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -527,15 +462,13 @@
 
 
 
-  
 
-
-<time datetime="2014-12-21T19:09:00+08:00" pubdate data-updated="true">Dec 21<span>st</span>, 2014</time>
+<time datetime="2014-12-21T19:09:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/jvm/'>JVM</a>, <a class='category' href='/blog/categories/java/'>Java</a>
+    JavaJVM
   
 </span>
 
@@ -628,10 +561,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -640,7 +569,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -707,6 +636,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -740,7 +673,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -748,7 +681,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

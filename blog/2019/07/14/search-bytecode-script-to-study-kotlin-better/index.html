@@ -11,10 +11,11 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="一个查找字节码更好研究Kotlin的脚本 Jul 14th, 2019 众所周知，Kotlin通过语法糖的形式实现了很多便捷和高效的方法，因此研究Kotlin代码通常是需要研究字节码或者反编译后的java文件。 比如这样的代码 1
+  <meta name="description" content="一个查找字节码更好研究Kotlin的脚本 众所周知，Kotlin通过语法糖的形式实现了很多便捷和高效的方法，因此研究Kotlin代码通常是需要研究字节码或者反编译后的java文件。 比如这样的代码 1
 2
 3
-fun String.toConsole() { &hellip;">
+fun String.toConsole() { println(this)
+} &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -177,10 +178,8 @@ fun String.toConsole() { &hellip;">
 
 
 
-  
 
-
-<time datetime="2019-07-14T21:10:00+08:00" pubdate data-updated="true">Jul 14<span>th</span>, 2019</time>
+<time datetime="2019-07-14T21:10:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -191,417 +190,382 @@ fun String.toConsole() { &hellip;">
 
 <p>比如这样的代码</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>fun String.toConsole<span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    println<span class="o">(</span>this<span class="o">)</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">fun String.toConsole<span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    println<span class="o">(</span>this<span class="o">)</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <!--more-->
+<p>Kotlin的编译器会在字节码中自动地增加这样一行代码<code class="language-plaintext highlighter-rouge">Intrinsics.checkParameterIsNotNull</code>来做一些预检查的操作。</p>
 
-
-<p>Kotlin的编译器会在字节码中自动地增加这样一行代码<code>Intrinsics.checkParameterIsNotNull</code>来做一些预检查的操作。</p>
-
-<h2>痛点</h2>
-
-<p>那么问题来了，如果我们想找出所有的关于<code>Intrinsics</code>相关的自动加入内容，该怎么办，不能一个一个文件去反编译查看吧，因为这样</p>
+<h2 id="痛点">痛点</h2>
+<p>那么问题来了，如果我们想找出所有的关于<code class="language-plaintext highlighter-rouge">Intrinsics</code>相关的自动加入内容，该怎么办，不能一个一个文件去反编译查看吧，因为这样</p>
 
 <ul>
-<li>没有目标性，无法明确预知那个文件会生成这种代码</li>
-<li>不具有自动化可重复性，需要依赖于人为行为</li>
+  <li>没有目标性，无法明确预知那个文件会生成这种代码</li>
+  <li>不具有自动化可重复性，需要依赖于人为行为</li>
 </ul>
 
-
-<p>那么，我们查看class文件类进行内容匹配是否包含<code>Intrinsics</code>呢，其实也不太好，因为一个class文件的内容是这样的</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">cat</span> <span class="n">StringExtKt</span><span class="o">.</span><span class="na">class</span>
-</span><span class='line'><span class="err">����</span><span class="mi">43</span>
-</span><span class='line'>      <span class="n">StringExtKtjava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Object</span>  <span class="n">toConsole</span><span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;)</span><span class="n">V</span><span class="err">#</span><span class="n">Lorg</span><span class="o">/</span><span class="n">jetbrains</span><span class="o">/</span><span class="n">annotations</span><span class="o">/</span><span class="n">NotNull</span><span class="o">;</span><span class="n">$this$toConsokotlin</span><span class="o">/</span><span class="n">jvm</span><span class="o">/</span><span class="n">internal</span><span class="o">/</span><span class="n">Intrinsics</span>
-</span><span class='line'><span class="n">checkParameterIsNotNull</span><span class="err">&#39;</span><span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Object</span><span class="o">;</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;)</span><span class="n">V</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">SystemoutLjava</span><span class="o">/</span><span class="n">io</span><span class="o">/</span><span class="n">PrintStream</span><span class="o">;</span>
-</span><span class='line'>                                          <span class="n">java</span><span class="o">/</span><span class="n">io</span><span class="o">/</span><span class="n">PrintStreamprintln</span><span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Object</span><span class="o">;)</span><span class="n">V</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;</span><span class="n">Lkotlin</span><span class="o">/</span><span class="n">Metadata</span><span class="o">;</span><span class="n">mvbvkd1</span><span class="s">&quot;��</span>
-</span><span class='line'>
-</span><span class='line'><span class="s">��</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="s">��</span>
-</span><span class='line'><span class="s">��0*0¨d2BytecodeSample</span>
-</span><span class='line'><span class="s">                      StringExt.ktCodeLineNumberTableLocalVariableTable$RuntimeInvisibleParameterAnnotations</span>
-</span><span class='line'><span class="s">SourceFileSourceDebugExtensionRuntimeVisibleAnnotations1,&gt;*    �&lt;�*�-</span>
-</span><span class='line'><span class="s">.</span>
-</span><span class='line'><span class="s">/0+1QSMAP</span>
-</span><span class='line'><span class="s">StringExt.kt</span>
-</span><span class='line'><span class="s">Kotlin</span>
-</span><span class='line'><span class="s">*S Kotlin</span>
-</span><span class='line'><span class="s">*F</span>
-</span><span class='line'><span class="s">+ 1 StringExt.kt</span>
-</span><span class='line'><span class="s">StringExtKt</span>
-</span><span class='line'><span class="s">*L</span>
-</span><span class='line'><span class="s">1#1,3:1</span>
-</span><span class='line'><span class="s">*E</span>
-</span><span class='line'><span class="s">2@[III ![II&quot;</span><span class="n">I</span><span class="err">#</span><span class="n">$I</span><span class="o">%&amp;[</span><span class="n">s</span><span class="err">&#39;</span><span class="o">([</span><span class="n">ss</span><span class="o">)</span><span class="n">s</span><span class="o">)</span><span class="n">s</span><span class="o">*</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
+<p>那么，我们查看class文件类进行内容匹配是否包含<code class="language-plaintext highlighter-rouge">Intrinsics</code>呢，其实也不太好，因为一个class文件的内容是这样的</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">cat</span> <span class="nc">StringExtKt</span><span class="o">.</span><span class="na">class</span>
+</span><span class="line"><span class="err">����</span><span class="mi">43</span>
+</span><span class="line">      <span class="nc">StringExtKtjava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">Object</span>	<span class="nf">toConsole</span><span class="o">(</span><span class="nc">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">String</span><span class="o">;)</span><span class="no">V</span><span class="err">#</span><span class="nc">Lorg</span><span class="o">/</span><span class="n">jetbrains</span><span class="o">/</span><span class="n">annotations</span><span class="o">/</span><span class="nc">NotNull</span><span class="o">;</span><span class="n">$this$toConsokotlin</span><span class="o">/</span><span class="n">jvm</span><span class="o">/</span><span class="n">internal</span><span class="o">/</span><span class="nc">Intrinsics</span>
+</span><span class="line"><span class="n">checkParameterIsNotNull</span><span class="err">'</span><span class="o">(</span><span class="nc">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">Object</span><span class="o">;</span><span class="nc">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">String</span><span class="o">;)</span><span class="no">V</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">SystemoutLjava</span><span class="o">/</span><span class="n">io</span><span class="o">/</span><span class="nc">PrintStream</span><span class="o">;</span>
+</span><span class="line">                                        	<span class="n">java</span><span class="o">/</span><span class="n">io</span><span class="o">/</span><span class="nc">PrintStreamprintln</span><span class="o">(</span><span class="nc">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">Object</span><span class="o">;)</span><span class="no">V</span>
+</span><span class="line">
+</span><span class="line"><span class="nc">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="nc">String</span><span class="o">;</span><span class="nc">Lkotlin</span><span class="o">/</span><span class="nc">Metadata</span><span class="o">;</span><span class="n">mvbvkd1</span><span class="s">"��
+</span><span class="line">
+</span><span class="line">��
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">��
+</span><span class="line">��0*0¨d2BytecodeSample
+</span><span class="line">                      StringExt.ktCodeLineNumberTableLocalVariableTable$RuntimeInvisibleParameterAnnotations
+</span><span class="line">SourceFileSourceDebugExtensionRuntimeVisibleAnnotations1,&gt;*	�&lt;�*�-
+</span><span class="line">.
+</span><span class="line">/0+1QSMAP
+</span><span class="line">StringExt.kt
+</span><span class="line">Kotlin
+</span><span class="line">*S Kotlin
+</span><span class="line">*F
+</span><span class="line">+ 1 StringExt.kt
+</span><span class="line">StringExtKt
+</span><span class="line">*L
+</span><span class="line">1#1,3:1
+</span><span class="line">*E
+</span><span class="line">2@[III ![II"</span><span class="no">I</span><span class="err">#</span><span class="n">$I</span><span class="o">%&amp;[</span><span class="n">s</span><span class="err">'</span><span class="o">([</span><span class="n">ss</span><span class="o">)</span><span class="n">s</span><span class="o">)</span><span class="n">s</span><span class="o">*</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>一段很错乱的内容，这样不利于我们更好的分析问题。因为相比较而言，我们有更加好的方法来处理。</p>
 
 <p>基于上面的痛点，自己动手写了一个简单的ruby脚本，来解决问题。</p>
 
-<h2>实现思路</h2>
-
+<h2 id="实现思路">实现思路</h2>
 <ul>
-<li>遍历指定路径下的class文件</li>
-<li>将对应的class文件使用<code>javap</code>反编译</li>
-<li>使用上面反编译的结果，查看是否包含待查询的关键字</li>
-<li>如果上述结果匹配到，将反编译内容和文件路径输出到结果文件中</li>
+  <li>遍历指定路径下的class文件</li>
+  <li>将对应的class文件使用<code class="language-plaintext highlighter-rouge">javap</code>反编译</li>
+  <li>使用上面反编译的结果，查看是否包含待查询的关键字</li>
+  <li>如果上述结果匹配到，将反编译内容和文件路径输出到结果文件中</li>
 </ul>
 
+<h2 id="代码talk-is-cheap">代码(Talk is cheap)</h2>
 
-<h2>代码(Talk is cheap)</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+<span class="line-number">55</span>
+</pre></td><td class="code"><pre><code class="ruby"><span class="line"><span class="c1">#!/usr/bin/ruby</span>
+</span><span class="line"><span class="nb">require</span> <span class="s1">'find'</span>
+</span><span class="line"><span class="nb">require</span> <span class="s1">'colorize'</span>
+</span><span class="line"><span class="nb">require</span> <span class="s2">"fileutils"</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># extract arguements from command line</span>
+</span><span class="line"><span class="n">dirToSearch</span> <span class="o">=</span> <span class="no">ARGV</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span class="line"><span class="n">keywordToSearch</span> <span class="o">=</span> <span class="no">ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">to_s</span><span class="p">.</span><span class="nf">strip</span>
+</span><span class="line"><span class="n">matchedResultFile</span> <span class="o">=</span> <span class="no">ARGV</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class="line"><span class="nb">puts</span> <span class="s2">"dirToSearch=</span><span class="si">#{</span><span class="n">dirToSearch</span><span class="si">}</span><span class="s2">;keywordToSearch=</span><span class="si">#{</span><span class="n">keywordToSearch</span><span class="si">}</span><span class="s2">, matchedResultFile=</span><span class="si">#{</span><span class="n">matchedResultFile</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># Eagerly create the result file so that user could use tools like `tail -f ` to observer the result</span>
+</span><span class="line"><span class="no">FileUtils</span><span class="p">.</span><span class="nf">touch</span><span class="p">(</span><span class="n">matchedResultFile</span><span class="p">)</span>
+</span><span class="line"><span class="nb">puts</span> <span class="s2">"result will be outputted to </span><span class="si">#{</span><span class="n">matchedResultFile</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># Helper method to append content(each line) to the file</span>
+</span><span class="line"><span class="k">def</span> <span class="nf">appendLineContentToFile</span><span class="p">(</span><span class="n">lineContent</span><span class="p">,</span> <span class="n">filePath</span><span class="p">)</span>
+</span><span class="line">  <span class="no">File</span><span class="p">.</span><span class="nf">open</span><span class="p">(</span><span class="n">filePath</span><span class="p">,</span> <span class="s1">'a'</span><span class="p">)</span> <span class="k">do</span> <span class="o">|</span><span class="n">file</span><span class="o">|</span>
+</span><span class="line">     <span class="n">file</span><span class="p">.</span><span class="nf">puts</span> <span class="s2">"</span><span class="si">#{</span><span class="n">lineContent</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line">  <span class="k">end</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># write matched class file path along with bytecode content to the output file.</span>
+</span><span class="line"><span class="k">def</span> <span class="nf">writeResultInformation</span><span class="p">(</span><span class="n">classFilePath</span><span class="p">,</span> <span class="n">byteCodeContent</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line">	<span class="n">appendLineContentToFile</span><span class="p">(</span><span class="n">classFilePath</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line">	<span class="c1"># leave blank lines</span>
+</span><span class="line">	<span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line">	<span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line">	<span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">	<span class="n">appendLineContentToFile</span><span class="p">(</span><span class="n">byteCodeContent</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">	<span class="c1"># leave blank lines</span>
+</span><span class="line">	<span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line">	<span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line">	<span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="no">Find</span><span class="p">.</span><span class="nf">find</span><span class="p">(</span><span class="n">dirToSearch</span><span class="p">).</span><span class="nf">select</span> <span class="p">{</span>
+</span><span class="line">	<span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="n">f</span><span class="p">.</span><span class="nf">end_with?</span> <span class="s2">".class"</span>
+</span><span class="line"><span class="p">}.</span><span class="nf">each</span> <span class="p">{</span>
+</span><span class="line">	<span class="o">|</span><span class="n">f</span><span class="o">|</span>
+</span><span class="line">	<span class="nb">puts</span> <span class="s2">"checking </span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line">	<span class="n">byteCodeContent</span> <span class="o">=</span> <span class="sb">`javap -c </span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="sb">`</span>
+</span><span class="line">	<span class="n">contains</span> <span class="o">=</span> <span class="n">byteCodeContent</span><span class="p">.</span><span class="nf">include?</span> <span class="n">keywordToSearch</span>
+</span><span class="line">	<span class="n">resultMessage</span> <span class="o">=</span> <span class="s2">""</span>
+</span><span class="line">	<span class="k">if</span> <span class="n">contains</span>
+</span><span class="line">		<span class="n">resultMessage</span> <span class="o">=</span> <span class="s2">"</span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2"> contains </span><span class="si">#{</span><span class="n">keywordToSearch</span><span class="si">}</span><span class="s2">"</span><span class="p">.</span><span class="nf">green</span>
+</span><span class="line">		<span class="n">writeResultInformation</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">byteCodeContent</span><span class="p">,</span> <span class="n">matchedResultFile</span><span class="p">)</span>
+</span><span class="line">	<span class="k">else</span>
+</span><span class="line">		<span class="n">resultMessage</span> <span class="o">=</span> <span class="s2">"</span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2"> does NOT contains </span><span class="si">#{</span><span class="n">keywordToSearch</span><span class="si">}</span><span class="s2">"</span><span class="p">.</span><span class="nf">red</span>
+</span><span class="line">	<span class="k">end</span>
+</span><span class="line">	<span class="nb">puts</span> <span class="n">resultMessage</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/ruby</span>
-</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;find&#39;</span>
-</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;colorize&#39;</span>
-</span><span class='line'><span class="nb">require</span> <span class="s2">&quot;fileutils&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1"># extract arguements from command line</span>
-</span><span class='line'><span class="n">dirToSearch</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
-</span><span class='line'><span class="n">keywordToSearch</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">1</span><span class="o">].</span><span class="n">to_s</span><span class="o">.</span><span class="n">strip</span>
-</span><span class='line'><span class="n">matchedResultFile</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">2</span><span class="o">]</span>
-</span><span class='line'><span class="nb">puts</span> <span class="s2">&quot;dirToSearch=</span><span class="si">#{</span><span class="n">dirToSearch</span><span class="si">}</span><span class="s2">;keywordToSearch=</span><span class="si">#{</span><span class="n">keywordToSearch</span><span class="si">}</span><span class="s2">, matchedResultFile=</span><span class="si">#{</span><span class="n">matchedResultFile</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1"># Eagerly create the result file so that user could use tools like `tail -f ` to observer the result</span>
-</span><span class='line'><span class="no">FileUtils</span><span class="o">.</span><span class="n">touch</span><span class="p">(</span><span class="n">matchedResultFile</span><span class="p">)</span>
-</span><span class='line'><span class="nb">puts</span> <span class="s2">&quot;result will be outputted to </span><span class="si">#{</span><span class="n">matchedResultFile</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1"># Helper method to append content(each line) to the file</span>
-</span><span class='line'><span class="k">def</span> <span class="nf">appendLineContentToFile</span><span class="p">(</span><span class="n">lineContent</span><span class="p">,</span> <span class="n">filePath</span><span class="p">)</span>
-</span><span class='line'>  <span class="no">File</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filePath</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span> <span class="k">do</span> <span class="o">|</span><span class="n">file</span><span class="o">|</span>
-</span><span class='line'>     <span class="n">file</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="n">lineContent</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'>  <span class="k">end</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1"># write matched class file path along with bytecode content to the output file.</span>
-</span><span class='line'><span class="k">def</span> <span class="nf">writeResultInformation</span><span class="p">(</span><span class="n">classFilePath</span><span class="p">,</span> <span class="n">byteCodeContent</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">appendLineContentToFile</span><span class="p">(</span><span class="n">classFilePath</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1"># leave blank lines</span>
-</span><span class='line'>  <span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">appendLineContentToFile</span><span class="p">(</span><span class="n">byteCodeContent</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1"># leave blank lines</span>
-</span><span class='line'>  <span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">appendLineContentToFile</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">outputFile</span><span class="p">)</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="no">Find</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">dirToSearch</span><span class="p">)</span><span class="o">.</span><span class="n">select</span> <span class="p">{</span>
-</span><span class='line'>  <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="n">f</span><span class="o">.</span><span class="n">end_with?</span> <span class="s2">&quot;.class&quot;</span>
-</span><span class='line'><span class="p">}</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span>
-</span><span class='line'>  <span class="o">|</span><span class="n">f</span><span class="o">|</span>
-</span><span class='line'>  <span class="nb">puts</span> <span class="s2">&quot;checking </span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'>  <span class="n">byteCodeContent</span> <span class="o">=</span> <span class="sb">`javap -c </span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="sb">`</span>
-</span><span class='line'>  <span class="n">contains</span> <span class="o">=</span> <span class="n">byteCodeContent</span><span class="o">.</span><span class="n">include?</span> <span class="n">keywordToSearch</span>
-</span><span class='line'>  <span class="n">resultMessage</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-</span><span class='line'>  <span class="k">if</span> <span class="n">contains</span>
-</span><span class='line'>      <span class="n">resultMessage</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2"> contains </span><span class="si">#{</span><span class="n">keywordToSearch</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">green</span>
-</span><span class='line'>      <span class="n">writeResultInformation</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">byteCodeContent</span><span class="p">,</span> <span class="n">matchedResultFile</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">else</span>
-</span><span class='line'>      <span class="n">resultMessage</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2"> does NOT contains </span><span class="si">#{</span><span class="n">keywordToSearch</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">red</span>
-</span><span class='line'>  <span class="k">end</span>
-</span><span class='line'>  <span class="nb">puts</span> <span class="n">resultMessage</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>执行命令</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>ruby searchBytecode.rb ./ <span class="s2">&quot;Intrinsics&quot;</span> /tmp/result.txt
-</span></code></pre></td></tr></table></div></figure>
-
+<h2 id="执行命令">执行命令</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">ruby searchBytecode.rb ./ <span class="s2">"Intrinsics"</span> /tmp/result.txt</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <ul>
-<li>searchBytecode.rb 是上述的脚本文件名称</li>
-<li>./ 第一个参数，为待查找的目录</li>
-<li>&ldquo;Intrinsics&rdquo; 第二个参数，为查询关键字</li>
-<li>/tmp/result.txt  第三个参数，为结果输出文件</li>
+  <li>searchBytecode.rb 是上述的脚本文件名称</li>
+  <li>./ 第一个参数，为待查找的目录</li>
+  <li>“Intrinsics” 第二个参数，为查询关键字</li>
+  <li>/tmp/result.txt  第三个参数，为结果输出文件</li>
 </ul>
 
-
-<h2>执行日志</h2>
-
+<h2 id="执行日志">执行日志</h2>
 <p>为了更好的表达应用正在执行，执行时会有日志输出。
 <img src="https://asset.droidyue.com/image/2019_07/search_bytecode_logs.jpg" alt="https://asset.droidyue.com/image/2019_07/search_bytecode_logs.jpg" /></p>
 
 <p>其中</p>
 
 <ul>
-<li>正常的日志会以白色颜色输出</li>
-<li>不匹配的内容会以红颜色输出</li>
-<li>匹配的内容会以绿颜色输出</li>
+  <li>正常的日志会以白色颜色输出</li>
+  <li>不匹配的内容会以红颜色输出</li>
+  <li>匹配的内容会以绿颜色输出</li>
 </ul>
 
+<h2 id="结果文件">结果文件</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"> <span class="n">cat</span> <span class="n">sample_intrinsics</span><span class="o">.</span><span class="na">txt</span>
+</span><span class="line">
+</span><span class="line"><span class="o">./</span><span class="n">out</span><span class="o">/</span><span class="n">production</span><span class="o">/</span><span class="nc">BytecodeSample</span><span class="o">/</span><span class="nc">MainKt</span><span class="o">.</span><span class="na">class</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="nc">Compiled</span> <span class="n">from</span> <span class="s">"Main.kt"</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">MainKt</span> <span class="o">{</span>
+</span><span class="line">  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">();</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">11</span>                 <span class="c1">// String Hello</span>
+</span><span class="line">       <span class="mi">2</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">17</span>                 <span class="c1">// Method StringExtKt.toConsole:(Ljava/lang/String;)V</span>
+</span><span class="line">       <span class="mi">5</span><span class="o">:</span> <span class="n">iconst_1</span>
+</span><span class="line">       <span class="mi">6</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">23</span>                 <span class="c1">// Method IntExtKt.increase:(I)I</span>
+</span><span class="line">       <span class="mi">9</span><span class="o">:</span> <span class="n">pop</span>
+</span><span class="line">      <span class="mi">10</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">25</span>                 <span class="c1">// class Book</span>
+</span><span class="line">      <span class="mi">13</span><span class="o">:</span> <span class="n">dup</span>
+</span><span class="line">      <span class="mi">14</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">28</span>                 <span class="c1">// Method Book."&lt;init&gt;":()V</span>
+</span><span class="line">      <span class="mi">17</span><span class="o">:</span> <span class="n">getfield</span>      <span class="err">#</span><span class="mi">32</span>                 <span class="c1">// Field Book.name:Ljava/lang/String;</span>
+</span><span class="line">      <span class="mi">20</span><span class="o">:</span> <span class="n">dup</span>
+</span><span class="line">      <span class="mi">21</span><span class="o">:</span> <span class="n">ifnonnull</span>     <span class="mi">27</span>
+</span><span class="line">      <span class="mi">24</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">37</span>                 <span class="c1">// Method kotlin/jvm/internal/Intrinsics.throwNpe:()V</span>
+</span><span class="line">      <span class="mi">27</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">43</span>                 <span class="c1">// Method java/lang/String.toString:()Ljava/lang/String;</span>
+</span><span class="line">      <span class="mi">30</span><span class="o">:</span> <span class="n">pop</span>
+</span><span class="line">      <span class="mi">31</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line">
+</span><span class="line">  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[]);</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method main:()V</span>
+</span><span class="line">       <span class="mi">3</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="o">./</span><span class="n">out</span><span class="o">/</span><span class="n">production</span><span class="o">/</span><span class="nc">BytecodeSample</span><span class="o">/</span><span class="nc">StringExtKt</span><span class="o">.</span><span class="na">class</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="nc">Compiled</span> <span class="n">from</span> <span class="s">"StringExt.kt"</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">StringExtKt</span> <span class="o">{</span>
+</span><span class="line">  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">toConsole</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">);</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">       <span class="mi">1</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// String $this$toConsole</span>
+</span><span class="line">       <span class="mi">3</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">15</span>                 <span class="c1">// Method kotlin/jvm/internal/Intrinsics.checkParameterIsNotNull:(Ljava/lang/Object;Ljava/lang/String;)V</span>
+</span><span class="line">       <span class="mi">6</span><span class="o">:</span> <span class="n">iconst_0</span>
+</span><span class="line">       <span class="mi">7</span><span class="o">:</span> <span class="n">istore_1</span>
+</span><span class="line">       <span class="mi">8</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">21</span>                 <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">11</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">      <span class="mi">12</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">27</span>                 <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/Object;)V</span>
+</span><span class="line">      <span class="mi">15</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>结果文件</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">cat</span> <span class="n">sample_intrinsics</span><span class="o">.</span><span class="na">txt</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">./</span><span class="n">out</span><span class="o">/</span><span class="n">production</span><span class="o">/</span><span class="n">BytecodeSample</span><span class="o">/</span><span class="n">MainKt</span><span class="o">.</span><span class="na">class</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;Main.kt&quot;</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">MainKt</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">();</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">11</span>                 <span class="c1">// String Hello</span>
-</span><span class='line'>       <span class="mi">2</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">17</span>                 <span class="c1">// Method StringExtKt.toConsole:(Ljava/lang/String;)V</span>
-</span><span class='line'>       <span class="mi">5</span><span class="o">:</span> <span class="n">iconst_1</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">23</span>                 <span class="c1">// Method IntExtKt.increase:(I)I</span>
-</span><span class='line'>       <span class="mi">9</span><span class="o">:</span> <span class="n">pop</span>
-</span><span class='line'>      <span class="mi">10</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">25</span>                 <span class="c1">// class Book</span>
-</span><span class='line'>      <span class="mi">13</span><span class="o">:</span> <span class="n">dup</span>
-</span><span class='line'>      <span class="mi">14</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">28</span>                 <span class="c1">// Method Book.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>      <span class="mi">17</span><span class="o">:</span> <span class="n">getfield</span>      <span class="err">#</span><span class="mi">32</span>                 <span class="c1">// Field Book.name:Ljava/lang/String;</span>
-</span><span class='line'>      <span class="mi">20</span><span class="o">:</span> <span class="n">dup</span>
-</span><span class='line'>      <span class="mi">21</span><span class="o">:</span> <span class="n">ifnonnull</span>     <span class="mi">27</span>
-</span><span class='line'>      <span class="mi">24</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">37</span>                 <span class="c1">// Method kotlin/jvm/internal/Intrinsics.throwNpe:()V</span>
-</span><span class='line'>      <span class="mi">27</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">43</span>                 <span class="c1">// Method java/lang/String.toString:()Ljava/lang/String;</span>
-</span><span class='line'>      <span class="mi">30</span><span class="o">:</span> <span class="n">pop</span>
-</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[]);</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// Method main:()V</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="o">./</span><span class="n">out</span><span class="o">/</span><span class="n">production</span><span class="o">/</span><span class="n">BytecodeSample</span><span class="o">/</span><span class="n">StringExtKt</span><span class="o">.</span><span class="na">class</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;StringExt.kt&quot;</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">StringExtKt</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">toConsole</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">);</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// String $this$toConsole</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">15</span>                 <span class="c1">// Method kotlin/jvm/internal/Intrinsics.checkParameterIsNotNull:(Ljava/lang/Object;Ljava/lang/String;)V</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">iconst_0</span>
-</span><span class='line'>       <span class="mi">7</span><span class="o">:</span> <span class="n">istore_1</span>
-</span><span class='line'>       <span class="mi">8</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">21</span>                 <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>      <span class="mi">12</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">27</span>                 <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/Object;)V</span>
-</span><span class='line'>      <span class="mi">15</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>问题排查</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>/System/Library/Frameworks/Ruby.framework/Versions/2.3/usr/lib/ruby/2.3.0/rubygems/core_ext/kernel_require.rb:55:in <span class="sb">`</span>require<span class="s1">&#39;: cannot load such file -- colorize (LoadError)</span>
-</span><span class='line'><span class="s1"> from /System/Library/Frameworks/Ruby.framework/Versions/2.3/usr/lib/ruby/2.3.0/rubygems/core_ext/kernel_require.rb:55:in `require&#39;</span>
-</span><span class='line'>  from /Users/androidyue/Documents/OneDrive/scripts//searchBytecode.rb:3:in <span class="sb">`</span>&lt;main&gt;<span class="err">&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<h2 id="问题排查">问题排查</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">/System/Library/Frameworks/Ruby.framework/Versions/2.3/usr/lib/ruby/2.3.0/rubygems/core_ext/kernel_require.rb:55:in <span class="sb">`</span>require<span class="s1">': cannot load such file -- colorize (LoadError)
+</span><span class="line">	from /System/Library/Frameworks/Ruby.framework/Versions/2.3/usr/lib/ruby/2.3.0/rubygems/core_ext/kernel_require.rb:55:in `require'</span>
+</span><span class="line">	from /Users/androidyue/Documents/OneDrive/scripts//searchBytecode.rb:3:in <span class="sb">`</span>&lt;main&gt;<span class="s1">'</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>需手动安装ruby gems依赖</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>➜  gem install colorize
-</span><span class='line'>YAML safe loading is not available. Please upgrade psych to a version that supports safe loading <span class="o">(</span>&gt;<span class="o">=</span> 2.0<span class="o">)</span>.
-</span><span class='line'>Fetching: colorize-0.8.1.gem <span class="o">(</span>100%<span class="o">)</span>
-</span><span class='line'>Successfully installed colorize-0.8.1
-</span><span class='line'>Parsing documentation <span class="k">for </span>colorize-0.8.1
-</span><span class='line'>Installing ri documentation <span class="k">for </span>colorize-0.8.1
-</span><span class='line'>1 gem installed
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">➜  gem <span class="nb">install </span>colorize
+</span><span class="line">YAML safe loading is not available. Please upgrade psych to a version that supports safe loading <span class="o">(&gt;=</span> 2.0<span class="o">)</span><span class="nb">.</span>
+</span><span class="line">Fetching: colorize-0.8.1.gem <span class="o">(</span>100%<span class="o">)</span>
+</span><span class="line">Successfully installed colorize-0.8.1
+</span><span class="line">Parsing documentation <span class="k">for </span>colorize-0.8.1
+</span><span class="line">Installing ri documentation <span class="k">for </span>colorize-0.8.1
+</span><span class="line">1 gem installed</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>再次执行即可。</p>
 
-<h2>执行优化</h2>
-
+<h2 id="执行优化">执行优化</h2>
 <ul>
-<li>具体的执行时间可能会随着工程的复杂而不同。</li>
-<li>建议筛选更加精细的目录，避免不必要的查询和操作</li>
-<li>可以同时使用<code>tail -f</code>筛选匹配结果。</li>
+  <li>具体的执行时间可能会随着工程的复杂而不同。</li>
+  <li>建议筛选更加精细的目录，避免不必要的查询和操作</li>
+  <li>可以同时使用<code class="language-plaintext highlighter-rouge">tail -f</code>筛选匹配结果。</li>
 </ul>
-
 
 <p>脚本github地址:<a href="https://github.com/androidyue/DroidScripts/blob/master/ruby/searchBytecode.rb">https://github.com/androidyue/DroidScripts/blob/master/ruby/searchBytecode.rb</a></p>
 
 <p>以上。</p>
 
-<h2>相关内容</h2>
-
+<h2 id="相关内容">相关内容</h2>
 <ul>
-<li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
+  <li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -623,7 +587,7 @@ fun String.toConsole() { &hellip;">
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -637,8 +601,6 @@ fun String.toConsole() { &hellip;">
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -650,15 +612,13 @@ fun String.toConsole() { &hellip;">
 
 
 
-  
 
-
-<time datetime="2019-07-14T21:10:00+08:00" pubdate data-updated="true">Jul 14<span>th</span>, 2019</time>
+<time datetime="2019-07-14T21:10:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/bytecode/'>Bytecode</a>, <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>, <a class='category' href='/blog/categories/ruby/'>ruby</a>, <a class='category' href='/blog/categories/zi-jie-ma/'>字节码</a>, <a class='category' href='/blog/categories/jiao-ben/'>脚本</a>
+    KotlinBytecode字节码ruby脚本
   
 </span>
 
@@ -751,10 +711,6 @@ fun String.toConsole() { &hellip;">
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -763,7 +719,7 @@ fun String.toConsole() { &hellip;">
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -830,6 +786,10 @@ fun String.toConsole() { &hellip;">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -863,7 +823,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -871,7 +831,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

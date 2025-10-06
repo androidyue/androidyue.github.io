@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="一个关于安卓打包提速的小改进 Feb 19th, 2017 作为App开发者，打包和发包是经常要进行的工作。鉴于国内的特殊情况，造就了不可胜举的应用市场。为了便于跟踪统计必要的数据信息，我们通常会针对每个市场都进行打包。这些包总的来说几乎是一致的，可能唯一的的差别就是渠道号信息不一样。 &hellip;">
+  <meta name="description" content="一个关于安卓打包提速的小改进 作为App开发者，打包和发包是经常要进行的工作。鉴于国内的特殊情况，造就了不可胜举的应用市场。为了便于跟踪统计必要的数据信息，我们通常会针对每个市场都进行打包。这些包总的来说几乎是一致的，可能唯一的的差别就是渠道号信息不一样。 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,52 +174,39 @@
 
 
 
-  
 
-
-<time datetime="2017-02-19T20:19:00+08:00" pubdate data-updated="true">Feb 19<span>th</span>, 2017</time>
+<time datetime="2017-02-19T20:19:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>作为App开发者，打包和发包是经常要进行的工作。鉴于国内的特殊情况，造就了不可胜举的应用市场。为了便于跟踪统计必要的数据信息，我们通常会针对每个市场都进行打包。这些包总的来说几乎是一致的，可能唯一的的差别就是渠道号信息不一样。</p>
-
+<div class="entry-content"><p>作为App开发者，打包和发包是经常要进行的工作。鉴于国内的特殊情况，造就了不可胜举的应用市场。为了便于跟踪统计必要的数据信息，我们通常会针对每个市场都进行打包。这些包总的来说几乎是一致的，可能唯一的的差别就是渠道号信息不一样。
 <!--more-->
-
-
-<p>Flipboard中国版本目前覆盖了大概10几个渠道，目前唯一不同的就是渠道号信息。</p>
+Flipboard中国版本目前覆盖了大概10几个渠道，目前唯一不同的就是渠道号信息。</p>
 
 <p>最早的实现方式为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">buildConfigField</span> <span class="s">&quot;String&quot;</span><span class="o">,</span> <span class="s">&quot;CHANNEL_ID&quot;</span><span class="o">,</span> <span class="kc">null</span> <span class="o">==</span> <span class="n">versionProps</span><span class="o">[</span><span class="err">&#39;</span><span class="n">CHANNEL_ID</span><span class="err">&#39;</span><span class="o">]</span> <span class="o">?</span> <span class="o">/</span><span class="s">&quot;&quot;</span><span class="o">/</span> <span class="o">:</span> <span class="sc">&#39;&quot;&#39;</span> <span class="o">+</span> <span class="n">versionProps</span><span class="o">[</span><span class="err">&#39;</span><span class="n">CHANNEL_ID</span><span class="err">&#39;</span><span class="o">]</span> <span class="o">+</span> <span class="sc">&#39;&quot;&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">buildConfigField</span> <span class="s">"String"</span><span class="o">,</span> <span class="s">"CHANNEL_ID"</span><span class="o">,</span> <span class="kc">null</span> <span class="o">==</span> <span class="n">versionProps</span><span class="o">[</span><span class="err">'</span><span class="no">CHANNEL_ID</span><span class="err">'</span><span class="o">]</span> <span class="o">?</span> <span class="o">/</span><span class="s">""</span><span class="o">/</span> <span class="o">:</span> <span class="sc">'"'</span> <span class="o">+</span> <span class="n">versionProps</span><span class="o">[</span><span class="err">'</span><span class="no">CHANNEL_ID</span><span class="err">'</span><span class="o">]</span> <span class="o">+</span> <span class="sc">'"'</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>上述实现的缺点有</p>
 
 <ul>
-<li>无法在manifest中配置包含渠道号信息的meta数据</li>
-<li>会导致每次重新编译代码，以及后续的多次Proguard优化，相对很耗时。打包时间将近4分钟</li>
+  <li>无法在manifest中配置包含渠道号信息的meta数据</li>
+  <li>会导致每次重新编译代码，以及后续的多次Proguard优化，相对很耗时。打包时间将近4分钟</li>
 </ul>
 
-
 <p>后来改进的方式为</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">resValue</span> <span class="s">&quot;string&quot;</span><span class="o">,</span> <span class="s">&quot;channel_id&quot;</span><span class="o">,</span> <span class="kc">null</span> <span class="o">==</span> <span class="n">versionProps</span><span class="o">[</span><span class="err">&#39;</span><span class="n">CHANNEL_ID</span><span class="err">&#39;</span><span class="o">]</span> <span class="o">?</span> <span class="o">/</span><span class="s">&quot;&quot;</span><span class="o">/</span> <span class="o">:</span> <span class="sc">&#39;&quot;&#39;</span> <span class="o">+</span> <span class="n">versionProps</span><span class="o">[</span><span class="err">&#39;</span><span class="n">CHANNEL_ID</span><span class="err">&#39;</span><span class="o">]</span> <span class="o">+</span> <span class="sc">&#39;&quot;&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">resValue</span> <span class="s">"string"</span><span class="o">,</span> <span class="s">"channel_id"</span><span class="o">,</span> <span class="kc">null</span> <span class="o">==</span> <span class="n">versionProps</span><span class="o">[</span><span class="err">'</span><span class="no">CHANNEL_ID</span><span class="err">'</span><span class="o">]</span> <span class="o">?</span> <span class="o">/</span><span class="s">""</span><span class="o">/</span> <span class="o">:</span> <span class="sc">'"'</span> <span class="o">+</span> <span class="n">versionProps</span><span class="o">[</span><span class="err">'</span><span class="no">CHANNEL_ID</span><span class="err">'</span><span class="o">]</span> <span class="o">+</span> <span class="sc">'"'</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>新的实现解决了上面的两个问题</p>
 
 <ul>
-<li>可以在manifest中实现配置渠道号信息</li>
-<li>无需重新编译源码，也无需后续的proguard的代码优化。只更新resource资源即可。打包时间缩短到14秒左右。</li>
+  <li>可以在manifest中实现配置渠道号信息</li>
+  <li>无需重新编译源码，也无需后续的proguard的代码优化。只更新resource资源即可。打包时间缩短到14秒左右。</li>
 </ul>
-
 
 <p>经过如此一个小改动，从此我们不再需要漫长的等待和浪费机器性能。</p>
 
@@ -243,7 +230,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -257,8 +244,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -270,15 +255,13 @@
 
 
 
-  
 
-
-<time datetime="2017-02-19T20:19:00+08:00" pubdate data-updated="true">Feb 19<span>th</span>, 2017</time>
+<time datetime="2017-02-19T20:19:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/gradle/'>Gradle</a>
+    AndroidGradle
   
 </span>
 
@@ -371,10 +354,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -383,7 +362,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -450,6 +429,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -483,7 +466,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -491,7 +474,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

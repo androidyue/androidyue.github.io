@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Android中实现用户无感知处理后台崩溃 Apr 1st, 2018 正所谓，要想没有bug，就一行代码也不写。App到了用户的手里，肯定是崩溃越少越好。Android中的崩溃处理和iOS不太一样，iOS崩溃通常是闪退，而安卓会出现如下的蹩脚的对话框 当你的用户看到类似这样的崩溃对话框时， &hellip;">
+  <meta name="description" content="Android中实现用户无感知处理后台崩溃 正所谓，要想没有bug，就一行代码也不写。App到了用户的手里，肯定是崩溃越少越好。Android中的崩溃处理和iOS不太一样，iOS崩溃通常是闪退，而安卓会出现如下的蹩脚的对话框 当你的用户看到类似这样的崩溃对话框时，心中得到“这届程序员不行啊” &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2018-04-01T22:29:00+08:00" pubdate data-updated="true">Apr 1<span>st</span>, 2018</time>
+<time datetime="2018-04-01T22:29:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -188,10 +186,8 @@
 
 <p><img src="https://asset.droidyue.com/image/app_crash_v1.png" alt="https://asset.droidyue.com/image/app_crash_v1.png" /></p>
 
-<p>当你的用户看到类似这样的崩溃对话框时，心中得到“这届程序员不行啊”的感慨也不足为奇。</p>
-
-<!--more-->
-
+<p>当你的用户看到类似这样的崩溃对话框时，心中得到“这届程序员不行啊”的感慨也不足为奇。
+<!--more--></p>
 
 <p>在安卓中，我们应用会有所谓的前台和后台的概念，在本文这里这样定义，当前应用有Activity展示（即用户明显感知在当前应用），约定为前台，否则为后台。</p>
 
@@ -200,122 +196,114 @@
 <p>原理其实蛮简单的。</p>
 
 <ul>
-<li>检测是否为后台</li>
-<li>如果是后台则杀掉该进程，否则执行默认的崩溃处理</li>
+  <li>检测是否为后台</li>
+  <li>如果是后台则杀掉该进程，否则执行默认的崩溃处理</li>
 </ul>
-
 
 <p>检测是否为后台，这里我们以进程中Activity的数量作为判断标准</p>
 
 <ul>
-<li>当activity onStart时activityCount自增</li>
-<li>当Activity onStop时activityCount自减</li>
-<li>当activityCount为0，我们则认为应用处于后台状态</li>
+  <li>当activity onStart时activityCount自增</li>
+  <li>当Activity onStop时activityCount自减</li>
+  <li>当activityCount为0，我们则认为应用处于后台状态</li>
 </ul>
 
-
 <p>具体实现如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">object</span> <span class="nl">ActivityLifecycleCallbackImp:</span> <span class="n">Application</span><span class="o">.</span><span class="na">ActivityLifecycleCallbacks</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">var</span> <span class="nl">activityCount:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityPaused</span><span class="o">(</span><span class="nl">activity:</span> <span class="n">Activity</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityResumed</span><span class="o">(</span><span class="nl">activity:</span> <span class="n">Activity</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityStarted</span><span class="o">(</span><span class="nl">activity:</span> <span class="n">Activity</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">activityCount</span> <span class="o">++</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityDestroyed</span><span class="o">(</span><span class="nl">activity:</span> <span class="n">Activity</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivitySaveInstanceState</span><span class="o">(</span><span class="nl">activity:</span> <span class="n">Activity</span><span class="o">?,</span> <span class="nl">outState:</span> <span class="n">Bundle</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityStopped</span><span class="o">(</span><span class="nl">activity:</span> <span class="n">Activity</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">activityCount</span><span class="o">--</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityCreated</span><span class="o">(</span><span class="nl">activity:</span> <span class="n">Activity</span><span class="o">?,</span> <span class="nl">savedInstanceState:</span> <span class="n">Bundle</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">object</span> <span class="nl">ActivityLifecycleCallbackImp:</span> <span class="nc">Application</span><span class="o">.</span><span class="na">ActivityLifecycleCallbacks</span> <span class="o">{</span>
+</span><span class="line">   <span class="kt">var</span> <span class="nl">activityCount:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class="line">   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityPaused</span><span class="o">(</span><span class="nl">activity:</span> <span class="nc">Activity</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityResumed</span><span class="o">(</span><span class="nl">activity:</span> <span class="nc">Activity</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityStarted</span><span class="o">(</span><span class="nl">activity:</span> <span class="nc">Activity</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">activityCount</span> <span class="o">++</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityDestroyed</span><span class="o">(</span><span class="nl">activity:</span> <span class="nc">Activity</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivitySaveInstanceState</span><span class="o">(</span><span class="nl">activity:</span> <span class="nc">Activity</span><span class="o">?,</span> <span class="nl">outState:</span> <span class="nc">Bundle</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityStopped</span><span class="o">(</span><span class="nl">activity:</span> <span class="nc">Activity</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">activityCount</span><span class="o">--</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onActivityCreated</span><span class="o">(</span><span class="nl">activity:</span> <span class="nc">Activity</span><span class="o">?,</span> <span class="nl">savedInstanceState:</span> <span class="nc">Bundle</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>在Application中进行注册</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">MyApplication</span> <span class="o">:</span> <span class="n">Application</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onCreate</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>       <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">()</span>
-</span><span class='line'>       <span class="n">registerActivityLifecycleCallbacks</span><span class="o">(</span><span class="n">ActivityLifecycleCallbackImp</span><span class="o">)</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">class</span> <span class="nc">MyApplication</span> <span class="o">:</span> <span class="nc">Application</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="n">override</span> <span class="n">fun</span> <span class="nf">onCreate</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">       <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">()</span>
+</span><span class="line">       <span class="n">registerActivityLifecycleCallbacks</span><span class="o">(</span><span class="nc">ActivityLifecycleCallbackImp</span><span class="o">)</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>剩下的就是设置一个自定义的未捕获异常处理处理器</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="n">defaultHandler</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">getDefaultUncaughtExceptionHandler</span><span class="o">()</span>
-</span><span class='line'><span class="n">Thread</span><span class="o">.</span><span class="na">setDefaultUncaughtExceptionHandler</span> <span class="o">{</span> <span class="n">thread</span><span class="o">,</span> <span class="n">exception</span> <span class="o">-&gt;</span>
-</span><span class='line'>   <span class="n">exception</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">()</span>
-</span><span class='line'>   <span class="n">val</span> <span class="n">isBackground</span> <span class="o">=</span> <span class="n">ActivityLifecycleCallbackImp</span><span class="o">.</span><span class="na">activityCount</span> <span class="o">==</span> <span class="mi">0</span>
-</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">isBackground</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">&quot;MyApplication&quot;</span><span class="o">,</span> <span class="s">&quot;isBackground just kill the process without annoying users&quot;</span><span class="o">)</span>
-</span><span class='line'>       <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">killProcess</span><span class="o">(</span><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">myPid</span><span class="o">())</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">defaultHandler</span><span class="o">.</span><span class="na">uncaughtException</span><span class="o">(</span><span class="n">thread</span><span class="o">,</span> <span class="n">exception</span><span class="o">)</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">val</span> <span class="n">defaultHandler</span> <span class="o">=</span> <span class="nc">Thread</span><span class="o">.</span><span class="na">getDefaultUncaughtExceptionHandler</span><span class="o">()</span>
+</span><span class="line"><span class="nc">Thread</span><span class="o">.</span><span class="na">setDefaultUncaughtExceptionHandler</span> <span class="o">{</span> <span class="n">thread</span><span class="o">,</span> <span class="n">exception</span> <span class="o">-&gt;</span>
+</span><span class="line">   <span class="n">exception</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class="line">   <span class="n">val</span> <span class="n">isBackground</span> <span class="o">=</span> <span class="nc">ActivityLifecycleCallbackImp</span><span class="o">.</span><span class="na">activityCount</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span class="line">   <span class="k">if</span> <span class="o">(</span><span class="n">isBackground</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="nc">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">"MyApplication"</span><span class="o">,</span> <span class="s">"isBackground just kill the process without annoying users"</span><span class="o">)</span>
+</span><span class="line">       <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">killProcess</span><span class="o">(</span><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">myPid</span><span class="o">())</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">defaultHandler</span><span class="o">.</span><span class="na">uncaughtException</span><span class="o">(</span><span class="n">thread</span><span class="o">,</span> <span class="n">exception</span><span class="o">)</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>至此功能就基本实现了，相对之前硬邦邦的对话框，后台无干扰用户的默默杀掉进程要友好很多了。</p>
 
 <p>关于崩溃的文章，我还有一篇相关的，请移步这里<a href="https://droidyue.com/blog/2015/12/06/practise-about-crash-in-android/">Android处理崩溃的一些实践</a>查看。</p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -337,7 +325,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -351,8 +339,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -364,15 +350,13 @@
 
 
 
-  
 
-
-<time datetime="2018-04-01T22:29:00+08:00" pubdate data-updated="true">Apr 1<span>st</span>, 2018</time>
+<time datetime="2018-04-01T22:29:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/beng-kui/'>崩溃</a>
+    Android崩溃
   
 </span>
 
@@ -465,10 +449,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -477,7 +457,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -544,6 +524,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -577,7 +561,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -585,7 +569,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

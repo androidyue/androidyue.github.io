@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="详解 Android 中的 HandlerThread Nov 8th, 2015 HandlerThread是Android API提供的一个便捷的类，使用它我们可以快速的创建一个带有Looper的线程，有了Looper这个线程，我们又可以生成Handler， &hellip;">
+  <meta name="description" content="详解 Android 中的 HandlerThread HandlerThread是Android API提供的一个便捷的类，使用它我们可以快速的创建一个带有Looper的线程，有了Looper这个线程，我们又可以生成Handler，那么HandlerThread是什么，可以做什么呢， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,259 +174,219 @@
 
 
 
-  
 
-
-<time datetime="2015-11-08T22:50:00+08:00" pubdate data-updated="true">Nov 8<span>th</span>, 2015</time>
+<time datetime="2015-11-08T22:50:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>HandlerThread是Android API提供的一个便捷的类，使用它我们可以快速的创建一个带有Looper的线程，有了Looper这个线程，我们又可以生成Handler，那么HandlerThread是什么，可以做什么呢，有哪些奇技淫巧可以被我们利用呢？</p>
-
+<div class="entry-content"><p>HandlerThread是Android API提供的一个便捷的类，使用它我们可以快速的创建一个带有Looper的线程，有了Looper这个线程，我们又可以生成Handler，那么HandlerThread是什么，可以做什么呢，有哪些奇技淫巧可以被我们利用呢？
 <!--more-->
-
-
-<h2>实现原理</h2>
-
-<p>在介绍原理之前，我们先使用普通的Thread来创建一个Handler，创建的过程大致如下：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">createManualThreadWithHandler</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>  <span class="k">new</span> <span class="nf">Thread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="nd">@Override</span>
-</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">());</span>
-</span><span class='line'>            <span class="n">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}.</span><span class="na">start</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+##实现原理
+在介绍原理之前，我们先使用普通的Thread来创建一个Handler，创建的过程大致如下：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
+</span><span class="line"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">createManualThreadWithHandler</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">	<span class="k">new</span> <span class="nf">Thread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    	<span class="nd">@Override</span>
+</span><span class="line">        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">            <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+</span><span class="line">            <span class="nc">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
+</span><span class="line">            <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Handler</span><span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">());</span>
+</span><span class="line">            <span class="nc">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}.</span><span class="na">start</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>实现很简单，在目标线程内如下配置</p>
 
 <ul>
-<li>调用Looper.prepare 创建与当前线程绑定的Looper实例</li>
-<li>使用上面创建的Looper生成Handler实例</li>
-<li>调用Looper.loop()实现消息循环</li>
+  <li>调用Looper.prepare 创建与当前线程绑定的Looper实例</li>
+  <li>使用上面创建的Looper生成Handler实例</li>
+  <li>调用Looper.loop()实现消息循环</li>
 </ul>
-
 
 <p>明白上面的实现步骤，HandlerThread的实现也就简单了，其实现为：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">mTid</span> <span class="o">=</span> <span class="n">Process</span><span class="o">.</span><span class="na">myTid</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
-</span><span class='line'>    <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">mLooper</span> <span class="o">=</span> <span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">();</span>
-</span><span class='line'>      <span class="n">notifyAll</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="n">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">mPriority</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">onLooperPrepared</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">mTid</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nd">@Override</span>
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">	<span class="n">mTid</span> <span class="o">=</span> <span class="nc">Process</span><span class="o">.</span><span class="na">myTid</span><span class="o">();</span>
+</span><span class="line">    <span class="nc">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
+</span><span class="line">    <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    	<span class="n">mLooper</span> <span class="o">=</span> <span class="nc">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">();</span>
+</span><span class="line">    	<span class="n">notifyAll</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="nc">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">mPriority</span><span class="o">);</span>
+</span><span class="line">    <span class="n">onLooperPrepared</span><span class="o">();</span>
+</span><span class="line">    <span class="nc">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
+</span><span class="line">    <span class="n">mTid</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>确实很简单，无需赘述。</p>
 
-<h2>Handler原理</h2>
-
-<p>要理解Handler的原理，理解如下几个概念即可茅塞顿开。</p>
+<p>##Handler原理
+要理解Handler的原理，理解如下几个概念即可茅塞顿开。</p>
 
 <ul>
-<li>Message 意为消息，发送到Handler进行处理的对象，携带描述信息和任意数据。</li>
-<li>MessageQueue 意为消息队列，Message的集合。</li>
-<li>Looper 有着一个很难听的中文名字，消息泵，用来从MessageQueue中抽取Message，发送给Handler进行处理。</li>
-<li>Handler 处理Looper抽取出来的Message。</li>
+  <li>Message 意为消息，发送到Handler进行处理的对象，携带描述信息和任意数据。</li>
+  <li>MessageQueue 意为消息队列，Message的集合。</li>
+  <li>Looper 有着一个很难听的中文名字，消息泵，用来从MessageQueue中抽取Message，发送给Handler进行处理。</li>
+  <li>Handler 处理Looper抽取出来的Message。</li>
 </ul>
 
-
-<h2>如何使用</h2>
-
-<p>HandlerThread使用起来很容易，首先需要进行初始化。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span> <span class="nf">LightTaskManager</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">HandlerThread</span> <span class="n">workerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HandlerThread</span><span class="o">(</span><span class="s">&quot;LightTaskThread&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">workerThread</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">(</span><span class="n">workerThread</span><span class="o">.</span><span class="na">getLooper</span><span class="o">());</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>注意：上面的<code>workerThread.start();</code>必须要执行。</p>
+<p>##如何使用
+HandlerThread使用起来很容易，首先需要进行初始化。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="nc">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
+</span><span class="line"><span class="kd">private</span> <span class="nf">LightTaskManager</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">HandlerThread</span> <span class="n">workerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HandlerThread</span><span class="o">(</span><span class="s">"LightTaskThread"</span><span class="o">);</span>
+</span><span class="line">    <span class="n">workerThread</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+</span><span class="line">    <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Handler</span><span class="o">(</span><span class="n">workerThread</span><span class="o">.</span><span class="na">getLooper</span><span class="o">());</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>注意：上面的<code class="language-plaintext highlighter-rouge">workerThread.start();</code>必须要执行。</p>
 
 <p>至于如何使用HandlerThread来执行任务，主要是调用Handler的API</p>
 
 <ul>
-<li>使用post方法提交任务，postAtFrontOfQueue将任务加入到队列前端，postAtTime指定时间提交任务，postDelayed延后提交任务。</li>
-<li>使用sendMessage方法可以发送消息，sendMessageAtFrontOfQueue将该消息放入消息队列前端，sendMessageAtTime 指定时间发送消息，sendMessageDelayed延后提交消息。</li>
+  <li>使用post方法提交任务，postAtFrontOfQueue将任务加入到队列前端，postAtTime指定时间提交任务，postDelayed延后提交任务。</li>
+  <li>使用sendMessage方法可以发送消息，sendMessageAtFrontOfQueue将该消息放入消息队列前端，sendMessageAtTime 指定时间发送消息，sendMessageDelayed延后提交消息。</li>
 </ul>
-
 
 <p>通过包裹Handler API，我们可以实现如下代码(仅post相关方法):</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">post</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">run</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mHandler</span><span class="o">.</span><span class="na">post</span><span class="o">(</span><span class="n">run</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtFrontOfQueue</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">runnable</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtFrontOfQueue</span><span class="o">(</span><span class="n">runnable</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postDelayed</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">delay</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mHandler</span><span class="o">.</span><span class="na">postDelayed</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">delay</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtTime</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">time</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtTime</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">time</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">post</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">run</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">post</span><span class="o">(</span><span class="n">run</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtFrontOfQueue</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtFrontOfQueue</span><span class="o">(</span><span class="n">runnable</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postDelayed</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">delay</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postDelayed</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">delay</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtTime</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">time</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtTime</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">time</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<p>##控制优先级
+了解到如何使用之外，关于HandlerThread的使用需要上升一个界别，那就是优化。这里的优化主要是合理调整HandlerThread的优先级。</p>
 
+<p>HandlerThread的默认优先级是<code class="language-plaintext highlighter-rouge">Process.THREAD_PRIORITY_DEFAULT</code>,具体值为0。线程的优先级的取值范围为-20到19。优先级高的获得的CPU资源更多，反之则越少。-20代表优先级最高，19最低。0位于中间位置，但是作为工作线程的HandlerThread没有必要设置这么高的优先级，因而需要我们降低其优先级。</p>
 
-<h2>控制优先级</h2>
-
-<p>了解到如何使用之外，关于HandlerThread的使用需要上升一个界别，那就是优化。这里的优化主要是合理调整HandlerThread的优先级。</p>
-
-<p>HandlerThread的默认优先级是<code>Process.THREAD_PRIORITY_DEFAULT</code>,具体值为0。线程的优先级的取值范围为-20到19。优先级高的获得的CPU资源更多，反之则越少。-20代表优先级最高，19最低。0位于中间位置，但是作为工作线程的HandlerThread没有必要设置这么高的优先级，因而需要我们降低其优先级。</p>
-
-<h3>可控制的优先级</h3>
-
+<p>###可控制的优先级</p>
 <ul>
-<li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
-<li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
-<li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
-<li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
-<li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
+  <li>THREAD_PRIORITY_DEFAULT，默认的线程优先级，值为0。</li>
+  <li>THREAD_PRIORITY_LOWEST，最低的线程级别，值为19。</li>
+  <li>THREAD_PRIORITY_BACKGROUND 后台线程建议设置这个优先级，值为10。</li>
+  <li>THREAD_PRIORITY_MORE_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微优先，值为-1。</li>
+  <li>THREAD_PRIORITY_LESS_FAVORABLE 相对THREAD_PRIORITY_DEFAULT稍微落后一些，值为1。</li>
 </ul>
-
 
 <p>以上的这些优先级都是可以在程序中设置的，除此之外还有不可控的优先级均有系统进行自动调整。</p>
 
-<h3>如何修改权限</h3>
-
-<p>最通用的就是在run方法中，加入合理的设置优先级代码，比如</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Runnable</span> <span class="n">run</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Runnable</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">};</span>
-</span><span class='line'><span class="n">LightTaskManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">post</span><span class="o">(</span><span class="n">run</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>###如何修改权限
+最通用的就是在run方法中，加入合理的设置优先级代码，比如</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">Runnable</span> <span class="n">run</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="nc">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">};</span>
+</span><span class="line"><span class="nc">LightTaskManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">post</span><span class="o">(</span><span class="n">run</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>上述方法不仅适用于HandlerThread，也可以适用于其他的线程。</p>
 
 <p>除此之外，HandlerThread的构造方法也提供了设置优先级的功能。用法如下：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">HandlerThread</span> <span class="n">workerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HandlerThread</span><span class="o">(</span><span class="s">&quot;LightTaskThread&quot;</span><span class="o">,</span> <span class="n">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">HandlerThread</span> <span class="n">workerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HandlerThread</span><span class="o">(</span><span class="s">"LightTaskThread"</span><span class="o">,</span> <span class="nc">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>关于设置优先级，系统的AsyncTask已经开始进行了默认设置，将线程的优先级设置成THREAD_PRIORITY_BACKGROUND了。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="nf">AsyncTask</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mWorker</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WorkerRunnable</span><span class="o">&lt;</span><span class="n">Params</span><span class="o">,</span> <span class="n">Result</span><span class="o">&gt;()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">public</span> <span class="n">Result</span> <span class="nf">call</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">mTaskInvoked</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="n">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span>
-</span><span class='line'>            <span class="c1">//noinspection unchecked</span>
-</span><span class='line'>            <span class="n">Result</span> <span class="n">result</span> <span class="o">=</span> <span class="n">doInBackground</span><span class="o">(</span><span class="n">mParams</span><span class="o">);</span>
-</span><span class='line'>            <span class="n">Binder</span><span class="o">.</span><span class="na">flushPendingCommands</span><span class="o">();</span>
-</span><span class='line'>            <span class="k">return</span> <span class="nf">postResult</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">};</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="nf">AsyncTask</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mWorker</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">WorkerRunnable</span><span class="o">&lt;</span><span class="nc">Params</span><span class="o">,</span> <span class="nc">Result</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class="line">        <span class="kd">public</span> <span class="nc">Result</span> <span class="nf">call</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">mTaskInvoked</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line">
+</span><span class="line">            <span class="nc">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="nc">Process</span><span class="o">.</span><span class="na">THREAD_PRIORITY_BACKGROUND</span><span class="o">);</span>
+</span><span class="line">            <span class="c1">//noinspection unchecked</span>
+</span><span class="line">            <span class="nc">Result</span> <span class="n">result</span> <span class="o">=</span> <span class="n">doInBackground</span><span class="o">(</span><span class="n">mParams</span><span class="o">);</span>
+</span><span class="line">            <span class="nc">Binder</span><span class="o">.</span><span class="na">flushPendingCommands</span><span class="o">();</span>
+</span><span class="line">            <span class="k">return</span> <span class="nf">postResult</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">};</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>关于Android中线程的调度详情，请参考<a href="">剖析Android中进程与线程调度之nice</a></p>
 
-<h2>应用场景</h2>
-
-<p>我们可以使用HandlerThread处理本地IO读写操作（数据库，文件），因为本地IO操作大多数的耗时属于毫秒级别，对于单线程 + 异步队列的形式 不会产生较大的阻塞。因此在这个HandlerThread中不适合加入网络IO操作。</p>
+<p>##应用场景
+我们可以使用HandlerThread处理本地IO读写操作（数据库，文件），因为本地IO操作大多数的耗时属于毫秒级别，对于单线程 + 异步队列的形式 不会产生较大的阻塞。因此在这个HandlerThread中不适合加入网络IO操作。</p>
 
 <p>对于本地IO读取操作，我们可以使用postAtFrontOfQueue方法，快速将读取操作加入队列前端执行，必要时返回给主线程更新UI。示例场景，从数据库中读取数据展现在ListView中。注意读取也是需要花费一定时间，推荐在数据展示之前有必要的用户可感知进度提示。</p>
 
 <p>对于本地IO写操作，根据具体情况，选择post或者postDelayed方法执行。比如SharedPreference commit，或者文件写入操作。</p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -448,7 +408,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -462,8 +422,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -475,15 +433,13 @@
 
 
 
-  
 
-
-<time datetime="2015-11-08T22:50:00+08:00" pubdate data-updated="true">Nov 8<span>th</span>, 2015</time>
+<time datetime="2015-11-08T22:50:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>
+    Android
   
 </span>
 
@@ -576,10 +532,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -588,7 +540,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -655,6 +607,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -688,7 +644,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -696,7 +652,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

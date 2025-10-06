@@ -11,8 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Unpub 发布原子化处理 Aug 16th, 2022 目前 unpub 作为我们重要的 pub 私有服务托管着 众多的 pubs。在日常的开发过程中，我们也会对pub 做出了一些约束。比如 只允许在 master 或者 release/* 分支发布
-不符合上述条件的分支不允许发布。 &hellip;">
+  <meta name="description" content="Unpub 发布原子化处理 目前 unpub 作为我们重要的 pub 私有服务托管着 众多的 pubs。在日常的开发过程中，我们也会对pub 做出了一些约束。比如 只允许在 master 或者 release/* 分支发布 不符合上述条件的分支不允许发布。 今天我们讨论的问题重点，非上述的问题， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -175,10 +174,8 @@
 
 
 
-  
 
-
-<time datetime="2022-08-16T07:43:00+08:00" pubdate data-updated="true">Aug 16<span>th</span>, 2022</time>
+<time datetime="2022-08-16T07:43:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -188,59 +185,48 @@
 <div class="entry-content"><p>目前 unpub 作为我们重要的 pub 私有服务托管着 众多的 pubs。在日常的开发过程中，我们也会对pub 做出了一些约束。比如</p>
 
 <ul>
-<li>只允许在 master 或者 release/* 分支发布</li>
-<li>不符合上述条件的分支不允许发布。</li>
+  <li>只允许在 master 或者 release/* 分支发布</li>
+  <li>不符合上述条件的分支不允许发布。</li>
 </ul>
-
 
 <p>今天我们讨论的问题重点，非上述的问题，而是发布 unpub 的原子性。</p>
 
 <!--more-->
 
-
-<h2>非原子化的两步</h2>
+<h2 id="非原子化的两步">非原子化的两步</h2>
 
 <p>在讨论原子性之前，我们需要明确有两个步骤。</p>
 
 <ul>
-<li>我们需要执行 <code>flutter packages pub publish --server=https://pub.aaa.com/ --verbose</code> 进行发布</li>
-<li>在发布unpub 前后，我们需要将代码推送到远端 gitlab 服务器</li>
+  <li>我们需要执行 <code class="language-plaintext highlighter-rouge">flutter packages pub publish --server=https://pub.aaa.com/ --verbose</code> 进行发布</li>
+  <li>在发布unpub 前后，我们需要将代码推送到远端 gitlab 服务器</li>
 </ul>
 
-
-<h2>非原子化的问题</h2>
-
+<h2 id="非原子化的问题">非原子化的问题</h2>
 <p>那么如果我们忘记了，最后一步的推送工作，带来的问题可能会很严重</p>
 
 <ul>
-<li>某份代码 A 未被推送，后面的更改再发布 unpub 导致 代码 A 的功能 丢失</li>
-<li>后续发现丢失后，找回代码A 很可能无法 确定 当时的代码修改内容（可能包含其他修改，人的记忆里不总是可靠）</li>
-<li>找回后，往往需要投入一定的测试资源验证较为稳妥。</li>
+  <li>某份代码 A 未被推送，后面的更改再发布 unpub 导致 代码 A 的功能 丢失</li>
+  <li>后续发现丢失后，找回代码A 很可能无法 确定 当时的代码修改内容（可能包含其他修改，人的记忆里不总是可靠）</li>
+  <li>找回后，往往需要投入一定的测试资源验证较为稳妥。</li>
 </ul>
-
 
 <p>所以，将上面两部合成一步，来作为一个原子操作，显得尤为重要。</p>
 
-<h2>一个脚本原子化</h2>
-
+<h2 id="一个脚本原子化">一个脚本原子化</h2>
 <p>这里有一个简单，却极为实用的方式，就是这个代码</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>git push origin <span class="s2">&quot;$(git symbolic-ref -q HEAD 2&gt;/dev/null | cut -d&#39;/&#39; -f 3)&quot;</span>
-</span><span class='line'>flutter packages pub publish --server<span class="o">=</span>https://pub.aaa.com/ --verbose
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="c">#!/bin/bash</span>
+</span><span class="line">git push origin <span class="s2">"</span><span class="si">$(</span>git symbolic-ref <span class="nt">-q</span> HEAD 2&gt;/dev/null | <span class="nb">cut</span> <span class="nt">-d</span><span class="s1">'/'</span> <span class="nt">-f</span> 3<span class="si">)</span><span class="s2">"</span>
+</span><span class="line">flutter packages pub publish <span class="nt">--server</span><span class="o">=</span>https://pub.aaa.com/ <span class="nt">--verbose</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>下载到本地后，设置文件可执行(加入环境变量)，然后当再次发布 unpub 时 这样处理即可。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>unpubUpload.sh
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">unpubUpload.sh</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
@@ -263,7 +249,7 @@
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -277,8 +263,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -290,15 +274,13 @@
 
 
 
-  
 
-
-<time datetime="2022-08-16T07:43:00+08:00" pubdate data-updated="true">Aug 16<span>th</span>, 2022</time>
+<time datetime="2022-08-16T07:43:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/dart/'>Dart</a>, <a class='category' href='/blog/categories/flutter/'>Flutter</a>, <a class='category' href='/blog/categories/git/'>git</a>, <a class='category' href='/blog/categories/unpub/'>unpub</a>
+    DartFlutterunpubgit
   
 </span>
 
@@ -391,10 +373,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -403,7 +381,7 @@
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -470,6 +448,10 @@
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -503,7 +485,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -511,7 +493,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->

@@ -11,14 +11,15 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="处理Retrofit MalformedJsonException报错 Mar 10th, 2019 使用Retrofit配合GsonConverter，我们能很好地将网络响应内容转换成对应的对象。比如像下面这样。 Retrofit网络接口方法 1
+  <meta name="description" content="处理Retrofit MalformedJsonException报错 使用Retrofit配合GsonConverter，我们能很好地将网络响应内容转换成对应的对象。比如像下面这样。 Retrofit网络接口方法
+1
 2
 3
 4
 5
 6
 7
-public &hellip;">
+public interface &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -181,10 +182,8 @@ public &hellip;">
 
 
 
-  
 
-
-<time datetime="2019-03-10T20:25:00+08:00" pubdate data-updated="true">Mar 10<span>th</span>, 2019</time>
+<time datetime="2019-03-10T20:25:00+08:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -195,214 +194,191 @@ public &hellip;">
 
 <!--more-->
 
-
 <p>Retrofit网络接口方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">DroidNetwork</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@GET</span><span class="o">(</span><span class="s">&quot;/content/test.json&quot;</span><span class="o">)</span>
-</span><span class='line'>    <span class="n">Call</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;</span> <span class="nf">jsonData</span><span class="o">();</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@GET</span><span class="o">(</span><span class="s">&quot;/content/helloworld.txt&quot;</span><span class="o">)</span>
-</span><span class='line'>    <span class="n">Call</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="nf">plainText</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">DroidNetwork</span> <span class="o">{</span>
+</span><span class="line">    <span class="nd">@GET</span><span class="o">(</span><span class="s">"/content/test.json"</span><span class="o">)</span>
+</span><span class="line">    <span class="nc">Call</span><span class="o">&lt;</span><span class="nc">DroidResponse</span><span class="o">&gt;</span> <span class="nf">jsonData</span><span class="o">();</span>
+</span><span class="line">
+</span><span class="line">    <span class="nd">@GET</span><span class="o">(</span><span class="s">"/content/helloworld.txt"</span><span class="o">)</span>
+</span><span class="line">    <span class="nc">Call</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="nf">plainText</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>对应的应用方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">val</span> <span class="n">retrofit</span> <span class="o">=</span> <span class="n">Retrofit</span><span class="o">.</span><span class="na">Builder</span><span class="o">()</span>
-</span><span class='line'>            <span class="o">.</span><span class="na">baseUrl</span><span class="o">(</span><span class="s">&quot;https://asset.droidyue.com/&quot;</span><span class="o">)</span>
-</span><span class='line'>            <span class="o">.</span><span class="na">addConverterFactory</span><span class="o">(</span><span class="n">GsonConverterFactory</span><span class="o">.</span><span class="na">create</span><span class="o">())</span>
-</span><span class='line'>            <span class="o">.</span><span class="na">build</span><span class="o">()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">val</span> <span class="n">droidNetwork</span> <span class="o">=</span> <span class="n">retrofit</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="nl">DroidNetwork:</span><span class="o">:</span><span class="n">class</span><span class="o">.</span><span class="na">java</span><span class="o">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">droidNetwork</span><span class="o">.</span><span class="na">jsonData</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="n">Callback</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="n">Throwable</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">t</span><span class="o">?.</span><span class="na">printStackTrace</span><span class="o">()</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="n">Response</span><span class="o">&lt;</span><span class="n">DroidResponse</span><span class="o">&gt;?)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">dumpMessage</span><span class="o">(</span><span class="s">&quot;onResponse content=${response?.body()}&quot;</span><span class="o">)</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">})</span>
-</span><span class='line'>
-</span><span class='line'>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line">	<span class="n">val</span> <span class="n">retrofit</span> <span class="o">=</span> <span class="nc">Retrofit</span><span class="o">.</span><span class="na">Builder</span><span class="o">()</span>
+</span><span class="line">            <span class="o">.</span><span class="na">baseUrl</span><span class="o">(</span><span class="s">"https://asset.droidyue.com/"</span><span class="o">)</span>
+</span><span class="line">            <span class="o">.</span><span class="na">addConverterFactory</span><span class="o">(</span><span class="nc">GsonConverterFactory</span><span class="o">.</span><span class="na">create</span><span class="o">())</span>
+</span><span class="line">            <span class="o">.</span><span class="na">build</span><span class="o">()</span>
+</span><span class="line">
+</span><span class="line">    <span class="n">val</span> <span class="n">droidNetwork</span> <span class="o">=</span> <span class="n">retrofit</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="nl">DroidNetwork:</span><span class="o">:</span><span class="kd">class</span><span class="err">.</span><span class="nc">java</span><span class="o">)</span>
+</span><span class="line">
+</span><span class="line">    <span class="n">droidNetwork</span><span class="o">.</span><span class="na">jsonData</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="nc">Callback</span><span class="o">&lt;</span><span class="nc">DroidResponse</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="nc">Call</span><span class="o">&lt;</span><span class="nc">DroidResponse</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="nc">Throwable</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">t</span><span class="o">?.</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="nc">Call</span><span class="o">&lt;</span><span class="nc">DroidResponse</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="nc">Response</span><span class="o">&lt;</span><span class="nc">DroidResponse</span><span class="o">&gt;?)</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">dumpMessage</span><span class="o">(</span><span class="s">"onResponse content=${response?.body()}"</span><span class="o">)</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">})</span>
+</span><span class="line">
+</span><span class="line">    </span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>上面的方法执行都很正常，可是执行这个方法的时候就会报错。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">droidNetwork</span><span class="o">.</span><span class="na">plainText</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="n">Callback</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="n">Throwable</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">Exception</span><span class="o">(</span><span class="s">&quot;causedByPlainText&quot;</span><span class="o">,</span> <span class="n">t</span><span class="o">)?.</span><span class="na">printStackTrace</span><span class="o">()</span>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="n">Response</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;?)</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">dumpMessage</span><span class="o">(</span><span class="s">&quot;onResponse content=${response}&quot;</span><span class="o">)</span>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="o">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">droidNetwork</span><span class="o">.</span><span class="na">plainText</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="nc">Callback</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="nc">Call</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="nc">Throwable</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">                <span class="nc">Exception</span><span class="o">(</span><span class="s">"causedByPlainText"</span><span class="o">,</span> <span class="n">t</span><span class="o">)?.</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">            <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="nc">Call</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="nc">Response</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;?)</span> <span class="o">{</span>
+</span><span class="line">                <span class="n">dumpMessage</span><span class="o">(</span><span class="s">"onResponse content=${response}"</span><span class="o">)</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="o">})</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>崩溃的信息如下</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Exception</span><span class="o">:</span> <span class="n">causedByPlainText</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">secoo</span><span class="o">.</span><span class="na">retrofitconvertor</span><span class="o">.</span><span class="na">MainActivity</span><span class="n">$doNetworkRequest$2</span><span class="o">.</span><span class="na">onFailure</span><span class="o">(</span><span class="n">MainActivity</span><span class="o">.</span><span class="na">kt</span><span class="o">:</span><span class="mi">41</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">ExecutorCallAdapterFactory</span><span class="n">$ExecutorCallbackCall$1$2</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ExecutorCallAdapterFactory</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">80</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">handleCallback</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">891</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">207</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">7470</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">RuntimeInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">RuntimeInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">524</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">958</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> <span class="n">Caused</span> <span class="nl">by:</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">MalformedJsonException</span><span class="o">:</span> <span class="n">Use</span> <span class="n">JsonReader</span><span class="o">.</span><span class="na">setLenient</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="n">to</span> <span class="n">accept</span> <span class="n">malformed</span> <span class="n">JSON</span> <span class="n">at</span> <span class="n">line</span> <span class="mi">1</span> <span class="n">column</span> <span class="mi">1</span> <span class="n">path</span> <span class="n">$</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">syntaxError</span><span class="o">(</span><span class="n">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1568</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">checkLenient</span><span class="o">(</span><span class="n">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1409</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">doPeek</span><span class="o">(</span><span class="n">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">593</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">peek</span><span class="o">(</span><span class="n">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">425</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">bind</span><span class="o">.</span><span class="na">TypeAdapters</span><span class="n">$16</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">TypeAdapters</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">393</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">bind</span><span class="o">.</span><span class="na">TypeAdapters</span><span class="n">$16</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">TypeAdapters</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">390</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">converter</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">convert</span><span class="o">(</span><span class="n">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">39</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">converter</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">convert</span><span class="o">(</span><span class="n">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">27</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">OkHttpCall</span><span class="o">.</span><span class="na">parseResponse</span><span class="o">(</span><span class="n">OkHttpCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">223</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">OkHttpCall</span><span class="n">$1</span><span class="o">.</span><span class="na">onResponse</span><span class="o">(</span><span class="n">OkHttpCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">121</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">okhttp3</span><span class="o">.</span><span class="na">RealCall</span><span class="n">$AsyncCall</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="n">RealCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">206</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">okhttp3</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">NamedRunnable</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">NamedRunnable</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">32</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">concurrent</span><span class="o">.</span><span class="na">ThreadPoolExecutor</span><span class="o">.</span><span class="na">runWorker</span><span class="o">(</span><span class="n">ThreadPoolExecutor</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1167</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">concurrent</span><span class="o">.</span><span class="na">ThreadPoolExecutor</span><span class="n">$Worker</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ThreadPoolExecutor</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">641</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span>    <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Thread</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Exception</span><span class="o">:</span> <span class="n">causedByPlainText</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">secoo</span><span class="o">.</span><span class="na">retrofitconvertor</span><span class="o">.</span><span class="na">MainActivity</span><span class="n">$doNetworkRequest</span><span class="err">$</span><span class="mi">2</span><span class="o">.</span><span class="na">onFailure</span><span class="o">(</span><span class="nc">MainActivity</span><span class="o">.</span><span class="na">kt</span><span class="o">:</span><span class="mi">41</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">ExecutorCallAdapterFactory</span><span class="n">$ExecutorCallbackCall</span><span class="err">$</span><span class="mi">1</span><span class="err">$</span><span class="mi">2</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">ExecutorCallAdapterFactory</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">80</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">handleCallback</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">891</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">207</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">7470</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">RuntimeInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">RuntimeInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">524</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">958</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> <span class="nc">Caused</span> <span class="nl">by:</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">MalformedJsonException</span><span class="o">:</span> <span class="nc">Use</span> <span class="nc">JsonReader</span><span class="o">.</span><span class="na">setLenient</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="n">to</span> <span class="n">accept</span> <span class="n">malformed</span> <span class="no">JSON</span> <span class="n">at</span> <span class="n">line</span> <span class="mi">1</span> <span class="n">column</span> <span class="mi">1</span> <span class="n">path</span> <span class="err">$</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">syntaxError</span><span class="o">(</span><span class="nc">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1568</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">checkLenient</span><span class="o">(</span><span class="nc">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1409</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">doPeek</span><span class="o">(</span><span class="nc">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">593</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">stream</span><span class="o">.</span><span class="na">JsonReader</span><span class="o">.</span><span class="na">peek</span><span class="o">(</span><span class="nc">JsonReader</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">425</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">bind</span><span class="o">.</span><span class="na">TypeAdapters</span><span class="err">$</span><span class="mi">16</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="nc">TypeAdapters</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">393</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">bind</span><span class="o">.</span><span class="na">TypeAdapters</span><span class="err">$</span><span class="mi">16</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="nc">TypeAdapters</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">390</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">converter</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">convert</span><span class="o">(</span><span class="nc">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">39</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">converter</span><span class="o">.</span><span class="na">gson</span><span class="o">.</span><span class="na">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">convert</span><span class="o">(</span><span class="nc">GsonResponseBodyConverter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">27</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">OkHttpCall</span><span class="o">.</span><span class="na">parseResponse</span><span class="o">(</span><span class="nc">OkHttpCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">223</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">retrofit2</span><span class="o">.</span><span class="na">OkHttpCall</span><span class="err">$</span><span class="mi">1</span><span class="o">.</span><span class="na">onResponse</span><span class="o">(</span><span class="nc">OkHttpCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">121</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">okhttp3</span><span class="o">.</span><span class="na">RealCall</span><span class="n">$AsyncCall</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="nc">RealCall</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">206</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">okhttp3</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">NamedRunnable</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">NamedRunnable</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">32</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">concurrent</span><span class="o">.</span><span class="na">ThreadPoolExecutor</span><span class="o">.</span><span class="na">runWorker</span><span class="o">(</span><span class="nc">ThreadPoolExecutor</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1167</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">concurrent</span><span class="o">.</span><span class="na">ThreadPoolExecutor</span><span class="n">$Worker</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">ThreadPoolExecutor</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">641</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">:</span> 	<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Thread</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">Thread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">784</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>原因其实很简单</p>
 
 <ul>
-<li> <a href="http://asset.droidyue.com/content/test.json">http://asset.droidyue.com/content/test.json</a> 是一个合法的json内容</li>
-<li> <a href="https://asset.droidyue.com/content/helloworld.txt">https://asset.droidyue.com/content/helloworld.txt</a> 是一个普通的文本，内容为<code>helloworld</code></li>
-<li> 因为上面的retrofit 对象 设置了GSONConvertor，会尝试默认将所有的内容转成对应的对象内容，故上面的普通文本就会失败报错。</li>
+  <li>http://asset.droidyue.com/content/test.json 是一个合法的json内容</li>
+  <li>https://asset.droidyue.com/content/helloworld.txt 是一个普通的文本，内容为<code class="language-plaintext highlighter-rouge">helloworld</code></li>
+  <li>因为上面的retrofit 对象 设置了GSONConvertor，会尝试默认将所有的内容转成对应的对象内容，故上面的普通文本就会失败报错。</li>
 </ul>
-
 
 <p>解决方法有两个</p>
 
 <ul>
-<li>修改服务器端的<a href="https://asset.droidyue.com/content/helloworld.txt">https://asset.droidyue.com/content/helloworld.txt</a> 为JSON内容</li>
-<li>调整客户端代码支持。</li>
+  <li>修改服务器端的https://asset.droidyue.com/content/helloworld.txt 为JSON内容</li>
+  <li>调整客户端代码支持。</li>
 </ul>
-
 
 <p>这里我们介绍后者的处理方法，这里我们使用ResponseBody而不是之前的String，然后按照如下代码应用即可。</p>
 
 <p>接口代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@GET</span><span class="o">(</span><span class="s">&quot;/content/helloworld.txt&quot;</span><span class="o">)</span>
-</span><span class='line'><span class="n">Call</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;</span> <span class="nf">plainTextAsResponseBody</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nd">@GET</span><span class="o">(</span><span class="s">"/content/helloworld.txt"</span><span class="o">)</span>
+</span><span class="line"><span class="nc">Call</span><span class="o">&lt;</span><span class="nc">ResponseBody</span><span class="o">&gt;</span> <span class="nf">plainTextAsResponseBody</span><span class="o">();</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>应用代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line">	<span class="n">droidNetwork</span><span class="o">.</span><span class="na">plainTextAsResponseBody</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="nc">Callback</span><span class="o">&lt;</span><span class="nc">ResponseBody</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="nc">Call</span><span class="o">&lt;</span><span class="nc">ResponseBody</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="nc">Throwable</span><span class="o">?)</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">t</span><span class="o">?.</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="nc">Call</span><span class="o">&lt;</span><span class="nc">ResponseBody</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="nc">Response</span><span class="o">&lt;</span><span class="nc">ResponseBody</span><span class="o">&gt;?)</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">dumpMessage</span><span class="o">(</span><span class="s">"onResponse of plainTextAsResponseBody content=${response?.body()?.string()}"</span><span class="o">)</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="o">})</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">droidNetwork</span><span class="o">.</span><span class="na">plainTextAsResponseBody</span><span class="o">().</span><span class="na">enqueue</span><span class="o">(</span><span class="n">object</span> <span class="o">:</span> <span class="n">Callback</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onFailure</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;?,</span> <span class="nl">t:</span> <span class="n">Throwable</span><span class="o">?)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">t</span><span class="o">?.</span><span class="na">printStackTrace</span><span class="o">()</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">override</span> <span class="n">fun</span> <span class="nf">onResponse</span><span class="o">(</span><span class="nl">call:</span> <span class="n">Call</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;?,</span> <span class="nl">response:</span> <span class="n">Response</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">&gt;?)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">dumpMessage</span><span class="o">(</span><span class="s">&quot;onResponse of plainTextAsResponseBody content=${response?.body()?.string()}&quot;</span><span class="o">)</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="o">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>附加内容</h2>
+<h2 id="附加内容">附加内容</h2>
 
 <p>如果在某种情况下，我们只关心请求操作，而不关心响应内容，我们可以这样使用</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@GET</span><span class="o">(</span><span class="s">&quot;/content/helloworld.txt&quot;</span><span class="o">)</span>
-</span><span class='line'><span class="n">Call</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;</span> <span class="nf">ignoreResult</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nd">@GET</span><span class="o">(</span><span class="s">"/content/helloworld.txt"</span><span class="o">)</span>
+</span><span class="line"><span class="nc">Call</span><span class="o">&lt;</span><span class="nc">Void</span><span class="o">&gt;</span> <span class="nf">ignoreResult</span><span class="o">();</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>上面的代码相对更加高效，因为这里省略了将响应内容转成内存对象的过程。</p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -424,7 +400,7 @@ public &hellip;">
     var randomRecommendPosts = makeRecommendPost(makeBestPostsDataSource());
     displaySection(showDisplayRandomRecommend(), isRandomRecommendInDebug(), randomRecommendPosts, makeRandomRecommendPrefix(), makeRandomRecommendSuffix(), sDroidRandomRecommendClass);
 </script>
- -->
+ &#8211;>
 
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"
@@ -438,8 +414,6 @@ public &hellip;">
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -451,15 +425,13 @@ public &hellip;">
 
 
 
-  
 
-
-<time datetime="2019-03-10T20:25:00+08:00" pubdate data-updated="true">Mar 10<span>th</span>, 2019</time>
+<time datetime="2019-03-10T20:25:00+08:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/retrofit/'>Retrofit</a>
+    RetrofitAndroid
   
 </span>
 
@@ -552,10 +524,6 @@ public &hellip;">
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -564,7 +532,7 @@ public &hellip;">
       </li>
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task ':generateDebugRFile' 问题小记</a>
+        <a class="recent_post" href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/">Could Not Create Task &#8216;:generateDebugRFile&#8217; 问题小记</a>
       </li>
     
       <li class="post">
@@ -631,6 +599,10 @@ public &hellip;">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
       </li>
     
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
+      </li>
+    
   </ul>
 </section>
 <script type="text/javascript" charset="utf-8">
@@ -664,7 +636,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 </script>
 <!--<center><h3>扫一扫关注小黑屋公众号(droidyue_com)</h3></center> 
 <center><img class="no_boarder_class"  style="max-Width:100%" src="https://asset.droidyue.com/image/wechat_gongzhonghao_droidyue.com.jpg"></center>
--->
+&#8211;>
 <html>
 	<!-- <script type="text/javascript">
 		for (var i = 0; i < 3 ; i++) {
@@ -672,7 +644,7 @@ displaySection(shouldDisplayProgramBook() && onlyForDesktop(), isPrgoramBookInDe
 		};
 	</script>
 	
-	<br/> -->
+	<br/> &#8211;>
 	
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- post_right_0 -->
