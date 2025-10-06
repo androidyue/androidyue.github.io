@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2019-08-11T20:31:00+08:00" pubdate data-updated="true">Aug 11<span>th</span>, 2019</time>
         
@@ -184,305 +182,249 @@
   </header>
 
 
-<div class="entry-content"><p>在很早的时候，小黑屋就介绍过如何研究Kotlin，其中涉及到了查看字节码和反编译成Java代码的方式，相信很多人研究过的人，都会或多或少遇到过<code>Intrinsics.checkParameterIsNotNull</code>这样或者类似的代码。</p>
+<div class="entry-content"><p>在很早的时候，小黑屋就介绍过如何研究Kotlin，其中涉及到了查看字节码和反编译成Java代码的方式，相信很多人研究过的人，都会或多或少遇到过<code class="language-plaintext highlighter-rouge">Intrinsics.checkParameterIsNotNull</code>这样或者类似的代码。</p>
 
 <!--more-->
 
-
 <p>首先，我们先看一下这段简单的方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">fun</span> <span class="nf">dumpStringMessage</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="s">&quot;dumpStringMessage=$message&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">fun</span> <span class="nf">dumpStringMessage</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">println</span><span class="p">(</span><span class="s">"dumpStringMessage=$message"</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>按照我们之前的方法，反编译成Java代码就是这样的</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">dumpStringMessage</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">      <span class="nc">Intrinsics</span><span class="o">.</span><span class="na">checkParameterIsNotNull</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="s">"message"</span><span class="o">);</span>
+</span><span class="line">      <span class="nc">String</span> <span class="n">var1</span> <span class="o">=</span> <span class="s">"dumpStringMessage="</span> <span class="o">+</span> <span class="n">message</span><span class="o">;</span>
+</span><span class="line">      <span class="kt">boolean</span> <span class="n">var2</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">      <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">var1</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>反编译后，我们可以看到代码中有这样的一行代码<code class="language-plaintext highlighter-rouge">Intrinsics.checkParameterIsNotNull(message, "message");</code></p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">dumpStringMessage</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="n">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Intrinsics</span><span class="o">.</span><span class="na">checkParameterIsNotNull</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="s">&quot;message&quot;</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">var1</span> <span class="o">=</span> <span class="s">&quot;dumpStringMessage=&quot;</span> <span class="o">+</span> <span class="n">message</span><span class="o">;</span>
-</span><span class='line'>      <span class="kt">boolean</span> <span class="n">var2</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">var1</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>反编译后，我们可以看到代码中有这样的一行代码<code>Intrinsics.checkParameterIsNotNull(message, "message");</code></p>
-
-<h2>Intrinsics 是什么</h2>
+<h2 id="intrinsics-是什么">Intrinsics 是什么</h2>
 
 <ul>
-<li>Intrinsics是Kotlin内部的一个类</li>
-<li>包含了检查参数是否为null的<code>checkParameterIsNotNull</code></li>
-<li>包含了表达式结果是否为null的<code>checkExpressionValueIsNotNull</code></li>
-<li>包含了检测lateinit是否初始化的<code>throwUninitializedPropertyAccessException</code></li>
-<li>包含了开发者强制非空!!出现空指针时抛出<code>throwNpe</code>的方法</li>
-<li>判断对象相等的方法<code>areEqual</code></li>
-<li>其他的一些处理数据异常的方法和辅助方法</li>
+  <li>Intrinsics是Kotlin内部的一个类</li>
+  <li>包含了检查参数是否为null的<code class="language-plaintext highlighter-rouge">checkParameterIsNotNull</code></li>
+  <li>包含了表达式结果是否为null的<code class="language-plaintext highlighter-rouge">checkExpressionValueIsNotNull</code></li>
+  <li>包含了检测lateinit是否初始化的<code class="language-plaintext highlighter-rouge">throwUninitializedPropertyAccessException</code></li>
+  <li>包含了开发者强制非空!!出现空指针时抛出<code class="language-plaintext highlighter-rouge">throwNpe</code>的方法</li>
+  <li>判断对象相等的方法<code class="language-plaintext highlighter-rouge">areEqual</code></li>
+  <li>其他的一些处理数据异常的方法和辅助方法</li>
 </ul>
 
+<p>所以上面代码中的<code class="language-plaintext highlighter-rouge">Intrinsics.checkParameterIsNotNull(message, "message");</code>是为了检测参数message是否为null进行的判断。</p>
 
-<p>所以上面代码中的<code>Intrinsics.checkParameterIsNotNull(message, "message");</code>是为了检测参数message是否为null进行的判断。</p>
+<h2 id="为什么会有intrinsics等判断代码呢">为什么会有Intrinsics等判断代码呢</h2>
 
-<h2>为什么会有Intrinsics等判断代码呢</h2>
-
-<p>不是说 Kotlin 是空指针安全，有可空(Any?)和不可空(Any)的类型么，我上面的代码声明的是<code>message: String</code>又不是<code>message: String?</code>,为什么还要多此一举呢？</p>
+<p>不是说 Kotlin 是空指针安全，有可空(Any?)和不可空(Any)的类型么，我上面的代码声明的是<code class="language-plaintext highlighter-rouge">message: String</code>又不是<code class="language-plaintext highlighter-rouge">message: String?</code>,为什么还要多此一举呢？</p>
 
 <p>是的，你的这句话基本上没有毛病，但是有一个前提，那就是空指针和两种类型的特性，目前只在纯kotlin中生效，一旦涉及到和Java交互时，就不灵了。</p>
 
 <p>比如我们在Java代码中这样调用，不会产生任何编译的问题。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JavaTest</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">StringExtKt</span><span class="o">.</span><span class="na">dumpStringMessage</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JavaTest</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">StringExtKt</span><span class="o">.</span><span class="na">dumpStringMessage</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>但是当我们运行时，就会报出这样的错误</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">Exception <span class="k">in </span>thread <span class="s2">"main"</span> java.lang.IllegalArgumentException: Parameter specified as non-null is null: method StringExtKt.dumpStringMessage, parameter message
+</span><span class="line">  at StringExtKt.dumpStringMessage<span class="o">(</span>StringExt.kt<span class="o">)</span>
+</span><span class="line">  at JavaTest.test<span class="o">(</span>JavaTest.java:5<span class="o">)</span>
+</span><span class="line">  at MainKt.main<span class="o">(</span>Main.kt:3<span class="o">)</span>
+</span><span class="line">  at MainKt.main<span class="o">(</span>Main.kt<span class="o">)</span>
+</span><span class="line">
+</span><span class="line">Process finished with <span class="nb">exit </span>code 1</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>Exception in thread <span class="s2">&quot;main&quot;</span> java.lang.IllegalArgumentException: Parameter specified as non-null is null: method StringExtKt.dumpStringMessage, parameter message
-</span><span class='line'>  at StringExtKt.dumpStringMessage<span class="o">(</span>StringExt.kt<span class="o">)</span>
-</span><span class='line'>  at JavaTest.test<span class="o">(</span>JavaTest.java:5<span class="o">)</span>
-</span><span class='line'>  at MainKt.main<span class="o">(</span>Main.kt:3<span class="o">)</span>
-</span><span class='line'>  at MainKt.main<span class="o">(</span>Main.kt<span class="o">)</span>
-</span><span class='line'>
-</span><span class='line'>Process finished with <span class="nb">exit </span>code 1
-</span></code></pre></td></tr></table></div></figure>
+<p>所以考虑到方法被Java调用的情况，Kotlin会默认的增加<code class="language-plaintext highlighter-rouge">checkParameterIsNotNull</code>校验。</p>
 
-
-<p>所以考虑到方法被Java调用的情况，Kotlin会默认的增加<code>checkParameterIsNotNull</code>校验。</p>
-
-<h2>Intrinsics.checkParameterIsNotNull 一直都有么？</h2>
-
+<h2 id="intrinsicscheckparameterisnotnull-一直都有么">Intrinsics.checkParameterIsNotNull 一直都有么？</h2>
 <p>不过好在Kotlin编译器还是足够聪明的，对于不能被Java直接调用的方法，就不会增加相关处理。</p>
 
 <p>比如标记为private的方法，通常情况下，不会被java调用。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">private</span> <span class="k">fun</span> <span class="nf">innerDumpStringMessage</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="nf">println</span><span class="p">(</span><span class="s">"innerDumpStringMessage=$message"</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>反编译成的如下代码，就没有<code class="language-plaintext highlighter-rouge">Intrinsics.checkParameterIsNotNull</code></p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">innerDumpStringMessage</span><span class="o">(</span><span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">      <span class="nc">String</span> <span class="n">var1</span> <span class="o">=</span> <span class="s">"innerDumpStringMessage="</span> <span class="o">+</span> <span class="n">message</span><span class="o">;</span>
+</span><span class="line">      <span class="kt">boolean</span> <span class="n">var2</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">      <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">var1</span><span class="o">);</span>
+</span><span class="line">   <span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">innerDumpStringMessage</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">println</span><span class="p">(</span><span class="s">&quot;innerDumpStringMessage=$message&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>反编译成的如下代码，就没有<code>Intrinsics.checkParameterIsNotNull</code></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">innerDumpStringMessage</span><span class="o">(</span><span class="n">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">var1</span> <span class="o">=</span> <span class="s">&quot;innerDumpStringMessage=&quot;</span> <span class="o">+</span> <span class="n">message</span><span class="o">;</span>
-</span><span class='line'>      <span class="kt">boolean</span> <span class="n">var2</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">var1</span><span class="o">);</span>
-</span><span class='line'>   <span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Intrinsics.checkParameterIsNotNull 的好处</h2>
-
-<h3>定位排查问题快捷</h3>
-
+<h2 id="intrinsicscheckparameterisnotnull-的好处">Intrinsics.checkParameterIsNotNull 的好处</h2>
+<h3 id="定位排查问题快捷">定位排查问题快捷</h3>
 <p>上面代码的好处之一就是对于代码混淆之后，可以相对更加方便的定位问题。</p>
 
 <p>比如这段代码，经过混淆之后，运行</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JavaMethod</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">callKotlin</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">KotlinCodeKt</span><span class="o">.</span><span class="na">dumpMessage</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JavaMethod</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">callKotlin</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">KotlinCodeKt</span><span class="o">.</span><span class="na">dumpMessage</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>得到如下的崩溃日志</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="n">Unable</span> <span class="n">to</span> <span class="n">start</span> <span class="n">activity</span> <span class="n">ComponentInfo</span><span class="o">{</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">}:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">IllegalArgumentException</span><span class="o">:</span> <span class="n">Parameter</span> <span class="n">specified</span> <span class="n">as</span> <span class="n">non</span><span class="o">-</span><span class="kc">null</span> <span class="n">is</span> <span class="kc">null</span><span class="o">:</span> <span class="n">method</span> <span class="n">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">,</span> <span class="n">parameter</span> <span class="n">message</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2927</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2988</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.-</span><span class="n">wrap14</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1631</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">154</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6682</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1520</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1410</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span> <span class="n">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">IllegalArgumentException</span><span class="o">:</span> <span class="n">Parameter</span> <span class="n">specified</span> <span class="n">as</span> <span class="n">non</span><span class="o">-</span><span class="kc">null</span> <span class="n">is</span> <span class="kc">null</span><span class="o">:</span> <span class="n">method</span> <span class="n">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">,</span> <span class="n">parameter</span> <span class="n">message</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">.</span><span class="na">b</span><span class="o">.</span><span class="na">a</span><span class="o">(</span><span class="n">Unknown</span> <span class="n">Source</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">(</span><span class="n">Unknown</span> <span class="n">Source</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">Unknown</span> <span class="n">Source</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="n">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6942</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="n">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1126</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2880</span><span class="o">)</span>
-</span><span class='line'> <span class="n">E</span> <span class="nl">AndroidRuntime:</span>     <span class="o">...</span> <span class="mi">9</span> <span class="n">more</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">:</span> <span class="nc">Unable</span> <span class="n">to</span> <span class="n">start</span> <span class="n">activity</span> <span class="nc">ComponentInfo</span><span class="o">{</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">/</span><span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">}:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">IllegalArgumentException</span><span class="o">:</span> <span class="nc">Parameter</span> <span class="n">specified</span> <span class="n">as</span> <span class="n">non</span><span class="o">-</span><span class="kc">null</span> <span class="n">is</span> <span class="kc">null</span><span class="o">:</span> <span class="n">method</span> <span class="n">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">,</span> <span class="n">parameter</span> <span class="n">message</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2927</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">handleLaunchActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2988</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.-</span><span class="n">wrap14</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="n">$H</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1631</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">154</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6682</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1520</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1410</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> <span class="nc">Caused</span> <span class="nl">by:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">IllegalArgumentException</span><span class="o">:</span> <span class="nc">Parameter</span> <span class="n">specified</span> <span class="n">as</span> <span class="n">non</span><span class="o">-</span><span class="kc">null</span> <span class="n">is</span> <span class="kc">null</span><span class="o">:</span> <span class="n">method</span> <span class="n">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">,</span> <span class="n">parameter</span> <span class="n">message</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">.</span><span class="na">b</span><span class="o">.</span><span class="na">a</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">.</span><span class="na">a</span><span class="o">.</span><span class="na">a</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">droidyue</span><span class="o">.</span><span class="na">intrinsicsmattersandroidsample</span><span class="o">.</span><span class="na">MainActivity</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Activity</span><span class="o">.</span><span class="na">performCreate</span><span class="o">(</span><span class="nc">Activity</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6942</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">Instrumentation</span><span class="o">.</span><span class="na">callActivityOnCreate</span><span class="o">(</span><span class="nc">Instrumentation</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1126</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">performLaunchActivity</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2880</span><span class="o">)</span>
+</span><span class="line"> <span class="no">E</span> <span class="nl">AndroidRuntime:</span> 	<span class="o">...</span> <span class="mi">9</span> <span class="n">more</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>这里我们可以清晰的看到出问题的参数名称，定位出问题的位置。</p>
 
-<h2>其他好处</h2>
-
+<h2 id="其他好处">其他好处</h2>
 <ul>
-<li>对于先决条件（参数和状态）提前判断可以避免很多不必要的资源消耗。</li>
-<li>避免不必要的状态产生</li>
+  <li>对于先决条件（参数和状态）提前判断可以避免很多不必要的资源消耗。</li>
+  <li>避免不必要的状态产生</li>
 </ul>
 
-
-<h2>Intrinsics的问题</h2>
-
+<h2 id="intrinsics的问题">Intrinsics的问题</h2>
 <p>刚才我们提到了Intrinsics可以辅助混淆情况下定位排查问题，但是同时也带来了一个问题，那就是</p>
 
 <ul>
-<li>为混淆之后逆向工程提供了更多的帮助。</li>
+  <li>为混淆之后逆向工程提供了更多的帮助。</li>
 </ul>
-
 
 <p>除此之外，还有人担心Intrinsics是不是存在这样的问题</p>
 
 <ul>
-<li>Intrinsics调用和返回带来进栈出栈操作，而Intrinsics为java实现，无法在编译时inline，会不会有性能问题</li>
+  <li>Intrinsics调用和返回带来进栈出栈操作，而Intrinsics为java实现，无法在编译时inline，会不会有性能问题</li>
 </ul>
-
 
 <p>对于性能的担忧可以说是有些过于杞人忧天了，不过还在好在Kotlin提供了方法来消除这种不必要的过虑。当然也能解决逆向混淆的问题。</p>
 
-<h2>编译时去除Intrinsics检查</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">Xno</span><span class="o">-</span><span class="n">param</span><span class="o">-</span><span class="n">assertions</span>      <span class="n">Don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">generate</span> <span class="n">not</span><span class="o">-</span><span class="kc">null</span> <span class="n">assertions</span> <span class="n">on</span> <span class="n">parameters</span> <span class="n">of</span> <span class="n">methods</span> <span class="n">accessible</span> <span class="n">from</span> <span class="n">Java</span>
-</span><span class='line'><span class="o">-</span><span class="n">Xno</span><span class="o">-</span><span class="n">receiver</span><span class="o">-</span><span class="n">assertions</span>   <span class="n">Don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">generate</span> <span class="n">not</span><span class="o">-</span><span class="kc">null</span> <span class="n">assertion</span> <span class="k">for</span> <span class="n">extension</span> <span class="n">receiver</span> <span class="n">arguments</span> <span class="n">of</span> <span class="n">platform</span> <span class="n">types</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<h2 id="编译时去除intrinsics检查">编译时去除Intrinsics检查</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">-</span><span class="nc">Xno</span><span class="o">-</span><span class="n">param</span><span class="o">-</span><span class="n">assertions</span>      <span class="nc">Don</span><span class="err">'</span><span class="n">t</span> <span class="n">generate</span> <span class="n">not</span><span class="o">-</span><span class="kc">null</span> <span class="n">assertions</span> <span class="n">on</span> <span class="n">parameters</span> <span class="n">of</span> <span class="n">methods</span> <span class="n">accessible</span> <span class="n">from</span> <span class="nc">Java</span>
+</span><span class="line"><span class="o">-</span><span class="nc">Xno</span><span class="o">-</span><span class="n">receiver</span><span class="o">-</span><span class="n">assertions</span>   <span class="nc">Don</span><span class="err">'</span><span class="n">t</span> <span class="n">generate</span> <span class="n">not</span><span class="o">-</span><span class="kc">null</span> <span class="n">assertion</span> <span class="k">for</span> <span class="n">extension</span> <span class="n">receiver</span> <span class="n">arguments</span> <span class="n">of</span> <span class="n">platform</span> <span class="n">types</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>具体的实施方法，可以参考另一篇文章<a href="https://droidyue.com/blog/2019/07/21/configure-kotlin-compiler-options/">为 Kotlin 项目设置编译选项</a></p>
 
-<h2>其他Intrinsics出现的场景</h2>
+<h2 id="其他intrinsics出现的场景">其他Intrinsics出现的场景</h2>
+<h3 id="checkexpressionvalueisnotnull">checkExpressionValueIsNotNull</h3>
 
-<h3>checkExpressionValueIsNotNull</h3>
+<p>当Kotlin 调用 Java 获取表达式结果后需要进行操作时，会增加<code class="language-plaintext highlighter-rouge">Intrinsics.checkExpressionValueIsNotNull</code>校验</p>
 
-<p>当Kotlin 调用 Java 获取表达式结果后需要进行操作时，会增加<code>Intrinsics.checkExpressionValueIsNotNull</code>校验</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="c1">//Intrinsics.checkExpressionValueIsNotNull(var10000, "JavaUtil.getBook()");</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">test1</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">val</span> <span class="py">book</span><span class="p">:</span> <span class="nc">Book</span> <span class="p">=</span> <span class="nc">JavaUtil</span><span class="p">.</span><span class="nf">getBook</span><span class="p">()</span>
+</span><span class="line">    <span class="n">book</span><span class="p">.</span><span class="n">name</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="c1">//Intrinsics.checkExpressionValueIsNotNull(var10000, &quot;JavaUtil.getBook()&quot;);</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">test1</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">val</span> <span class="n">book</span><span class="p">:</span> <span class="n">Book</span> <span class="p">=</span> <span class="n">JavaUtil</span><span class="p">.</span><span class="n">getBook</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">book</span><span class="p">.</span><span class="n">name</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<h3 id="intrinsicsthrownpe">Intrinsics.throwNpe</h3>
+<p>当使用<code class="language-plaintext highlighter-rouge">!!</code>非空断言时，会有校验非空断言结果的检查，如果有问题，则抛出NPE.</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="cm">/**
+</span><span class="line"> * if (message == null) {
+</span><span class="line">       Intrinsics.throwNpe();
+</span><span class="line">   }
+</span><span class="line"> */</span>
+</span><span class="line"><span class="k">fun</span> <span class="nf">test2</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">   <span class="n">message</span><span class="o">!!</span><span class="p">.</span><span class="nf">toInt</span><span class="p">()</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-
-<h3>Intrinsics.throwNpe</h3>
-
-<p>当使用<code>!!</code>非空断言时，会有校验非空断言结果的检查，如果有问题，则抛出NPE.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="cm">/**</span>
-</span><span class='line'><span class="cm"> * if (message == null) {</span>
-</span><span class='line'><span class="cm">       Intrinsics.throwNpe();</span>
-</span><span class='line'><span class="cm">   }</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="k">fun</span> <span class="nf">test2</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">String</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>   <span class="n">message</span><span class="p">!!.</span><span class="n">toInt</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>throwUninitializedPropertyAccessException</h3>
-
+<h3 id="throwuninitializedpropertyaccessexception">throwUninitializedPropertyAccessException</h3>
 <p>当尝试访问一个lateinit的属性时，会增加是否初始化的判断，如果有问题，会抛出异常。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">class</span> <span class="nc">Movie</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">lateinit</span> <span class="k">var</span> <span class="n">name</span><span class="p">:</span> <span class="n">String</span>
-</span><span class='line'>    <span class="c1">//Intrinsics.throwUninitializedPropertyAccessException(&quot;name&quot;);</span>
-</span><span class='line'>    <span class="k">fun</span> <span class="nf">dump</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">println</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="kd">class</span> <span class="nc">Movie</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">lateinit</span> <span class="kd">var</span> <span class="py">name</span><span class="p">:</span> <span class="nc">String</span>
+</span><span class="line">    <span class="c1">//Intrinsics.throwUninitializedPropertyAccessException("name");</span>
+</span><span class="line">    <span class="k">fun</span> <span class="nf">dump</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">        <span class="nf">println</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>以上就是关于Kotlin编译与 Intrinsics 检查的内容。Enjoy.</p>
 
-<h2>相关文章推荐阅读</h2>
-
+<h2 id="相关文章推荐阅读">相关文章推荐阅读</h2>
 <ul>
-<li><a href="https://droidyue.com/blog/2019/07/21/configure-kotlin-compiler-options/">为 Kotlin 项目设置编译选项</a></li>
-<li><a href="https://droidyue.com/blog/2019/07/14/search-bytecode-script-to-study-kotlin-better/">一个查找字节码更好研究Kotlin的脚本</a></li>
-<li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
-<li><a href="https://droidyue.com/blog/categories/kotlin/">其他Kotlin优质文章</a></li>
+  <li><a href="https://droidyue.com/blog/2019/07/21/configure-kotlin-compiler-options/">为 Kotlin 项目设置编译选项</a></li>
+  <li><a href="https://droidyue.com/blog/2019/07/14/search-bytecode-script-to-study-kotlin-better/">一个查找字节码更好研究Kotlin的脚本</a></li>
+  <li><a href="https://droidyue.com/blog/2017/05/08/how-to-study-kotlin/">研究学习Kotlin的一些方法</a></li>
+  <li><a href="https://droidyue.com/blog/categories/kotlin/">其他Kotlin优质文章</a></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -518,8 +460,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -531,15 +471,22 @@
 
 
 
-  
-
 
 <time datetime="2019-08-11T20:31:00+08:00" pubdate data-updated="true">Aug 11<span>th</span>, 2019</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/intrinsics/'>Intrinsics</a>, <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>, <a class='category' href='/blog/categories/kotlinc/'>Kotlinc</a>
+    
+    <a class="category" href="/blog/categories/kotlin/">Kotlin</a>, 
+  
+    
+    <a class="category" href="/blog/categories/kotlinc/">Kotlinc</a>, 
+  
+    
+    <a class="category" href="/blog/categories/intrinsics/">Intrinsics</a>
   
 </span>
 
@@ -632,10 +579,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -709,6 +652,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Android中检测当前是否为主线程 Jul 12th, 2014 如果在Android中判断某个线程是否是主线程？对于这个问题，你可能说根据线程的名字，当然这个可以解决问题，但是这样是最可靠的么？万一某天Google一下子将线程的名字改称其他神马东西呢。 方法揭晓 下面的方法是最可靠的解决方案 &hellip;">
+  <meta name="description" content="Android中检测当前是否为主线程 Jul 12th, 2014 如果在Android中判断某个线程是否是主线程？对于这个问题，你可能说根据线程的名字，当然这个可以解决问题，但是这样是最可靠的么？万一某天Google一下子将线程的名字改称其他神马东西呢。 ##方法揭晓 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2014-07-12T16:50:00+08:00" pubdate data-updated="true">Jul 12<span>th</span>, 2014</time>
         
@@ -184,240 +182,197 @@
   </header>
 
 
-<div class="entry-content"><p>如果在Android中判断某个线程是否是主线程？对于这个问题，你可能说根据线程的名字，当然这个可以解决问题，但是这样是最可靠的么？万一某天Google一下子将线程的名字改称其他神马东西呢。</p>
+<div class="entry-content"><p>如果在Android中判断某个线程是否是主线程？对于这个问题，你可能说根据线程的名字，当然这个可以解决问题，但是这样是最可靠的么？万一某天Google一下子将线程的名字改称其他神马东西呢。<br />
+<!-- more --></p>
 
-<!-- more -->
-
-
-<h2>方法揭晓</h2>
-
-<p>下面的方法是最可靠的解决方案。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">boolean</span> <span class="nf">isInMainThread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">()</span> <span class="o">==</span> <span class="n">Looper</span><span class="o">.</span><span class="na">getMainLooper</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##方法揭晓
+下面的方法是最可靠的解决方案。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">boolean</span> <span class="nf">isInMainThread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">	    <span class="k">return</span> <span class="nc">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">()</span> <span class="o">==</span> <span class="nc">Looper</span><span class="o">.</span><span class="na">getMainLooper</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>实际上，写到这里就基本解决了文章标题的问题了，但是仅仅研究到这里太肤浅了，刨的不够深，所以需要继续，希望你也可以继续读下去。</p>
 
-<h2>刨根问底</h2>
-
-<h3>实验一</h3>
-
-<p>好，现在，我们对这个稳定的方法做一些测试，首先，下面的方法会增加一些调试打印信息。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">boolean</span> <span class="nf">isInMainThread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">Looper</span> <span class="n">myLooper</span> <span class="o">=</span> <span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">();</span>
-</span><span class='line'>  <span class="n">Looper</span> <span class="n">mainLooper</span> <span class="o">=</span> <span class="n">Looper</span><span class="o">.</span><span class="na">getMainLooper</span><span class="o">();</span>
-</span><span class='line'>  <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;isInMainThread myLooper=&quot;</span> <span class="o">+</span> <span class="n">myLooper</span>
-</span><span class='line'>      <span class="o">+</span> <span class="s">&quot;;mainLooper=&quot;</span> <span class="o">+</span> <span class="n">mainLooper</span><span class="o">);</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">myLooper</span> <span class="o">==</span> <span class="n">mainLooper</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>
-好，然后我们在主线程中运行一个测试，调用上述方法。比如我们这样调用。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testInMainThread inMainThread=&quot;</span> <span class="o">+</span> <span class="n">isInMainThread</span><span class="o">());</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##刨根问底
+###实验一
+好，现在，我们对这个稳定的方法做一些测试，首先，下面的方法会增加一些调试打印信息。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kt">boolean</span> <span class="nf">isInMainThread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">Looper</span> <span class="n">myLooper</span> <span class="o">=</span> <span class="nc">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">();</span>
+</span><span class="line">	<span class="nc">Looper</span> <span class="n">mainLooper</span> <span class="o">=</span> <span class="nc">Looper</span><span class="o">.</span><span class="na">getMainLooper</span><span class="o">();</span>
+</span><span class="line">	<span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"isInMainThread myLooper="</span> <span class="o">+</span> <span class="n">myLooper</span> 
+</span><span class="line">	    <span class="o">+</span> <span class="s">";mainLooper="</span> <span class="o">+</span> <span class="n">mainLooper</span><span class="o">);</span>
+</span><span class="line">	<span class="k">return</span> <span class="n">myLooper</span> <span class="o">==</span> <span class="n">mainLooper</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>好，然后我们在主线程中运行一个测试，调用上述方法。比如我们这样调用。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"testInMainThread inMainThread="</span> <span class="o">+</span> <span class="n">isInMainThread</span><span class="o">());</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>OK，我们看一下输出日志。验证OK。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: isInMainThread <span class="nv">myLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d35ef8<span class="o">}</span><span class="p">;</span><span class="nv">mainLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d35ef8<span class="o">}</span>
+</span><span class="line">I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: testInMainThread <span class="nv">inMainThread</span><span class="o">=</span><span class="nb">true</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: isInMainThread <span class="nv">myLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d35ef8<span class="o">}</span>;<span class="nv">mainLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d35ef8<span class="o">}</span>
-</span><span class='line'>I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: testInMainThread <span class="nv">inMainThread</span><span class="o">=</span><span class="nb">true</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>实验二</h3>
-
-<p>现在我们继续在一个没有消息循环的非主线程，进行验证。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">new</span> <span class="nf">Thread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testIn NOT in MainThread isMainThread=&quot;</span>
-</span><span class='line'>          <span class="o">+</span> <span class="n">isInMainThread</span><span class="o">());</span>
-</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}.</span><span class="na">start</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<p>###实验二
+现在我们继续在一个没有消息循环的非主线程，进行验证。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="k">new</span> <span class="nc">Thread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">		<span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"testIn NOT in MainThread isMainThread="</span>
+</span><span class="line">		    <span class="o">+</span> <span class="n">isInMainThread</span><span class="o">());</span>
+</span><span class="line">		<span class="kd">super</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line"><span class="o">}.</span><span class="na">start</span><span class="o">();</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>正如我们看到的如下日志结果，主线程的Looper（翻译成循环泵，不是很好听）已经被初始化赋值。但是我们新创建的线程的looper还是null。这是因为<strong>Android中的线程默认没有一个和它绑定了的消息循环</strong>（<strong>Threads by default do not have a message loop associated with them. Of course, the method works</strong>）</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: isInMainThread <span class="nv">myLooper</span><span class="o">=</span>null<span class="p">;</span><span class="nv">mainLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d35ef8<span class="o">}</span>
+</span><span class="line">I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: testIn NOT <span class="k">in </span>MainThread <span class="nv">isMainThread</span><span class="o">=</span><span class="nb">false</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: isInMainThread <span class="nv">myLooper</span><span class="o">=</span>null;mainLooper<span class="o">=</span>Looper<span class="o">{</span>40d35ef8<span class="o">}</span>
-</span><span class='line'>I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: testIn NOT in MainThread <span class="nv">isMainThread</span><span class="o">=</span><span class="nb">false</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>实验三</h3>
-
-<p>继续，我们创建一个绑定了消息循环的线程，根据Android开发者文档说明，以下是一个典型的创建消息循环线程的示例，使用单独prepare（）方法和loop（）方法来创建一个绑定到Looper的Handler。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">new</span> <span class="nf">Thread</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">private</span> <span class="n">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
-</span><span class='line'>      <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>              <span class="c1">// process incoming messages here</span>
-</span><span class='line'>          <span class="o">}</span>
-</span><span class='line'>      <span class="o">};</span>
-</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;testInNonMainLooperThread isMainThread=&quot;</span>
-</span><span class='line'>            <span class="o">+</span> <span class="n">isInMainThread</span><span class="o">());</span>
-</span><span class='line'>      <span class="n">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>      
-</span><span class='line'><span class="o">}.</span><span class="na">start</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>###实验三
+继续，我们创建一个绑定了消息循环的线程，根据Android开发者文档说明，以下是一个典型的创建消息循环线程的示例，使用单独prepare（）方法和loop（）方法来创建一个绑定到Looper的Handler。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="k">new</span> <span class="nc">Thread</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">	<span class="kd">private</span> <span class="nc">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
+</span><span class="line">	<span class="nd">@Override</span>
+</span><span class="line">	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">	    <span class="nc">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
+</span><span class="line">	    <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Handler</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleMessage</span><span class="o">(</span><span class="nc">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		        <span class="c1">// process incoming messages here</span>
+</span><span class="line">		    <span class="o">}</span>
+</span><span class="line">	    <span class="o">};</span>
+</span><span class="line">	    <span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"testInNonMainLooperThread isMainThread="</span> 
+</span><span class="line">            <span class="o">+</span> <span class="n">isInMainThread</span><span class="o">());</span>
+</span><span class="line">		<span class="nc">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">		
+</span><span class="line"><span class="o">}.</span><span class="na">start</span><span class="o">();</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>OK，现在再次检查以下日志，</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: isInMainThread <span class="nv">myLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d72c58<span class="o">}</span>;<span class="nv">mainLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d35ef8<span class="o">}</span>
-</span><span class='line'>I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: testInNonMainLooperThread <span class="nv">isMainThread</span><span class="o">=</span><span class="nb">false</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: isInMainThread <span class="nv">myLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d72c58<span class="o">}</span><span class="p">;</span><span class="nv">mainLooper</span><span class="o">=</span>Looper<span class="o">{</span>40d35ef8<span class="o">}</span>
+</span><span class="line">I/TestInMainThread<span class="o">(</span>32028<span class="o">)</span>: testInNonMainLooperThread <span class="nv">isMainThread</span><span class="o">=</span><span class="nb">false</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>两个Looper都被初始化赋值了，但是他们是不同的对象。</p>
 
-<h2>原理发掘</h2>
-
-<p>但是，这是为什么呢，这里面有什么奥秘呢？ 好，让我们看以下Looper.class</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// sThreadLocal.get() will return null unless you&#39;ve called prepare().</span>
-</span><span class='line'><span class="kd">static</span> <span class="kd">final</span> <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">Looper</span><span class="o">&gt;</span> <span class="n">sThreadLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">Looper</span><span class="o">&gt;();</span>
-</span><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="n">Looper</span> <span class="n">sMainLooper</span><span class="o">;</span>  <span class="c1">// guarded by Looper.class</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/**</span>
-</span><span class='line'><span class="cm"> * Initialize the current thread as a looper, marking it as an</span>
-</span><span class='line'><span class="cm"> * application&#39;s main looper. The main looper for your application</span>
-</span><span class='line'><span class="cm"> * is created by the Android environment, so you should never need</span>
-</span><span class='line'><span class="cm"> * to call this function yourself.  See also: {@link #prepare()}</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">prepareMainLooper</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">prepare</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
-</span><span class='line'>    <span class="kd">synchronized</span> <span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">sMainLooper</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span><span class="s">&quot;The main Looper has already been prepared.&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>        <span class="n">sMainLooper</span> <span class="o">=</span> <span class="n">myLooper</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">prepare</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">quitAllowed</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">sThreadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;Only one Looper may be created per thread&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="n">sThreadLocal</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="k">new</span> <span class="n">Looper</span><span class="o">(</span><span class="n">quitAllowed</span><span class="o">));</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/**</span>
-</span><span class='line'><span class="cm"> * Return the Looper object associated with the current thread.  </span>
-</span><span class='line'><span class="cm"> * Returns null if the calling thread is not associated with a Looper.</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">Looper</span> <span class="nf">myLooper</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">sThreadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'> <span class="cm">/** Returns the application&#39;s main looper, which lives in the main thread of the application.</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">Looper</span> <span class="nf">getMainLooper</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">synchronized</span> <span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">sMainLooper</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
+<p>##原理发掘
+但是，这是为什么呢，这里面有什么奥秘呢？ 好，让我们看以下Looper.class</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="c1">// sThreadLocal.get() will return null unless you've called prepare().</span>
+</span><span class="line"><span class="kd">static</span> <span class="kd">final</span> <span class="nc">ThreadLocal</span><span class="o">&lt;</span><span class="nc">Looper</span><span class="o">&gt;</span> <span class="n">sThreadLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ThreadLocal</span><span class="o">&lt;</span><span class="nc">Looper</span><span class="o">&gt;();</span>
+</span><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="nc">Looper</span> <span class="n">sMainLooper</span><span class="o">;</span>  <span class="c1">// guarded by Looper.class</span>
+</span><span class="line">
+</span><span class="line"><span class="cm">/**
+</span><span class="line"> * Initialize the current thread as a looper, marking it as an
+</span><span class="line"> * application's main looper. The main looper for your application
+</span><span class="line"> * is created by the Android environment, so you should never need
+</span><span class="line"> * to call this function yourself.  See also: {@link #prepare()}
+</span><span class="line"> */</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">prepareMainLooper</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">prepare</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+</span><span class="line">    <span class="kd">synchronized</span> <span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">sMainLooper</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span><span class="s">"The main Looper has already been prepared."</span><span class="o">);</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">        <span class="n">sMainLooper</span> <span class="o">=</span> <span class="n">myLooper</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">prepare</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">quitAllowed</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">sThreadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">"Only one Looper may be created per thread"</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="n">sThreadLocal</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="k">new</span> <span class="nc">Looper</span><span class="o">(</span><span class="n">quitAllowed</span><span class="o">));</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="cm">/**
+</span><span class="line"> * Return the Looper object associated with the current thread.  
+</span><span class="line"> * Returns null if the calling thread is not associated with a Looper.
+</span><span class="line"> */</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="nc">Looper</span> <span class="nf">myLooper</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">sThreadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"> <span class="cm">/** Returns the application's main looper, which lives in the main thread of the application.
+</span><span class="line"> */</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="nc">Looper</span> <span class="nf">getMainLooper</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">synchronized</span> <span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">sMainLooper</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>对于主线程来说，prepareMainLooper这个方法会被Android运行环境调用，而不是程序显式调用。通过这个方法，主线程的looper被创建，并且将对象引用传递给sMainLooper。所以保证了主线程myLooper()获取到的引用和getMainLooper()获取到的都是同一个引用。</p>
 
@@ -430,15 +385,13 @@
 <p>引用:</p>
 
 <ul>
-<li> <a href="http://developer.android.com/reference/android/os/Looper.html">http://developer.android.com/reference/android/os/Looper.html</a></li>
-<li> <a href="http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.2_r1/android/os/Looper.java/">http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.2_r1/android/os/Looper.java/</a></li>
+  <li>http://developer.android.com/reference/android/os/Looper.html</li>
+  <li>http://grepcode.com/file/repository.grepcode.com/java/ext/com.google.android/android/4.4.2_r1/android/os/Looper.java/</li>
 </ul>
 
-
-<h3>其他</h3>
-
+<p>###其他</p>
 <ul>
-<li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B009OLU8EE&linkCode=as2&tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B009OLU8EE/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B009OLU8EE&amp;linkCode=as2&amp;tag=droidyue-23">Android系统源代码情景分析</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B009OLU8EE" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 
@@ -476,8 +429,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -489,15 +440,16 @@
 
 
 
-  
-
 
 <time datetime="2014-07-12T16:50:00+08:00" pubdate data-updated="true">Jul 12<span>th</span>, 2014</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>
   
 </span>
 
@@ -590,10 +542,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -667,6 +615,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2017-03-05T20:31:00+08:00" pubdate data-updated="true">Mar 5<span>th</span>, 2017</time>
         
@@ -187,24 +185,19 @@
 <div class="entry-content"><p>在Java和Android编程中，我们经常使用类似ArrayList,HashMap等这些容器。这些容器少则存储几条，多则上千甚至更多。作为性能调优的一部分，容器调优往往被我们忽略，本文将尝试探索阐述一些关于容器调优中的扩容问题。虽然以Java为例，但是也同样适用于其他编程语言。</p>
 
 <!--more-->
-
-
 <p>首先以我们最常用的ArrayList为例，它是一个基于数组的List实现。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="n">collection</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">();</span>
-</span><span class='line'>    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span> <span class="mi">1000</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">collection</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">Object</span><span class="o">());</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">ArrayList</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;</span> <span class="n">collection</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ArrayList</span><span class="o">();</span> 
+</span><span class="line">    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span> <span class="mi">1000</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">collection</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="nc">Object</span><span class="o">());</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span> </span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>以上代码很简单，不用赘述。那我们使用NetBeans的profile插件 来看一下关于Object对象分配的stacktrace</p>
 
@@ -213,119 +206,108 @@
 <p>从stacktrace中，我们可以发现</p>
 
 <ul>
-<li>Object对象trace始于ArrayList.add方法</li>
-<li>经过了一个叫做ArrayList.grow方法</li>
+  <li>Object对象trace始于ArrayList.add方法</li>
+  <li>经过了一个叫做ArrayList.grow方法</li>
 </ul>
-
 
 <p>以上我们可以推断，ArrayList对象发生了扩容操作。因为使用无参的构造方法，会初始化一个存储容量为0的数组。</p>
 
 <p>如下代码为ArrayList的构造方法</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">DEFAULTCAPACITY_EMPTY_ELEMENTDATA</span> <span class="o">=</span> <span class="o">{};</span>
-</span><span class='line'><span class="kd">public</span> <span class="nf">ArrayList</span><span class="o">(</span><span class="kt">int</span> <span class="n">initialCapacity</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">initialCapacity</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">elementData</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="n">initialCapacity</span><span class="o">];</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">initialCapacity</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">elementData</span> <span class="o">=</span> <span class="n">EMPTY_ELEMENTDATA</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;Illegal Capacity: &quot;</span> <span class="o">+</span> <span class="n">initialCapacity</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="nf">ArrayList</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">this</span><span class="o">.</span><span class="na">elementData</span> <span class="o">=</span> <span class="n">DEFAULTCAPACITY_EMPTY_ELEMENTDATA</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">Object</span><span class="o">[]</span> <span class="no">DEFAULTCAPACITY_EMPTY_ELEMENTDATA</span> <span class="o">=</span> <span class="o">{};</span>
+</span><span class="line"><span class="kd">public</span> <span class="nf">ArrayList</span><span class="o">(</span><span class="kt">int</span> <span class="n">initialCapacity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">initialCapacity</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">this</span><span class="o">.</span><span class="na">elementData</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Object</span><span class="o">[</span><span class="n">initialCapacity</span><span class="o">];</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">initialCapacity</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">this</span><span class="o">.</span><span class="na">elementData</span> <span class="o">=</span> <span class="no">EMPTY_ELEMENTDATA</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">"Illegal Capacity: "</span> <span class="o">+</span> <span class="n">initialCapacity</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    
+</span><span class="line"><span class="kd">public</span> <span class="nf">ArrayList</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">this</span><span class="o">.</span><span class="na">elementData</span> <span class="o">=</span> <span class="no">DEFAULTCAPACITY_EMPTY_ELEMENTDATA</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>然而想要容量1000个Object实例，这个过程中则需要不断的扩容,在这个过程中发生了以下几点</p>
 
 <ul>
-<li>确定新的容量，并以新容量为大小创建新的数组</li>
-<li>将旧数组的数据拷贝到新数组中</li>
-<li>旧的数组将会后续被GC回收掉</li>
+  <li>确定新的容量，并以新容量为大小创建新的数组</li>
+  <li>将旧数组的数据拷贝到新数组中</li>
+  <li>旧的数组将会后续被GC回收掉</li>
 </ul>
-
 
 <p>除此之外，扩容还会增加CPU高速缓存的<strong>未</strong>命中率。因为</p>
 
-<blockquote><p>在JVM中，一般来说，由于对象和其字段常常都需要同时引用，将对象和其字段尽可能放在内存中相邻位置能够减少CPU高速缓存的未命中率。</p></blockquote>
+<blockquote>
+  <p>在JVM中，一般来说，由于对象和其字段常常都需要同时引用，将对象和其字段尽可能放在内存中相邻位置能够减少CPU高速缓存的未命中率。</p>
+</blockquote>
 
 <p>而ArrayList扩容后的新数组可能不在于该对象相邻，所以扩容理论上会增加CPU高速缓存的未命中率。</p>
 
 <p>注意：上面提到的都是CPU高速缓存的未命中率，不是命中率。</p>
 
-<h2>更容易扩容的HashMap</h2>
-
+<h2 id="更容易扩容的hashmap">更容易扩容的HashMap</h2>
 <p>HashMap作为一个高效的key-value的容器，内部也维护了一个Entry数组，也存在扩容的问题。</p>
 
 <p>然而，HashMap为了更加有效的避免数组冲突，引入了两个概念。</p>
 
 <ul>
-<li>threshold 阈(yu，四声)值，当内部数据占用量超过这个值，进行扩容。</li>
-<li>loadFactor 通常为0.75,用来计算threshold值，即threshold = 容量 * loadFactor</li>
+  <li>threshold 阈(yu，四声)值，当内部数据占用量超过这个值，进行扩容。</li>
+  <li>loadFactor 通常为0.75,用来计算threshold值，即threshold = 容量 * loadFactor</li>
 </ul>
-
 
 <p>举个例子</p>
 
 <ul>
-<li>创建一个HashMap设置初始化容量为16，使用默认的loadFactor 0.75，即threshold为12</li>
-<li>然后不断的填充key,value数据</li>
-<li>当内部数据占用量超过12时，就会触发扩容操作，而不是等到16的时候。</li>
-<li>通常的扩容为双倍扩容，即变成原来的两倍，这里为32.</li>
+  <li>创建一个HashMap设置初始化容量为16，使用默认的loadFactor 0.75，即threshold为12</li>
+  <li>然后不断的填充key,value数据</li>
+  <li>当内部数据占用量超过12时，就会触发扩容操作，而不是等到16的时候。</li>
+  <li>通常的扩容为双倍扩容，即变成原来的两倍，这里为32.</li>
 </ul>
-
 
 <p>因此说HashMap更容易触发扩容，但是这其实是一种在hash与容量占用的一种平衡。</p>
 
-<h2>如何解决或者改善扩容问题</h2>
-
-<h3>使用预设较为合理的初始容量</h3>
-
+<h2 id="如何解决或者改善扩容问题">如何解决或者改善扩容问题</h2>
+<h3 id="使用预设较为合理的初始容量">使用预设较为合理的初始容量</h3>
 <p>SQLiteDatabase提供了方便的ContentValues简化了我们处理列名与值的映射，ContentValues内部采用了HashMap来存储Key-Value数据，ContentValues的初始容量是8，如果当添加的数据超过8之前，则会进行双倍扩容操作，</p>
 
 <p>因此建议对ContentValues填入的内容进行估量，根据实际需要的字段数量，设置合理的初始化数量。</p>
 
-<h3>尝试使用其他非基于数组的数据结构</h3>
-
+<h3 id="尝试使用其他非基于数组的数据结构">尝试使用其他非基于数组的数据结构</h3>
 <p>数组的一大优点就是随机访问很高效，这是链表所无法匹敌的。</p>
 
 <p>但是并不是所有的时候都数组都有明显优势</p>
 
 <ul>
-<li>不需要随机访问或者数据量很小</li>
-<li>在频繁的增加和删除数据的时候，链表有明显的优势。</li>
+  <li>不需要随机访问或者数据量很小</li>
+  <li>在频繁的增加和删除数据的时候，链表有明显的优势。</li>
 </ul>
-
 
 <p>一些替代方案</p>
 
 <ul>
-<li>对于List，可以考虑使用LinkedList</li>
-<li>对于Map，可以考虑使用TreeMap</li>
-<li>关于替代HashMap，Android引入了一个叫做ArrayMap的类，用来解决HashMap内存占用的问题。具体可以参考<a href="http://droidyue.com/blog/2017/02/12/dive-into-arraymap-in-android/">深入剖析 Android中的 ArrayMap</a></li>
+  <li>对于List，可以考虑使用LinkedList</li>
+  <li>对于Map，可以考虑使用TreeMap</li>
+  <li>关于替代HashMap，Android引入了一个叫做ArrayMap的类，用来解决HashMap内存占用的问题。具体可以参考<a href="http://droidyue.com/blog/2017/02/12/dive-into-arraymap-in-android/">深入剖析 Android中的 ArrayMap</a></li>
 </ul>
 
-
 <p>关于扩容的问题就是以上内容，当我们无论是使用任何数据结构时都需要考虑到具体的环境和需要，确保能够做到最优。</p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -361,8 +343,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -374,15 +354,19 @@
 
 
 
-  
-
 
 <time datetime="2017-03-05T20:31:00+08:00" pubdate data-updated="true">Mar 5<span>th</span>, 2017</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/java/'>Java</a>
+    
+    <a class="category" href="/blog/categories/java/">Java</a>, 
+  
+    
+    <a class="category" href="/blog/categories/android/">Android</a>
   
 </span>
 
@@ -475,10 +459,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -552,6 +532,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2014-01-19T19:39:00+08:00" pubdate data-updated="true">Jan 19<span>th</span>, 2014</time>
         
@@ -184,448 +182,377 @@
   </header>
 
 
-<div class="entry-content"><p>I once tried to use MediaScanner to resolve problems; however it turned out to be a failure. Now I make it.This post is to write down why I failed and how I work it out now. I think it could be deeper that other posts.</p>
-
+<div class="entry-content"><p>I once tried to use MediaScanner to resolve problems; however it turned out to be a failure. Now I make it.This post is to write down why I failed and how I work it out now. I think it could be deeper that other posts. 
 <!--more-->
-
-
-<h2>Android Media Scanning Mechanism</h2>
-
-<p>Android provides a great application for developers to add created media files to add them into the library. The application is called MediaProvider. Now let&rsquo;s have a glance of MediaProvider. <br/>
+##Android Media Scanning Mechanism
+Android provides a great application for developers to add created media files to add them into the library. The application is called MediaProvider. Now let’s have a glance of MediaProvider. <br />
 The receiver part of its  manifest</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'>    <span class="nt">&lt;receiver</span> <span class="na">android:name=</span><span class="s">&quot;MediaScannerReceiver&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;intent-filter&gt;</span>
-</span><span class='line'>            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">&quot;android.intent.action.BOOT_COMPLETED&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;/intent-filter&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;intent-filter&gt;</span>
-</span><span class='line'>            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">&quot;android.intent.action.MEDIA_MOUNTED&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>            <span class="nt">&lt;data</span> <span class="na">android:scheme=</span><span class="s">&quot;file&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;/intent-filter&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;intent-filter&gt;</span>
-</span><span class='line'>            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">&quot;android.intent.action.MEDIA_UNMOUNTED&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>            <span class="nt">&lt;data</span> <span class="na">android:scheme=</span><span class="s">&quot;file&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;/intent-filter&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;intent-filter&gt;</span>
-</span><span class='line'>            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">&quot;android.intent.action.MEDIA_SCANNER_SCAN_FILE&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>            <span class="nt">&lt;data</span> <span class="na">android:scheme=</span><span class="s">&quot;file&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;/intent-filter&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/receiver&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The MediaScannerReceiver will receive the above intents with right action and data scheme.</p>
-
-<h3>How the MediaScannerRecieve handles the intent</h3>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+</pre></td><td class="code"><pre><code class="xml"><span class="line">    <span class="nt">&lt;receiver</span> <span class="na">android:name=</span><span class="s">"MediaScannerReceiver"</span><span class="nt">&gt;</span>
+</span><span class="line">        <span class="nt">&lt;intent-filter&gt;</span>
+</span><span class="line">            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">"android.intent.action.BOOT_COMPLETED"</span> <span class="nt">/&gt;</span>
+</span><span class="line">        <span class="nt">&lt;/intent-filter&gt;</span>
+</span><span class="line">        <span class="nt">&lt;intent-filter&gt;</span>
+</span><span class="line">            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">"android.intent.action.MEDIA_MOUNTED"</span> <span class="nt">/&gt;</span>
+</span><span class="line">            <span class="nt">&lt;data</span> <span class="na">android:scheme=</span><span class="s">"file"</span> <span class="nt">/&gt;</span>
+</span><span class="line">        <span class="nt">&lt;/intent-filter&gt;</span>
+</span><span class="line">        <span class="nt">&lt;intent-filter&gt;</span>
+</span><span class="line">            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">"android.intent.action.MEDIA_UNMOUNTED"</span> <span class="nt">/&gt;</span>
+</span><span class="line">            <span class="nt">&lt;data</span> <span class="na">android:scheme=</span><span class="s">"file"</span> <span class="nt">/&gt;</span>
+</span><span class="line">        <span class="nt">&lt;/intent-filter&gt;</span>
+</span><span class="line">        <span class="nt">&lt;intent-filter&gt;</span>
+</span><span class="line">            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">"android.intent.action.MEDIA_SCANNER_SCAN_FILE"</span> <span class="nt">/&gt;</span>
+</span><span class="line">            <span class="nt">&lt;data</span> <span class="na">android:scheme=</span><span class="s">"file"</span> <span class="nt">/&gt;</span>
+</span><span class="line">        <span class="nt">&lt;/intent-filter&gt;</span>
+</span><span class="line">    <span class="nt">&lt;/receiver&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>The MediaScannerReceiver will receive the above intents with right action and data scheme. 
+###How the MediaScannerRecieve handles the intent</p>
 <ul>
-<li>It will scan internal storage only after receiving the <strong>action android.intent.action.BOOT_COMPLETED</strong></li>
-<li>All intent but the <strong>android.intent.action.BOOT_COMPLETED</strong> intent should carry the file scheme data</li>
-<li>It will scan external storage when receiving the <strong>Intent.ACTION_MEDIA_MOUNTED</strong> intent.</li>
-<li>It will scan the single file when receiving the <strong>Intent.ACTION_MEDIA_SCANNER_SCAN_FILE</strong> intent.
-
-<h3>How the MediaScannerService works</h3>
-
-<p>Actually receiver does not do scanning. It will start a service called MediaScannerService.
-The service part of its manifest</p></li>
+  <li>It will scan internal storage only after receiving the <strong>action android.intent.action.BOOT_COMPLETED</strong></li>
+  <li>All intent but the <strong>android.intent.action.BOOT_COMPLETED</strong> intent should carry the file scheme data</li>
+  <li>It will scan external storage when receiving the <strong>Intent.ACTION_MEDIA_MOUNTED</strong> intent.</li>
+  <li>It will scan the single file when receiving the <strong>Intent.ACTION_MEDIA_SCANNER_SCAN_FILE</strong> intent.<br />
+###How the MediaScannerService works
+Actually receiver does not do scanning. It will start a service called MediaScannerService.
+The service part of its manifest</li>
 </ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'>   <span class="nt">&lt;service</span> <span class="na">android:name=</span><span class="s">&quot;MediaScannerService&quot;</span> <span class="na">android:exported=</span><span class="s">&quot;true&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;intent-filter&gt;</span>
-</span><span class='line'>            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">&quot;android.media.IMediaScannerService&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>        <span class="nt">&lt;/intent-filter&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;/service&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="xml"><span class="line">   <span class="nt">&lt;service</span> <span class="na">android:name=</span><span class="s">"MediaScannerService"</span> <span class="na">android:exported=</span><span class="s">"true"</span><span class="nt">&gt;</span>
+</span><span class="line">        <span class="nt">&lt;intent-filter&gt;</span>
+</span><span class="line">            <span class="nt">&lt;action</span> <span class="na">android:name=</span><span class="s">"android.media.IMediaScannerService"</span> <span class="nt">/&gt;</span>
+</span><span class="line">        <span class="nt">&lt;/intent-filter&gt;</span>
+</span><span class="line">    <span class="nt">&lt;/service&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>scanFile Method</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">Uri</span> <span class="nf">scanFile</span><span class="o">(</span><span class="n">String</span> <span class="n">path</span><span class="o">,</span> <span class="n">String</span> <span class="n">mimeType</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">String</span> <span class="n">volumeName</span> <span class="o">=</span> <span class="n">MediaProvider</span><span class="o">.</span><span class="na">EXTERNAL_VOLUME</span><span class="o">;</span>
-</span><span class='line'>    <span class="n">openDatabase</span><span class="o">(</span><span class="n">volumeName</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">MediaScanner</span> <span class="n">scanner</span> <span class="o">=</span> <span class="n">createMediaScanner</span><span class="o">();</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">scanner</span><span class="o">.</span><span class="na">scanSingleFile</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">volumeName</span><span class="o">,</span> <span class="n">mimeType</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="nc">Uri</span> <span class="nf">scanFile</span><span class="o">(</span><span class="nc">String</span> <span class="n">path</span><span class="o">,</span> <span class="nc">String</span> <span class="n">mimeType</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">String</span> <span class="n">volumeName</span> <span class="o">=</span> <span class="nc">MediaProvider</span><span class="o">.</span><span class="na">EXTERNAL_VOLUME</span><span class="o">;</span>
+</span><span class="line">    <span class="n">openDatabase</span><span class="o">(</span><span class="n">volumeName</span><span class="o">);</span>
+</span><span class="line">    <span class="nc">MediaScanner</span> <span class="n">scanner</span> <span class="o">=</span> <span class="n">createMediaScanner</span><span class="o">();</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">scanner</span><span class="o">.</span><span class="na">scanSingleFile</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">volumeName</span><span class="o">,</span> <span class="n">mimeType</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>scan Method</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">scan</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">directories</span><span class="o">,</span> <span class="n">String</span> <span class="n">volumeName</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="c1">// don&#39;t sleep while scanning</span>
-</span><span class='line'>    <span class="n">mWakeLock</span><span class="o">.</span><span class="na">acquire</span><span class="o">();</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">ContentValues</span> <span class="n">values</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ContentValues</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">values</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">MediaStore</span><span class="o">.</span><span class="na">MEDIA_SCANNER_VOLUME</span><span class="o">,</span> <span class="n">volumeName</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">Uri</span> <span class="n">scanUri</span> <span class="o">=</span> <span class="n">getContentResolver</span><span class="o">().</span><span class="na">insert</span><span class="o">(</span><span class="n">MediaStore</span><span class="o">.</span><span class="na">getMediaScannerUri</span><span class="o">(),</span> <span class="n">values</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">Uri</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="s">&quot;file://&quot;</span> <span class="o">+</span> <span class="n">directories</span><span class="o">[</span><span class="mi">0</span><span class="o">]);</span>
-</span><span class='line'>    <span class="n">sendBroadcast</span><span class="o">(</span><span class="k">new</span> <span class="n">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_STARTED</span><span class="o">,</span> <span class="n">uri</span><span class="o">));</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">volumeName</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">MediaProvider</span><span class="o">.</span><span class="na">EXTERNAL_VOLUME</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">openDatabase</span><span class="o">(</span><span class="n">volumeName</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">MediaScanner</span> <span class="n">scanner</span> <span class="o">=</span> <span class="n">createMediaScanner</span><span class="o">();</span>
-</span><span class='line'>        <span class="n">scanner</span><span class="o">.</span><span class="na">scanDirectories</span><span class="o">(</span><span class="n">directories</span><span class="o">,</span> <span class="n">volumeName</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">e</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;exception in MediaScanner.scan()&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">getContentResolver</span><span class="o">().</span><span class="na">delete</span><span class="o">(</span><span class="n">scanUri</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">sendBroadcast</span><span class="o">(</span><span class="k">new</span> <span class="n">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_FINISHED</span><span class="o">,</span> <span class="n">uri</span><span class="o">));</span>
-</span><span class='line'>    <span class="n">mWakeLock</span><span class="o">.</span><span class="na">release</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">scan</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">directories</span><span class="o">,</span> <span class="nc">String</span> <span class="n">volumeName</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="c1">// don't sleep while scanning</span>
+</span><span class="line">    <span class="n">mWakeLock</span><span class="o">.</span><span class="na">acquire</span><span class="o">();</span>
+</span><span class="line">
+</span><span class="line">    <span class="nc">ContentValues</span> <span class="n">values</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ContentValues</span><span class="o">();</span>
+</span><span class="line">    <span class="n">values</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="nc">MediaStore</span><span class="o">.</span><span class="na">MEDIA_SCANNER_VOLUME</span><span class="o">,</span> <span class="n">volumeName</span><span class="o">);</span>
+</span><span class="line">    <span class="nc">Uri</span> <span class="n">scanUri</span> <span class="o">=</span> <span class="n">getContentResolver</span><span class="o">().</span><span class="na">insert</span><span class="o">(</span><span class="nc">MediaStore</span><span class="o">.</span><span class="na">getMediaScannerUri</span><span class="o">(),</span> <span class="n">values</span><span class="o">);</span>
+</span><span class="line">
+</span><span class="line">    <span class="nc">Uri</span> <span class="n">uri</span> <span class="o">=</span> <span class="nc">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="s">"file://"</span> <span class="o">+</span> <span class="n">directories</span><span class="o">[</span><span class="mi">0</span><span class="o">]);</span>
+</span><span class="line">    <span class="n">sendBroadcast</span><span class="o">(</span><span class="k">new</span> <span class="nc">Intent</span><span class="o">(</span><span class="nc">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_STARTED</span><span class="o">,</span> <span class="n">uri</span><span class="o">));</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">volumeName</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="nc">MediaProvider</span><span class="o">.</span><span class="na">EXTERNAL_VOLUME</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">openDatabase</span><span class="o">(</span><span class="n">volumeName</span><span class="o">);</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="nc">MediaScanner</span> <span class="n">scanner</span> <span class="o">=</span> <span class="n">createMediaScanner</span><span class="o">();</span>
+</span><span class="line">        <span class="n">scanner</span><span class="o">.</span><span class="na">scanDirectories</span><span class="o">(</span><span class="n">directories</span><span class="o">,</span> <span class="n">volumeName</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">Log</span><span class="o">.</span><span class="na">e</span><span class="o">(</span><span class="no">TAG</span><span class="o">,</span> <span class="s">"exception in MediaScanner.scan()"</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="n">getContentResolver</span><span class="o">().</span><span class="na">delete</span><span class="o">(</span><span class="n">scanUri</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+</span><span class="line">
+</span><span class="line">    <span class="n">sendBroadcast</span><span class="o">(</span><span class="k">new</span> <span class="nc">Intent</span><span class="o">(</span><span class="nc">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_FINISHED</span><span class="o">,</span> <span class="n">uri</span><span class="o">));</span>
+</span><span class="line">    <span class="n">mWakeLock</span><span class="o">.</span><span class="na">release</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>Actually the scan code is not really in the MediaScannerService</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">MediaScanner</span> <span class="nf">createMediaScanner</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">MediaScanner</span> <span class="n">scanner</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MediaScanner</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">Locale</span> <span class="n">locale</span> <span class="o">=</span> <span class="n">getResources</span><span class="o">().</span><span class="na">getConfiguration</span><span class="o">().</span><span class="na">locale</span><span class="o">;</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">locale</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">String</span> <span class="n">language</span> <span class="o">=</span> <span class="n">locale</span><span class="o">.</span><span class="na">getLanguage</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">String</span> <span class="n">country</span> <span class="o">=</span> <span class="n">locale</span><span class="o">.</span><span class="na">getCountry</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">String</span> <span class="n">localeString</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">language</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="n">country</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                    <span class="n">scanner</span><span class="o">.</span><span class="na">setLocale</span><span class="o">(</span><span class="n">language</span> <span class="o">+</span> <span class="s">&quot;_&quot;</span> <span class="o">+</span> <span class="n">country</span><span class="o">);</span>
-</span><span class='line'>                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>                    <span class="n">scanner</span><span class="o">.</span><span class="na">setLocale</span><span class="o">(</span><span class="n">language</span><span class="o">);</span>
-</span><span class='line'>                <span class="o">}</span>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">return</span> <span class="n">scanner</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>It&rsquo;s using the android.media.MediaScanner
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="nc">MediaScanner</span> <span class="nf">createMediaScanner</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">MediaScanner</span> <span class="n">scanner</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MediaScanner</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class="line">        <span class="nc">Locale</span> <span class="n">locale</span> <span class="o">=</span> <span class="n">getResources</span><span class="o">().</span><span class="na">getConfiguration</span><span class="o">().</span><span class="na">locale</span><span class="o">;</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">locale</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="nc">String</span> <span class="n">language</span> <span class="o">=</span> <span class="n">locale</span><span class="o">.</span><span class="na">getLanguage</span><span class="o">();</span>
+</span><span class="line">            <span class="nc">String</span> <span class="n">country</span> <span class="o">=</span> <span class="n">locale</span><span class="o">.</span><span class="na">getCountry</span><span class="o">();</span>
+</span><span class="line">            <span class="nc">String</span> <span class="n">localeString</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">            <span class="k">if</span> <span class="o">(</span><span class="n">language</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">                <span class="k">if</span> <span class="o">(</span><span class="n">country</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">                    <span class="n">scanner</span><span class="o">.</span><span class="na">setLocale</span><span class="o">(</span><span class="n">language</span> <span class="o">+</span> <span class="s">"_"</span> <span class="o">+</span> <span class="n">country</span><span class="o">);</span>
+</span><span class="line">                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">                    <span class="n">scanner</span><span class="o">.</span><span class="na">setLocale</span><span class="o">(</span><span class="n">language</span><span class="o">);</span>
+</span><span class="line">                <span class="o">}</span>
+</span><span class="line">            <span class="o">}</span>    
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">        
+</span><span class="line">        <span class="k">return</span> <span class="n">scanner</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>It’s using the android.media.MediaScanner
 <a href="https://android.googlesource.com/platform/frameworks/base/+/cd92588/media/java/android/media/MediaScanner.java">https://android.googlesource.com/platform/frameworks/base/+/cd92588/media/java/android/media/MediaScanner.java</a></p>
 
-<h2>How To Scan A Created File</h2>
+<p>##How To Scan A Created File 
+Now I am going to introduce two ways to add a created file into the media library. 
+###The Simplest Method
+Just send a broadcast, as we have posted above. Just send a broadcast intent to MediaScannerReceiver.</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">saveAs</span> <span class="o">=</span> <span class="s">"Your_Created_File_Path"</span>
+</span><span class="line"><span class="nc">Uri</span> <span class="n">contentUri</span> <span class="o">=</span> <span class="nc">Uri</span><span class="o">.</span><span class="na">fromFile</span><span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">saveAs</span><span class="o">));</span>
+</span><span class="line"><span class="nc">Intent</span> <span class="n">mediaScanIntent</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Intent</span><span class="o">(</span><span class="nc">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_SCAN_FILE</span><span class="o">,</span><span class="n">contentUri</span><span class="o">);</span>
+</span><span class="line"><span class="n">getContext</span><span class="o">().</span><span class="na">sendBroadcast</span><span class="o">(</span><span class="n">mediaScanIntent</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>The above method maybe has been seen thousands of times. Actually it should work. However I failed and failed in sending broadcast intent. In the following section. I will point out why the sending broadcast not works. Even though you get well on with sending broadcast,it’s strongly recommended to read the Section Why Sending MEDIA_SCANNER_SCAN_FILE broadcast not works. <br />
+###Use MediaScannerConnection</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">mediaScan</span><span class="o">(</span><span class="nc">File</span> <span class="n">file</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">MediaScannerConnection</span><span class="o">.</span><span class="na">scanFile</span><span class="o">(</span><span class="n">getActivity</span><span class="o">(),</span>
+</span><span class="line">            <span class="k">new</span> <span class="nc">String</span><span class="o">[]</span> <span class="o">{</span> <span class="n">file</span><span class="o">.</span><span class="na">getAbsolutePath</span><span class="o">()</span> <span class="o">},</span> <span class="kc">null</span><span class="o">,</span>
+</span><span class="line">            <span class="k">new</span> <span class="nf">OnScanCompletedListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">                <span class="nd">@Override</span>
+</span><span class="line">                <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onScanCompleted</span><span class="o">(</span><span class="nc">String</span> <span class="n">path</span><span class="o">,</span> <span class="nc">Uri</span> <span class="n">uri</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">                    <span class="nc">Log</span><span class="o">.</span><span class="na">v</span><span class="o">(</span><span class="s">"MediaScanWork"</span><span class="o">,</span> <span class="s">"file "</span> <span class="o">+</span> <span class="n">path</span>
+</span><span class="line">                            <span class="o">+</span> <span class="s">" was scanned seccessfully: "</span> <span class="o">+</span> <span class="n">uri</span><span class="o">);</span>
+</span><span class="line">                <span class="o">}</span>
+</span><span class="line">            <span class="o">});</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>the scanFile method is introduced since API 8
+###Create an instance and call scanFile (String path, String mimeType) 
+It’s really easy, just read the post <a href="http://developer.android.com/reference/android/media/MediaScannerConnection.html">http://developer.android.com/reference/android/media/MediaScannerConnection.html</a></p>
 
-<p>Now I am going to introduce two ways to add a created file into the media library.</p>
-
-<h3>The Simplest Method</h3>
-
-<p>Just send a broadcast, as we have posted above. Just send a broadcast intent to MediaScannerReceiver.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">saveAs</span> <span class="o">=</span> <span class="s">&quot;Your_Created_File_Path&quot;</span>
-</span><span class='line'><span class="n">Uri</span> <span class="n">contentUri</span> <span class="o">=</span> <span class="n">Uri</span><span class="o">.</span><span class="na">fromFile</span><span class="o">(</span><span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="n">saveAs</span><span class="o">));</span>
-</span><span class='line'><span class="n">Intent</span> <span class="n">mediaScanIntent</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_SCAN_FILE</span><span class="o">,</span><span class="n">contentUri</span><span class="o">);</span>
-</span><span class='line'><span class="n">getContext</span><span class="o">().</span><span class="na">sendBroadcast</span><span class="o">(</span><span class="n">mediaScanIntent</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The above method maybe has been seen thousands of times. Actually it should work. However I failed and failed in sending broadcast intent. In the following section. I will point out why the sending broadcast not works. Even though you get well on with sending broadcast,it&rsquo;s strongly recommended to read the Section Why Sending MEDIA_SCANNER_SCAN_FILE broadcast not works.</p>
-
-<h3>Use MediaScannerConnection</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">mediaScan</span><span class="o">(</span><span class="n">File</span> <span class="n">file</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">MediaScannerConnection</span><span class="o">.</span><span class="na">scanFile</span><span class="o">(</span><span class="n">getActivity</span><span class="o">(),</span>
-</span><span class='line'>            <span class="k">new</span> <span class="n">String</span><span class="o">[]</span> <span class="o">{</span> <span class="n">file</span><span class="o">.</span><span class="na">getAbsolutePath</span><span class="o">()</span> <span class="o">},</span> <span class="kc">null</span><span class="o">,</span>
-</span><span class='line'>            <span class="k">new</span> <span class="nf">OnScanCompletedListener</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>                <span class="nd">@Override</span>
-</span><span class='line'>                <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onScanCompleted</span><span class="o">(</span><span class="n">String</span> <span class="n">path</span><span class="o">,</span> <span class="n">Uri</span> <span class="n">uri</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                    <span class="n">Log</span><span class="o">.</span><span class="na">v</span><span class="o">(</span><span class="s">&quot;MediaScanWork&quot;</span><span class="o">,</span> <span class="s">&quot;file &quot;</span> <span class="o">+</span> <span class="n">path</span>
-</span><span class='line'>                            <span class="o">+</span> <span class="s">&quot; was scanned seccessfully: &quot;</span> <span class="o">+</span> <span class="n">uri</span><span class="o">);</span>
-</span><span class='line'>                <span class="o">}</span>
-</span><span class='line'>            <span class="o">});</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>the scanFile method is introduced since API 8</p>
-
-<h3>Create an instance and call scanFile (String path, String mimeType)</h3>
-
-<p>It&rsquo;s really easy, just read the post <a href="http://developer.android.com/reference/android/media/MediaScannerConnection.html">http://developer.android.com/reference/android/media/MediaScannerConnection.html</a></p>
-
-<h3>How To Scan Mutiple Files</h3>
-
+<p>###How To Scan Mutiple Files</p>
 <ul>
-<li>Sending Mutiple Intent.ACTION_MEDIA_SCANNER_SCAN_FILE broadcast intents.</li>
-<li>Use the second method by filled the second params with an array of paths.</li>
+  <li>Sending Mutiple Intent.ACTION_MEDIA_SCANNER_SCAN_FILE broadcast intents.</li>
+  <li>Use the second method by filled the second params with an array of paths.</li>
 </ul>
 
-
-<h2>Why Sending MEDIA_SCANNER_SCAN_FILE broadcast not works</h2>
-
-<p>Actually someone may think sending ACTION_MEDIA_SCANNER_SCAN_FILE works on some devices but not on other devices. Actually it&rsquo;s. Is it a API limit?<br/>
-No, It&rsquo;s has someting to do with your file path.
+<p>##Why Sending MEDIA_SCANNER_SCAN_FILE broadcast not works
+Actually someone may think sending ACTION_MEDIA_SCANNER_SCAN_FILE works on some devices but not on other devices. Actually it’s. Is it a API limit?<br />
+No, It’s has someting to do with your file path.
 Take a look at this</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceive</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">,</span> <span class="n">Intent</span> <span class="n">intent</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">String</span> <span class="n">action</span> <span class="o">=</span> <span class="n">intent</span><span class="o">.</span><span class="na">getAction</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">Uri</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">intent</span><span class="o">.</span><span class="na">getData</span><span class="o">();</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">action</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_BOOT_COMPLETED</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="c1">// scan internal storage</span>
-</span><span class='line'>        <span class="n">scan</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">MediaProvider</span><span class="o">.</span><span class="na">INTERNAL_VOLUME</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">().</span><span class="na">equals</span><span class="o">(</span><span class="s">&quot;file&quot;</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>            <span class="c1">// handle intents related to external storage</span>
-</span><span class='line'>            <span class="n">String</span> <span class="n">path</span> <span class="o">=</span> <span class="n">uri</span><span class="o">.</span><span class="na">getPath</span><span class="o">();</span>
-</span><span class='line'>            <span class="n">String</span> <span class="n">externalStoragePath</span> <span class="o">=</span> <span class="n">Environment</span><span class="o">.</span><span class="na">getExternalStorageDirectory</span><span class="o">().</span><span class="na">getPath</span><span class="o">();</span>
-</span><span class='line'>
-</span><span class='line'>            <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;action: &quot;</span> <span class="o">+</span> <span class="n">action</span> <span class="o">+</span> <span class="s">&quot; path: &quot;</span> <span class="o">+</span> <span class="n">path</span><span class="o">);</span>
-</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">action</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_MOUNTED</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>                <span class="c1">// scan whenever any volume is mounted</span>
-</span><span class='line'>                <span class="n">scan</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">MediaProvider</span><span class="o">.</span><span class="na">EXTERNAL_VOLUME</span><span class="o">);</span>
-</span><span class='line'>            <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">action</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_SCAN_FILE</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
-</span><span class='line'>                    <span class="n">path</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">path</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="n">externalStoragePath</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">scanFile</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">path</span><span class="o">);</span>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceive</span><span class="o">(</span><span class="nc">Context</span> <span class="n">context</span><span class="o">,</span> <span class="nc">Intent</span> <span class="n">intent</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">String</span> <span class="n">action</span> <span class="o">=</span> <span class="n">intent</span><span class="o">.</span><span class="na">getAction</span><span class="o">();</span>
+</span><span class="line">    <span class="nc">Uri</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">intent</span><span class="o">.</span><span class="na">getData</span><span class="o">();</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">action</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="nc">Intent</span><span class="o">.</span><span class="na">ACTION_BOOT_COMPLETED</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">        <span class="c1">// scan internal storage</span>
+</span><span class="line">        <span class="n">scan</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="nc">MediaProvider</span><span class="o">.</span><span class="na">INTERNAL_VOLUME</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">().</span><span class="na">equals</span><span class="o">(</span><span class="s">"file"</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">            <span class="c1">// handle intents related to external storage</span>
+</span><span class="line">            <span class="nc">String</span> <span class="n">path</span> <span class="o">=</span> <span class="n">uri</span><span class="o">.</span><span class="na">getPath</span><span class="o">();</span>
+</span><span class="line">            <span class="nc">String</span> <span class="n">externalStoragePath</span> <span class="o">=</span> <span class="nc">Environment</span><span class="o">.</span><span class="na">getExternalStorageDirectory</span><span class="o">().</span><span class="na">getPath</span><span class="o">();</span>
+</span><span class="line">
+</span><span class="line">            <span class="nc">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="no">TAG</span><span class="o">,</span> <span class="s">"action: "</span> <span class="o">+</span> <span class="n">action</span> <span class="o">+</span> <span class="s">" path: "</span> <span class="o">+</span> <span class="n">path</span><span class="o">);</span>
+</span><span class="line">            <span class="k">if</span> <span class="o">(</span><span class="n">action</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="nc">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_MOUNTED</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">                <span class="c1">// scan whenever any volume is mounted</span>
+</span><span class="line">                <span class="n">scan</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="nc">MediaProvider</span><span class="o">.</span><span class="na">EXTERNAL_VOLUME</span><span class="o">);</span>
+</span><span class="line">            <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">action</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="nc">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_SCAN_FILE</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+</span><span class="line">                    <span class="n">path</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">path</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="n">externalStoragePath</span> <span class="o">+</span> <span class="s">"/"</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">                <span class="n">scanFile</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">path</span><span class="o">);</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>Every part is right except the intent data. I mean the file path. You may hardcode the filepath. This is my example</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">final</span> <span class="n">String</span> <span class="n">saveAs</span> <span class="o">=</span> <span class="s">&quot;/sdcard/&quot;</span> <span class="o">+</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">+</span> <span class="s">&quot;_add.png&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">Uri</span> <span class="n">contentUri</span> <span class="o">=</span> <span class="n">Uri</span><span class="o">.</span><span class="na">fromFile</span><span class="o">(</span><span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="n">saveAs</span><span class="o">));</span>
-</span><span class='line'><span class="n">Intent</span> <span class="n">mediaScanIntent</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_SCAN_FILE</span><span class="o">,</span><span class="n">contentUri</span><span class="o">);</span>
-</span><span class='line'><span class="n">getContext</span><span class="o">().</span><span class="na">sendBroadcast</span><span class="o">(</span><span class="n">mediaScanIntent</span><span class="o">);</span>
-</span><span class='line'><span class="n">Uri</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">mediaScanIntent</span><span class="o">.</span><span class="na">getData</span><span class="o">();</span>
-</span><span class='line'><span class="n">String</span> <span class="n">path</span> <span class="o">=</span> <span class="n">uri</span><span class="o">.</span><span class="na">getPath</span><span class="o">();</span>
-</span><span class='line'><span class="n">String</span> <span class="n">externalStoragePath</span> <span class="o">=</span> <span class="n">Environment</span><span class="o">.</span><span class="na">getExternalStorageDirectory</span><span class="o">().</span><span class="na">getPath</span><span class="o">();</span>
-</span><span class='line'><span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;LOGTAG&quot;</span><span class="o">,</span> <span class="s">&quot;Androidyue onReceive intent= &quot;</span> <span class="o">+</span> <span class="n">mediaScanIntent</span>
-</span><span class='line'>                        <span class="o">+</span> <span class="s">&quot;;path=&quot;</span> <span class="o">+</span> <span class="n">path</span> <span class="o">+</span> <span class="s">&quot;;externalStoragePath=&quot;</span> <span class="o">+</span>
-</span><span class='line'>                        <span class="n">externalStoragePath</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">final</span> <span class="nc">String</span> <span class="n">saveAs</span> <span class="o">=</span> <span class="s">"/sdcard/"</span> <span class="o">+</span> <span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">+</span> <span class="s">"_add.png"</span><span class="o">;</span>
+</span><span class="line"><span class="nc">Uri</span> <span class="n">contentUri</span> <span class="o">=</span> <span class="nc">Uri</span><span class="o">.</span><span class="na">fromFile</span><span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">saveAs</span><span class="o">));</span>
+</span><span class="line"><span class="nc">Intent</span> <span class="n">mediaScanIntent</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Intent</span><span class="o">(</span><span class="nc">Intent</span><span class="o">.</span><span class="na">ACTION_MEDIA_SCANNER_SCAN_FILE</span><span class="o">,</span><span class="n">contentUri</span><span class="o">);</span>
+</span><span class="line"><span class="n">getContext</span><span class="o">().</span><span class="na">sendBroadcast</span><span class="o">(</span><span class="n">mediaScanIntent</span><span class="o">);</span>
+</span><span class="line"><span class="nc">Uri</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">mediaScanIntent</span><span class="o">.</span><span class="na">getData</span><span class="o">();</span>
+</span><span class="line"><span class="nc">String</span> <span class="n">path</span> <span class="o">=</span> <span class="n">uri</span><span class="o">.</span><span class="na">getPath</span><span class="o">();</span>
+</span><span class="line"><span class="nc">String</span> <span class="n">externalStoragePath</span> <span class="o">=</span> <span class="nc">Environment</span><span class="o">.</span><span class="na">getExternalStorageDirectory</span><span class="o">().</span><span class="na">getPath</span><span class="o">();</span>
+</span><span class="line"><span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">"LOGTAG"</span><span class="o">,</span> <span class="s">"Androidyue onReceive intent= "</span> <span class="o">+</span> <span class="n">mediaScanIntent</span> 
+</span><span class="line">                        <span class="o">+</span> <span class="s">";path="</span> <span class="o">+</span> <span class="n">path</span> <span class="o">+</span> <span class="s">";externalStoragePath="</span> <span class="o">+</span>
+</span><span class="line">                        <span class="n">externalStoragePath</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>And this is the output log</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>LOGTAG Androidyue onReceive <span class="nv">intent</span><span class="o">=</span> Intent <span class="o">{</span> <span class="nv">act</span><span class="o">=</span>android.intent.action.MEDIA_SCANNER_SCAN_FILE <span class="nv">dat</span><span class="o">=</span>file:///sdcard/1390136305831_add.png <span class="o">}</span>;<span class="nv">path</span><span class="o">=</span>/sdcard/1390136305831_add.png;externalStoragePath<span class="o">=</span>/mnt/sdcard
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">LOGTAG Androidyue onReceive <span class="nv">intent</span><span class="o">=</span> Intent <span class="o">{</span> <span class="nv">act</span><span class="o">=</span>android.intent.action.MEDIA_SCANNER_SCAN_FILE <span class="nv">dat</span><span class="o">=</span>file:///sdcard/1390136305831_add.png <span class="o">}</span><span class="p">;</span><span class="nv">path</span><span class="o">=</span>/sdcard/1390136305831_add.png<span class="p">;</span><span class="nv">externalStoragePath</span><span class="o">=</span>/mnt/sdcard</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>So in the sending broadcast, your action is right, your data schema  OK, your data path not null;but your path  /sdcard/1390136305831_add.png does not <strong>startswith</strong> the externalStoragePath /mnt/sdcard/
-And so the scan file is actually <strong>not called</strong>.
+And so the scan file is actually <strong>not called</strong>. 
 In conclusion your hardcoding path results in the failure.</p>
 
-<h2>Remove From Media Library</h2>
-
-<p>If we deleted a file ,it means that we need to remove the file from the media library.</p>
-
-<h3>Simply sending a broadcast?</h3>
-
-<p>Can we simple sending a broadcast to the MediaScannerReceiver? I also wish it could. But actually it does not work.
+<p>##Remove From Media Library
+If we deleted a file ,it means that we need to remove the file from the media library. 
+###Simply sending a broadcast?
+Can we simple sending a broadcast to the MediaScannerReceiver? I also wish it could. But actually it does not work. 
 Look at this code for the explanation.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// this function is used to scan a single file</span>
-</span><span class='line'><span class="kd">public</span> <span class="n">Uri</span> <span class="nf">scanSingleFile</span><span class="o">(</span><span class="n">String</span> <span class="n">path</span><span class="o">,</span> <span class="n">String</span> <span class="n">volumeName</span><span class="o">,</span> <span class="n">String</span> <span class="n">mimeType</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">initialize</span><span class="o">(</span><span class="n">volumeName</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">prescan</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">File</span> <span class="n">file</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="n">path</span><span class="o">);</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(!</span><span class="n">file</span><span class="o">.</span><span class="na">exists</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// lastModified is in milliseconds on Files.</span>
-</span><span class='line'>        <span class="kt">long</span> <span class="n">lastModifiedSeconds</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="na">lastModified</span><span class="o">()</span> <span class="o">/</span> <span class="mi">1000</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// always scan the file, so we can return the content://media Uri for existing files</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mClient</span><span class="o">.</span><span class="na">doScanFile</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">mimeType</span><span class="o">,</span> <span class="n">lastModifiedSeconds</span><span class="o">,</span> <span class="n">file</span><span class="o">.</span><span class="na">length</span><span class="o">(),</span>
-</span><span class='line'>                <span class="kc">false</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="n">MediaScanner</span><span class="o">.</span><span class="na">isNoMediaPath</span><span class="o">(</span><span class="n">path</span><span class="o">));</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">RemoteException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">e</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;RemoteException in MediaScanner.scanFile()&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
-</span><span class='line'>        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="c1">// this function is used to scan a single file</span>
+</span><span class="line"><span class="kd">public</span> <span class="nc">Uri</span> <span class="nf">scanSingleFile</span><span class="o">(</span><span class="nc">String</span> <span class="n">path</span><span class="o">,</span> <span class="nc">String</span> <span class="n">volumeName</span><span class="o">,</span> <span class="nc">String</span> <span class="n">mimeType</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">try</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">initialize</span><span class="o">(</span><span class="n">volumeName</span><span class="o">);</span>
+</span><span class="line">        <span class="n">prescan</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+</span><span class="line">
+</span><span class="line">        <span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">path</span><span class="o">);</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(!</span><span class="n">file</span><span class="o">.</span><span class="na">exists</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">            <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="c1">// lastModified is in milliseconds on Files.</span>
+</span><span class="line">        <span class="kt">long</span> <span class="n">lastModifiedSeconds</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="na">lastModified</span><span class="o">()</span> <span class="o">/</span> <span class="mi">1000</span><span class="o">;</span>
+</span><span class="line">
+</span><span class="line">        <span class="c1">// always scan the file, so we can return the content://media Uri for existing files</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">mClient</span><span class="o">.</span><span class="na">doScanFile</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">mimeType</span><span class="o">,</span> <span class="n">lastModifiedSeconds</span><span class="o">,</span> <span class="n">file</span><span class="o">.</span><span class="na">length</span><span class="o">(),</span>
+</span><span class="line">                <span class="kc">false</span><span class="o">,</span> <span class="kc">true</span><span class="o">,</span> <span class="nc">MediaScanner</span><span class="o">.</span><span class="na">isNoMediaPath</span><span class="o">(</span><span class="n">path</span><span class="o">));</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">RemoteException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">Log</span><span class="o">.</span><span class="na">e</span><span class="o">(</span><span class="no">TAG</span><span class="o">,</span> <span class="s">"RemoteException in MediaScanner.scanFile()"</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+</span><span class="line">        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>As the above code points out, It does have a check before the real scanning.
 Then how should I do?</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">testDeleteFile</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">String</span> <span class="n">existingFilePath</span> <span class="o">=</span> <span class="s">&quot;/mnt/sdcard/1390116362913_add.png&quot;</span><span class="o">;</span>
-</span><span class='line'>    <span class="n">File</span>  <span class="n">existingFile</span> <span class="o">=</span> <span class="k">new</span> <span class="n">File</span><span class="o">(</span><span class="n">existingFilePath</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">existingFile</span><span class="o">.</span><span class="na">delete</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">ContentResolver</span> <span class="n">resolver</span> <span class="o">=</span> <span class="n">getActivity</span><span class="o">().</span><span class="na">getContentResolver</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">resolver</span><span class="o">.</span><span class="na">delete</span><span class="o">(</span><span class="n">Images</span><span class="o">.</span><span class="na">Media</span><span class="o">.</span><span class="na">EXTERNAL_CONTENT_URI</span><span class="o">,</span> <span class="n">Images</span><span class="o">.</span><span class="na">Media</span><span class="o">.</span><span class="na">DATA</span> <span class="o">+</span> <span class="s">&quot;=?&quot;</span><span class="o">,</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]{</span><span class="n">existingFilePath</span><span class="o">});</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">testDeleteFile</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">String</span> <span class="n">existingFilePath</span> <span class="o">=</span> <span class="s">"/mnt/sdcard/1390116362913_add.png"</span><span class="o">;</span>
+</span><span class="line">    <span class="nc">File</span>  <span class="n">existingFile</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">existingFilePath</span><span class="o">);</span>
+</span><span class="line">    <span class="n">existingFile</span><span class="o">.</span><span class="na">delete</span><span class="o">();</span>
+</span><span class="line">    <span class="nc">ContentResolver</span> <span class="n">resolver</span> <span class="o">=</span> <span class="n">getActivity</span><span class="o">().</span><span class="na">getContentResolver</span><span class="o">();</span>
+</span><span class="line">    <span class="n">resolver</span><span class="o">.</span><span class="na">delete</span><span class="o">(</span><span class="nc">Images</span><span class="o">.</span><span class="na">Media</span><span class="o">.</span><span class="na">EXTERNAL_CONTENT_URI</span><span class="o">,</span> <span class="nc">Images</span><span class="o">.</span><span class="na">Media</span><span class="o">.</span><span class="na">DATA</span> <span class="o">+</span> <span class="s">"=?"</span><span class="o">,</span> <span class="k">new</span> <span class="nc">String</span><span class="o">[]{</span><span class="n">existingFilePath</span><span class="o">});</span>
+</span><span class="line">   
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>The above code works. Just remove from Media Provider</p>
 
-<h2>Special</h2>
-
+<p>##Special</p>
 <ul>
-<li>You could check the external.db or internal.db file under /data/data/com.android.providers.media/ for more detailed information.</li>
+  <li>You could check the external.db or internal.db file under /data/data/com.android.providers.media/ for more detailed information.</li>
 </ul>
 
-
-<h3>Others</h3>
-
+<p>###Others</p>
 <ul>
-<li><a href="http://www.amazon.com/gp/product/B007SR7NOO/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B007SR7NOO&linkCode=as2&tag=droidyueblog-20&linkId=D4Q2LBQPI33YNLXD">Professional Android 4 Application Development</a><img src="http://ir-na.amazon-adsystem.com/e/ir?t=droidyueblog-20&l=as2&o=1&a=B007SR7NOO" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.com/gp/product/B00K5B5Q80/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B00K5B5Q80&linkCode=as2&tag=droidyueblog-20&linkId=DVJNOLZKAAGWCG5X">Android Hacker&rsquo;s Handbook</a><img src="http://ir-na.amazon-adsystem.com/e/ir?t=droidyueblog-20&l=as2&o=1&a=B00K5B5Q80" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.com/gp/product/B007SR7NOO/ref=as_li_tl?ie=UTF8&amp;camp=1789&amp;creative=9325&amp;creativeASIN=B007SR7NOO&amp;linkCode=as2&amp;tag=droidyueblog-20&amp;linkId=D4Q2LBQPI33YNLXD">Professional Android 4 Application Development</a><img src="http://ir-na.amazon-adsystem.com/e/ir?t=droidyueblog-20&amp;l=as2&amp;o=1&amp;a=B007SR7NOO" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.com/gp/product/B00K5B5Q80/ref=as_li_tl?ie=UTF8&amp;camp=1789&amp;creative=9325&amp;creativeASIN=B00K5B5Q80&amp;linkCode=as2&amp;tag=droidyueblog-20&amp;linkId=DVJNOLZKAAGWCG5X">Android Hacker’s Handbook</a><img src="http://ir-na.amazon-adsystem.com/e/ir?t=droidyueblog-20&amp;l=as2&amp;o=1&amp;a=B00K5B5Q80" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 
@@ -663,8 +590,6 @@ Then how should I do?</p>
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -676,15 +601,37 @@ Then how should I do?</p>
 
 
 
-  
-
 
 <time datetime="2014-01-19T19:39:00+08:00" pubdate data-updated="true">Jan 19<span>th</span>, 2014</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/mediaprovider/'>MediaProvider</a>, <a class='category' href='/blog/categories/mediascanner/'>MediaScanner</a>, <a class='category' href='/blog/categories/mediascannerconnection/'>MediaScannerConnection</a>, <a class='category' href='/blog/categories/mediascannerreceiver/'>MediaScannerReceiver</a>, <a class='category' href='/blog/categories/mediascannerservice/'>MediaScannerService</a>, <a class='category' href='/blog/categories/android-dot-intent-dot-action-dot-media-scanner-scan-file/'>android.intent.action.MEDIA_SCANNER_SCAN_FILE</a>, <a class='category' href='/blog/categories/scanfile/'>scanFile</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/mediascanner/">MediaScanner</a>, 
+  
+    
+    <a class="category" href="/blog/categories/mediascannerreceiver/">MediaScannerReceiver</a>, 
+  
+    
+    <a class="category" href="/blog/categories/mediascannerservice/">MediaScannerService</a>, 
+  
+    
+    <a class="category" href="/blog/categories/android-dot-intent-dot-action-dot-media-scanner-scan-file/">android.intent.action.MEDIA_SCANNER_SCAN_FILE</a>, 
+  
+    
+    <a class="category" href="/blog/categories/mediaprovider/">MediaProvider</a>, 
+  
+    
+    <a class="category" href="/blog/categories/mediascannerconnection/">MediaScannerConnection</a>, 
+  
+    
+    <a class="category" href="/blog/categories/scanfile/">scanFile</a>
   
 </span>
 
@@ -777,10 +724,6 @@ Then how should I do?</p>
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -854,6 +797,10 @@ Then how should I do?</p>
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

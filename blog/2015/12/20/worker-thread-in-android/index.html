@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="关于Android中工作者线程的思考 Dec 20th, 2015 版权说明 本文为 InfoQ 中文站特供稿件，首发地址为：http://www.infoq.com/cn/articles/android-worker-thread 如需转载，请与 InfoQ 中文站联系。 摘要 &hellip;">
+  <meta name="description" content="关于Android中工作者线程的思考 Dec 20th, 2015 ##版权说明 本文为 InfoQ 中文站特供稿件，首发地址为：http://www.infoq.com/cn/articles/android-worker-thread 如需转载，请与 InfoQ 中文站联系。 ##摘要 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2015-12-20T10:47:00+08:00" pubdate data-updated="true">Dec 20<span>th</span>, 2015</time>
         
@@ -184,119 +182,100 @@
   </header>
 
 
-<div class="entry-content"><h2>版权说明</h2>
+<div class="entry-content"><p>##版权说明</p>
 
-<p>本文为 InfoQ 中文站特供稿件，首发地址为：<a href="http://www.infoq.com/cn/articles/android-worker-thread">http://www.infoq.com/cn/articles/android-worker-thread</a> 如需转载，请与 InfoQ 中文站联系。</p>
+<p>本文为 InfoQ 中文站特供稿件，首发地址为：http://www.infoq.com/cn/articles/android-worker-thread 如需转载，请与 InfoQ 中文站联系。</p>
 
-<h2>摘要</h2>
-
-<p>在Android开发过程中，我们经常使用工作者线程，如AsyncTask和线程池。然而我们经常使用的这些工作者线程存在哪些不易察觉的问题呢，关于工作者线程有哪些优化呢，文本将逐一介绍并回答这些问题。</p>
+<p>##摘要
+在Android开发过程中，我们经常使用工作者线程，如AsyncTask和线程池。然而我们经常使用的这些工作者线程存在哪些不易察觉的问题呢，关于工作者线程有哪些优化呢，文本将逐一介绍并回答这些问题。</p>
 
 <p>本文系2015 北京 GDG Devfest分享内容文章。</p>
 
-<p>在Android中，我们或多或少使用了工作者线程，比如Thread，AsyncTask，HandlerThread，甚至是自己创建的线程池，使用工作者线程我们可以将耗时的操作从主线程中移走。然而在Android系统中为什么存在工作者线程呢，常用的工作者线程有哪些不易察觉的问题呢，关于工作者线程有哪些优化的方面呢，本文将一一解答这些问题。</p>
-
+<p>在Android中，我们或多或少使用了工作者线程，比如Thread，AsyncTask，HandlerThread，甚至是自己创建的线程池，使用工作者线程我们可以将耗时的操作从主线程中移走。然而在Android系统中为什么存在工作者线程呢，常用的工作者线程有哪些不易察觉的问题呢，关于工作者线程有哪些优化的方面呢，本文将一一解答这些问题。
 <!--more-->
-
-
-<h2>工作者线程的存在原因</h2>
-
+##工作者线程的存在原因</p>
 <ul>
-<li>因为Android的UI单线程模型，所有的UI相关的操作都需要在主线程(UI线程)执行</li>
-<li>Android中各大组件的生命周期回调都是位于主线程中，使得主线程的职责更重</li>
-<li>如果不使用工作者线程为主线程分担耗时的任务，会造成应用卡顿，严重时可能出现ANR(Application Not Responding),即程序未响应。</li>
+  <li>因为Android的UI单线程模型，所有的UI相关的操作都需要在主线程(UI线程)执行</li>
+  <li>Android中各大组件的生命周期回调都是位于主线程中，使得主线程的职责更重</li>
+  <li>如果不使用工作者线程为主线程分担耗时的任务，会造成应用卡顿，严重时可能出现ANR(Application Not Responding),即程序未响应。</li>
 </ul>
-
 
 <p>因而，在Android中使用工作者线程显得势在必行，如一开始提到那样，在Android中工作者线程有很多，接下来我们将围绕AsyncTask，HandlerThread等深入研究。</p>
 
-<h2>AsyncTask</h2>
+<p>##AsyncTask
+AsyncTask是Android框架提供给开发者的一个辅助类，使用该类我们可以轻松的处理异步线程与主线程的交互，由于其便捷性，在Android工程中，AsyncTask被广泛使用。然而AsyncTask并非一个完美的方案，使用它往往会存在一些问题。接下来将逐一列举AsyncTask不容易被开发者察觉的问题。</p>
 
-<p>AsyncTask是Android框架提供给开发者的一个辅助类，使用该类我们可以轻松的处理异步线程与主线程的交互，由于其便捷性，在Android工程中，AsyncTask被广泛使用。然而AsyncTask并非一个完美的方案，使用它往往会存在一些问题。接下来将逐一列举AsyncTask不容易被开发者察觉的问题。</p>
-
-<h3>AsyncTask与内存泄露</h3>
-
-<p>内存泄露是Android开发中常见的问题，只要开发者稍有不慎就有可能导致程序产生内存泄露，严重时甚至可能导致OOM(OutOfMemory，即内存溢出错误)。AsyncTask也不例外，也有可能造成内存泄露。</p>
+<p>###AsyncTask与内存泄露
+内存泄露是Android开发中常见的问题，只要开发者稍有不慎就有可能导致程序产生内存泄露，严重时甚至可能导致OOM(OutOfMemory，即内存溢出错误)。AsyncTask也不例外，也有可能造成内存泄露。</p>
 
 <p>以一个简单的场景为例：
 在Activity中，通常我们这样使用AsyncTask</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//In Activity</span>
-</span><span class='line'><span class="k">new</span> <span class="n">AsyncTask</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Void</span><span class="o">,</span> <span class="n">Void</span><span class="o">&gt;()</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">protected</span> <span class="n">Void</span> <span class="nf">doInBackground</span><span class="o">(</span><span class="n">String</span><span class="o">...</span> <span class="n">params</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="c1">//some code</span>
-</span><span class='line'>        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}.</span><span class="na">execute</span><span class="o">(</span><span class="s">&quot;hello world&quot;</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上述代码使用的匿名内存类创建AsyncTask实例，然而在Java中，<code>非静态内存类会隐式持有外部类的实例引用</code>，上面例子AsyncTask创建于Activity中，因而会隐式持有Activity的实例引用。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="c1">//In Activity</span>
+</span><span class="line"><span class="k">new</span> <span class="nc">AsyncTask</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Void</span><span class="o">,</span> <span class="nc">Void</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">protected</span> <span class="nc">Void</span> <span class="nf">doInBackground</span><span class="o">(</span><span class="nc">String</span><span class="o">...</span> <span class="n">params</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="c1">//some code</span>
+</span><span class="line">        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}.</span><span class="na">execute</span><span class="o">(</span><span class="s">"hello world"</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>上述代码使用的匿名内存类创建AsyncTask实例，然而在Java中，<code class="language-plaintext highlighter-rouge">非静态内存类会隐式持有外部类的实例引用</code>，上面例子AsyncTask创建于Activity中，因而会隐式持有Activity的实例引用。</p>
 
 <p>而在AsyncTask内部实现中,mFuture同样使用匿名内部类创建对象，而mFuture会作为执行任务加入到任务执行器中。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">final</span> <span class="n">WorkerRunnable</span><span class="o">&lt;</span><span class="n">Params</span><span class="o">,</span> <span class="n">Result</span><span class="o">&gt;</span> <span class="n">mWorker</span><span class="o">;</span>
-</span><span class='line'><span class="kd">public</span> <span class="nf">AsyncTask</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mFuture</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FutureTask</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;(</span><span class="n">mWorker</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="nd">@Override</span>
-</span><span class='line'>        <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">done</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="c1">//some code</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">};</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kd">final</span> <span class="nc">WorkerRunnable</span><span class="o">&lt;</span><span class="nc">Params</span><span class="o">,</span> <span class="nc">Result</span><span class="o">&gt;</span> <span class="n">mWorker</span><span class="o">;</span>
+</span><span class="line"><span class="kd">public</span> <span class="nf">AsyncTask</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mFuture</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">FutureTask</span><span class="o">&lt;</span><span class="nc">Result</span><span class="o">&gt;(</span><span class="n">mWorker</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="nd">@Override</span>
+</span><span class="line">        <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">done</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">            <span class="c1">//some code</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">};</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>而mFuture加入任务执行器，实际上是放入了一个静态成员变量SERIAL_EXECUTOR指向的对象SerialExecutor的一个ArrayDeque类型的集合中。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">Executor</span> <span class="n">SERIAL_EXECUTOR</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SerialExecutor</span><span class="o">();</span>
-</span><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">SerialExecutor</span> <span class="kd">implements</span> <span class="n">Executor</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">final</span> <span class="n">ArrayDeque</span><span class="o">&lt;</span><span class="n">Runnable</span><span class="o">&gt;</span> <span class="n">mTasks</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayDeque</span><span class="o">&lt;</span><span class="n">Runnable</span><span class="o">&gt;();</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">synchronized</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="kd">final</span> <span class="n">Runnable</span> <span class="n">r</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">mTasks</span><span class="o">.</span><span class="na">offer</span><span class="o">(</span><span class="k">new</span> <span class="n">Runnable</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>                <span class="c1">//fake code</span>
-</span><span class='line'>                <span class="n">r</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
-</span><span class='line'>            <span class="o">}</span>
-</span><span class='line'>        <span class="o">});</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">Executor</span> <span class="no">SERIAL_EXECUTOR</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SerialExecutor</span><span class="o">();</span>
+</span><span class="line"><span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">SerialExecutor</span> <span class="kd">implements</span> <span class="nc">Executor</span> <span class="o">{</span>
+</span><span class="line">        <span class="kd">final</span> <span class="nc">ArrayDeque</span><span class="o">&lt;</span><span class="nc">Runnable</span><span class="o">&gt;</span> <span class="n">mTasks</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ArrayDeque</span><span class="o">&lt;</span><span class="nc">Runnable</span><span class="o">&gt;();</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">public</span> <span class="kd">synchronized</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="kd">final</span> <span class="nc">Runnable</span> <span class="n">r</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">mTasks</span><span class="o">.</span><span class="na">offer</span><span class="o">(</span><span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">                <span class="c1">//fake code</span>
+</span><span class="line">                <span class="n">r</span><span class="o">.</span><span class="na">run</span><span class="o">();</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">        <span class="o">});</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>当任务处于排队状态，则Activity实例引用被静态常量SERIAL_EXECUTOR 间接持有。</p>
 
@@ -306,244 +285,211 @@
 
 <p>关于如何避免内存泄露，我们可以使用静态内部类 + 弱引用的形式解决。</p>
 
-<h3>cancel的问题</h3>
-
-<p>AsyncTask作为任务，是支持调用者取消任务的，即允许我们使用AsyncTask.canncel()方法取消提交的任务。然而其实cancel并非真正的起作用。</p>
+<p>###cancel的问题
+AsyncTask作为任务，是支持调用者取消任务的，即允许我们使用AsyncTask.canncel()方法取消提交的任务。然而其实cancel并非真正的起作用。</p>
 
 <p>首先，我们看一下cancel方法：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">cancel</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">mayInterruptIfRunning</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mCancelled</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">mFuture</span><span class="o">.</span><span class="na">cancel</span><span class="o">(</span><span class="n">mayInterruptIfRunning</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>cancel方法接受一个boolean类型的参数，名称为<code>mayInterruptIfRunning</code>，意思是是否可以打断正在执行的任务。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">cancel</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">mayInterruptIfRunning</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mCancelled</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">mFuture</span><span class="o">.</span><span class="na">cancel</span><span class="o">(</span><span class="n">mayInterruptIfRunning</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>cancel方法接受一个boolean类型的参数，名称为<code class="language-plaintext highlighter-rouge">mayInterruptIfRunning</code>，意思是是否可以打断正在执行的任务。</p>
 
 <p>当我们调用cancel(false)，不打断正在执行的任务，对应的结果是</p>
 
 <ul>
-<li>处于doInBackground中的任务不受影响，继续执行</li>
-<li>任务结束时不会去调用<code>onPostExecute</code>方法，而是执行<code>onCancelled</code>方法</li>
+  <li>处于doInBackground中的任务不受影响，继续执行</li>
+  <li>任务结束时不会去调用<code class="language-plaintext highlighter-rouge">onPostExecute</code>方法，而是执行<code class="language-plaintext highlighter-rouge">onCancelled</code>方法</li>
 </ul>
-
 
 <p>当我们调用cancel(true)，表示打断正在执行的任务，会出现如下情况：</p>
 
 <ul>
-<li>如果doInBackground方法处于阻塞状态，如调用Thread.sleep,wait等方法，则会抛出InterruptedException。</li>
-<li>对于某些情况下，有可能无法打断正在执行的任务</li>
+  <li>如果doInBackground方法处于阻塞状态，如调用Thread.sleep,wait等方法，则会抛出InterruptedException。</li>
+  <li>对于某些情况下，有可能无法打断正在执行的任务</li>
 </ul>
 
-
 <p>如下，就是一个cancel方法无法打断正在执行的任务的例子</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">AsyncTask</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span><span class="nc">Void</span><span class="o">,</span><span class="nc">Void</span><span class="o">&gt;</span> <span class="n">task</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">AsyncTask</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Void</span><span class="o">,</span> <span class="nc">Void</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">protected</span> <span class="nc">Void</span> <span class="nf">doInBackground</span><span class="o">(</span><span class="nc">String</span><span class="o">...</span> <span class="n">params</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="kt">boolean</span> <span class="n">loop</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class="line">        <span class="k">while</span><span class="o">(</span><span class="n">loop</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"doInBackground after interrupting the loop"</span><span class="o">);</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="n">task</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="s">"hello world"</span><span class="o">);</span>
+</span><span class="line"><span class="k">try</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">2000</span><span class="o">);</span><span class="c1">//确保AsyncTask任务执行</span>
+</span><span class="line">    <span class="n">task</span><span class="o">.</span><span class="na">cancel</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>上面的例子，如果想要使cancel正常工作需要在循环中，需要在循环条件里面同时检测<code class="language-plaintext highlighter-rouge">isCancelled()</code>才可以。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">AsyncTask</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span><span class="n">Void</span><span class="o">,</span><span class="n">Void</span><span class="o">&gt;</span> <span class="n">task</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AsyncTask</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Void</span><span class="o">,</span> <span class="n">Void</span><span class="o">&gt;()</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">protected</span> <span class="n">Void</span> <span class="nf">doInBackground</span><span class="o">(</span><span class="n">String</span><span class="o">...</span> <span class="n">params</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kt">boolean</span> <span class="n">loop</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
-</span><span class='line'>        <span class="k">while</span><span class="o">(</span><span class="n">loop</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;doInBackground after interrupting the loop&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="n">task</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="s">&quot;hello world&quot;</span><span class="o">);</span>
-</span><span class='line'><span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">2000</span><span class="o">);</span><span class="c1">//确保AsyncTask任务执行</span>
-</span><span class='line'>    <span class="n">task</span><span class="o">.</span><span class="na">cancel</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上面的例子，如果想要使cancel正常工作需要在循环中，需要在循环条件里面同时检测<code>isCancelled()</code>才可以。</p>
-
-<h3>串行带来的问题</h3>
+<p>###串行带来的问题</p>
 
 <p>Android团队关于AsyncTask执行策略进行了多次修改，修改大致如下：</p>
 
 <ul>
-<li>自最初引入到Donut(1.6)之前，任务串行执行</li>
-<li>从Donut到GINGERBREAD_MR1(2.3.4),任务被修改成了并行执行</li>
-<li>从HONEYCOMB（3.0）至今，任务恢复至串行，但可以设置<code>executeOnExecutor()</code>实现并行执行。</li>
+  <li>自最初引入到Donut(1.6)之前，任务串行执行</li>
+  <li>从Donut到GINGERBREAD_MR1(2.3.4),任务被修改成了并行执行</li>
+  <li>从HONEYCOMB（3.0）至今，任务恢复至串行，但可以设置<code class="language-plaintext highlighter-rouge">executeOnExecutor()</code>实现并行执行。</li>
 </ul>
-
 
 <p>然而AsyncTask的串行实际执行起来是这样的逻辑</p>
 
 <ul>
-<li>由串行执行器控制任务的初始分发</li>
-<li>并行执行器一次执行单个任务，并启动下一个</li>
+  <li>由串行执行器控制任务的初始分发</li>
+  <li>并行执行器一次执行单个任务，并启动下一个</li>
 </ul>
-
 
 <p>在AsyncTask中，并发执行器实际为ThreadPoolExecutor的实例，其CORE_POOL_SIZE为当前设备CPU数量+1，MAXIMUM_POOL_SIZE值为CPU数量的2倍 + 1。</p>
 
 <p>以一个四核手机为例，当我们持续调用AsyncTask任务过程中</p>
 
 <ul>
-<li>在AsyncTask线程数量小于CORE_POOL_SIZE(5个)时，会启动新的线程处理任务，不重用之前空闲的线程</li>
-<li>当数量超过CORE_POOL_SIZE(5个)，才开始重用之前的线程处理任务</li>
+  <li>在AsyncTask线程数量小于CORE_POOL_SIZE(5个)时，会启动新的线程处理任务，不重用之前空闲的线程</li>
+  <li>当数量超过CORE_POOL_SIZE(5个)，才开始重用之前的线程处理任务</li>
 </ul>
-
 
 <p>但是由于AsyncTask属于默认线性执行任务，导致并发执行器总是处于某一个线程工作的状态，因而造成了ThreadPool中其他线程的浪费。同时由于AsyncTask中并不存在allowCoreThreadTimeOut(boolean)的调用，所以ThreadPool中的核心线程即使处于空闲状态也不会销毁掉。</p>
 
-<h2>Executors</h2>
-
-<p>Executors是Java API中一个快速创建线程池的工具类，然而在它里面也是存在问题的。</p>
+<p>##Executors
+Executors是Java API中一个快速创建线程池的工具类，然而在它里面也是存在问题的。</p>
 
 <p>以Executors中获取一个固定大小的线程池方法为例</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="n">ExecutorService</span> <span class="nf">newFixedThreadPool</span><span class="o">(</span><span class="kt">int</span> <span class="n">nThreads</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="k">new</span> <span class="nf">ThreadPoolExecutor</span><span class="o">(</span><span class="n">nThreads</span><span class="o">,</span> <span class="n">nThreads</span><span class="o">,</span><span class="mi">0L</span><span class="o">,</span>
-</span><span class='line'>        <span class="n">TimeUnit</span><span class="o">.</span><span class="na">MILLISECONDS</span><span class="o">,</span><span class="k">new</span> <span class="n">LinkedBlockingQueue</span><span class="o">&lt;</span><span class="n">Runnable</span><span class="o">&gt;());</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="nc">ExecutorService</span> <span class="nf">newFixedThreadPool</span><span class="o">(</span><span class="kt">int</span> <span class="n">nThreads</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="k">new</span> <span class="nf">ThreadPoolExecutor</span><span class="o">(</span><span class="n">nThreads</span><span class="o">,</span> <span class="n">nThreads</span><span class="o">,</span><span class="mi">0L</span><span class="o">,</span> 
+</span><span class="line">        <span class="nc">TimeUnit</span><span class="o">.</span><span class="na">MILLISECONDS</span><span class="o">,</span><span class="k">new</span> <span class="nc">LinkedBlockingQueue</span><span class="o">&lt;</span><span class="nc">Runnable</span><span class="o">&gt;());</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>在上面代码实现中，CORE_POOL_SIZE和MAXIMUM_POOL_SIZE都是同样的值，如果把nThreads当成核心线程数，则无法保证最大并发，而如果当做最大并发线程数，则会造成线程的浪费。因而Executors这样的API导致了我们无法在最大并发数和线程节省上做到平衡。</p>
 
 <p>为了达到最大并发数和线程节省的平衡，建议自行创建ThreadPoolExecutor，根据业务和设备信息确定CORE_POOL_SIZE和MAXIMUM_POOL_SIZE的合理值。</p>
 
-<h2>HandlerThread</h2>
-
-<p>HandlerThread是Android中提供特殊的线程类，使用这个类我们可以轻松创建一个带有Looper的线程，同时利用Looper我们可以结合Handler实现任务的控制与调度。以Handler的post方法为例，我们可以封装一个轻量级的任务处理器</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
-</span><span class='line'><span class="kd">private</span> <span class="nf">LightTaskManager</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">HandlerThread</span> <span class="n">workerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HandlerThread</span><span class="o">(</span><span class="s">&quot;LightTaskThread&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">workerThread</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">(</span><span class="n">workerThread</span><span class="o">.</span><span class="na">getLooper</span><span class="o">());</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">post</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">run</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">post</span><span class="o">(</span><span class="n">run</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtFrontOfQueue</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtFrontOfQueue</span><span class="o">(</span><span class="n">runnable</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postDelayed</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">delay</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postDelayed</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">delay</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtTime</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">time</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtTime</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">time</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>##HandlerThread
+HandlerThread是Android中提供特殊的线程类，使用这个类我们可以轻松创建一个带有Looper的线程，同时利用Looper我们可以结合Handler实现任务的控制与调度。以Handler的post方法为例，我们可以封装一个轻量级的任务处理器</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="nc">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
+</span><span class="line"><span class="kd">private</span> <span class="nf">LightTaskManager</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">HandlerThread</span> <span class="n">workerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HandlerThread</span><span class="o">(</span><span class="s">"LightTaskThread"</span><span class="o">);</span>
+</span><span class="line">    <span class="n">workerThread</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+</span><span class="line">    <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Handler</span><span class="o">(</span><span class="n">workerThread</span><span class="o">.</span><span class="na">getLooper</span><span class="o">());</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">post</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">run</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mHandler</span><span class="o">.</span><span class="na">post</span><span class="o">(</span><span class="n">run</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtFrontOfQueue</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">runnable</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtFrontOfQueue</span><span class="o">(</span><span class="n">runnable</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postDelayed</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">delay</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mHandler</span><span class="o">.</span><span class="na">postDelayed</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">delay</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">postAtTime</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">runnable</span><span class="o">,</span> <span class="kt">long</span> <span class="n">time</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mHandler</span><span class="o">.</span><span class="na">postAtTime</span><span class="o">(</span><span class="n">runnable</span><span class="o">,</span> <span class="n">time</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>在本例中，我们可以按照如下规则提交任务</p>
 
 <ul>
-<li>post 提交优先级一般的任务</li>
-<li>postAtFrontOfQueue 将优先级较高的任务加入到队列前端</li>
-<li>postAtTime 指定时间提交任务</li>
-<li>postDelayed 延后提交优先级较低的任务</li>
+  <li>post 提交优先级一般的任务</li>
+  <li>postAtFrontOfQueue 将优先级较高的任务加入到队列前端</li>
+  <li>postAtTime 指定时间提交任务</li>
+  <li>postDelayed 延后提交优先级较低的任务</li>
 </ul>
-
 
 <p>上面的轻量级任务处理器利用HandlerThread的单一线程 + 任务队列的形式，可以处理类似本地IO（文件或数据库读取）的轻量级任务。在具体的处理场景下，可以参考如下做法：</p>
 
 <ul>
-<li>对于本地IO读取，并显示到界面，建议使用postAtFrontOfQueue</li>
-<li>对于本地IO写入，不需要通知界面，建议使用postDelayed</li>
-<li>一般操作，可以使用post</li>
+  <li>对于本地IO读取，并显示到界面，建议使用postAtFrontOfQueue</li>
+  <li>对于本地IO写入，不需要通知界面，建议使用postDelayed</li>
+  <li>一般操作，可以使用post</li>
 </ul>
 
-
-<h2>线程优先级调整</h2>
-
-<p>在Android应用中，将耗时任务放入异步线程是一个不错的选择，那么为异步线程调整应有的优先级则是一件锦上添花的事情。众所周知，线程的并行通过CPU的时间片切换实现，对线程优先级调整，最主要的策略就是降低异步线程的优先级，从而使得主线程获得更多的CPU资源。</p>
+<p>##线程优先级调整
+在Android应用中，将耗时任务放入异步线程是一个不错的选择，那么为异步线程调整应有的优先级则是一件锦上添花的事情。众所周知，线程的并行通过CPU的时间片切换实现，对线程优先级调整，最主要的策略就是降低异步线程的优先级，从而使得主线程获得更多的CPU资源。</p>
 
 <p>Android中的线程优先级和Linux系统进程优先级有些类似，其值都是从-20至19。其中Android中，开发者可以控制的优先级有：</p>
 
 <ul>
-<li><code>THREAD_PRIORITY_DEFAULT</code>，默认的线程优先级，值为0</li>
-<li><code>THREAD_PRIORITY_LOWEST</code>，最低的线程级别，值为19</li>
-<li><code>THREAD_PRIORITY_BACKGROUND</code> 后台线程建议设置这个优先级，值为10</li>
-<li><code>THREAD_PRIORITY_MORE_FAVORABLE</code> 相对<code>THREAD_PRIORITY_DEFAULT</code>稍微优先，值为-1</li>
-<li><code>THREAD_PRIORITY_LESS_FAVORABLE</code> 相对<code>THREAD_PRIORITY_DEFAULT</code>稍微落后一些，值为1</li>
+  <li><code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_DEFAULT</code>，默认的线程优先级，值为0</li>
+  <li><code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_LOWEST</code>，最低的线程级别，值为19</li>
+  <li><code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_BACKGROUND</code> 后台线程建议设置这个优先级，值为10</li>
+  <li><code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_MORE_FAVORABLE</code> 相对<code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_DEFAULT</code>稍微优先，值为-1</li>
+  <li><code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_LESS_FAVORABLE</code> 相对<code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_DEFAULT</code>稍微落后一些，值为1</li>
 </ul>
 
-
 <p>为线程设置优先级也比较简单，通用的做法是在run方法体的开始部分加入下列代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">priority</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">priority</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>通常设置优先级的规则如下：</p>
 
 <ul>
-<li>一般的工作者线程，设置成<code>THREAD_PRIORITY_BACKGROUND</code></li>
-<li>对于优先级很低的线程，可以设置<code>THREAD_PRIORITY_LOWEST</code></li>
-<li>其他特殊需求，视业务应用具体的优先级</li>
+  <li>一般的工作者线程，设置成<code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_BACKGROUND</code></li>
+  <li>对于优先级很低的线程，可以设置<code class="language-plaintext highlighter-rouge">THREAD_PRIORITY_LOWEST</code></li>
+  <li>其他特殊需求，视业务应用具体的优先级</li>
 </ul>
 
-
-<h2>总结</h2>
-
-<p>在Android中工作者线程如此普遍，然而潜在的问题也不可避免，建议在开发者使用工作者线程时，从工作者线程的数量和优先级等方面进行审视，做到较为合理的使用。</p>
+<p>##总结
+在Android中工作者线程如此普遍，然而潜在的问题也不可避免，建议在开发者使用工作者线程时，从工作者线程的数量和优先级等方面进行审视，做到较为合理的使用。</p>
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -579,8 +525,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -592,15 +536,19 @@
 
 
 
-  
-
 
 <time datetime="2015-12-20T10:47:00+08:00" pubdate data-updated="true">Dec 20<span>th</span>, 2015</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/workerthread/'>WorkerThread</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/workerthread/">WorkerThread</a>
   
 </span>
 
@@ -693,10 +641,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -770,6 +714,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

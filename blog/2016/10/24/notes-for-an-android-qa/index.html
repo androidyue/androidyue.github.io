@@ -11,8 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="记一场 Android 技术答疑 Oct 24th, 2016 之前在Stuq的Android课程中有幸分享了一些关于优化的问题,后期又处理了一些来自网友的问题,这里简单以文字形式做个整理. 网络IO应该在哪种形式的线程中执行 首先网络IO一般耗时比较长，有的可能到几十毫秒
-由于耗时较长， &hellip;">
+  <meta name="description" content="记一场 Android 技术答疑 Oct 24th, 2016 之前在Stuq的Android课程中有幸分享了一些关于优化的问题,后期又处理了一些来自网友的问题,这里简单以文字形式做个整理. ##网络IO应该在哪种形式的线程中执行 首先网络IO一般耗时比较长，有的可能到几十毫秒 由于耗时较长， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -175,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2016-10-24T20:35:00+08:00" pubdate data-updated="true">Oct 24<span>th</span>, 2016</time>
         
@@ -189,320 +186,261 @@
 
 <!--more-->
 
-
-<h2>网络IO应该在哪种形式的线程中执行</h2>
-
+<p>##网络IO应该在哪种形式的线程中执行</p>
 <ul>
-<li>首先网络IO一般耗时比较长，有的可能到几十毫秒</li>
-<li>由于耗时较长，如果采用单一线程处理，势必导致后续的请求无法快速执行</li>
-<li>建议使用线程池来处理达到快速响应和线程的复用。</li>
+  <li>首先网络IO一般耗时比较长，有的可能到几十毫秒</li>
+  <li>由于耗时较长，如果采用单一线程处理，势必导致后续的请求无法快速执行</li>
+  <li>建议使用线程池来处理达到快速响应和线程的复用。</li>
 </ul>
 
-
 <p>简单示例：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testDoNetworkRequest</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">corePoolSize</span> <span class="o">=</span> <span class="mi">5</span><span class="o">;</span>
-</span><span class='line'>    <span class="kt">int</span> <span class="n">maxPoolSize</span> <span class="o">=</span> <span class="mi">10</span><span class="o">;</span>
-</span><span class='line'>    <span class="c1">//线程数量超过核心线程数之后的超时时间，即超过这个时间还没有新的task，多余的线程则销毁掉。</span>
-</span><span class='line'>    <span class="kt">long</span> <span class="n">keepAliveTime</span> <span class="o">=</span> <span class="mi">10</span><span class="o">;</span>
-</span><span class='line'>    <span class="n">ThreadPoolExecutor</span> <span class="n">executor</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadPoolExecutor</span><span class="o">(</span><span class="n">corePoolSize</span><span class="o">,</span> <span class="n">maxPoolSize</span><span class="o">,</span> <span class="n">keepAliveTime</span><span class="o">,</span> <span class="n">TimeUnit</span><span class="o">.</span><span class="na">SECONDS</span><span class="o">,</span> <span class="k">new</span> <span class="n">LinkedBlockingDeque</span><span class="o">&lt;</span><span class="n">Runnable</span><span class="o">&gt;());</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">executor</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="k">new</span> <span class="n">Runnable</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="nd">@Override</span>
-</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="c1">//Do network IO here</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>    <span class="o">});</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testDoNetworkRequest</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="kt">int</span> <span class="n">corePoolSize</span> <span class="o">=</span> <span class="mi">5</span><span class="o">;</span>
+</span><span class="line">    <span class="kt">int</span> <span class="n">maxPoolSize</span> <span class="o">=</span> <span class="mi">10</span><span class="o">;</span>
+</span><span class="line">    <span class="c1">//线程数量超过核心线程数之后的超时时间，即超过这个时间还没有新的task，多余的线程则销毁掉。</span>
+</span><span class="line">    <span class="kt">long</span> <span class="n">keepAliveTime</span> <span class="o">=</span> <span class="mi">10</span><span class="o">;</span>
+</span><span class="line">    <span class="nc">ThreadPoolExecutor</span> <span class="n">executor</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ThreadPoolExecutor</span><span class="o">(</span><span class="n">corePoolSize</span><span class="o">,</span> <span class="n">maxPoolSize</span><span class="o">,</span> <span class="n">keepAliveTime</span><span class="o">,</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="na">SECONDS</span><span class="o">,</span> <span class="k">new</span> <span class="nc">LinkedBlockingDeque</span><span class="o">&lt;</span><span class="nc">Runnable</span><span class="o">&gt;());</span>
+</span><span class="line">    
+</span><span class="line">    <span class="n">executor</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="nd">@Override</span>
+</span><span class="line">        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">            <span class="c1">//Do network IO here</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">});</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>关于线程的文章，请参考</p>
 
 <ul>
-<li><a href="http://droidyue.com/blog/2015/12/20/worker-thread-in-android/">关于Android中工作者线程的思考</a></li>
-<li><a href="http://droidyue.com/blog/2015/11/08/make-use-of-handlerthread/">详解 Android 中的 HandlerThread</a></li>
-<li><a href="http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/">译文：Android中糟糕的AsyncTask</a></li>
-<li><a href="http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice/">剖析Android中进程与线程调度之nice</a></li>
-<li><a href="http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups/">Android进程线程调度之cgroups</a></li>
+  <li><a href="http://droidyue.com/blog/2015/12/20/worker-thread-in-android/">关于Android中工作者线程的思考</a></li>
+  <li><a href="http://droidyue.com/blog/2015/11/08/make-use-of-handlerthread/">详解 Android 中的 HandlerThread</a></li>
+  <li><a href="http://droidyue.com/blog/2014/11/08/bad-smell-of-asynctask-in-android/">译文：Android中糟糕的AsyncTask</a></li>
+  <li><a href="http://droidyue.com/blog/2015/09/05/android-process-and-thread-schedule-nice/">剖析Android中进程与线程调度之nice</a></li>
+  <li><a href="http://droidyue.com/blog/2015/09/17/android-process-and-thread-schedule-cgroups/">Android进程线程调度之cgroups</a></li>
 </ul>
 
-
-<h2>如何优化字符串拼接</h2>
-
+<p>##如何优化字符串拼接</p>
 <ul>
-<li>字符串拼接无法避免的创建StringBuilder对象</li>
-<li>如果是循环情况下拼接，需要显式在循环外声明一个StringBuilder对象</li>
+  <li>字符串拼接无法避免的创建StringBuilder对象</li>
+  <li>如果是循环情况下拼接，需要显式在循环外声明一个StringBuilder对象</li>
 </ul>
 
+<p>###不好的代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span>  <span class="nf">implicitUseStringBuilder</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">  <span class="nc">String</span> <span class="n">result</span> <span class="o">=</span> <span class="s">""</span><span class="o">;</span>
+</span><span class="line">  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
+</span><span class="line">      <span class="n">result</span> <span class="o">+=</span> <span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">];</span><span class="c1">//create new StringBuilder object every time</span>
+</span><span class="line">  <span class="o">}</span>
+</span><span class="line">  <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h3>不好的代码</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span>  <span class="nf">implicitUseStringBuilder</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">String</span> <span class="n">result</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">;</span>
-</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span> <span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">result</span> <span class="o">+=</span> <span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">];</span><span class="c1">//create new StringBuilder object every time</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>改进后的代码</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">explicitUseStringBuider</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">StringBuilder</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringBuilder</span><span class="o">();</span>
-</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">result</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<p>###改进后的代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">explicitUseStringBuider</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">  <span class="nc">StringBuilder</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">();</span>
+</span><span class="line">  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span> <span class="o">++)</span> <span class="o">{</span>
+</span><span class="line">      <span class="n">result</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">values</span><span class="o">[</span><span class="n">i</span><span class="o">]);</span>
+</span><span class="line">  <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>关于拼接字符串的文章</p>
 
 <ul>
-<li><a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a></li>
+  <li><a href="http://droidyue.com/blog/2014/08/30/java-details-string-concatenation/">Java细节：字符串的拼接</a></li>
 </ul>
 
+<p>##使用Handler到底需不需要使用弱引用，什么时候情况下用</p>
+<ul>
+  <li>正常境况下的引用都为强引用，其特点是及时内存溢出也不可以被回收</li>
+</ul>
 
-<h2>使用Handler到底需不需要使用弱引用，什么时候情况下用</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">ArrayList</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ArrayList</span><span class="o">();</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<ul>
+  <li>弱引用则会在垃圾回收时被回收掉，因而弱引用解决内存泄露的一种方法。</li>
+</ul>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">ArrayList</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ArrayList</span><span class="o">();</span>
+</span><span class="line"><span class="nc">WeakReference</span><span class="o">&lt;</span><span class="nc">ArrayList</span><span class="o">&gt;</span> <span class="n">listWeakRef</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">WeakReference</span><span class="o">&lt;</span><span class="nc">ArrayList</span><span class="o">&gt;(</span><span class="n">list</span><span class="o">);</span>
+</span><span class="line"><span class="nc">ArrayList</span> <span class="n">myList</span> <span class="o">=</span> <span class="n">listWeakRef</span><span class="o">.</span><span class="na">get</span><span class="o">();</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <ul>
-<li>正常境况下的引用都为强引用，其特点是及时内存溢出也不可以被回收</li>
+  <li>Handler是否需要设置弱引用，取决于它是否可能发生内存泄露</li>
 </ul>
 
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">ArrayList</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>###Handler内存泄露的场景</p>
 <ul>
-<li>弱引用则会在垃圾回收时被回收掉，因而弱引用解决内存泄露的一种方法。</li>
+  <li>Message的target变量实际是Handler对象</li>
+  <li>Message存放在MessageQueue中</li>
+  <li>MessageQueue通常为Looper持有</li>
+  <li>Looper和可以认为和线程生命周期相同</li>
+  <li>通常情况下，我们使用匿名内部类的形式创建Handler，而匿名内部类（非静态内部类）会隐式持有外部类的引用。即如下的mHandler会隐式持有Activity的实例引用。</li>
 </ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">ArrayList</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">();</span>
-</span><span class='line'><span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">ArrayList</span><span class="o">&gt;</span> <span class="n">listWeakRef</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">ArrayList</span><span class="o">&gt;(</span><span class="n">list</span><span class="o">);</span>
-</span><span class='line'><span class="n">ArrayList</span> <span class="n">myList</span> <span class="o">=</span> <span class="n">listWeakRef</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="nc">Handler</span> <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Handler</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleMessage</span><span class="o">(</span><span class="nc">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="kd">super</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">};</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <ul>
-<li>Handler是否需要设置弱引用，取决于它是否可能发生内存泄露</li>
+  <li>如果有一个延迟很久的消息，可能会导致Activity内存泄露</li>
+  <li>可以使用弱引用解决内存泄露问题</li>
+  <li>也可以在Activity onDestory方法中调用<code class="language-plaintext highlighter-rouge">handler.removeCallbacksAndMessages(null);</code></li>
 </ul>
-
-
-<h3>Handler内存泄露的场景</h3>
-
-<ul>
-<li>Message的target变量实际是Handler对象</li>
-<li>Message存放在MessageQueue中</li>
-<li>MessageQueue通常为Looper持有</li>
-<li>Looper和可以认为和线程生命周期相同</li>
-<li>通常情况下，我们使用匿名内部类的形式创建Handler，而匿名内部类（非静态内部类）会隐式持有外部类的引用。即如下的mHandler会隐式持有Activity的实例引用。</li>
-</ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">Handler</span> <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">};</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>如果有一个延迟很久的消息，可能会导致Activity内存泄露</li>
-<li>可以使用弱引用解决内存泄露问题</li>
-<li>也可以在Activity onDestory方法中调用<code>handler.removeCallbacksAndMessages(null);</code></li>
-</ul>
-
 
 <p>相关文章</p>
 
 <ul>
-<li><a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a></li>
-<li><a href="http://droidyue.com/blog/2015/11/08/make-use-of-handlerthread/">详解 Android 中的 HandlerThread</a></li>
+  <li><a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a></li>
+  <li><a href="http://droidyue.com/blog/2015/11/08/make-use-of-handlerthread/">详解 Android 中的 HandlerThread</a></li>
 </ul>
 
-
-<h2>网络数据返回先通知界面还是先更新数据库</h2>
-
+<h2 id="网络数据返回先通知界面还是先更新数据库">网络数据返回先通知界面还是先更新数据库</h2>
 <ul>
-<li>通常境况下，可以选择先更新界面再更新数据库</li>
-<li>如果数据很重要，建议先更新数据库在通知界面更新</li>
+  <li>通常境况下，可以选择先更新界面再更新数据库</li>
+  <li>如果数据很重要，建议先更新数据库在通知界面更新</li>
 </ul>
 
-
-<h2>业务场景：需要定时后台扫描数据库，上传本地照片至云端，定时任务采用何种模式</h2>
-
+<h2 id="业务场景需要定时后台扫描数据库上传本地照片至云端定时任务采用何种模式">业务场景：需要定时后台扫描数据库，上传本地照片至云端，定时任务采用何种模式</h2>
 <ul>
-<li>Handler或者Timer定时一般为秒级别的任务,Timer会启动额外线程，而Handler可以不用。</li>
-<li>无论是Handler还是Timer都需要依赖于进程存活</li>
-<li>利用Handler实现定时任务的类:<a href="https://github.com/androidyue/HandlerTimer/blob/master/app/src/main/java/com/droidyue/handlertimer/HandlerTimer.java">HandlerTimer</a></li>
-<li>如果时间较长，则需要使用AlarmManager</li>
-<li>另外，我们对于这种业务应该优先考虑是否可以基于事件通知。</li>
-<li>如果是加入媒体库的文件，我们可以使用registerContentObserver监听媒体库文件变化。</li>
+  <li>Handler或者Timer定时一般为秒级别的任务,Timer会启动额外线程，而Handler可以不用。</li>
+  <li>无论是Handler还是Timer都需要依赖于进程存活</li>
+  <li>利用Handler实现定时任务的类:<a href="https://github.com/androidyue/HandlerTimer/blob/master/app/src/main/java/com/droidyue/handlertimer/HandlerTimer.java">HandlerTimer</a></li>
+  <li>如果时间较长，则需要使用AlarmManager</li>
+  <li>另外，我们对于这种业务应该优先考虑是否可以基于事件通知。</li>
+  <li>如果是加入媒体库的文件，我们可以使用registerContentObserver监听媒体库文件变化。</li>
 </ul>
 
-
-<h2>static 单例是怎么保证单例的？没太看明白</h2>
-
+<h2 id="static-单例是怎么保证单例的没太看明白">static 单例是怎么保证单例的？没太看明白</h2>
 <ul>
-<li>static变量为类所有</li>
-<li>staitc只初始化一次，即在调用的时候。</li>
-<li>如下代码，<code>STATIC_OBJECT</code>只在第一次调用时初始化，后续调用则不会再执行初始化</li>
+  <li>static变量为类所有</li>
+  <li>staitc只初始化一次，即在调用的时候。</li>
+  <li>如下代码，<code class="language-plaintext highlighter-rouge">STATIC_OBJECT</code>只在第一次调用时初始化，后续调用则不会再执行初始化</li>
 </ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Example</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">Object</span> <span class="n">STATIC_OBJECT</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Example</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">Object</span> <span class="no">STATIC_OBJECT</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Object</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <ul>
-<li>使用static机制创建单例</li>
+  <li>使用static机制创建单例</li>
 </ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SingleInstance</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="nf">SingleInstance</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">SingleInstance</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">SingleInstanceHolder</span><span class="o">.</span><span class="na">sInstance</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">SingleInstanceHolder</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">private</span> <span class="kd">static</span> <span class="n">SingleInstance</span> <span class="n">sInstance</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SingleInstance</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SingleInstance</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="nf">SingleInstance</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">  
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">SingleInstance</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">return</span> <span class="nc">SingleInstanceHolder</span><span class="o">.</span><span class="na">sInstance</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">  
+</span><span class="line">    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">SingleInstanceHolder</span> <span class="o">{</span>
+</span><span class="line">        <span class="kd">private</span> <span class="kd">static</span> <span class="nc">SingleInstance</span> <span class="n">sInstance</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SingleInstance</span><span class="o">();</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>关于单例的文章</p>
 
 <ul>
-<li><a href="http://droidyue.com/blog/2015/01/11/looking-into-singleton/">单例这种设计模式</a></li>
+  <li><a href="http://droidyue.com/blog/2015/01/11/looking-into-singleton/">单例这种设计模式</a></li>
 </ul>
 
-
-<h2>把Activity作为参数传给一个静态方法,会影响这个Activity的正常销毁吗</h2>
-
+<h2 id="把activity作为参数传给一个静态方法会影响这个activity的正常销毁吗">把Activity作为参数传给一个静态方法,会影响这个Activity的正常销毁吗</h2>
 <ul>
-<li>内存泄露与方法是否是静态与否无关，与内部的方法体实现有关系。</li>
-<li>内存泄露可以简单理解成：生命周期长的对象不正确持有了持有了生命周期短的对象，导致生命周期短的对象无法回收。</li>
-<li>比如Activity实例被Application对象持有，Activity实例被静态变量持有。</li>
+  <li>内存泄露与方法是否是静态与否无关，与内部的方法体实现有关系。</li>
+  <li>内存泄露可以简单理解成：生命周期长的对象不正确持有了持有了生命周期短的对象，导致生命周期短的对象无法回收。</li>
+  <li>比如Activity实例被Application对象持有，Activity实例被静态变量持有。</li>
 </ul>
-
 
 <p>关于Android中内存泄漏的文章</p>
 
 <ul>
-<li><a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a></li>
-<li><a href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a></li>
-<li><a href="http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/">Google为何这样设计OnSharedPreferenceChangeListener</a></li>
-<li><a href="http://droidyue.com/blog/2016/03/28/android-leakcanary/">Android内存泄漏检测利器：LeakCanary</a></li>
+  <li><a href="http://droidyue.com/blog/2014/12/28/in-android-handler-classes-should-be-static-or-leaks-might-occur/">Android中Handler引起的内存泄露</a></li>
+  <li><a href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a></li>
+  <li><a href="http://droidyue.com/blog/2014/11/29/why-onsharedpreferencechangelistener-was-not-called/">Google为何这样设计OnSharedPreferenceChangeListener</a></li>
+  <li><a href="http://droidyue.com/blog/2016/03/28/android-leakcanary/">Android内存泄漏检测利器：LeakCanary</a></li>
 </ul>
 
-
-<h2>Bitmap优化</h2>
-
+<h2 id="bitmap优化">Bitmap优化</h2>
 <ul>
-<li><code>options.inJustDecodeBounds = true;</code>可以获取width,height和mimetype等信息，但不会申请内存占用</li>
-<li>合理进行缩放，一个高分辨率的图片不仅展示在一个小的imageView中，不仅不会有任何视觉优势，反而还占用了很大的内存</li>
-<li>将Bitmap处理移除主线程</li>
-<li>使用LruCache或者DiskLruCache缓存Bitmap</li>
-<li>before 2.3 手动调用recycle()方法</li>
+  <li><code class="language-plaintext highlighter-rouge">options.inJustDecodeBounds = true;</code>可以获取width,height和mimetype等信息，但不会申请内存占用</li>
+  <li>合理进行缩放，一个高分辨率的图片不仅展示在一个小的imageView中，不仅不会有任何视觉优势，反而还占用了很大的内存</li>
+  <li>将Bitmap处理移除主线程</li>
+  <li>使用LruCache或者DiskLruCache缓存Bitmap</li>
+  <li>before 2.3 手动调用recycle()方法</li>
 </ul>
-
 
 <p>关于Bitmap的文章</p>
 
 <ul>
-<li><a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">Google IO：Android内存管理主题演讲记录</a></li>
+  <li><a href="http://droidyue.com/blog/2014/11/02/note-for-google-io-memory-management-for-android-chinese-edition/">Google IO：Android内存管理主题演讲记录</a></li>
 </ul>
 
-
-<h2>多次在生产签名打包后的apk，出现功能不可用的情况，比方说有个社会化分享功能，写代码时都可以正常实现，但签名生成apk后该功能无法再使用了，点击分享面板的平台，没有任何响应。请问是怎么回事，这种问题解决应该从哪几个方面入手，希望有一些思路可供参考</h2>
-
+<h2 id="多次在生产签名打包后的apk出现功能不可用的情况比方说有个社会化分享功能写代码时都可以正常实现但签名生成apk后该功能无法再使用了点击分享面板的平台没有任何响应请问是怎么回事这种问题解决应该从哪几个方面入手希望有一些思路可供参考">多次在生产签名打包后的apk，出现功能不可用的情况，比方说有个社会化分享功能，写代码时都可以正常实现，但签名生成apk后该功能无法再使用了，点击分享面板的平台，没有任何响应。请问是怎么回事，这种问题解决应该从哪几个方面入手，希望有一些思路可供参考</h2>
 <ul>
-<li>应该是混淆引起的</li>
-<li>混淆是将易读性较好的变量，方法和类名替换成可读性较差的名称</li>
-<li>混淆的目的是为了加大逆向的成本，但不能避免</li>
-<li>通常混淆的处理是将某些库不加入混淆</li>
-<li>第三方的库不建议混淆</li>
+  <li>应该是混淆引起的</li>
+  <li>混淆是将易读性较好的变量，方法和类名替换成可读性较差的名称</li>
+  <li>混淆的目的是为了加大逆向的成本，但不能避免</li>
+  <li>通常混淆的处理是将某些库不加入混淆</li>
+  <li>第三方的库不建议混淆</li>
 </ul>
 
-
-<h3>一些需要排除混淆的</h3>
-
+<h3 id="一些需要排除混淆的">一些需要排除混淆的</h3>
 <ul>
-<li>被native方法调用的java方法</li>
-<li>供javascript调用的java方法</li>
-<li>反射调用的方法</li>
-<li>AndroidManifest中声明的组件</li>
-<li>总结：即所有硬编码的元素（变量，方法，类）</li>
+  <li>被native方法调用的java方法</li>
+  <li>供javascript调用的java方法</li>
+  <li>反射调用的方法</li>
+  <li>AndroidManifest中声明的组件</li>
+  <li>总结：即所有硬编码的元素（变量，方法，类）</li>
 </ul>
-
 
 <p>关于混淆,请参考文章<a href="http://droidyue.com/blog/2016/07/10/understanding-android-obfuscated-code-by-proguard/">读懂 Android 中的代码混淆</a></p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -538,8 +476,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -551,15 +487,16 @@
 
 
 
-  
-
 
 <time datetime="2016-10-24T20:35:00+08:00" pubdate data-updated="true">Oct 24<span>th</span>, 2016</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>
   
 </span>
 
@@ -652,10 +589,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -729,6 +662,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

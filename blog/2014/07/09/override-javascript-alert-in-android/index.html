@@ -11,7 +11,9 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="WebView重写onJsAlert那些事 Jul 9th, 2014 本文主要将如何重写onJsAlert,让烦人的对话框变为无干扰的Toast,以及为什么onJsAlert只调用一次的问题. 什么是Javascript Alert Alert是一种提示信息或者警告信息的对话框, &hellip;">
+  <meta name="description" content="WebView重写onJsAlert那些事 Jul 9th, 2014 本文主要将如何重写onJsAlert,让烦人的对话框变为无干扰的Toast,以及为什么onJsAlert只调用一次的问题.
+###什么是Javascript Alert
+Alert是一种提示信息或者警告信息的对话框, &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,8 +176,6 @@
 
 
 
-  
-
 
 <time datetime="2014-07-09T21:35:00+08:00" pubdate data-updated="true">Jul 9<span>th</span>, 2014</time>
         
@@ -184,101 +184,90 @@
   </header>
 
 
-<div class="entry-content"><p>本文主要将如何重写onJsAlert,让烦人的对话框变为无干扰的Toast,以及为什么onJsAlert只调用一次的问题.</p>
-
-<h3>什么是Javascript Alert</h3>
-
-<p>Alert是一种提示信息或者警告信息的对话框,一旦显示到用户面前,只能点击OK才能关闭.</p>
-
+<div class="entry-content"><p>本文主要将如何重写onJsAlert,让烦人的对话框变为无干扰的Toast,以及为什么onJsAlert只调用一次的问题.
+###什么是Javascript Alert
+Alert是一种提示信息或者警告信息的对话框,一旦显示到用户面前,只能点击OK才能关闭.
 <!--more-->
-
-
-<p>通常一般的实现类似</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;html&gt;</span>
-</span><span class='line'>    <span class="nt">&lt;SCRIPT </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>        <span class="nx">alert</span><span class="p">(</span><span class="s1">&#39;This is alert dialog !&#39;</span><span class="p">)</span>
-</span><span class='line'>    <span class="nt">&lt;/SCRIPT&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
+通常一般的实现类似</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="html"><span class="line"><span class="nt">&lt;html&gt;</span>
+</span><span class="line">    <span class="nt">&lt;SCRIPT</span> <span class="na">type=</span><span class="s">"text/javascript"</span><span class="nt">&gt;</span>
+</span><span class="line">        alert('This is alert dialog !')
+</span><span class="line">    <span class="nt">&lt;/SCRIPT&gt;</span>
+</span><span class="line"><span class="nt">&lt;/html&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>对应的效果图:</p>
 
 <p><img src="https://asset.droidyue.com/broken_images_2014/js_alert.png" alt="Javascript Alert" /></p>
 
-<h3>onJsAlert API 介绍</h3>
+<p>###onJsAlert API 介绍</p>
 
-<blockquote><p>public boolean onJsAlert (WebView view, String url, String message, JsResult result)<br/>
-Added in API level 1<br/>
-Tell the client to display a javascript alert dialog. If the client returns true, WebView will assume that the client will handle the dialog. If the client returns false, it will continue execution.<br/>
-Parameters<br/>
-view    The WebView that initiated the callback.<br/>
-url The url of the page requesting the dialog.<br/>
-message Message to be displayed in the window.<br/>
-result  A JsResult to confirm that the user hit enter.<br/>
-Returns<br/>
-boolean Whether the client will handle the alert dialog.</p></blockquote>
+<blockquote>
+  <p>public boolean onJsAlert (WebView view, String url, String message, JsResult result)<br />
+Added in API level 1<br />
+Tell the client to display a javascript alert dialog. If the client returns true, WebView will assume that the client will handle the dialog. If the client returns false, it will continue execution.<br />
+Parameters<br />
+view	The WebView that initiated the callback.<br />
+url	The url of the page requesting the dialog.<br />
+message	Message to be displayed in the window.<br />
+result	A JsResult to confirm that the user hit enter.<br />
+Returns<br />
+boolean Whether the client will handle the alert dialog.</p>
+</blockquote>
 
-<h3>重写为Toast展示</h3>
-
-<p>其实Alert,只是提示信息,而且这个提示信息还是阻塞其他操作的,为什么我们不适用一个长时间显示的Toast呢?</p>
+<p>###重写为Toast展示
+其实Alert,只是提示信息,而且这个提示信息还是阻塞其他操作的,为什么我们不适用一个长时间显示的Toast呢?</p>
 
 <p>下面示范一下如何换成Toast.</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nd">@Override</span>
+</span><span class="line"><span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">onJsAlert</span><span class="o">(</span><span class="nc">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="nc">String</span> <span class="n">url</span><span class="o">,</span> <span class="nc">String</span> <span class="n">message</span><span class="o">,</span> <span class="nc">JsResult</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">"MainActivity"</span><span class="o">,</span> <span class="s">"onJsAlert url="</span> <span class="o">+</span> <span class="n">url</span> <span class="o">+</span> <span class="s">";message="</span> <span class="o">+</span> <span class="n">message</span><span class="o">);</span>
+</span><span class="line">    <span class="nc">Toast</span><span class="o">.</span><span class="na">makeText</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">(),</span> <span class="n">message</span><span class="o">,</span> <span class="nc">Toast</span><span class="o">.</span><span class="na">LENGTH_LONG</span><span class="o">).</span><span class="na">show</span><span class="o">();</span>
+</span><span class="line">    <span class="n">result</span><span class="o">.</span><span class="na">confirm</span><span class="o">();</span>
+</span><span class="line">    <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">onJsAlert</span><span class="o">(</span><span class="n">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="n">String</span> <span class="n">url</span><span class="o">,</span> <span class="n">String</span> <span class="n">message</span><span class="o">,</span> <span class="n">JsResult</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="s">&quot;MainActivity&quot;</span><span class="o">,</span> <span class="s">&quot;onJsAlert url=&quot;</span> <span class="o">+</span> <span class="n">url</span> <span class="o">+</span> <span class="s">&quot;;message=&quot;</span> <span class="o">+</span> <span class="n">message</span><span class="o">);</span>
-</span><span class='line'>    <span class="n">Toast</span><span class="o">.</span><span class="na">makeText</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">(),</span> <span class="n">message</span><span class="o">,</span> <span class="n">Toast</span><span class="o">.</span><span class="na">LENGTH_LONG</span><span class="o">).</span><span class="na">show</span><span class="o">();</span>
-</span><span class='line'>    <span class="n">result</span><span class="o">.</span><span class="na">confirm</span><span class="o">();</span>
-</span><span class='line'>    <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<p>###为什么onJsAlert只调用了一次
+如果你没有参考上述部分或者没有留意,有时候你会发现onJsAlert只调用了一次,为什么呢,实际上,你可能忽略了一句调用.就是处理JsResult.</p>
 
-
-<h3>为什么onJsAlert只调用了一次</h3>
-
-<p>如果你没有参考上述部分或者没有留意,有时候你会发现onJsAlert只调用了一次,为什么呢,实际上,你可能忽略了一句调用.就是处理JsResult.</p>
-
-<blockquote><p>public final void cancel ()
+<blockquote>
+  <p>public final void cancel ()
 Added in API level 1
 Handle the result if the user cancelled the dialog.</p>
+</blockquote>
 
-<p>public final void confirm ()
+<blockquote>
+  <p>public final void confirm ()
 Added in API level 1
-Handle a confirmation response from the user.</p></blockquote>
+Handle a confirmation response from the user.</p>
+</blockquote>
 
 <p>你需要调用result.confirm()或者result.cancel()来处理jsResult,否则会出问题.</p>
 
-<h3>demo下载</h3>
-
+<p>###demo下载</p>
 <ul>
-<li><a href="http://pan.baidu.com/s/14bjMA">http://pan.baidu.com/s/14bjMA</a></li>
+  <li>http://pan.baidu.com/s/14bjMA</li>
 </ul>
 
+<p>###延伸阅读:
+http://www.w3schools.com/js/js_popup.asp
+http://developer.android.com/reference/android/webkit/JsResult.html</p>
 
-<h3>延伸阅读:</h3>
-
-<p><a href="http://www.w3schools.com/js/js_popup.asp">http://www.w3schools.com/js/js_popup.asp</a>
-<a href="http://developer.android.com/reference/android/webkit/JsResult.html">http://developer.android.com/reference/android/webkit/JsResult.html</a></p>
-
-<h3>推荐</h3>
-
+<p>###推荐</p>
 <ul>
-<li><a href="http://www.amazon.cn/gp/product/B00FQEDTA8/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00FQEDTA8&linkCode=as2&tag=droidyue-23">精彩绝伦的Android UI设计:响应式用户界面与设计模式</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00FQEDTA8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0097CON2S/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0097CON2S&linkCode=as2&tag=droidyue-23">JavaScript语言精粹</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0097CON2S" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B00FQEDTA8/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00FQEDTA8&amp;linkCode=as2&amp;tag=droidyue-23">精彩绝伦的Android UI设计:响应式用户界面与设计模式</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00FQEDTA8" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B0097CON2S/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0097CON2S&amp;linkCode=as2&amp;tag=droidyue-23">JavaScript语言精粹</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B0097CON2S" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
 
 
@@ -316,8 +305,6 @@ Handle a confirmation response from the user.</p></blockquote>
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -329,15 +316,22 @@ Handle a confirmation response from the user.</p></blockquote>
 
 
 
-  
-
 
 <time datetime="2014-07-09T21:35:00+08:00" pubdate data-updated="true">Jul 9<span>th</span>, 2014</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/javascript/'>JavaScript</a>, <a class='category' href='/blog/categories/webview/'>WebView</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/webview/">WebView</a>, 
+  
+    
+    <a class="category" href="/blog/categories/javascript/">JavaScript</a>
   
 </span>
 
@@ -430,10 +424,6 @@ Handle a confirmation response from the user.</p></blockquote>
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -507,6 +497,10 @@ Handle a confirmation response from the user.</p></blockquote>
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

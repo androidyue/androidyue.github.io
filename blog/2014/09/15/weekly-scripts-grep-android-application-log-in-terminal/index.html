@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2014-09-15T18:55:00+08:00" pubdate data-updated="true">Sep 15<span>th</span>, 2014</time>
         
@@ -186,88 +184,73 @@
 
 <div class="entry-content"><p>在Android软件开发中，增加日志的作用很重要，便于我们了解程序的执行情况和数据。Eclipse开发工具会提供了可视化的工具，但是还是感觉终端效率会高一些，于是自己写了一个python的脚本来通过包名来过滤某一程序的日志。</p>
 
-<h3>原理</h3>
-
-<p>通过包名得到对应的进程ID（可能多个），然后使用adb logcat 过滤进程ID即可得到对应程序的日志。</p>
-
+<p>###原理
+通过包名得到对应的进程ID（可能多个），然后使用adb logcat 过滤进程ID即可得到对应程序的日志。
 <!--more-->
+###源码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span><a href="https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py">link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1">#!/usr/bin/env python
+</span><span class="line">#coding:utf-8
+</span><span class="line">#This script is aimed to grep logs by application(User should input a packageName and then we look up for the process ids then separate logs by process ids).
+</span><span class="line"></span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">os</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">sys</span>
+</span><span class="line">
+</span><span class="line"><span class="n">packageName</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">sys</span><span class="p">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span class="line">
+</span><span class="line"><span class="n">command</span> <span class="o">=</span> <span class="s">"adb shell ps | grep %s | awk '{print $2}'"</span><span class="o">%</span><span class="p">(</span><span class="n">packageName</span><span class="p">)</span>
+</span><span class="line"><span class="n">p</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">popen</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+</span><span class="line"><span class="c1">##for some applications,there are multiple processes,so we should get all the process id
+</span><span class="line"></span><span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">readline</span><span class="p">().</span><span class="n">strip</span><span class="p">()</span>
+</span><span class="line"><span class="n">filters</span> <span class="o">=</span> <span class="n">pid</span>
+</span><span class="line"><span class="k">while</span><span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="s">""</span><span class="p">):</span>
+</span><span class="line">    <span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">readline</span><span class="p">().</span><span class="n">strip</span><span class="p">()</span>
+</span><span class="line">    <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="s">''</span><span class="p">):</span>
+</span><span class="line">        <span class="n">filters</span> <span class="o">=</span> <span class="n">filters</span> <span class="o">+</span>  <span class="s">"|"</span> <span class="o">+</span> <span class="n">pid</span>
+</span><span class="line">        <span class="c1">#print 'command = %s;filters=%s'%(command, filters)
+</span><span class="line"></span><span class="k">if</span> <span class="p">(</span><span class="n">filters</span> <span class="o">!=</span> <span class="s">''</span><span class="p">)</span> <span class="p">:</span>
+</span><span class="line">    <span class="n">cmd</span> <span class="o">=</span> <span class="s">'adb logcat | grep --color=always -E "%s" '</span><span class="o">%</span><span class="p">(</span><span class="n">filters</span><span class="p">)</span>
+</span><span class="line">    <span class="n">os</span><span class="p">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<p>###使用方法</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">python logcatPkg.py com.mx.browser</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h3>源码</h3>
+<p>###最新代码
+ <a href="https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py" target="_blank">locatPkg.py</a></p>
 
-<figure class='code'><figcaption><span>lineos:false</span><a href='https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py'>link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
-</span><span class='line'><span class="c">#coding:utf-8</span>
-</span><span class='line'><span class="c">#This script is aimed to grep logs by application(User should input a packageName and then we look up for the process ids then separate logs by process ids).</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">import</span> <span class="nn">os</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">sys</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">packageName</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">command</span> <span class="o">=</span> <span class="s">&quot;adb shell ps | grep </span><span class="si">%s</span><span class="s"> | awk &#39;{print $2}&#39;&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">packageName</span><span class="p">)</span>
-</span><span class='line'><span class="n">p</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">popen</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
-</span><span class='line'><span class="c">##for some applications,there are multiple processes,so we should get all the process id</span>
-</span><span class='line'><span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span class='line'><span class="n">filters</span> <span class="o">=</span> <span class="n">pid</span>
-</span><span class='line'><span class="k">while</span><span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="p">):</span>
-</span><span class='line'>    <span class="n">pid</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">pid</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">):</span>
-</span><span class='line'>        <span class="n">filters</span> <span class="o">=</span> <span class="n">filters</span> <span class="o">+</span>  <span class="s">&quot;|&quot;</span> <span class="o">+</span> <span class="n">pid</span>
-</span><span class='line'>        <span class="c">#print &#39;command = %s;filters=%s&#39;%(command, filters)</span>
-</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">filters</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">)</span> <span class="p">:</span>
-</span><span class='line'>    <span class="n">cmd</span> <span class="o">=</span> <span class="s">&#39;adb logcat | grep --color=always -E &quot;</span><span class="si">%s</span><span class="s">&quot; &#39;</span><span class="o">%</span><span class="p">(</span><span class="n">filters</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>使用方法</h3>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>python logcatPkg.py com.mx.browser
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>最新代码</h3>
-
-<p> <a href="https://raw.githubusercontent.com/androidyue/weekly-scripts/master/python/logcatPkg.py" target="_blank">locatPkg.py</a></p>
-
-<h3>不足</h3>
-
+<p>###不足</p>
 <ul>
-<li> 当脚本执行后，Android程序如果关闭或者重新启动，导致进程ID变化，无法自动继续输出日志，只能再次执行此脚本。</li>
+  <li>当脚本执行后，Android程序如果关闭或者重新启动，导致进程ID变化，无法自动继续输出日志，只能再次执行此脚本。</li>
 </ul>
 
-
-<h3>其他</h3>
-
+<p>###其他</p>
 <ul>
-<li><a href="http://www.amazon.cn/gp/product/B00KVLDS20/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00KVLDS20&linkCode=as2&tag=droidyue-23">仅用两周就能自制脚本语言？</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00KVLDS20" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B002A2LQR2/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B002A2LQR2&linkCode=as2&tag=droidyue-23">一个不错的Shell脚本学习指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B002A2LQR2" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B005YWYH6C/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B005YWYH6C&linkCode=as2&tag=droidyue-23">Windows 7脚本编程和命令行工具指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B005YWYH6C" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B00KVLDS20/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00KVLDS20&amp;linkCode=as2&amp;tag=droidyue-23">仅用两周就能自制脚本语言？</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00KVLDS20" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B002A2LQR2/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B002A2LQR2&amp;linkCode=as2&amp;tag=droidyue-23">一个不错的Shell脚本学习指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B002A2LQR2" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B005YWYH6C/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B005YWYH6C&amp;linkCode=as2&amp;tag=droidyue-23">Windows 7脚本编程和命令行工具指南</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B005YWYH6C" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -303,8 +286,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -316,15 +297,25 @@
 
 
 
-  
-
 
 <time datetime="2014-09-15T18:55:00+08:00" pubdate data-updated="true">Sep 15<span>th</span>, 2014</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/python/'>Python</a>, <a class='category' href='/blog/categories/xiao-lu/'>效率</a>, <a class='category' href='/blog/categories/mei-zhou-1jiao-ben/'>每周1脚本</a>
+    
+    <a class="category" href="/blog/categories/mei-zhou-1jiao-ben/">每周1脚本</a>, 
+  
+    
+    <a class="category" href="/blog/categories/python/">Python</a>, 
+  
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/xiao-lu/">效率</a>
   
 </span>
 
@@ -417,10 +408,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -494,6 +481,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

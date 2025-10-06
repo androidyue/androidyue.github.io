@@ -11,7 +11,8 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Android 中 利用 AccessibilityService 辅助服务 模拟点击事件 Mar 27th, 2022 在 Android 中想要执行一些模拟点击操作，在无法修改页面源码的情况下，通常只能使用 adb 和借助辅助功能两种方式。 Adb 方式 借助 adb shell 的命令， &hellip;">
+  <meta name="description" content="Android 中 利用 AccessibilityService 辅助服务 模拟点击事件 Mar 27th, 2022 在 Android 中想要执行一些模拟点击操作，在无法修改页面源码的情况下，通常只能使用 adb 和借助辅助功能两种方式。 Adb 方式
+借助 adb shell 的命令， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,8 +175,6 @@
 
 
 
-  
-
 
 <time datetime="2022-03-27T20:52:00+08:00" pubdate data-updated="true">Mar 27<span>th</span>, 2022</time>
         
@@ -186,121 +185,108 @@
 
 <div class="entry-content"><p>在 Android 中想要执行一些模拟点击操作，在无法修改页面源码的情况下，通常只能使用 adb 和借助辅助功能两种方式。</p>
 
-<h2>Adb 方式</h2>
-
+<h2 id="adb-方式">Adb 方式</h2>
 <p>借助 adb shell 的命令，我们可以使用下面的方式模拟一个执行点击坐标的操作。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>adb shell input tap x y
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">adb shell input tap x y </span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>但是 adb 操作有一些门槛</p>
 
 <ul>
-<li>需要一台电脑执行adb 命令（终端执行）</li>
-<li>需要一个数据线</li>
-<li>目标设备（手机）需要开启开发者模式</li>
+  <li>需要一台电脑执行adb 命令（终端执行）</li>
+  <li>需要一个数据线</li>
+  <li>目标设备（手机）需要开启开发者模式</li>
 </ul>
 
+<p>所有 adb 操作的问题就是无法借助一台设备独立完成。所以可以借助辅助服务来实现单一设备独立完成。
+<!--more--></p>
 
-<p>所有 adb 操作的问题就是无法借助一台设备独立完成。所以可以借助辅助服务来实现单一设备独立完成。</p>
-
-<!--more-->
-
-
-<h2>辅助功能</h2>
-
+<h2 id="辅助功能">辅助功能</h2>
 <p>Android中的辅助功能是一个极具黑科技的技术。借助下面的代码，我们可以实现 对于 基于坐标的点击。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="n">@RequiresApi</span><span class="p">(</span><span class="n">Build</span><span class="p">.</span><span class="n">VERSION_CODES</span><span class="p">.</span><span class="n">N</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">fun</span> <span class="n">AccessibilityService</span><span class="p">.</span><span class="n">dispatchClick</span><span class="p">(</span><span class="n">rect</span><span class="p">:</span> <span class="n">Rect</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>   <span class="n">rect</span> <span class="p">?:</span> <span class="k">return</span>
-</span><span class='line'>   <span class="k">val</span> <span class="n">x</span> <span class="p">=</span> <span class="n">rect</span><span class="p">.</span><span class="n">middleVertically</span><span class="p">()</span>
-</span><span class='line'>   <span class="k">val</span> <span class="n">y</span> <span class="p">=</span> <span class="n">rect</span><span class="p">.</span><span class="n">middleHorizontally</span><span class="p">()</span>
-</span><span class='line'>   <span class="n">dispatchClick</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">@RequiresApi</span><span class="p">(</span><span class="n">Build</span><span class="p">.</span><span class="n">VERSION_CODES</span><span class="p">.</span><span class="n">N</span><span class="p">)</span>
-</span><span class='line'><span class="k">fun</span> <span class="n">AccessibilityService</span><span class="p">.</span><span class="n">dispatchClick</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">Float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Float</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>   <span class="k">val</span> <span class="n">path</span> <span class="p">=</span> <span class="n">Path</span><span class="p">()</span>
-</span><span class='line'>   <span class="n">path</span><span class="p">.</span><span class="n">moveTo</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-</span><span class='line'>   <span class="n">smartLogD</span> <span class="p">{</span>
-</span><span class='line'>       <span class="s">&quot;dispatchClick x=$x y=$y&quot;</span>
-</span><span class='line'>   <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="n">path</span><span class="p">.</span><span class="n">lineTo</span><span class="p">(</span><span class="n">x</span> <span class="p">+</span> <span class="m">1</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="k">val</span> <span class="n">builder</span> <span class="p">=</span> <span class="n">GestureDescription</span><span class="p">.</span><span class="n">Builder</span><span class="p">()</span>
-</span><span class='line'>   <span class="n">builder</span><span class="p">.</span><span class="n">addStroke</span><span class="p">(</span><span class="n">GestureDescription</span><span class="p">.</span><span class="n">StrokeDescription</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span>
-</span><span class='line'>       <span class="n">ViewConfiguration</span><span class="p">.</span><span class="n">getTapTimeout</span><span class="p">().</span><span class="n">toLong</span><span class="p">()</span>
-</span><span class='line'>   <span class="p">))</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="k">this</span><span class="p">.</span><span class="n">dispatchGesture</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="n">build</span><span class="p">(),</span> <span class="k">null</span><span class="p">,</span> <span class="k">null</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line">
+</span><span class="line"><span class="nd">@RequiresApi</span><span class="p">(</span><span class="nc">Build</span><span class="p">.</span><span class="nc">VERSION_CODES</span><span class="p">.</span><span class="nc">N</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line"><span class="k">fun</span> <span class="nc">AccessibilityService</span><span class="p">.</span><span class="nf">dispatchClick</span><span class="p">(</span><span class="n">rect</span><span class="p">:</span> <span class="nc">Rect</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">   <span class="n">rect</span> <span class="o">?:</span> <span class="k">return</span>
+</span><span class="line">   <span class="kd">val</span> <span class="py">x</span> <span class="p">=</span> <span class="n">rect</span><span class="p">.</span><span class="nf">middleVertically</span><span class="p">()</span>
+</span><span class="line">   <span class="kd">val</span> <span class="py">y</span> <span class="p">=</span> <span class="n">rect</span><span class="p">.</span><span class="nf">middleHorizontally</span><span class="p">()</span>
+</span><span class="line">   <span class="nf">dispatchClick</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="nd">@RequiresApi</span><span class="p">(</span><span class="nc">Build</span><span class="p">.</span><span class="nc">VERSION_CODES</span><span class="p">.</span><span class="nc">N</span><span class="p">)</span>
+</span><span class="line"><span class="k">fun</span> <span class="nc">AccessibilityService</span><span class="p">.</span><span class="nf">dispatchClick</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">   <span class="kd">val</span> <span class="py">path</span> <span class="p">=</span> <span class="nc">Path</span><span class="p">()</span>
+</span><span class="line">   <span class="n">path</span><span class="p">.</span><span class="nf">moveTo</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class="line">   <span class="nf">smartLogD</span> <span class="p">{</span>
+</span><span class="line">       <span class="s">"dispatchClick x=$x y=$y"</span>
+</span><span class="line">   <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">   <span class="n">path</span><span class="p">.</span><span class="nf">lineTo</span><span class="p">(</span><span class="n">x</span> <span class="p">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">   <span class="kd">val</span> <span class="py">builder</span> <span class="p">=</span> <span class="nc">GestureDescription</span><span class="p">.</span><span class="nc">Builder</span><span class="p">()</span>
+</span><span class="line">   <span class="n">builder</span><span class="p">.</span><span class="nf">addStroke</span><span class="p">(</span><span class="nc">GestureDescription</span><span class="p">.</span><span class="nc">StrokeDescription</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+</span><span class="line">       <span class="nc">ViewConfiguration</span><span class="p">.</span><span class="nf">getTapTimeout</span><span class="p">().</span><span class="nf">toLong</span><span class="p">()</span>
+</span><span class="line">   <span class="p">))</span>
+</span><span class="line">
+</span><span class="line">   <span class="k">this</span><span class="p">.</span><span class="nf">dispatchGesture</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="nf">build</span><span class="p">(),</span> <span class="k">null</span><span class="p">,</span> <span class="k">null</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<p>上面的代码如果无法找到对应的引用，可以引用这个库  https://github.com/androidyue/coobox</p>
 
-<p>上面的代码如果无法找到对应的引用，可以引用这个库  <a href="https://github.com/androidyue/coobox">https://github.com/androidyue/coobox</a></p>
-
-<h2>开始使用</h2>
+<h2 id="开始使用">开始使用</h2>
 
 <p>1.在项目根目录下的 build.gradle 增加仓库配置</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>allprojects <span class="o">{</span>
-</span><span class='line'>    repositories <span class="o">{</span>
-</span><span class='line'>        jcenter<span class="o">()</span>
-</span><span class='line'>        maven <span class="o">{</span> url <span class="s2">&quot;https://jitpack.io&quot;</span> <span class="o">}</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">allprojects <span class="o">{</span>
+</span><span class="line">    repositories <span class="o">{</span>
+</span><span class="line">        jcenter<span class="o">()</span>
+</span><span class="line">        maven <span class="o">{</span> url <span class="s2">"https://jitpack.io"</span> <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>2.在模块下的 build.gradle 增加依赖引用</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>dependencies <span class="o">{</span>
-</span><span class='line'>    implementation <span class="s1">&#39;com.github.androidyue:coobox:0.8.5&#39;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">dependencies <span class="o">{</span>
+</span><span class="line">    implementation <span class="s1">'com.github.androidyue:coobox:0.8.5'</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>注: 请手动替换 x.y.z 为最新的版本信息</p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -336,8 +322,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -349,15 +333,22 @@
 
 
 
-  
-
 
 <time datetime="2022-03-27T20:52:00+08:00" pubdate data-updated="true">Mar 27<span>th</span>, 2022</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/accessibilityservice/'>AccessibilityService</a>, <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/adb/'>adb</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/accessibilityservice/">AccessibilityService</a>, 
+  
+    
+    <a class="category" href="/blog/categories/adb/">adb</a>
   
 </span>
 
@@ -450,10 +441,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -527,6 +514,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

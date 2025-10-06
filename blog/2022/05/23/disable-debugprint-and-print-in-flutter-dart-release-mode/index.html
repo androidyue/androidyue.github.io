@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2022-05-23T07:30:00+08:00" pubdate data-updated="true">May 23<span>rd</span>, 2022</time>
         
@@ -184,85 +182,77 @@
   </header>
 
 
-<div class="entry-content"><p>当我们在写 Flutter，Dart程序时，release 模式下，我们很奇怪的发现debugPrint和 print 这两个的输出内容，还是能够通过 <code>flutter logs</code> 展示出来。这一点尤其在端上暴露的问题要严重一些，比如涉及到一些敏感信息的日志打印。</p>
+<div class="entry-content"><p>当我们在写 Flutter，Dart程序时，release 模式下，我们很奇怪的发现debugPrint和 print 这两个的输出内容，还是能够通过 <code class="language-plaintext highlighter-rouge">flutter logs</code> 展示出来。这一点尤其在端上暴露的问题要严重一些，比如涉及到一些敏感信息的日志打印。</p>
 
 <p>本文，将会有两个超级简单的方法，来实现对这些输出的屏蔽，并且是专门治理 release 模式下的问题，debug 模式不受影响。</p>
 
 <!--more-->
 
-
-<h2>DebugPrint</h2>
-
+<h2 id="debugprint">DebugPrint</h2>
 <p>DebugPrint  着实是一个比较迷惑的方法，看意思我们理解是在debug 模式下才进行日志打印，但是实际上，这个方法也会在 release 模式下进行日志输出。</p>
 
 <p>好在，我们可以通过这样简单设置即可处理 上面的问题。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">kReleaseMode</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>   <span class="n">debugPrint</span> <span class="o">=</span> <span class="p">(</span><span class="kt">String</span><span class="o">?</span> <span class="n">message</span><span class="p">,</span> <span class="p">{</span><span class="kt">int</span><span class="o">?</span> <span class="n">wrapWidth</span><span class="p">})</span> <span class="p">{</span>
-</span><span class='line'>     <span class="c1">// empty debugPrint implementation in the release mode</span>
-</span><span class='line'>    <span class="p">};</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="dart"><span class="line"><span class="k">if</span> <span class="p">(</span><span class="n">kReleaseMode</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">   <span class="n">debugPrint</span> <span class="o">=</span> <span class="p">(</span><span class="kt">String</span><span class="o">?</span> <span class="n">message</span><span class="p">,</span> <span class="p">{</span><span class="kt">int</span><span class="o">?</span> <span class="n">wrapWidth</span><span class="p">})</span> <span class="p">{</span>
+</span><span class="line">     <span class="c1">// empty debugPrint implementation in the release mode</span>
+</span><span class="line">    <span class="p">};</span>
+</span><span class="line"><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>在 RunApp 启动之前即可。</p>
 
-<h2>print 处理</h2>
-
+<h2 id="print-处理">print 处理</h2>
 <p>print 的处理相对比较麻烦一些，但是 dart 层也提供了一个 重载print实现的方法，就是使用 Zone API.</p>
 
 <p>实现思路如下</p>
 
 <ul>
-<li>使用 runZonedGuarded 包裹  runApp</li>
-<li>增加 zoneSpecification 参数配置 printHandler</li>
-<li>printHandler 增加release 模式控制，进行日志打印屏蔽处理。</li>
+  <li>使用 runZonedGuarded 包裹  runApp</li>
+  <li>增加 zoneSpecification 参数配置 printHandler</li>
+  <li>printHandler 增加release 模式控制，进行日志打印屏蔽处理。</li>
 </ul>
-
 
 <p>具体代码如下</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='dart'><span class='line'><span class="n">runZonedGuarded</span><span class="p">(()</span> <span class="p">{</span>
-</span><span class='line'> <span class="n">runApp</span><span class="p">(</span><span class="n">MyApp</span><span class="p">());</span>
-</span><span class='line'><span class="p">},</span> <span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="n">stackTrace</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'> <span class="n">print</span><span class="p">(</span><span class="n">stackTrace</span><span class="p">);</span>
-</span><span class='line'><span class="p">},</span> <span class="nl">zoneSpecification:</span> <span class="n">ZoneSpecification</span><span class="p">(</span>
-</span><span class='line'>   <span class="nl">print:</span> <span class="p">(</span><span class="n">Zone</span> <span class="n">self</span><span class="p">,</span> <span class="n">ZoneDelegate</span> <span class="n">parent</span><span class="p">,</span> <span class="n">Zone</span> <span class="n">zone</span><span class="p">,</span> <span class="kt">String</span> <span class="n">message</span><span class="p">){</span>
-</span><span class='line'>     <span class="cm">/**</span>
-</span><span class='line'><span class="cm">      * Print only in debug mode</span>
-</span><span class='line'><span class="cm">      * */</span>
-</span><span class='line'>     <span class="k">if</span> <span class="p">(</span><span class="n">kDebugMode</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>       <span class="n">parent</span><span class="p">.</span><span class="n">print</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s2">&quot;wrapped content=</span><span class="si">$</span><span class="n">message</span><span class="s2">&quot;</span><span class="p">);</span>
-</span><span class='line'>     <span class="p">}</span>
-</span><span class='line'>   <span class="p">}));</span>
-</span></code></pre></td></tr></table></div></figure>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="dart"><span class="line"><span class="n">runZonedGuarded</span><span class="p">(()</span> <span class="p">{</span>
+</span><span class="line"> <span class="n">runApp</span><span class="p">(</span><span class="n">MyApp</span><span class="p">());</span>
+</span><span class="line"><span class="p">},</span> <span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="n">stackTrace</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line"> <span class="n">print</span><span class="p">(</span><span class="n">stackTrace</span><span class="p">);</span>
+</span><span class="line"><span class="p">},</span> <span class="nl">zoneSpecification:</span> <span class="n">ZoneSpecification</span><span class="p">(</span>
+</span><span class="line">   <span class="nl">print:</span> <span class="p">(</span><span class="n">Zone</span> <span class="n">self</span><span class="p">,</span> <span class="n">ZoneDelegate</span> <span class="n">parent</span><span class="p">,</span> <span class="n">Zone</span> <span class="n">zone</span><span class="p">,</span> <span class="kt">String</span> <span class="n">message</span><span class="p">){</span>
+</span><span class="line">     <span class="cm">/**
+</span><span class="line">      * Print only in debug mode
+</span><span class="line">      * */</span>
+</span><span class="line">     <span class="k">if</span> <span class="p">(</span><span class="n">kDebugMode</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">       <span class="n">parent</span><span class="o">.</span><span class="na">print</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s">"wrapped content=</span><span class="si">$message</span><span class="s">"</span><span class="p">);</span>
+</span><span class="line">     <span class="p">}</span>
+</span><span class="line">   <span class="p">}));</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-
-<h2>其他的建议</h2>
-
+<h2 id="其他的建议">其他的建议</h2>
 <ul>
-<li>使用自己封装的 Log 库，可以统一进行管理</li>
-<li>使用 lint 检查，检测并处理 使用 print，debugPrint的代码。</li>
+  <li>使用自己封装的 Log 库，可以统一进行管理</li>
+  <li>使用 lint 检查，检测并处理 使用 print，debugPrint的代码。</li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -298,8 +288,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -311,15 +299,25 @@
 
 
 
-  
-
 
 <time datetime="2022-05-23T07:30:00+08:00" pubdate data-updated="true">May 23<span>rd</span>, 2022</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/dart/'>Dart</a>, <a class='category' href='/blog/categories/flutter/'>Flutter</a>, <a class='category' href='/blog/categories/ios/'>iOS</a>
+    
+    <a class="category" href="/blog/categories/flutter/">Flutter</a>, 
+  
+    
+    <a class="category" href="/blog/categories/dart/">Dart</a>, 
+  
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/ios/">iOS</a>
   
 </span>
 
@@ -412,10 +410,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -489,6 +483,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

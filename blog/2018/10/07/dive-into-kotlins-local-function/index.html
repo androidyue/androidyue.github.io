@@ -11,7 +11,8 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="探究Kotlin的局部方法 Oct 7th, 2018 在Kotlin中，定义方法很有趣，不仅仅因为方法的关键字是fun(function前几个字符)，还是因为你会惊奇的发现，它允许我们在方法中定义方法。如下 1
+  <meta name="description" content="探究Kotlin的局部方法 Oct 7th, 2018 在Kotlin中，定义方法很有趣，不仅仅因为方法的关键字是fun(function前几个字符)，还是因为你会惊奇的发现，它允许我们在方法中定义方法。如下
+1
 2
 3
 4
@@ -182,8 +183,6 @@ fun methodA() { fun methodB &hellip;">
 
 
 
-  
-
 
 <time datetime="2018-10-07T19:47:00+08:00" pubdate data-updated="true">Oct 7<span>th</span>, 2018</time>
         
@@ -193,37 +192,31 @@ fun methodA() { fun methodB &hellip;">
 
 
 <div class="entry-content"><p>在Kotlin中，定义方法很有趣，不仅仅因为方法的关键字是fun(function前几个字符)，还是因为你会惊奇的发现，它允许我们在方法中定义方法。如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">methodA</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">fun</span> <span class="nf">methodB</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>   <span class="n">methodB</span><span class="o">()</span> <span class="c1">//valid</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">//methodB() invalid</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">fun</span> <span class="nf">methodA</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">   <span class="n">fun</span> <span class="nf">methodB</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">   <span class="n">methodB</span><span class="o">()</span> <span class="c1">//valid</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">//methodB() invalid</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <!--more-->
-
 
 <p>其中</p>
 
 <ul>
-<li>methodB定义在methodA的方法体中，即methodB被称为局部方法或局部函数</li>
-<li>methodB只能在methodA中方法调用</li>
-<li>methodB在methodA方法外调用，会引起编译错误</li>
+  <li>methodB定义在methodA的方法体中，即methodB被称为局部方法或局部函数</li>
+  <li>methodB只能在methodA中方法调用</li>
+  <li>methodB在methodA方法外调用，会引起编译错误</li>
 </ul>
-
 
 <p>既然Kotlin支持了局部方法，相比它应该有什么特殊的用武之地呢</p>
 
@@ -236,298 +229,269 @@ fun methodA() { fun methodB &hellip;">
 <p>其实这件事仔细研究起来，还是有不少细节的。因为这其中局部方法可以捕获外部的变量也可以不捕获外部的变量。</p>
 
 <p>下面就是捕获外部变量的一种情况</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">outMethodCapture</span><span class="o">(</span><span class="nl">args:</span> <span class="n">Array</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">fun</span> <span class="nf">checkArgs</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>       <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'>           <span class="n">println</span><span class="o">(</span><span class="s">&quot;innerMethod check args&quot;</span><span class="o">)</span>
-</span><span class='line'>           <span class="n">Throwable</span><span class="o">().</span><span class="na">printStackTrace</span><span class="o">()</span>
-</span><span class='line'>       <span class="o">}</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>   <span class="n">checkArgs</span><span class="o">()</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">fun</span> <span class="nf">outMethodCapture</span><span class="o">(</span><span class="nl">args:</span> <span class="nc">Array</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;)</span> <span class="o">{</span>
+</span><span class="line">   <span class="n">fun</span> <span class="nf">checkArgs</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">       <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">           <span class="n">println</span><span class="o">(</span><span class="s">"innerMethod check args"</span><span class="o">)</span>
+</span><span class="line">           <span class="nc">Throwable</span><span class="o">().</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class="line">       <span class="o">}</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">   <span class="n">checkArgs</span><span class="o">()</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>这其中，局部方法checkArgs捕获了outMethodCapture的参数args。</p>
 
 <p>所以，不捕获外部变量的情况也不难理解，如下,即checkArgs处理args都是通过参数传递的。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">outMethodNonCapture</span><span class="o">(</span><span class="nl">args:</span> <span class="n">Array</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">fun</span> <span class="nf">checkArgs</span><span class="o">(</span><span class="nl">args:</span> <span class="n">Array</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'>           <span class="n">println</span><span class="o">(</span><span class="s">&quot;outMethodNonCapture check args&quot;</span><span class="o">)</span>
-</span><span class='line'>           <span class="n">Throwable</span><span class="o">().</span><span class="na">printStackTrace</span><span class="o">()</span>
-</span><span class='line'>       <span class="o">}</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>   <span class="n">checkArgs</span><span class="o">(</span><span class="n">args</span><span class="o">)</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">fun</span> <span class="nf">outMethodNonCapture</span><span class="o">(</span><span class="nl">args:</span> <span class="nc">Array</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;)</span> <span class="o">{</span>
+</span><span class="line">   <span class="n">fun</span> <span class="nf">checkArgs</span><span class="o">(</span><span class="nl">args:</span> <span class="nc">Array</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;)</span> <span class="o">{</span>
+</span><span class="line">       <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">           <span class="n">println</span><span class="o">(</span><span class="s">"outMethodNonCapture check args"</span><span class="o">)</span>
+</span><span class="line">           <span class="nc">Throwable</span><span class="o">().</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class="line">       <span class="o">}</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">   <span class="n">checkArgs</span><span class="o">(</span><span class="n">args</span><span class="o">)</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>首先我们分析一下捕获变量的局部方法的实现原理</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">outMethodCapture</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="kd">final</span> <span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">Intrinsics</span><span class="o">.</span><span class="na">checkParameterIsNotNull</span><span class="o">(</span><span class="n">args</span><span class="o">,</span> <span class="s">&quot;args&quot;</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="n">undefinedtype</span><span class="o">&gt;</span> <span class="n">checkArgs$</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Function0</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>     <span class="c1">// $FF: synthetic method</span>
-</span><span class='line'>     <span class="c1">// $FF: bridge method</span>
-</span><span class='line'>     <span class="kd">public</span> <span class="n">Object</span> <span class="nf">invoke</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">invoke</span><span class="o">();</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">Unit</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">;</span>
-</span><span class='line'>     <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>     <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">invoke</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">Object</span><span class="o">[]</span> <span class="n">var1</span> <span class="o">=</span> <span class="o">(</span><span class="n">Object</span><span class="o">[])</span><span class="n">args</span><span class="o">;</span>
-</span><span class='line'>        <span class="k">if</span><span class="o">(</span><span class="n">var1</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>           <span class="n">String</span> <span class="n">var2</span> <span class="o">=</span> <span class="s">&quot;innerMethod check args&quot;</span><span class="o">;</span>
-</span><span class='line'>           <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">var2</span><span class="o">);</span>
-</span><span class='line'>           <span class="o">(</span><span class="k">new</span> <span class="n">Throwable</span><span class="o">()).</span><span class="na">printStackTrace</span><span class="o">();</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>     <span class="o">}</span>
-</span><span class='line'>  <span class="o">};</span>
-</span><span class='line'>  <span class="n">checkArgs$</span><span class="o">.</span><span class="na">invoke</span><span class="o">();</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">outMethodCapture</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="kd">final</span> <span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">  <span class="nc">Intrinsics</span><span class="o">.</span><span class="na">checkParameterIsNotNull</span><span class="o">(</span><span class="n">args</span><span class="o">,</span> <span class="s">"args"</span><span class="o">);</span>
+</span><span class="line">  <span class="o">&lt;</span><span class="n">undefinedtype</span><span class="o">&gt;</span> <span class="n">checkArgs</span><span class="err">$</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Function0</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">     <span class="c1">// $FF: synthetic method</span>
+</span><span class="line">     <span class="c1">// $FF: bridge method</span>
+</span><span class="line">     <span class="kd">public</span> <span class="nc">Object</span> <span class="nf">invoke</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">this</span><span class="o">.</span><span class="na">invoke</span><span class="o">();</span>
+</span><span class="line">        <span class="k">return</span> <span class="nc">Unit</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">;</span>
+</span><span class="line">     <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">     <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">invoke</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">Object</span><span class="o">[]</span> <span class="n">var1</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Object</span><span class="o">[])</span><span class="n">args</span><span class="o">;</span>
+</span><span class="line">        <span class="k">if</span><span class="o">(</span><span class="n">var1</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">           <span class="nc">String</span> <span class="n">var2</span> <span class="o">=</span> <span class="s">"innerMethod check args"</span><span class="o">;</span>
+</span><span class="line">           <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">var2</span><span class="o">);</span>
+</span><span class="line">           <span class="o">(</span><span class="k">new</span> <span class="nc">Throwable</span><span class="o">()).</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">     <span class="o">}</span>
+</span><span class="line">  <span class="o">};</span>
+</span><span class="line">  <span class="n">checkArgs</span><span class="err">$</span><span class="o">.</span><span class="na">invoke</span><span class="o">();</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>如上实现原理，就是局部方法实现其实就是实现了一个匿名内部类的实例，然后再次调用即可。
 对于不捕获的局部方法要稍有不同，首先我们反编译得到对应的Java代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">outMethodNonCapture</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">Intrinsics</span><span class="o">.</span><span class="na">checkParameterIsNotNull</span><span class="o">(</span><span class="n">args</span><span class="o">,</span> <span class="s">&quot;args&quot;</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="n">undefinedtype</span><span class="o">&gt;</span> <span class="n">checkArgs$</span> <span class="o">=</span> <span class="kc">null</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">;</span>
-</span><span class='line'>  <span class="n">checkArgs$</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">args</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>我们得到的是一个不完整的代码，这时候需要我们前往项目工程，结合一些对应的class文件分析。首先我们找到类似这样的文件<code>MainKt$outMethodCapture$1.class</code> (其class文件按照”文件名$方法名$内部类序号”的规则)。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">outMethodNonCapture</span><span class="o">(</span><span class="nd">@NotNull</span> <span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">  <span class="nc">Intrinsics</span><span class="o">.</span><span class="na">checkParameterIsNotNull</span><span class="o">(</span><span class="n">args</span><span class="o">,</span> <span class="s">"args"</span><span class="o">);</span>
+</span><span class="line">  <span class="o">&lt;</span><span class="n">undefinedtype</span><span class="o">&gt;</span> <span class="n">checkArgs</span><span class="err">$</span> <span class="o">=</span> <span class="kc">null</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">;</span>
+</span><span class="line">  <span class="n">checkArgs</span><span class="err">$</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">args</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>我们得到的是一个不完整的代码，这时候需要我们前往项目工程，结合一些对应的class文件分析。首先我们找到类似这样的文件<code class="language-plaintext highlighter-rouge">MainKt$outMethodCapture$1.class</code> (其class文件按照”文件名$方法名$内部类序号”的规则)。</p>
 
 <p>使用javap方法再次反编译分析该文件，注意对于$符号需要简单处理一下。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="err">➜</span>  <span class="n">KotlinInnerFunction</span> <span class="n">javap</span> <span class="o">-</span><span class="n">c</span> <span class="s">&quot;MainKt\$outMethodNonCapture\$1.class&quot;</span>
-</span><span class='line'><span class="n">Compiled</span> <span class="n">from</span> <span class="s">&quot;Main.kt&quot;</span>
-</span><span class='line'><span class="kd">final</span> <span class="kd">class</span> <span class="nc">MainKt</span><span class="n">$outMethodNonCapture$1</span> <span class="kd">extends</span> <span class="n">kotlin</span><span class="o">.</span><span class="na">jvm</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">Lambda</span> <span class="kd">implements</span> <span class="n">kotlin</span><span class="o">.</span><span class="na">jvm</span><span class="o">.</span><span class="na">functions</span><span class="o">.</span><span class="na">Function1</span><span class="o">&lt;</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[],</span> <span class="n">kotlin</span><span class="o">.</span><span class="na">Unit</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">MainKt$outMethodNonCapture$1</span> <span class="n">INSTANCE</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">public</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">);</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">aload_1</span>
-</span><span class='line'>       <span class="mi">2</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">11</span>                 <span class="c1">// class &quot;[Ljava/lang/String;&quot;</span>
-</span><span class='line'>       <span class="mi">5</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">14</span>                 <span class="c1">// Method invoke:([Ljava/lang/String;)V</span>
-</span><span class='line'>       <span class="mi">8</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">20</span>                 <span class="c1">// Field kotlin/Unit.INSTANCE:Lkotlin/Unit;</span>
-</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="n">areturn</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[]);</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_1</span>
-</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">23</span>                 <span class="c1">// String args</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">29</span>                 <span class="c1">// Method kotlin/jvm/internal/Intrinsics.checkParameterIsNotNull:(Ljava/lang/Object;Ljava/lang/String;)V</span>
-</span><span class='line'>       <span class="mi">6</span><span class="o">:</span> <span class="n">aload_1</span>
-</span><span class='line'>       <span class="mi">7</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">31</span>                 <span class="c1">// class &quot;[Ljava/lang/Object;&quot;</span>
-</span><span class='line'>      <span class="mi">10</span><span class="o">:</span> <span class="n">astore_2</span>
-</span><span class='line'>      <span class="mi">11</span><span class="o">:</span> <span class="n">aload_2</span>
-</span><span class='line'>      <span class="mi">12</span><span class="o">:</span> <span class="n">arraylength</span>
-</span><span class='line'>      <span class="mi">13</span><span class="o">:</span> <span class="n">ifne</span>          <span class="mi">20</span>
-</span><span class='line'>      <span class="mi">16</span><span class="o">:</span> <span class="n">iconst_1</span>
-</span><span class='line'>      <span class="mi">17</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">21</span>
-</span><span class='line'>      <span class="mi">20</span><span class="o">:</span> <span class="n">iconst_0</span>
-</span><span class='line'>      <span class="mi">21</span><span class="o">:</span> <span class="n">ifeq</span>          <span class="mi">44</span>
-</span><span class='line'>      <span class="mi">24</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">33</span>                 <span class="c1">// String outMethodNonCapture check args</span>
-</span><span class='line'>      <span class="mi">26</span><span class="o">:</span> <span class="n">astore_2</span>
-</span><span class='line'>      <span class="mi">27</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">39</span>                 <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
-</span><span class='line'>      <span class="mi">30</span><span class="o">:</span> <span class="n">aload_2</span>
-</span><span class='line'>      <span class="mi">31</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">45</span>                 <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/Object;)V</span>
-</span><span class='line'>      <span class="mi">34</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">47</span>                 <span class="c1">// class java/lang/Throwable</span>
-</span><span class='line'>      <span class="mi">37</span><span class="o">:</span> <span class="n">dup</span>
-</span><span class='line'>      <span class="mi">38</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">51</span>                 <span class="c1">// Method java/lang/Throwable.&quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>      <span class="mi">41</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">54</span>                 <span class="c1">// Method java/lang/Throwable.printStackTrace:()V</span>
-</span><span class='line'>      <span class="mi">44</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">MainKt$outMethodNonCapture$1</span><span class="o">();</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
-</span><span class='line'>       <span class="mi">1</span><span class="o">:</span> <span class="n">iconst_1</span>
-</span><span class='line'>       <span class="mi">2</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">61</span>                 <span class="c1">// Method kotlin/jvm/internal/Lambda.&quot;&lt;init&gt;&quot;:(I)V</span>
-</span><span class='line'>       <span class="mi">5</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">static</span> <span class="o">{};</span>
-</span><span class='line'>    <span class="nl">Code:</span>
-</span><span class='line'>       <span class="mi">0</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">2</span>                  <span class="c1">// class MainKt$outMethodNonCapture$1</span>
-</span><span class='line'>       <span class="mi">3</span><span class="o">:</span> <span class="n">dup</span>
-</span><span class='line'>       <span class="mi">4</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">80</span>                 <span class="c1">// Method &quot;&lt;init&gt;&quot;:()V</span>
-</span><span class='line'>       <span class="mi">7</span><span class="o">:</span> <span class="n">putstatic</span>     <span class="err">#</span><span class="mi">82</span>                 <span class="c1">// Field INSTANCE:LMainKt$outMethodNonCapture$1;</span>
-</span><span class='line'>      <span class="mi">10</span><span class="o">:</span> <span class="k">return</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+<span class="line-number">55</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="err">➜</span>  <span class="nc">KotlinInnerFunction</span> <span class="n">javap</span> <span class="o">-</span><span class="n">c</span> <span class="s">"MainKt\$outMethodNonCapture\$1.class"</span>
+</span><span class="line"><span class="nc">Compiled</span> <span class="n">from</span> <span class="s">"Main.kt"</span>
+</span><span class="line"><span class="kd">final</span> <span class="kd">class</span> <span class="nc">MainKt</span><span class="n">$outMethodNonCapture</span><span class="err">$</span><span class="mi">1</span> <span class="kd">extends</span> <span class="n">kotlin</span><span class="o">.</span><span class="na">jvm</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">Lambda</span> <span class="kd">implements</span> <span class="n">kotlin</span><span class="o">.</span><span class="na">jvm</span><span class="o">.</span><span class="na">functions</span><span class="o">.</span><span class="na">Function1</span><span class="o">&lt;</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[],</span> <span class="n">kotlin</span><span class="o">.</span><span class="na">Unit</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class="line">  <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">MainKt</span><span class="n">$outMethodNonCapture</span><span class="err">$</span><span class="mi">1</span> <span class="no">INSTANCE</span><span class="o">;</span>
+</span><span class="line">
+</span><span class="line">  <span class="kd">public</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Object</span><span class="o">);</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">       <span class="mi">1</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class="line">       <span class="mi">2</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">11</span>                 <span class="c1">// class "[Ljava/lang/String;"</span>
+</span><span class="line">       <span class="mi">5</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">14</span>                 <span class="c1">// Method invoke:([Ljava/lang/String;)V</span>
+</span><span class="line">       <span class="mi">8</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">20</span>                 <span class="c1">// Field kotlin/Unit.INSTANCE:Lkotlin/Unit;</span>
+</span><span class="line">      <span class="mi">11</span><span class="o">:</span> <span class="n">areturn</span>
+</span><span class="line">
+</span><span class="line">  <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">[]);</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class="line">       <span class="mi">1</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">23</span>                 <span class="c1">// String args</span>
+</span><span class="line">       <span class="mi">3</span><span class="o">:</span> <span class="n">invokestatic</span>  <span class="err">#</span><span class="mi">29</span>                 <span class="c1">// Method kotlin/jvm/internal/Intrinsics.checkParameterIsNotNull:(Ljava/lang/Object;Ljava/lang/String;)V</span>
+</span><span class="line">       <span class="mi">6</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class="line">       <span class="mi">7</span><span class="o">:</span> <span class="n">checkcast</span>     <span class="err">#</span><span class="mi">31</span>                 <span class="c1">// class "[Ljava/lang/Object;"</span>
+</span><span class="line">      <span class="mi">10</span><span class="o">:</span> <span class="n">astore_2</span>
+</span><span class="line">      <span class="mi">11</span><span class="o">:</span> <span class="n">aload_2</span>
+</span><span class="line">      <span class="mi">12</span><span class="o">:</span> <span class="n">arraylength</span>
+</span><span class="line">      <span class="mi">13</span><span class="o">:</span> <span class="n">ifne</span>          <span class="mi">20</span>
+</span><span class="line">      <span class="mi">16</span><span class="o">:</span> <span class="n">iconst_1</span>
+</span><span class="line">      <span class="mi">17</span><span class="o">:</span> <span class="k">goto</span>          <span class="mi">21</span>
+</span><span class="line">      <span class="mi">20</span><span class="o">:</span> <span class="n">iconst_0</span>
+</span><span class="line">      <span class="mi">21</span><span class="o">:</span> <span class="n">ifeq</span>          <span class="mi">44</span>
+</span><span class="line">      <span class="mi">24</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">33</span>                 <span class="c1">// String outMethodNonCapture check args</span>
+</span><span class="line">      <span class="mi">26</span><span class="o">:</span> <span class="n">astore_2</span>
+</span><span class="line">      <span class="mi">27</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">39</span>                 <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class="line">      <span class="mi">30</span><span class="o">:</span> <span class="n">aload_2</span>
+</span><span class="line">      <span class="mi">31</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">45</span>                 <span class="c1">// Method java/io/PrintStream.println:(Ljava/lang/Object;)V</span>
+</span><span class="line">      <span class="mi">34</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">47</span>                 <span class="c1">// class java/lang/Throwable</span>
+</span><span class="line">      <span class="mi">37</span><span class="o">:</span> <span class="n">dup</span>
+</span><span class="line">      <span class="mi">38</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">51</span>                 <span class="c1">// Method java/lang/Throwable."&lt;init&gt;":()V</span>
+</span><span class="line">      <span class="mi">41</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">54</span>                 <span class="c1">// Method java/lang/Throwable.printStackTrace:()V</span>
+</span><span class="line">      <span class="mi">44</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line">
+</span><span class="line">  <span class="nc">MainKt</span><span class="n">$outMethodNonCapture</span><span class="err">$</span><span class="mi">1</span><span class="o">();</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class="line">       <span class="mi">1</span><span class="o">:</span> <span class="n">iconst_1</span>
+</span><span class="line">       <span class="mi">2</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">61</span>                 <span class="c1">// Method kotlin/jvm/internal/Lambda."&lt;init&gt;":(I)V</span>
+</span><span class="line">       <span class="mi">5</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line">
+</span><span class="line">  <span class="kd">static</span> <span class="o">{};</span>
+</span><span class="line">    <span class="nl">Code:</span>
+</span><span class="line">       <span class="mi">0</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">2</span>                  <span class="c1">// class MainKt$outMethodNonCapture$1</span>
+</span><span class="line">       <span class="mi">3</span><span class="o">:</span> <span class="n">dup</span>
+</span><span class="line">       <span class="mi">4</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">80</span>                 <span class="c1">// Method "&lt;init&gt;":()V</span>
+</span><span class="line">       <span class="mi">7</span><span class="o">:</span> <span class="n">putstatic</span>     <span class="err">#</span><span class="mi">82</span>                 <span class="c1">// Field INSTANCE:LMainKt$outMethodNonCapture$1;</span>
+</span><span class="line">      <span class="mi">10</span><span class="o">:</span> <span class="k">return</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>上面的类其实比较简单，更重要的这是一个单例的实现。因为这样相比捕获的情况下，减少了匿名内部类的生成和实例的创建，理论上带来的代价也会更小。</p>
 
 <p>考虑到上面的对比，如果在使用局部方法时，建议使用不捕获外部变量的方式会更加推荐。</p>
 
-<h3>使用注意</h3>
-
+<h3 id="使用注意">使用注意</h3>
 <p>是的，使用局部方法有一个注意事项，也就是一种规则约定，那就是需要先定义才能使用，否则会报错，如下所示</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">outMethodInvalidCase</span><span class="o">(</span><span class="nl">args:</span> <span class="n">Array</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">checkArgs</span><span class="o">()</span><span class="c1">//invalid unresolved reference</span>
-</span><span class='line'>   <span class="n">fun</span> <span class="nf">checkArgs</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>       <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'>           <span class="n">println</span><span class="o">(</span><span class="s">&quot;innerMethod check args&quot;</span><span class="o">)</span>
-</span><span class='line'>           <span class="n">Throwable</span><span class="o">().</span><span class="na">printStackTrace</span><span class="o">()</span>
-</span><span class='line'>       <span class="o">}</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>   <span class="n">checkArgs</span><span class="o">()</span><span class="c1">//valid</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>
-但是呢，先定义局部方法，再使用还是有一些问题，这种问题主要表现在代码可读性上。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">fun</span> <span class="nf">outMethodInvalidCase</span><span class="o">(</span><span class="nl">args:</span> <span class="nc">Array</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;)</span> <span class="o">{</span>
+</span><span class="line">   <span class="n">checkArgs</span><span class="o">()</span><span class="c1">//invalid unresolved reference</span>
+</span><span class="line">   <span class="n">fun</span> <span class="nf">checkArgs</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">       <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">           <span class="n">println</span><span class="o">(</span><span class="s">"innerMethod check args"</span><span class="o">)</span>
+</span><span class="line">           <span class="nc">Throwable</span><span class="o">().</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class="line">       <span class="o">}</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">   <span class="n">checkArgs</span><span class="o">()</span><span class="c1">//valid</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>但是呢，先定义局部方法，再使用还是有一些问题，这种问题主要表现在代码可读性上。</p>
 
 <p>试想一下，如果你进入一个方法，看到的是一连串的局部方法，可能或多或少有点别扭。</p>
 
 <p>但是试想一下，既然有这样的问题，为什么还要被设计成这个样子呢。首先，我们先看个小例子</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">0</span><span class="n">fun</span> <span class="n">outMethodInvalidCase</span><span class="o">(</span><span class="nl">args:</span> <span class="n">Array</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;)</span> <span class="o">{</span>
-</span><span class='line'><span class="mi">1</span>   <span class="n">checkArgs</span><span class="o">(</span><span class="n">args</span><span class="o">)</span>
-</span><span class='line'><span class="mi">2</span>   <span class="n">var</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1">//the reason why it&#39;s unresolved</span>
-</span><span class='line'><span class="mi">3</span>   <span class="n">fun</span> <span class="n">checkArgs</span><span class="o">(</span><span class="nl">args:</span> <span class="n">Array</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;)</span> <span class="o">{</span>
-</span><span class='line'><span class="mi">4</span>       <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'><span class="mi">5</span>           <span class="n">println</span><span class="o">(</span><span class="s">&quot;outMethodNonCapture check args&quot;</span><span class="o">)</span>
-</span><span class='line'><span class="mi">6</span>           <span class="n">Throwable</span><span class="o">().</span><span class="na">printStackTrace</span><span class="o">()</span>
-</span><span class='line'><span class="mi">7</span>           <span class="n">a</span><span class="o">.</span><span class="na">toString</span><span class="o">()</span>
-</span><span class='line'><span class="mi">8</span>       <span class="o">}</span>
-</span><span class='line'><span class="mi">9</span>   <span class="o">}</span>
-</span><span class='line'><span class="mi">10</span><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="mi">0</span><span class="n">fun</span> <span class="nf">outMethodInvalidCase</span><span class="o">(</span><span class="nl">args:</span> <span class="nc">Array</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;)</span> <span class="o">{</span>
+</span><span class="line"><span class="mi">1</span>   <span class="n">checkArgs</span><span class="o">(</span><span class="n">args</span><span class="o">)</span>
+</span><span class="line"><span class="mi">2</span>   <span class="kt">var</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1">//the reason why it's unresolved</span>
+</span><span class="line"><span class="mi">3</span>   <span class="n">fun</span> <span class="nf">checkArgs</span><span class="o">(</span><span class="nl">args:</span> <span class="nc">Array</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;)</span> <span class="o">{</span>
+</span><span class="line"><span class="mi">4</span>       <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line"><span class="mi">5</span>           <span class="n">println</span><span class="o">(</span><span class="s">"outMethodNonCapture check args"</span><span class="o">)</span>
+</span><span class="line"><span class="mi">6</span>           <span class="nc">Throwable</span><span class="o">().</span><span class="na">printStackTrace</span><span class="o">()</span>
+</span><span class="line"><span class="mi">7</span>           <span class="n">a</span><span class="o">.</span><span class="na">toString</span><span class="o">()</span>
+</span><span class="line"><span class="mi">8</span>       <span class="o">}</span>
+</span><span class="line"><span class="mi">9</span>   <span class="o">}</span>
+</span><span class="line"><span class="mi">10</span><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>因为局部方法可以capture局部变量，checkArgs捕获了局部变量a，当第一行代码checkArgs调用时，而checkArgs看似定义了，但是第二行却还没有执行到，导致了编译问题。</p>
 
 <p>目前，capture变量和非capture的局部方法使用都是一致的，都需要先定义，再使用。</p>
@@ -568,8 +532,6 @@ fun methodA() { fun methodB &hellip;">
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -581,15 +543,16 @@ fun methodA() { fun methodB &hellip;">
 
 
 
-  
-
 
 <time datetime="2018-10-07T19:47:00+08:00" pubdate data-updated="true">Oct 7<span>th</span>, 2018</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/kotlin/'>Kotlin</a>
+    
+    <a class="category" href="/blog/categories/kotlin/">Kotlin</a>
   
 </span>
 
@@ -682,10 +645,6 @@ fun methodA() { fun methodB &hellip;">
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -759,6 +718,10 @@ fun methodA() { fun methodB &hellip;">
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

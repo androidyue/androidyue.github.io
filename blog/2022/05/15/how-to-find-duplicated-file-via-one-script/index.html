@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2022-05-15T22:16:00+08:00" pubdate data-updated="true">May 15<span>th</span>, 2022</time>
         
@@ -190,315 +188,305 @@
 
 <!--more-->
 
-
-<h2>脚本思路</h2>
-
+<h2 id="脚本思路">脚本思路</h2>
 <ul>
-<li>利用md5对内容进行计算</li>
-<li>设置一个字典，key是md5值，value是对应的文件路径列表</li>
-<li>如果上字典的value项（文件路径列表）多余1个，则表示存在重复的文件</li>
-<li>利用重复的文件的数量和重复文件的大小，我们计算出总共可以节省的空间大小</li>
+  <li>利用md5对内容进行计算</li>
+  <li>设置一个字典，key是md5值，value是对应的文件路径列表</li>
+  <li>如果上字典的value项（文件路径列表）多余1个，则表示存在重复的文件</li>
+  <li>利用重复的文件的数量和重复文件的大小，我们计算出总共可以节省的空间大小</li>
 </ul>
 
+<h2 id="脚本内容">脚本内容</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+<span class="line-number">55</span>
+<span class="line-number">56</span>
+<span class="line-number">57</span>
+<span class="line-number">58</span>
+<span class="line-number">59</span>
+<span class="line-number">60</span>
+<span class="line-number">61</span>
+<span class="line-number">62</span>
+<span class="line-number">63</span>
+<span class="line-number">64</span>
+<span class="line-number">65</span>
+<span class="line-number">66</span>
+<span class="line-number">67</span>
+<span class="line-number">68</span>
+<span class="line-number">69</span>
+<span class="line-number">70</span>
+<span class="line-number">71</span>
+<span class="line-number">72</span>
+<span class="line-number">73</span>
+<span class="line-number">74</span>
+<span class="line-number">75</span>
+<span class="line-number">76</span>
+<span class="line-number">77</span>
+<span class="line-number">78</span>
+<span class="line-number">79</span>
+<span class="line-number">80</span>
+<span class="line-number">81</span>
+<span class="line-number">82</span>
+<span class="line-number">83</span>
+<span class="line-number">84</span>
+<span class="line-number">85</span>
+<span class="line-number">86</span>
+<span class="line-number">87</span>
+</pre></td><td class="code"><pre><code class="ruby"><span class="line"><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class="line"><span class="c1"># encoding: utf-8</span>
+</span><span class="line"><span class="nb">require</span> <span class="s1">'find'</span>
+</span><span class="line"><span class="nb">require</span> <span class="s1">'digest/md5'</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">#  通常为项目的路径</span>
+</span><span class="line"><span class="n">targetDirToSearch</span> <span class="o">=</span> <span class="no">ARGV</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span class="line"><span class="vg">$hashesFiles</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class="line"><span class="vg">$sizeCanBeSaved</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">getFileMd5Checksum</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class="line">	<span class="k">return</span> <span class="no">Digest</span><span class="o">::</span><span class="no">MD5</span><span class="p">.</span><span class="nf">hexdigest</span><span class="p">(</span><span class="no">File</span><span class="p">.</span><span class="nf">read</span><span class="p">(</span><span class="n">file</span><span class="p">))</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">shouldCheckThisFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line">	<span class="n">isFile</span> <span class="o">=</span> <span class="no">File</span><span class="p">.</span><span class="nf">file?</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line">	<span class="n">isGitFile</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="nf">include?</span> <span class="s2">".git/"</span>
+</span><span class="line">	<span class="n">isGradleFile</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="nf">include?</span> <span class="s2">".gradle/"</span>
+</span><span class="line">	<span class="n">isIdeFile</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="nf">include?</span> <span class="s2">".idea/"</span>
+</span><span class="line">	<span class="k">return</span> <span class="n">isFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isGitFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isGradleFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isIdeFile</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">getFilesByMd5</span><span class="p">(</span><span class="n">md5Value</span><span class="p">)</span>
+</span><span class="line">	<span class="n">existingFiles</span> <span class="o">=</span> <span class="vg">$hashesFiles</span><span class="p">[</span><span class="n">md5Value</span><span class="p">]</span>
+</span><span class="line">	<span class="k">if</span> <span class="p">(</span><span class="n">existingFiles</span> <span class="o">==</span> <span class="kp">nil</span><span class="p">)</span>
+</span><span class="line">		<span class="n">existingFiles</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">	<span class="k">end</span>
+</span><span class="line">	<span class="k">return</span> <span class="n">existingFiles</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">recordFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line">	<span class="n">md5</span> <span class="o">=</span> <span class="n">getFileMd5Checksum</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line">	<span class="vg">$hashesFiles</span><span class="p">[</span><span class="n">md5</span><span class="p">]</span> <span class="o">=</span> <span class="n">getFilesByMd5</span><span class="p">(</span><span class="n">md5</span><span class="p">).</span><span class="nf">push</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">printHashesFiles</span><span class="p">()</span>
+</span><span class="line">	<span class="vg">$hashesFiles</span><span class="p">.</span><span class="nf">values</span><span class="p">.</span><span class="nf">select</span> <span class="p">{</span>
+</span><span class="line">		<span class="o">|</span><span class="n">array</span><span class="o">|</span> <span class="n">array</span><span class="p">.</span><span class="nf">size</span> <span class="o">&gt;</span> <span class="mi">1</span>
+</span><span class="line">	<span class="p">}.</span><span class="nf">sort_by</span> <span class="p">{</span>
+</span><span class="line">		<span class="o">|</span><span class="n">files</span><span class="o">|</span> <span class="no">File</span><span class="p">.</span><span class="nf">size</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span class="line">	<span class="p">}.</span><span class="nf">each</span> <span class="p">{</span>
+</span><span class="line">		<span class="o">|</span><span class="n">array</span><span class="o">|</span>
+</span><span class="line">			<span class="n">fileSize</span> <span class="o">=</span> <span class="no">File</span><span class="p">.</span><span class="nf">size</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span class="line">			<span class="nb">puts</span> <span class="s2">"Duplicated files size=</span><span class="si">#{</span><span class="n">format_mb</span><span class="p">(</span><span class="n">fileSize</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line">			<span class="n">array</span><span class="p">.</span><span class="nf">each</span> <span class="p">{</span>
+</span><span class="line">				<span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="nb">puts</span> <span class="n">f</span>
+</span><span class="line">			<span class="p">}</span>
+</span><span class="line">			<span class="vg">$sizeCanBeSaved</span> <span class="o">+=</span> <span class="n">fileSize</span> <span class="o">*</span> <span class="p">(</span><span class="n">array</span><span class="p">.</span><span class="nf">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class="line">			<span class="nb">puts</span> <span class="s2">""</span>
+</span><span class="line">	<span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">format_mb</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+</span><span class="line">	<span class="n">conv</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">'b'</span><span class="p">,</span> <span class="s1">'kb'</span><span class="p">,</span> <span class="s1">'mb'</span><span class="p">,</span> <span class="s1">'gb'</span><span class="p">,</span> <span class="s1">'tb'</span><span class="p">,</span> <span class="s1">'pb'</span><span class="p">,</span> <span class="s1">'eb'</span> <span class="p">];</span>
+</span><span class="line">	<span class="n">scale</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">;</span>
+</span><span class="line">
+</span><span class="line">	<span class="n">ndx</span><span class="o">=</span><span class="mi">1</span>
+</span><span class="line">	<span class="k">if</span><span class="p">(</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="n">ndx</span><span class="p">)</span>  <span class="p">)</span> <span class="k">then</span>
+</span><span class="line">	  <span class="k">return</span> <span class="s2">"</span><span class="si">#{</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="p">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line">	<span class="k">end</span>
+</span><span class="line">	<span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">.</span><span class="nf">to_f</span>
+</span><span class="line">	<span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">].</span><span class="nf">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">ndx</span><span class="o">|</span>
+</span><span class="line">	  <span class="k">if</span><span class="p">(</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="n">ndx</span><span class="p">)</span>  <span class="p">)</span> <span class="k">then</span>
+</span><span class="line">		<span class="k">return</span> <span class="s2">"</span><span class="si">#{</span><span class="s1">'%.3f'</span> <span class="o">%</span> <span class="p">(</span><span class="n">size</span><span class="o">/</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="p">(</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="p">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line">	  <span class="k">end</span>
+</span><span class="line">	<span class="k">end</span>
+</span><span class="line">	<span class="n">ndx</span><span class="o">=</span><span class="mi">7</span>
+</span><span class="line">	<span class="k">return</span> <span class="s2">"</span><span class="si">#{</span><span class="s1">'%.3f'</span> <span class="o">%</span> <span class="p">(</span><span class="n">size</span><span class="o">/</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="p">(</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="p">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">getFileSize</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line">	<span class="k">return</span> <span class="n">format_mb</span><span class="p">(</span><span class="no">File</span><span class="p">.</span><span class="nf">size</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="n">dirToSearch</span><span class="p">)</span>
+</span><span class="line">	<span class="no">Find</span><span class="p">.</span><span class="nf">find</span><span class="p">(</span><span class="n">dirToSearch</span><span class="p">).</span><span class="nf">select</span> <span class="p">{</span>
+</span><span class="line">		<span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="n">shouldCheckThisFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line">	<span class="p">}.</span><span class="nf">each</span> <span class="p">{</span>
+</span><span class="line">		<span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="nb">puts</span> <span class="s2">"Checking file </span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line">			<span class="n">recordFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class="line">	<span class="p">}</span>
+</span><span class="line">	<span class="n">printHashesFiles</span><span class="p">()</span>
+</span><span class="line">	<span class="nb">puts</span> <span class="s2">"Size can be saved </span><span class="si">#{</span><span class="n">format_mb</span><span class="p">(</span><span class="vg">$sizeCanBeSaved</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</span><span class="line"><span class="k">end</span>
+</span><span class="line">
+</span><span class="line"><span class="n">start</span><span class="p">(</span><span class="n">targetDirToSearch</span><span class="p">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>脚本内容</h2>
+<h2 id="执行结果">执行结果</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">MacBook-Pro-8:~/Documents/AndroidProjects/EasyHybridApp<span class="o">(</span>master|✚3<span class="o">)</span> % findDuplicatedFiles.rb ./
+</span><span class="line">Checking file ./.gitignore
+</span><span class="line">Checking file ./EasyHybridApp.iml
+</span><span class="line">Checking file ./app/.gitignore
+</span><span class="line">Checking file ./app/app.iml
+</span><span class="line">Checking file ./app/build.gradle
+</span><span class="line">Checking file ./app/proguard-rules.pro
+</span><span class="line">Checking file ./app/src/androidTest/java/com/droidyue/easyhybridapp/ExampleInstrumentedTest.kt
+</span><span class="line">Checking file ./app/src/main/AndroidManifest.xml
+</span><span class="line">Checking file ./app/src/main/java/com/droidyue/easyhybridapp/AppInfo.kt
+</span><span class="line">Checking file ./app/src/main/res/layout/activity_main.xml
+</span><span class="line">Checking file ./app/src/main/res/values/colors.xml
+</span><span class="line">Checking file ./app/src/main/res/values/strings.xml
+</span><span class="line">Checking file ./app/src/main/res/values/styles.xml
+</span><span class="line">Checking file ./app/src/main/res/xml/network_security_config.xml
+</span><span class="line">Checking file ./app/src/test/java/com/droidyue/easyhybridapp/ExampleUnitTest.kt
+</span><span class="line">Checking file ./build.gradle
+</span><span class="line">Checking file ./common/.gitignore
+</span><span class="line">Checking file ./common/build.gradle
+</span><span class="line">Checking file ./common/common.iml
+</span><span class="line">Checking file ./common/consumer-rules.pro
+</span><span class="line">Checking file ./common/proguard-rules.pro
+</span><span class="line">Checking file ./common/src/androidTest/java/com/droidyue/common/ExampleInstrumentedTest.kt
+</span><span class="line">Checking file ./common/src/main/AndroidManifest.xml
+</span><span class="line">Checking file ./common/src/main/java/com/droidyue/common/ClassExt.kt
+</span><span class="line">Checking file ./common/src/main/java/com/droidyue/common/ConfirmDialogExt.kt
+</span><span class="line">Checking file ./common/src/main/java/com/droidyue/common/ContextExt.kt
+</span><span class="line">Checking file ./webview/src/androidTest/java/com/droidyue/webview/ExampleInstrumentedTest.kt
+</span><span class="line">Checking file ./webview/src/main/java/com/droidyue/webview/webviewclient/PageRequestWebViewClient.kt
+</span><span class="line">Checking file ./webview/src/main/java/com/droidyue/webview/webviewclient/WhitelistLaunchingIntentWebViewClient.kt
+</span><span class="line">Checking file ./webview/src/main/res/layout/activity_webview.xml
+</span><span class="line">Checking file ./webview/src/main/res/raw/deeplink_whitelist.json
+</span><span class="line">Checking file ./webview/src/main/res/values/strings.xml
+</span><span class="line">Checking file ./webview/src/test/java/com/droidyue/webview/ExampleUnitTest.kt
+</span><span class="line">Checking file ./webview/webview.iml
+</span><span class="line">Duplicated files <span class="nv">size</span><span class="o">=</span>0 b
+</span><span class="line">./common/consumer-rules.pro
+</span><span class="line">./webview/consumer-rules.pro
+</span><span class="line">
+</span><span class="line">Duplicated files <span class="nv">size</span><span class="o">=</span>7 b
+</span><span class="line">./app/.gitignore
+</span><span class="line">./common/.gitignore
+</span><span class="line">./webview/.gitignore
+</span><span class="line">
+</span><span class="line">Duplicated files <span class="nv">size</span><span class="o">=</span>272 b
+</span><span class="line">./app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+</span><span class="line">./app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+</span><span class="line">
+</span><span class="line">Duplicated files <span class="nv">size</span><span class="o">=</span>751 b
+</span><span class="line">./app/proguard-rules.pro
+</span><span class="line">./common/proguard-rules.pro
+</span><span class="line">./webview/proguard-rules.pro
+</span><span class="line">
+</span><span class="line">Size can be saved 1788 b</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
-</span><span class='line'><span class="c1"># encoding: utf-8</span>
-</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;find&#39;</span>
-</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;digest/md5&#39;</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">#  通常为项目的路径</span>
-</span><span class='line'><span class="n">targetDirToSearch</span> <span class="o">=</span> <span class="no">ARGV</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span>
-</span><span class='line'><span class="vg">$hashesFiles</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span class='line'><span class="vg">$sizeCanBeSaved</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">getFileMd5Checksum</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">return</span> <span class="ss">Digest</span><span class="p">:</span><span class="ss">:MD5</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">(</span><span class="no">File</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">file</span><span class="p">))</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">shouldCheckThisFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">isFile</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">file?</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">isGitFile</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">include?</span> <span class="s2">&quot;.git/&quot;</span>
-</span><span class='line'>  <span class="n">isGradleFile</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">include?</span> <span class="s2">&quot;.gradle/&quot;</span>
-</span><span class='line'>  <span class="n">isIdeFile</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">include?</span> <span class="s2">&quot;.idea/&quot;</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">isFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isGitFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isGradleFile</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isIdeFile</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">getFilesByMd5</span><span class="p">(</span><span class="n">md5Value</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">existingFiles</span> <span class="o">=</span> <span class="vg">$hashesFiles</span><span class="o">[</span><span class="n">md5Value</span><span class="o">]</span>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">existingFiles</span> <span class="o">==</span> <span class="kp">nil</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">existingFiles</span> <span class="o">=</span> <span class="o">[]</span>
-</span><span class='line'>  <span class="k">end</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">existingFiles</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">recordFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">md5</span> <span class="o">=</span> <span class="n">getFileMd5Checksum</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'>  <span class="vg">$hashesFiles</span><span class="o">[</span><span class="n">md5</span><span class="o">]</span> <span class="o">=</span> <span class="n">getFilesByMd5</span><span class="p">(</span><span class="n">md5</span><span class="p">)</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">printHashesFiles</span><span class="p">()</span>
-</span><span class='line'>  <span class="vg">$hashesFiles</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">select</span> <span class="p">{</span>
-</span><span class='line'>      <span class="o">|</span><span class="n">array</span><span class="o">|</span> <span class="n">array</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">1</span>
-</span><span class='line'>  <span class="p">}</span><span class="o">.</span><span class="n">sort_by</span> <span class="p">{</span>
-</span><span class='line'>      <span class="o">|</span><span class="n">files</span><span class="o">|</span> <span class="no">File</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">files</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span>
-</span><span class='line'>      <span class="o">|</span><span class="n">array</span><span class="o">|</span>
-</span><span class='line'>          <span class="n">fileSize</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">array</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span><span class="p">)</span>
-</span><span class='line'>          <span class="nb">puts</span> <span class="s2">&quot;Duplicated files size=</span><span class="si">#{</span><span class="n">format_mb</span><span class="p">(</span><span class="n">fileSize</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'>          <span class="n">array</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span>
-</span><span class='line'>              <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="nb">puts</span> <span class="n">f</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="vg">$sizeCanBeSaved</span> <span class="o">+=</span> <span class="n">fileSize</span> <span class="o">*</span> <span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>          <span class="nb">puts</span> <span class="s2">&quot;&quot;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">format_mb</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">conv</span> <span class="o">=</span> <span class="o">[</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;kb&#39;</span><span class="p">,</span> <span class="s1">&#39;mb&#39;</span><span class="p">,</span> <span class="s1">&#39;gb&#39;</span><span class="p">,</span> <span class="s1">&#39;tb&#39;</span><span class="p">,</span> <span class="s1">&#39;pb&#39;</span><span class="p">,</span> <span class="s1">&#39;eb&#39;</span> <span class="o">]</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">scale</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">ndx</span><span class="o">=</span><span class="mi">1</span>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="n">ndx</span><span class="p">)</span>  <span class="p">)</span> <span class="k">then</span>
-</span><span class='line'>    <span class="k">return</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="o">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'>  <span class="k">end</span>
-</span><span class='line'>  <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="o">.</span><span class="n">to_f</span>
-</span><span class='line'>  <span class="o">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="o">].</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">ndx</span><span class="o">|</span>
-</span><span class='line'>    <span class="k">if</span><span class="p">(</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="n">ndx</span><span class="p">)</span>  <span class="p">)</span> <span class="k">then</span>
-</span><span class='line'>      <span class="k">return</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="s1">&#39;%.3f&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">size</span><span class="o">/</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="p">(</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="o">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'>    <span class="k">end</span>
-</span><span class='line'>  <span class="k">end</span>
-</span><span class='line'>  <span class="n">ndx</span><span class="o">=</span><span class="mi">7</span>
-</span><span class='line'>  <span class="k">return</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="s1">&#39;%.3f&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">size</span><span class="o">/</span><span class="p">(</span><span class="n">scale</span><span class="o">**</span><span class="p">(</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="n">conv</span><span class="o">[</span><span class="n">ndx</span><span class="o">-</span><span class="mi">1</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">getFileSize</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">format_mb</span><span class="p">(</span><span class="no">File</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="n">dirToSearch</span><span class="p">)</span>
-</span><span class='line'>  <span class="no">Find</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">dirToSearch</span><span class="p">)</span><span class="o">.</span><span class="n">select</span> <span class="p">{</span>
-</span><span class='line'>      <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="n">shouldCheckThisFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span>
-</span><span class='line'>      <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="nb">puts</span> <span class="s2">&quot;Checking file </span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'>          <span class="n">recordFile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="n">printHashesFiles</span><span class="p">()</span>
-</span><span class='line'>  <span class="nb">puts</span> <span class="s2">&quot;Size can be saved </span><span class="si">#{</span><span class="n">format_mb</span><span class="p">(</span><span class="vg">$sizeCanBeSaved</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span class='line'><span class="k">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">start</span><span class="p">(</span><span class="n">targetDirToSearch</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>执行结果</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>MacBook-Pro-8:~/Documents/AndroidProjects/EasyHybridApp<span class="o">(</span>master|✚3<span class="o">)</span> % findDuplicatedFiles.rb ./
-</span><span class='line'>Checking file ./.gitignore
-</span><span class='line'>Checking file ./EasyHybridApp.iml
-</span><span class='line'>Checking file ./app/.gitignore
-</span><span class='line'>Checking file ./app/app.iml
-</span><span class='line'>Checking file ./app/build.gradle
-</span><span class='line'>Checking file ./app/proguard-rules.pro
-</span><span class='line'>Checking file ./app/src/androidTest/java/com/droidyue/easyhybridapp/ExampleInstrumentedTest.kt
-</span><span class='line'>Checking file ./app/src/main/AndroidManifest.xml
-</span><span class='line'>Checking file ./app/src/main/java/com/droidyue/easyhybridapp/AppInfo.kt
-</span><span class='line'>Checking file ./app/src/main/res/layout/activity_main.xml
-</span><span class='line'>Checking file ./app/src/main/res/values/colors.xml
-</span><span class='line'>Checking file ./app/src/main/res/values/strings.xml
-</span><span class='line'>Checking file ./app/src/main/res/values/styles.xml
-</span><span class='line'>Checking file ./app/src/main/res/xml/network_security_config.xml
-</span><span class='line'>Checking file ./app/src/test/java/com/droidyue/easyhybridapp/ExampleUnitTest.kt
-</span><span class='line'>Checking file ./build.gradle
-</span><span class='line'>Checking file ./common/.gitignore
-</span><span class='line'>Checking file ./common/build.gradle
-</span><span class='line'>Checking file ./common/common.iml
-</span><span class='line'>Checking file ./common/consumer-rules.pro
-</span><span class='line'>Checking file ./common/proguard-rules.pro
-</span><span class='line'>Checking file ./common/src/androidTest/java/com/droidyue/common/ExampleInstrumentedTest.kt
-</span><span class='line'>Checking file ./common/src/main/AndroidManifest.xml
-</span><span class='line'>Checking file ./common/src/main/java/com/droidyue/common/ClassExt.kt
-</span><span class='line'>Checking file ./common/src/main/java/com/droidyue/common/ConfirmDialogExt.kt
-</span><span class='line'>Checking file ./common/src/main/java/com/droidyue/common/ContextExt.kt
-</span><span class='line'>Checking file ./webview/src/androidTest/java/com/droidyue/webview/ExampleInstrumentedTest.kt
-</span><span class='line'>Checking file ./webview/src/main/java/com/droidyue/webview/webviewclient/PageRequestWebViewClient.kt
-</span><span class='line'>Checking file ./webview/src/main/java/com/droidyue/webview/webviewclient/WhitelistLaunchingIntentWebViewClient.kt
-</span><span class='line'>Checking file ./webview/src/main/res/layout/activity_webview.xml
-</span><span class='line'>Checking file ./webview/src/main/res/raw/deeplink_whitelist.json
-</span><span class='line'>Checking file ./webview/src/main/res/values/strings.xml
-</span><span class='line'>Checking file ./webview/src/test/java/com/droidyue/webview/ExampleUnitTest.kt
-</span><span class='line'>Checking file ./webview/webview.iml
-</span><span class='line'>Duplicated files <span class="nv">size</span><span class="o">=</span>0 b
-</span><span class='line'>./common/consumer-rules.pro
-</span><span class='line'>./webview/consumer-rules.pro
-</span><span class='line'>
-</span><span class='line'>Duplicated files <span class="nv">size</span><span class="o">=</span>7 b
-</span><span class='line'>./app/.gitignore
-</span><span class='line'>./common/.gitignore
-</span><span class='line'>./webview/.gitignore
-</span><span class='line'>
-</span><span class='line'>Duplicated files <span class="nv">size</span><span class="o">=</span>272 b
-</span><span class='line'>./app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-</span><span class='line'>./app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-</span><span class='line'>
-</span><span class='line'>Duplicated files <span class="nv">size</span><span class="o">=</span>751 b
-</span><span class='line'>./app/proguard-rules.pro
-</span><span class='line'>./common/proguard-rules.pro
-</span><span class='line'>./webview/proguard-rules.pro
-</span><span class='line'>
-</span><span class='line'>Size can be saved 1788 b
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>运行建议</h2>
+<h2 id="运行建议">运行建议</h2>
 
 <ul>
-<li>在执行之前建议执行以下clean，比如安卓项目执行<code>./gradlew clean</code></li>
+  <li>在执行之前建议执行以下clean，比如安卓项目执行<code class="language-plaintext highlighter-rouge">./gradlew clean</code></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -534,8 +522,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -547,15 +533,37 @@
 
 
 
-  
-
 
 <time datetime="2022-05-15T22:16:00+08:00" pubdate data-updated="true">May 15<span>th</span>, 2022</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/linux/'>Linux</a>, <a class='category' href='/blog/categories/mac/'>Mac</a>, <a class='category' href='/blog/categories/bash/'>bash</a>, <a class='category' href='/blog/categories/md5/'>md5</a>, <a class='category' href='/blog/categories/ruby/'>ruby</a>, <a class='category' href='/blog/categories/script/'>script</a>, <a class='category' href='/blog/categories/jiao-ben/'>脚本</a>
+    
+    <a class="category" href="/blog/categories/bash/">bash</a>, 
+  
+    
+    <a class="category" href="/blog/categories/ruby/">ruby</a>, 
+  
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/md5/">md5</a>, 
+  
+    
+    <a class="category" href="/blog/categories/script/">script</a>, 
+  
+    
+    <a class="category" href="/blog/categories/jiao-ben/">脚本</a>, 
+  
+    
+    <a class="category" href="/blog/categories/linux/">Linux</a>, 
+  
+    
+    <a class="category" href="/blog/categories/mac/">Mac</a>
   
 </span>
 
@@ -648,10 +656,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -725,6 +729,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

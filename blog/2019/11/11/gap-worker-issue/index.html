@@ -11,8 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="GapWorker导致RecyclerView视频播放声音残留问题 Nov 11th, 2019 场景描述 App 有两个tab，每一个都是Fragment,以FragmentA和FragmentB 代称.
-切到FragmentA 视频播放（在RecyclerViewA 内部）， &hellip;">
+  <meta name="description" content="GapWorker导致RecyclerView视频播放声音残留问题 Nov 11th, 2019 场景描述 App 有两个tab，每一个都是Fragment,以FragmentA和FragmentB 代称. 切到FragmentA 视频播放（在RecyclerViewA 内部）， &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -175,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2019-11-11T20:59:00+08:00" pubdate data-updated="true">Nov 11<span>th</span>, 2019</time>
         
@@ -188,153 +185,137 @@
 <div class="entry-content"><p>场景描述</p>
 
 <ul>
-<li>App 有两个tab，每一个都是Fragment,以FragmentA和FragmentB 代称.</li>
-<li>切到FragmentA 视频播放（在RecyclerViewA 内部），然后切到FragmentB 视频暂停.</li>
-<li>就在此刻，滑动FragmentB 的recyclerView B ，来自FragmentA的视频播放出声音，而且声音是下一条视频的声音。</li>
+  <li>App 有两个tab，每一个都是Fragment,以FragmentA和FragmentB 代称.</li>
+  <li>切到FragmentA 视频播放（在RecyclerViewA 内部），然后切到FragmentB 视频暂停.</li>
+  <li>就在此刻，滑动FragmentB 的recyclerView B ，来自FragmentA的视频播放出声音，而且声音是下一条视频的声音。</li>
 </ul>
-
 
 <!--more-->
 
-
 <p>这确实是一个非常奇怪的问题，不滑动不会出现视频播放声音，必须滑动一下才能出现声音。</p>
 
-<h2>解决思路</h2>
+<h2 id="解决思路">解决思路</h2>
 
-<p>  1.分析日志，查找播放业务相关的代码<br/>
-  2.增加logStackTrace(&ldquo;xxx&rdquo;)用来打印出调用的栈信息</p>
+<p>1.分析日志，查找播放业务相关的代码<br />
+  2.增加logStackTrace(“xxx”)用来打印出调用的栈信息</p>
 
-<h2>辅助方法</h2>
-
+<h2 id="辅助方法">辅助方法</h2>
 <p>该方法用来查看调用的层级关系，实现原理很简单，就是生成一个Throwable，然后打印stacktrace。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">fun</span> <span class="nf">logStackTrace</span><span class="o">(</span><span class="nl">tag:</span> <span class="nc">String</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="nc">BuildConfig</span><span class="o">.</span><span class="na">DEBUG</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="nc">Log</span><span class="o">.</span><span class="na">w</span><span class="o">(</span><span class="s">"logStackTrace $tag"</span><span class="o">,</span> <span class="nc">Throwable</span><span class="o">(</span><span class="n">tag</span><span class="o">))</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">logStackTrace</span><span class="o">(</span><span class="nl">tag:</span> <span class="n">String</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">BuildConfig</span><span class="o">.</span><span class="na">DEBUG</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">Log</span><span class="o">.</span><span class="na">w</span><span class="o">(</span><span class="s">&quot;logStackTrace $tag&quot;</span><span class="o">,</span> <span class="n">Throwable</span><span class="o">(</span><span class="n">tag</span><span class="o">))</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>问题日志</h2>
-
+<h2 id="问题日志">问题日志</h2>
 <p>于是我们得到了如下的日志</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Throwable</span><span class="o">:</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">commonsdk</span><span class="o">.</span><span class="na">utils</span><span class="o">.</span><span class="na">ExtensionKt</span><span class="o">.</span><span class="na">logStackTrace</span><span class="o">(</span><span class="n">Extension</span><span class="o">.</span><span class="na">kt</span><span class="o">:</span><span class="mi">99</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">video</span><span class="o">.</span><span class="na">DiscoveryVideoPlayer</span><span class="o">.</span><span class="na">setUp</span><span class="o">(</span><span class="n">DiscoveryVideoPlayer</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">786</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">shuyu</span><span class="o">.</span><span class="na">gsyvideoplayer</span><span class="o">.</span><span class="na">video</span><span class="o">.</span><span class="na">base</span><span class="o">.</span><span class="na">GSYVideoView</span><span class="o">.</span><span class="na">setUp</span><span class="o">(</span><span class="n">GSYVideoView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">446</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">shuyu</span><span class="o">.</span><span class="na">gsyvideoplayer</span><span class="o">.</span><span class="na">video</span><span class="o">.</span><span class="na">base</span><span class="o">.</span><span class="na">GSYVideoControlView</span><span class="o">.</span><span class="na">setUp</span><span class="o">(</span><span class="n">GSYVideoControlView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">541</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">ui</span><span class="o">.</span><span class="na">adapter</span><span class="o">.</span><span class="na">VideoFeedAdapter</span><span class="o">.</span><span class="na">initVideo</span><span class="o">(</span><span class="n">VideoFeedAdapter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">211</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">ui</span><span class="o">.</span><span class="na">adapter</span><span class="o">.</span><span class="na">VideoFeedAdapter</span><span class="o">.</span><span class="na">onBindViewHolder</span><span class="o">(</span><span class="n">VideoFeedAdapter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">127</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">ui</span><span class="o">.</span><span class="na">adapter</span><span class="o">.</span><span class="na">VideoFeedAdapter</span><span class="o">.</span><span class="na">onBindViewHolder</span><span class="o">(</span><span class="n">VideoFeedAdapter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">34</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">RecyclerView</span><span class="n">$Adapter</span><span class="o">.</span><span class="na">onBindViewHolder</span><span class="o">(</span><span class="n">RecyclerView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6673</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">RecyclerView</span><span class="n">$Adapter</span><span class="o">.</span><span class="na">bindViewHolder</span><span class="o">(</span><span class="n">RecyclerView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6714</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">RecyclerView</span><span class="n">$Recycler</span><span class="o">.</span><span class="na">tryBindViewHolderByDeadline</span><span class="o">(</span><span class="n">RecyclerView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5647</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">RecyclerView</span><span class="n">$Recycler</span><span class="o">.</span><span class="na">tryGetViewHolderForPositionByDeadline</span><span class="o">(</span><span class="n">RecyclerView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5913</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">prefetchPositionWithDeadline</span><span class="o">(</span><span class="n">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">285</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">flushTaskWithDeadline</span><span class="o">(</span><span class="n">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">342</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">flushTasksWithDeadline</span><span class="o">(</span><span class="n">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">358</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">prefetch</span><span class="o">(</span><span class="n">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">365</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">396</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">handleCallback</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">891</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">207</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">7470</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">RuntimeInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">RuntimeInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">524</span><span class="o">)</span>
-</span><span class='line'> <span class="n">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="n">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">958</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Throwable</span><span class="o">:</span> 
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">commonsdk</span><span class="o">.</span><span class="na">utils</span><span class="o">.</span><span class="na">ExtensionKt</span><span class="o">.</span><span class="na">logStackTrace</span><span class="o">(</span><span class="nc">Extension</span><span class="o">.</span><span class="na">kt</span><span class="o">:</span><span class="mi">99</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">video</span><span class="o">.</span><span class="na">DiscoveryVideoPlayer</span><span class="o">.</span><span class="na">setUp</span><span class="o">(</span><span class="nc">DiscoveryVideoPlayer</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">786</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">shuyu</span><span class="o">.</span><span class="na">gsyvideoplayer</span><span class="o">.</span><span class="na">video</span><span class="o">.</span><span class="na">base</span><span class="o">.</span><span class="na">GSYVideoView</span><span class="o">.</span><span class="na">setUp</span><span class="o">(</span><span class="nc">GSYVideoView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">446</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">shuyu</span><span class="o">.</span><span class="na">gsyvideoplayer</span><span class="o">.</span><span class="na">video</span><span class="o">.</span><span class="na">base</span><span class="o">.</span><span class="na">GSYVideoControlView</span><span class="o">.</span><span class="na">setUp</span><span class="o">(</span><span class="nc">GSYVideoControlView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">541</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">ui</span><span class="o">.</span><span class="na">adapter</span><span class="o">.</span><span class="na">VideoFeedAdapter</span><span class="o">.</span><span class="na">initVideo</span><span class="o">(</span><span class="nc">VideoFeedAdapter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">211</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">ui</span><span class="o">.</span><span class="na">adapter</span><span class="o">.</span><span class="na">VideoFeedAdapter</span><span class="o">.</span><span class="na">onBindViewHolder</span><span class="o">(</span><span class="nc">VideoFeedAdapter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">127</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxxxx</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">ui</span><span class="o">.</span><span class="na">adapter</span><span class="o">.</span><span class="na">VideoFeedAdapter</span><span class="o">.</span><span class="na">onBindViewHolder</span><span class="o">(</span><span class="nc">VideoFeedAdapter</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">34</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">RecyclerView</span><span class="n">$Adapter</span><span class="o">.</span><span class="na">onBindViewHolder</span><span class="o">(</span><span class="nc">RecyclerView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6673</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">RecyclerView</span><span class="n">$Adapter</span><span class="o">.</span><span class="na">bindViewHolder</span><span class="o">(</span><span class="nc">RecyclerView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">6714</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">RecyclerView</span><span class="n">$Recycler</span><span class="o">.</span><span class="na">tryBindViewHolderByDeadline</span><span class="o">(</span><span class="nc">RecyclerView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5647</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">RecyclerView</span><span class="n">$Recycler</span><span class="o">.</span><span class="na">tryGetViewHolderForPositionByDeadline</span><span class="o">(</span><span class="nc">RecyclerView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">5913</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">prefetchPositionWithDeadline</span><span class="o">(</span><span class="nc">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">285</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">flushTaskWithDeadline</span><span class="o">(</span><span class="nc">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">342</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">flushTasksWithDeadline</span><span class="o">(</span><span class="nc">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">358</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">prefetch</span><span class="o">(</span><span class="nc">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">365</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">v7</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">GapWorker</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">GapWorker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">396</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">handleCallback</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">891</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">207</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">app</span><span class="o">.</span><span class="na">ActivityThread</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ActivityThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">7470</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">RuntimeInit</span><span class="n">$MethodAndArgsCaller</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">RuntimeInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">524</span><span class="o">)</span>
+</span><span class="line"> <span class="no">W</span> <span class="n">logStackTrace</span> <span class="o">:</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">ZygoteInit</span><span class="o">.</span><span class="na">main</span><span class="o">(</span><span class="nc">ZygoteInit</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">958</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-
-<h2>问题症结</h2>
-
+<h2 id="问题症结">问题症结</h2>
 <p>问题的症结就在GapWorker调用导致了RecyclerView的item预加载处理。</p>
 
-<h2>解决方法</h2>
+<h2 id="解决方法">解决方法</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">yourLayoutManager</span><span class="o">.</span><span class="na">setItemPrefetchEnabled</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">yourLayoutManager</span><span class="o">.</span><span class="na">setItemPrefetchEnabled</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>为什么会这样</h2>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="cm">/**</span>
-</span><span class='line'><span class="cm">     * Sets whether the LayoutManager should be queried for views outside of</span>
-</span><span class='line'><span class="cm">     * its viewport while the UI thread is idle between frames.</span>
-</span><span class='line'><span class="cm">     *</span>
-</span><span class='line'><span class="cm">     * &lt;p&gt;If enabled, the LayoutManager will be queried for items to inflate/bind in between</span>
-</span><span class='line'><span class="cm">     * view system traversals on devices running API 21 or greater. Default value is true.&lt;/p&gt;</span>
-</span><span class='line'><span class="cm">     *</span>
-</span><span class='line'><span class="cm">     * &lt;p&gt;On platforms API level 21 and higher, the UI thread is idle between passing a frame</span>
-</span><span class='line'><span class="cm">     * to RenderThread and the starting up its next frame at the next VSync pulse. By</span>
-</span><span class='line'><span class="cm">     * prefetching out of window views in this time period, delays from inflation and view</span>
-</span><span class='line'><span class="cm">     * binding are much less likely to cause jank and stuttering during scrolls and flings.&lt;/p&gt;</span>
-</span><span class='line'><span class="cm">     *</span>
-</span><span class='line'><span class="cm">     * &lt;p&gt;While prefetch is enabled, it will have the side effect of expanding the effective</span>
-</span><span class='line'><span class="cm">     * size of the View cache to hold prefetched views.&lt;/p&gt;</span>
-</span><span class='line'><span class="cm">     *</span>
-</span><span class='line'><span class="cm">     * @param enabled &lt;code&gt;True&lt;/code&gt; if items should be prefetched in between traversals.</span>
-</span><span class='line'><span class="cm">     *</span>
-</span><span class='line'><span class="cm">     * @see #isItemPrefetchEnabled()</span>
-</span><span class='line'><span class="cm">     */</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上述是<code>setItemPrefetchEnabled</code>的注释，item prefetch是一种用来减少滑动时卡顿的一种预加载方式。这种对于普通的RecyclerView的item没有问题，但是对于视频有声音的，就显得问题明显了。所以这里的解决方法就是关闭这个预取的设置。</p>
+<h2 id="为什么会这样">为什么会这样</h2>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line">	<span class="cm">/**
+</span><span class="line">     * Sets whether the LayoutManager should be queried for views outside of
+</span><span class="line">     * its viewport while the UI thread is idle between frames.
+</span><span class="line">     *
+</span><span class="line">     * &lt;p&gt;If enabled, the LayoutManager will be queried for items to inflate/bind in between
+</span><span class="line">     * view system traversals on devices running API 21 or greater. Default value is true.&lt;/p&gt;
+</span><span class="line">     *
+</span><span class="line">     * &lt;p&gt;On platforms API level 21 and higher, the UI thread is idle between passing a frame
+</span><span class="line">     * to RenderThread and the starting up its next frame at the next VSync pulse. By
+</span><span class="line">     * prefetching out of window views in this time period, delays from inflation and view
+</span><span class="line">     * binding are much less likely to cause jank and stuttering during scrolls and flings.&lt;/p&gt;
+</span><span class="line">     *
+</span><span class="line">     * &lt;p&gt;While prefetch is enabled, it will have the side effect of expanding the effective
+</span><span class="line">     * size of the View cache to hold prefetched views.&lt;/p&gt;
+</span><span class="line">     *
+</span><span class="line">     * @param enabled &lt;code&gt;True&lt;/code&gt; if items should be prefetched in between traversals.
+</span><span class="line">     *
+</span><span class="line">     * @see #isItemPrefetchEnabled()
+</span><span class="line">     */</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>上述是<code class="language-plaintext highlighter-rouge">setItemPrefetchEnabled</code>的注释，item prefetch是一种用来减少滑动时卡顿的一种预加载方式。这种对于普通的RecyclerView的item没有问题，但是对于视频有声音的，就显得问题明显了。所以这里的解决方法就是关闭这个预取的设置。</p>
 
 <p>以上。</p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -370,8 +351,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -383,15 +362,22 @@
 
 
 
-  
-
 
 <time datetime="2019-11-11T20:59:00+08:00" pubdate data-updated="true">Nov 11<span>th</span>, 2019</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/fragment/'>Fragment</a>, <a class='category' href='/blog/categories/gapworker/'>GapWorker</a>, <a class='category' href='/blog/categories/recyclerview/'>RecyclerView</a>
+    
+    <a class="category" href="/blog/categories/gapworker/">GapWorker</a>, 
+  
+    
+    <a class="category" href="/blog/categories/recyclerview/">RecyclerView</a>, 
+  
+    
+    <a class="category" href="/blog/categories/fragment/">Fragment</a>
   
 </span>
 
@@ -484,10 +470,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -561,6 +543,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

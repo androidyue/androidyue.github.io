@@ -175,8 +175,6 @@
 
 
 
-  
-
 
 <time datetime="2019-01-27T20:07:00+08:00" pubdate data-updated="true">Jan 27<span>th</span>, 2019</time>
         
@@ -192,27 +190,24 @@
 
 <!--more-->
 
-
 <p>具体的效果如视频</p>
 
-<p><video style="width:50%"   controls>
-  <source src="https://asset.droidyue.com/video/web_scroll_bad.mp4" type="video/mp4">
-</video></p>
+<video style="width:50%" controls="">
+  <source src="https://asset.droidyue.com/video/web_scroll_bad.mp4" type="video/mp4" />
+</video>
 
-<p>期待的示例效果
-<video style="width:50%"   controls>
-  <source src="https://asset.droidyue.com/video/web_scroll_good.mp4" type="video/mp4">
-</video></p>
+<p>期待的示例效果</p>
+<video style="width:50%" controls="">
+  <source src="https://asset.droidyue.com/video/web_scroll_good.mp4" type="video/mp4" />
+</video>
 
-<h2>解决思路</h2>
-
+<h2 id="解决思路">解决思路</h2>
 <p>其实思路还是比较简单，大概如下</p>
 
 <ul>
-<li>优先响应webview内部滑动</li>
-<li>如果webview内部滑动完成，则响应外部的滑动</li>
+  <li>优先响应webview内部滑动</li>
+  <li>如果webview内部滑动完成，则响应外部的滑动</li>
 </ul>
-
 
 <p>那么问题就来了，怎么判断webview内部滑动结束就是解决问题的关键了。</p>
 
@@ -229,98 +224,93 @@
 <p>了解了上面的信息，我们具体的实施办法也就有了。</p>
 
 <ul>
-<li>在WebView的onTouchEvent事件为ACTION_DOWN时，查找父视图是否是可以滑动的视图(如ViewPager)，如果是,则通过requestDisallowInterceptTouchEvent(true)调用，请求父视图不要拦截touchEvent</li>
-<li>如果WebView不再响应内部滑动（即onOverScrolled中clampedX或者clampedY值为true），我们再起调用requestDisallowInterceptTouchEvent(false)请求父视图恢复拦截处理touchEvent.</li>
+  <li>在WebView的onTouchEvent事件为ACTION_DOWN时，查找父视图是否是可以滑动的视图(如ViewPager)，如果是,则通过requestDisallowInterceptTouchEvent(true)调用，请求父视图不要拦截touchEvent</li>
+  <li>如果WebView不再响应内部滑动（即onOverScrolled中clampedX或者clampedY值为true），我们再起调用requestDisallowInterceptTouchEvent(false)请求父视图恢复拦截处理touchEvent.</li>
 </ul>
 
-
 <p>核心代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">override</span> <span class="n">fun</span> <span class="nf">onTouchEvent</span><span class="o">(</span><span class="nl">event:</span> <span class="n">MotionEvent</span><span class="o">):</span> <span class="n">Boolean</span> <span class="o">{</span>
-</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">event</span><span class="o">.</span><span class="na">action</span> <span class="o">==</span> <span class="n">MotionEvent</span><span class="o">.</span><span class="na">ACTION_DOWN</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">val</span> <span class="n">viewParent</span> <span class="o">=</span> <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
-</span><span class='line'>       <span class="n">viewParent</span><span class="o">?.</span><span class="na">requestDisallowInterceptTouchEvent</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>   <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">onTouchEvent</span><span class="o">(</span><span class="n">event</span><span class="o">)</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">override</span> <span class="n">fun</span> <span class="nf">onOverScrolled</span><span class="o">(</span><span class="nl">scrollX:</span> <span class="n">Int</span><span class="o">,</span> <span class="nl">scrollY:</span> <span class="n">Int</span><span class="o">,</span> <span class="nl">clampedX:</span> <span class="n">Boolean</span><span class="o">,</span> <span class="nl">clampedY:</span> <span class="n">Boolean</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">dumpMessage</span><span class="o">(</span><span class="s">&quot;onOverScrolled scrollX=&quot;</span> <span class="o">+</span> <span class="n">scrollX</span> <span class="o">+</span> <span class="s">&quot;;scrollY=&quot;</span> <span class="o">+</span> <span class="n">scrollY</span>
-</span><span class='line'>           <span class="o">+</span> <span class="s">&quot;;clampedX=&quot;</span> <span class="o">+</span> <span class="n">clampedX</span> <span class="o">+</span> <span class="s">&quot;;clampedY=&quot;</span> <span class="o">+</span> <span class="n">clampedY</span><span class="o">)</span>
-</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">clampedX</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">val</span> <span class="n">viewParent</span> <span class="o">=</span> <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
-</span><span class='line'>       <span class="n">viewParent</span><span class="o">?.</span><span class="na">requestDisallowInterceptTouchEvent</span><span class="o">(</span><span class="kc">false</span><span class="o">)</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>   <span class="kd">super</span><span class="o">.</span><span class="na">onOverScrolled</span><span class="o">(</span><span class="n">scrollX</span><span class="o">,</span> <span class="n">scrollY</span><span class="o">,</span> <span class="n">clampedX</span><span class="o">,</span> <span class="n">clampedY</span><span class="o">)</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">private</span> <span class="n">fun</span> <span class="nf">findViewParentIfNeeds</span><span class="o">(</span><span class="nl">tag:</span> <span class="n">View</span><span class="o">):</span> <span class="n">ViewParent</span><span class="o">?</span> <span class="o">{</span>
-</span><span class='line'>   <span class="n">val</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">tag</span><span class="o">.</span><span class="na">parent</span>
-</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">parent</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="k">return</span> <span class="n">parent</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'>   <span class="k">return</span> <span class="nf">if</span> <span class="o">(</span><span class="n">parent</span> <span class="n">is</span> <span class="n">ViewPager</span> <span class="o">||</span>
-</span><span class='line'>           <span class="n">parent</span> <span class="n">is</span> <span class="n">AbsListView</span> <span class="o">||</span>
-</span><span class='line'>           <span class="n">parent</span> <span class="n">is</span> <span class="n">ScrollView</span> <span class="o">||</span>
-</span><span class='line'>           <span class="n">parent</span> <span class="n">is</span> <span class="n">HorizontalScrollView</span> <span class="o">||</span>
-</span><span class='line'>           <span class="n">parent</span> <span class="n">is</span> <span class="n">GridView</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>       <span class="n">parent</span>
-</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>       <span class="k">if</span> <span class="o">(</span><span class="n">parent</span> <span class="n">is</span> <span class="n">View</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>           <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="n">parent</span> <span class="n">as</span> <span class="n">View</span><span class="o">)</span>
-</span><span class='line'>       <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>           <span class="n">parent</span>
-</span><span class='line'>       <span class="o">}</span>
-</span><span class='line'>   <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">override</span> <span class="n">fun</span> <span class="nf">onTouchEvent</span><span class="o">(</span><span class="nl">event:</span> <span class="nc">MotionEvent</span><span class="o">):</span> <span class="nc">Boolean</span> <span class="o">{</span>
+</span><span class="line">   <span class="k">if</span> <span class="o">(</span><span class="n">event</span><span class="o">.</span><span class="na">action</span> <span class="o">==</span> <span class="nc">MotionEvent</span><span class="o">.</span><span class="na">ACTION_DOWN</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">val</span> <span class="n">viewParent</span> <span class="o">=</span> <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+</span><span class="line">       <span class="n">viewParent</span><span class="o">?.</span><span class="na">requestDisallowInterceptTouchEvent</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">   <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">onTouchEvent</span><span class="o">(</span><span class="n">event</span><span class="o">)</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="n">override</span> <span class="n">fun</span> <span class="nf">onOverScrolled</span><span class="o">(</span><span class="nl">scrollX:</span> <span class="nc">Int</span><span class="o">,</span> <span class="nl">scrollY:</span> <span class="nc">Int</span><span class="o">,</span> <span class="nl">clampedX:</span> <span class="nc">Boolean</span><span class="o">,</span> <span class="nl">clampedY:</span> <span class="nc">Boolean</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">   <span class="n">dumpMessage</span><span class="o">(</span><span class="s">"onOverScrolled scrollX="</span> <span class="o">+</span> <span class="n">scrollX</span> <span class="o">+</span> <span class="s">";scrollY="</span> <span class="o">+</span> <span class="n">scrollY</span>
+</span><span class="line">           <span class="o">+</span> <span class="s">";clampedX="</span> <span class="o">+</span> <span class="n">clampedX</span> <span class="o">+</span> <span class="s">";clampedY="</span> <span class="o">+</span> <span class="n">clampedY</span><span class="o">)</span>
+</span><span class="line">   <span class="k">if</span> <span class="o">(</span><span class="n">clampedX</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">val</span> <span class="n">viewParent</span> <span class="o">=</span> <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+</span><span class="line">       <span class="n">viewParent</span><span class="o">?.</span><span class="na">requestDisallowInterceptTouchEvent</span><span class="o">(</span><span class="kc">false</span><span class="o">)</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">   <span class="kd">super</span><span class="o">.</span><span class="na">onOverScrolled</span><span class="o">(</span><span class="n">scrollX</span><span class="o">,</span> <span class="n">scrollY</span><span class="o">,</span> <span class="n">clampedX</span><span class="o">,</span> <span class="n">clampedY</span><span class="o">)</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">private</span> <span class="n">fun</span> <span class="nf">findViewParentIfNeeds</span><span class="o">(</span><span class="nl">tag:</span> <span class="nc">View</span><span class="o">):</span> <span class="nc">ViewParent</span><span class="o">?</span> <span class="o">{</span>
+</span><span class="line">   <span class="n">val</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">tag</span><span class="o">.</span><span class="na">parent</span>
+</span><span class="line">   <span class="nf">if</span> <span class="o">(</span><span class="n">parent</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="k">return</span> <span class="n">parent</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line">   <span class="k">return</span> <span class="nf">if</span> <span class="o">(</span><span class="n">parent</span> <span class="n">is</span> <span class="nc">ViewPager</span> <span class="o">||</span>
+</span><span class="line">           <span class="n">parent</span> <span class="n">is</span> <span class="nc">AbsListView</span> <span class="o">||</span>
+</span><span class="line">           <span class="n">parent</span> <span class="n">is</span> <span class="nc">ScrollView</span> <span class="o">||</span>
+</span><span class="line">           <span class="n">parent</span> <span class="n">is</span> <span class="nc">HorizontalScrollView</span> <span class="o">||</span>
+</span><span class="line">           <span class="n">parent</span> <span class="n">is</span> <span class="nc">GridView</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">       <span class="n">parent</span>
+</span><span class="line">   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">       <span class="k">if</span> <span class="o">(</span><span class="n">parent</span> <span class="n">is</span> <span class="nc">View</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">           <span class="n">findViewParentIfNeeds</span><span class="o">(</span><span class="n">parent</span> <span class="n">as</span> <span class="nc">View</span><span class="o">)</span>
+</span><span class="line">       <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class="line">           <span class="n">parent</span>
+</span><span class="line">       <span class="o">}</span>
+</span><span class="line">   <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>利用上面的代码，我们就能完美的解决水平滑动的问题，对于垂直纵向的问题，大家可以参考本文方法做类似实现。</p>
 
-<h2>示例代码</h2>
-
+<h2 id="示例代码">示例代码</h2>
 <ul>
-<li><a href="https://github.com/androidyue/WebViewViewPagerScrollingIssue">https://github.com/androidyue/WebViewViewPagerScrollingIssue</a></li>
+  <li><a href="https://github.com/androidyue/WebViewViewPagerScrollingIssue">https://github.com/androidyue/WebViewViewPagerScrollingIssue</a></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -356,8 +346,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -369,15 +357,25 @@
 
 
 
-  
-
 
 <time datetime="2019-01-27T20:07:00+08:00" pubdate data-updated="true">Jan 27<span>th</span>, 2019</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/javascript/'>Javascript</a>, <a class='category' href='/blog/categories/viewpager/'>ViewPager</a>, <a class='category' href='/blog/categories/webview/'>WebView</a>
+    
+    <a class="category" href="/blog/categories/webview/">WebView</a>, 
+  
+    
+    <a class="category" href="/blog/categories/viewpager/">ViewPager</a>, 
+  
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/javascript/">Javascript</a>
   
 </span>
 
@@ -470,10 +468,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -547,6 +541,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

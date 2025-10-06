@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2017-04-16T20:52:00+08:00" pubdate data-updated="true">Apr 16<span>th</span>, 2017</time>
         
@@ -187,201 +185,141 @@
 <div class="entry-content"><p>目前绝大多数的Android项目都是基于Grale了，因为Gradle确实给我们带来了很多便利，然而，在使用了Gradle后，最大的不满就是编译起来太慢了。解决慢的问题无非有两种方法</p>
 
 <ul>
-<li> 提升硬件配置，选择CPU和内存和硬盘等更优的硬件</li>
-<li> 在软件方面，减少不必要的耗时，充分利用现有机器的性能。</li>
+  <li>提升硬件配置，选择CPU和内存和硬盘等更优的硬件</li>
+  <li>在软件方面，减少不必要的耗时，充分利用现有机器的性能。</li>
 </ul>
-
 
 <p>本文的主要经验围绕着如何减少不必要的耗时操作和如何充分利用机器性能展开。</p>
 
 <!--more-->
 
-
-<h2>调整gradle配置</h2>
-
-<h3>开启daemon</h3>
-
+<h2 id="调整gradle配置">调整gradle配置</h2>
+<h3 id="开启daemon">开启daemon</h3>
 <p>相比没有开启daemon，开启daemon有如下好处</p>
 
 <ul>
-<li>不需要每次启动gradle进程（JVM实例），减少了初始化相关的工作</li>
-<li>daemon可以缓存项目结构，文件，task等，尽可能复用之前的编译成果，缩短编译过程</li>
+  <li>不需要每次启动gradle进程（JVM实例），减少了初始化相关的工作</li>
+  <li>daemon可以缓存项目结构，文件，task等，尽可能复用之前的编译成果，缩短编译过程</li>
 </ul>
 
-
 <p>开启daemon很简单，以Mac为例，在家目录下的.gradle/gradle.properties文件（如没有，可需要新建文件），加上如下的代码即可。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>org.gradle.daemon=true</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class=""><span class="line">org.gradle.daemon=true</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>或者传递gradle参数</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">./</span><span class="n">gradlew</span> <span class="n">task</span> <span class="o">--</span><span class="n">daemon</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">gradlew</span> <span class="n">task</span> <span class="o">--</span><span class="n">daemon</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>为了确保gradle配置生效，建议使用gradle &mdash;stop停止已有的daemon。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">gradlew</span> <span class="o">--</span><span class="n">stop</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<p>为了确保gradle配置生效，建议使用gradle –stop停止已有的daemon。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">./</span><span class="n">gradlew</span> <span class="o">--</span><span class="n">stop</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>再次执行gradle任务就可以应用daemon了，留意的话，可以看到类似这样的日志输出。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">Starting</span> <span class="n">a</span> <span class="nc">Gradle</span> <span class="nf">Daemon</span> <span class="o">(</span><span class="n">subsequent</span> <span class="n">builds</span> <span class="n">will</span> <span class="n">be</span> <span class="n">faster</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Starting</span> <span class="n">a</span> <span class="n">Gradle</span> <span class="nf">Daemon</span> <span class="o">(</span><span class="n">subsequent</span> <span class="n">builds</span> <span class="n">will</span> <span class="n">be</span> <span class="n">faster</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>设置heap大小</h2>
-
+<h2 id="设置heap大小">设置heap大小</h2>
 <p>为Gradle分配足够大的内存，则可以同样加速编译。如下修改文件gradle.properties</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">org</span><span class="o">.</span><span class="na">gradle</span><span class="o">.</span><span class="na">jvmargs</span><span class="o">=-</span><span class="n">Xmx5120m</span> <span class="o">-</span><span class="nl">XX:</span><span class="n">MaxPermSize</span><span class="o">=</span><span class="mi">2048</span><span class="n">m</span> <span class="o">-</span><span class="nl">XX:</span><span class="o">+</span><span class="n">HeapDumpOnOutOfMemoryError</span> <span class="o">-</span><span class="n">Dfile</span><span class="o">.</span><span class="na">encoding</span><span class="o">=</span><span class="n">UTF</span><span class="o">-</span><span class="mi">8</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">org</span><span class="o">.</span><span class="na">gradle</span><span class="o">.</span><span class="na">jvmargs</span><span class="o">=-</span><span class="nc">Xmx5120m</span> <span class="o">-</span><span class="nl">XX:</span><span class="nc">MaxPermSize</span><span class="o">=</span><span class="mi">2048</span><span class="n">m</span> <span class="o">-</span><span class="nl">XX:</span><span class="o">+</span><span class="nc">HeapDumpOnOutOfMemoryError</span> <span class="o">-</span><span class="nc">Dfile</span><span class="o">.</span><span class="na">encoding</span><span class="o">=</span><span class="no">UTF</span><span class="o">-</span><span class="mi">8</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>由于Flipboard依赖繁多，且文件也多，并结合自身设备8G内存，这里为Gradle分配最大5G。效果目前看起来不错，大家可以根据自己的情况不断调整得到一个最优的值。</p>
 
-<h2>开启offline</h2>
-
+<h2 id="开启offline">开启offline</h2>
 <p>开启offline之后，可以强制Gradle使用本地缓存的依赖，避免了网络读写操作，即使是需要从网络进行检查这些依赖。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">gradlew</span> <span class="o">--</span><span class="n">offline</span> <span class="n">taskName</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>如上使用时，加上&mdash;offline参数即可。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">./</span><span class="n">gradlew</span> <span class="o">--</span><span class="n">offline</span> <span class="n">taskName</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>如上使用时，加上–offline参数即可。</p>
 
 <p>注意，如果是某个依赖在本地不存在，则会编译出错，解决方法，只需要暂时关闭offline,等依赖下载到本地后，在后续的执行中加入offline即可。</p>
 
-<h2>设置并行构建</h2>
-
+<h2 id="设置并行构建">设置并行构建</h2>
 <p>现在的工程往往使用了很多模块，默认情况下Gradle处理多模块时，往往是挨个按顺序处理。可以想象，这种编译起来会有多慢。好在Gradle提供了并行构建的功能，可以让我们充分利用机器的性能，减少编译构建的时间。</p>
 
 <p>修改gradle.properties文件</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">org</span><span class="o">.</span><span class="na">gradle</span><span class="o">.</span><span class="na">parallel</span><span class="o">=</span><span class="kc">true</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">org</span><span class="o">.</span><span class="na">gradle</span><span class="o">.</span><span class="na">parallel</span><span class="o">=</span><span class="kc">true</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>或向gradle传递参数</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">gradlew</span> <span class="n">task</span> <span class="o">--</span><span class="n">parallel</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">./</span><span class="n">gradlew</span> <span class="n">task</span> <span class="o">--</span><span class="n">parallel</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>当我们配置完成，再次执行gradle task，会得到类似这样的信息，信息标明了开启Parallel以及每个task使用的线程信息。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">./</span><span class="n">gradlew</span> <span class="n">clean</span> <span class="o">--</span><span class="n">info</span>
+</span><span class="line">
+</span><span class="line"><span class="nc">Parallel</span> <span class="n">execution</span> <span class="n">is</span> <span class="n">an</span> <span class="n">incubating</span> <span class="n">feature</span><span class="o">.</span>
+</span><span class="line"><span class="o">.......</span>
+</span><span class="line"><span class="o">:</span><span class="nl">libs:x:</span><span class="n">clean</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">[</span><span class="nc">Task</span> <span class="n">worker</span> <span class="nc">Thread</span> <span class="mi">3</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">completed</span><span class="o">.</span> <span class="nc">Took</span> <span class="mf">0.005</span> <span class="n">secs</span><span class="o">.</span>
+</span><span class="line"><span class="o">:</span><span class="nl">libs:xx:</span><span class="n">clean</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">[</span><span class="nc">Daemon</span> <span class="n">worker</span> <span class="nc">Thread</span> <span class="mi">3</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">started</span><span class="o">.</span>
+</span><span class="line"><span class="o">:</span><span class="nl">libs:xxx:</span><span class="n">clean</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">[</span><span class="nc">Task</span> <span class="n">worker</span> <span class="nc">Thread</span> <span class="mi">2</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">completed</span><span class="o">.</span> <span class="nc">Took</span> <span class="mf">0.003</span> <span class="n">secs</span><span class="o">.</span>
+</span><span class="line"><span class="o">:</span><span class="nl">libs:xxxx:</span><span class="n">clean</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">[</span><span class="nc">Task</span> <span class="n">worker</span> <span class="nc">Thread</span> <span class="mi">3</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">started</span><span class="o">.</span>
+</span><span class="line"><span class="o">:</span><span class="nl">libs:xxxxx:</span><span class="n">clean</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">[</span><span class="nc">Task</span> <span class="n">worker</span> <span class="nc">Thread</span> <span class="mi">2</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">started</span><span class="o">.</span>
+</span><span class="line"><span class="o">:</span><span class="nl">libs:xxxxxx:</span><span class="n">clean</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">[</span><span class="nc">Task</span> <span class="n">worker</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">completed</span><span class="o">.</span> <span class="nc">Took</span> <span class="mf">0.004</span> <span class="n">secs</span><span class="o">.</span>
+</span><span class="line"><span class="o">:</span><span class="nl">libs:</span><span class="n">json</span><span class="o">-</span><span class="nl">gson:</span><span class="n">clean</span> <span class="o">(</span><span class="nc">Thread</span><span class="o">[</span><span class="nc">Task</span> <span class="n">worker</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">started</span><span class="o">.</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">gradlew</span> <span class="n">clean</span> <span class="o">--</span><span class="n">info</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">Parallel</span> <span class="n">execution</span> <span class="n">is</span> <span class="n">an</span> <span class="n">incubating</span> <span class="n">feature</span><span class="o">.</span>
-</span><span class='line'><span class="o">.......</span>
-</span><span class='line'><span class="o">:</span><span class="nl">libs:x:</span><span class="n">clean</span> <span class="o">(</span><span class="n">Thread</span><span class="o">[</span><span class="n">Task</span> <span class="n">worker</span> <span class="n">Thread</span> <span class="mi">3</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">completed</span><span class="o">.</span> <span class="n">Took</span> <span class="mf">0.005</span> <span class="n">secs</span><span class="o">.</span>
-</span><span class='line'><span class="o">:</span><span class="nl">libs:xx:</span><span class="n">clean</span> <span class="o">(</span><span class="n">Thread</span><span class="o">[</span><span class="n">Daemon</span> <span class="n">worker</span> <span class="n">Thread</span> <span class="mi">3</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">started</span><span class="o">.</span>
-</span><span class='line'><span class="o">:</span><span class="nl">libs:xxx:</span><span class="n">clean</span> <span class="o">(</span><span class="n">Thread</span><span class="o">[</span><span class="n">Task</span> <span class="n">worker</span> <span class="n">Thread</span> <span class="mi">2</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">completed</span><span class="o">.</span> <span class="n">Took</span> <span class="mf">0.003</span> <span class="n">secs</span><span class="o">.</span>
-</span><span class='line'><span class="o">:</span><span class="nl">libs:xxxx:</span><span class="n">clean</span> <span class="o">(</span><span class="n">Thread</span><span class="o">[</span><span class="n">Task</span> <span class="n">worker</span> <span class="n">Thread</span> <span class="mi">3</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">started</span><span class="o">.</span>
-</span><span class='line'><span class="o">:</span><span class="nl">libs:xxxxx:</span><span class="n">clean</span> <span class="o">(</span><span class="n">Thread</span><span class="o">[</span><span class="n">Task</span> <span class="n">worker</span> <span class="n">Thread</span> <span class="mi">2</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">started</span><span class="o">.</span>
-</span><span class='line'><span class="o">:</span><span class="nl">libs:xxxxxx:</span><span class="n">clean</span> <span class="o">(</span><span class="n">Thread</span><span class="o">[</span><span class="n">Task</span> <span class="n">worker</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">completed</span><span class="o">.</span> <span class="n">Took</span> <span class="mf">0.004</span> <span class="n">secs</span><span class="o">.</span>
-</span><span class='line'><span class="o">:</span><span class="nl">libs:</span><span class="n">json</span><span class="o">-</span><span class="nl">gson:</span><span class="n">clean</span> <span class="o">(</span><span class="n">Thread</span><span class="o">[</span><span class="n">Task</span> <span class="n">worker</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="n">main</span><span class="o">])</span> <span class="n">started</span><span class="o">.</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>多modules工程优化</h2>
-
+<h2 id="多modules工程优化">多modules工程优化</h2>
 <p>现在的一个Project往往有很多modules，导致我们的编译会变慢。使用—configure-on-demand会在执行任务时仅仅会配置相关的modules，而不是左右的modules。尤其是对于多模块的project来说，使用起来会有不小的提升。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">./</span><span class="n">gradlew</span> <span class="n">assembleChinaFastDebug</span> <span class="o">--</span><span class="n">configure</span><span class="o">-</span><span class="n">on</span><span class="o">-</span><span class="n">demand</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">gradlew</span> <span class="n">assembleChinaFastDebug</span> <span class="o">--</span><span class="n">configure</span><span class="o">-</span><span class="n">on</span><span class="o">-</span><span class="n">demand</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>尝试停止已有的daemon</h2>
-
+<h2 id="尝试停止已有的daemon">尝试停止已有的daemon</h2>
 <p>当我们开启了daemon有段时间后，会发现编译会变得慢了下来，这时候，我们可以尝试结束已有的daemon，确保后续的执行任务使用开启全新的daemon。如下停止已经存在的gradle daemon.</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">./</span><span class="n">gradlew</span> <span class="o">--</span><span class="n">stop</span>
+</span><span class="line"><span class="nc">Stopping</span> <span class="nf">Daemon</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+</span><span class="line"><span class="mi">1</span> <span class="nc">Daemon</span> <span class="n">stopped</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">gradlew</span> <span class="o">--</span><span class="n">stop</span>
-</span><span class='line'><span class="n">Stopping</span> <span class="nf">Daemon</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
-</span><span class='line'><span class="mi">1</span> <span class="n">Daemon</span> <span class="n">stopped</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>debug构建关闭proguard</h2>
-
+<h2 id="debug构建关闭proguard">debug构建关闭proguard</h2>
 <p>提到Proguard大家想到的都是代码混淆，其实除了代码混淆之外，Proguard还可以进行代码压缩，优化和预验证。这其中的代码优化可能会占据更多的时间。
 比如一个开启了代码优化的配置如下</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">optimizationpasses</span> <span class="mi">5</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">-</span><span class="n">optimizationpasses</span> <span class="mi">5</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>这就意味着这个代码优化会经过5次，即上一次的优化输出结果作为下一次的优化的输入。反反复复的分析，知道完成配置的次数。</p>
 
 <p>在Android中，我们可以配置debug禁用Proguard即可。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">buildTypes</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">debug</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">minifyEnabled</span> <span class="kc">false</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="n">release</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">minifyEnabled</span> <span class="kc">true</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>以Flipboard为例，当从设置<code class="language-plaintext highlighter-rouge">optimizationpasses=5</code>改成debug禁用proguard，编译时间减少了将近3分多钟。</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">buildTypes</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">debug</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">minifyEnabled</span> <span class="kc">false</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">release</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">minifyEnabled</span> <span class="kc">true</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>以Flipboard为例，当从设置<code>optimizationpasses=5</code>改成debug禁用proguard，编译时间减少了将近3分多钟。</p>
-
-<h2>进行profile分析</h2>
-
+<h2 id="进行profile分析">进行profile分析</h2>
 <p>如果上面的所有配置可能到没有达到明显的效果，那么我们就应该使用profile功能来分析一下具体卡在哪里了。</p>
 
-<p>gradle提供了性能分析的功能，就profile，使用很简单，执行任务时带上&mdash;profile参数即可。比如</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">./</span><span class="n">gradlew</span> <span class="n">assembleChinaRelease</span> <span class="o">--</span><span class="n">profile</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>gradle提供了性能分析的功能，就profile，使用很简单，执行任务时带上–profile参数即可。比如</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">./</span><span class="n">gradlew</span> <span class="n">assembleChinaRelease</span> <span class="o">--</span><span class="n">profile</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>待到执行完毕，在project根目录下的build/reports/profile目录有对应的结果文件，如profile-2017-04-08-23-06-37.html，使用浏览器打开，看到的效果是这样的
 <img src="https://asset.droidyue.com/broken_images/profile_report.jpeg" alt="gradle profile summary" /></p>
 
 <p>从上面的summary可知，上面的主要耗时表现在Task Execution上，于是我们切换到Task Execution这个tab
 <img src="https://asset.droidyue.com/broken_images/task_execution.jpeg" alt="Gradle profile task execution" /></p>
 
-<p>我们可以发现上面的<code>:apps:droidyue:crashlyticsUploadDeobsChinaRelease</code>居然耗费了4m26.26s，那么这是一个什么任务呢？</p>
+<p>我们可以发现上面的<code class="language-plaintext highlighter-rouge">:apps:droidyue:crashlyticsUploadDeobsChinaRelease</code>居然耗费了4m26.26s，那么这是一个什么任务呢？</p>
 
 <p>其实它是著名的bug收集工具crashlytics的上传混淆映射文件的操作，由于crashlytics的服务器在国外，导致这个网络操作会很慢。</p>
 
@@ -389,24 +327,23 @@
 
 <p>通过profile我们可以清晰地看出耗时的根源在哪里，并开始有的放矢地进行解决。</p>
 
-<h2>最后的话</h2>
-
+<h2 id="最后的话">最后的话</h2>
 <p>上面关于如果在不提升硬件的条件下进行优化，当我们所有的配置都已经应用，并且仍然感觉编译时间很长的话，那么我们也应该从硬件的角度去思考了。</p>
 
 <p>关于提升编译速度的通常主要有三个主要的影响硬件</p>
 
 <ul>
-<li>CPU，建议CPU不要低于i5</li>
-<li>内存，建议内存不少于8G</li>
-<li>硬盘，建议为SSD</li>
+  <li>CPU，建议CPU不要低于i5</li>
+  <li>内存，建议内存不少于8G</li>
+  <li>硬盘，建议为SSD</li>
 </ul>
-
 
 <p>以上三者兼备的比较成熟的产品应该是MBP，如这个配置<a href="http://union-click.jd.com/jdc?e=0&amp;p=AyIHZRprFQYaBVEbXCVGTV8LRGtMR1dGXgVFTUdGW0pADgpQTFtLG18dABYHUgQCUF5PNxQBGkx%2BWxkNe15VSkAFK1ktTF5nUSUXVyUAFA9WHVsWAxM3VxlbFQsWB1QeayUCEzcDdVsUAxMGVBpbFgQiAlUaXRwEFw9SK1sQChIAVh9dEAQXDlQrXCVSTVIWRQNASlZTZStrJQ%3D%3D&amp;t=W1dCFBBFC1pXUwkEAEAdQFkJBVsRChADVRxETEdOWg%3D%3D">Apple MacBook Pro 15.4英寸笔记本电脑(Core i7 处理器/16GB内存/256GB SSD闪存/Retina屏)</a>。</p>
 
 <p>这所谓工欲善其事必先利其器，当我们从硬件和软件上都下功夫进行了优化，我们的开发效率也会得到很大的提高。</p>
 
 <p>备注：就个人而言，应用上面的方法，日常的debug版本build时间由原来的一分钟左右降到了30秒左右。我的机器为15.4MBP,i7,8G,SSD.</p>
+
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -442,8 +379,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -455,15 +390,19 @@
 
 
 
-  
-
 
 <time datetime="2017-04-16T20:52:00+08:00" pubdate data-updated="true">Apr 16<span>th</span>, 2017</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/gradle/'>Gradle</a>
+    
+    <a class="category" href="/blog/categories/gradle/">Gradle</a>, 
+  
+    
+    <a class="category" href="/blog/categories/android/">Android</a>
   
 </span>
 
@@ -556,10 +495,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -633,6 +568,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

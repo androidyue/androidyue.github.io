@@ -11,7 +11,7 @@
   <meta name="keywords" content="Java,Android,Linux,Python,内存泄露，性能优化，最键实践" />
   <meta name="ujianVerification" content="13e7551f5af04296bb891d33b010bf6b" />
   
-  <meta name="description" content="Android中Java和JavaScript交互 Sep 20th, 2014 Android提供了一个很强大的WebView控件用来处理Web网页，而在网页中，JavaScript又是一个很举足轻重的脚本。本文将介绍如何实现Java代码和Javascript代码的相互调用。 如何实现 &hellip;">
+  <meta name="description" content="Android中Java和JavaScript交互 Sep 20th, 2014 Android提供了一个很强大的WebView控件用来处理Web网页，而在网页中，JavaScript又是一个很举足轻重的脚本。本文将介绍如何实现Java代码和Javascript代码的相互调用。 ##如何实现 &hellip;">
   
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2014-09-20T21:37:00+08:00" pubdate data-updated="true">Sep 20<span>th</span>, 2014</time>
         
@@ -184,483 +182,394 @@
   </header>
 
 
-<div class="entry-content"><p>Android提供了一个很强大的WebView控件用来处理Web网页，而在网页中，JavaScript又是一个很举足轻重的脚本。本文将介绍如何实现Java代码和Javascript代码的相互调用。</p>
-
+<div class="entry-content"><p>Android提供了一个很强大的WebView控件用来处理Web网页，而在网页中，JavaScript又是一个很举足轻重的脚本。本文将介绍如何实现Java代码和Javascript代码的相互调用。
 <!--more-->
-
-
-<h2>如何实现</h2>
-
-<p>实现Java和js交互十分便捷。通常只需要以下几步。</p>
+##如何实现
+实现Java和js交互十分便捷。通常只需要以下几步。</p>
 
 <ul>
-<li>WebView开启JavaScript脚本执行</li>
-<li>WebView设置供JavaScript调用的交互接口。</li>
-<li>客户端和网页端编写调用对方的代码。</li>
+  <li>WebView开启JavaScript脚本执行</li>
+  <li>WebView设置供JavaScript调用的交互接口。</li>
+  <li>客户端和网页端编写调用对方的代码。</li>
 </ul>
 
+<p>##本例代码
+为了便于讲解，先贴出全部代码
+###Java代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+<span class="line-number">55</span>
+<span class="line-number">56</span>
+<span class="line-number">57</span>
+<span class="line-number">58</span>
+<span class="line-number">59</span>
+<span class="line-number">60</span>
+<span class="line-number">61</span>
+<span class="line-number">62</span>
+<span class="line-number">63</span>
+<span class="line-number">64</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kn">package</span> <span class="nn">com.example.javajsinteractiondemo</span><span class="o">;</span>
+</span><span class="line">
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.annotation.SuppressLint</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.app.Activity</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.os.Bundle</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.util.Log</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.view.Menu</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.webkit.JavascriptInterface</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.webkit.WebChromeClient</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.webkit.WebSettings</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.webkit.WebView</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.webkit.WebViewClient</span><span class="o">;</span>
+</span><span class="line"><span class="kn">import</span> <span class="nn">android.widget.Toast</span><span class="o">;</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="nc">Activity</span> <span class="o">{</span>
+</span><span class="line">	<span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">LOGTAG</span> <span class="o">=</span> <span class="s">"MainActivity"</span><span class="o">;</span>
+</span><span class="line">	<span class="nd">@SuppressLint</span><span class="o">(</span><span class="s">"JavascriptInterface"</span><span class="o">)</span>
+</span><span class="line">	<span class="nd">@Override</span>
+</span><span class="line">	<span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="nc">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class="line">		<span class="n">setContentView</span><span class="o">(</span><span class="no">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
+</span><span class="line">		<span class="kd">final</span> <span class="nc">WebView</span> <span class="n">myWebView</span> <span class="o">=</span> <span class="o">(</span><span class="nc">WebView</span><span class="o">)</span> <span class="n">findViewById</span><span class="o">(</span><span class="no">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">myWebView</span><span class="o">);</span>
+</span><span class="line">		<span class="nc">WebSettings</span> <span class="n">settings</span> <span class="o">=</span> <span class="n">myWebView</span><span class="o">.</span><span class="na">getSettings</span><span class="o">();</span>
+</span><span class="line">		<span class="n">settings</span><span class="o">.</span><span class="na">setJavaScriptEnabled</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class="line">		<span class="n">myWebView</span><span class="o">.</span><span class="na">addJavascriptInterface</span><span class="o">(</span><span class="k">new</span> <span class="nc">JsInteration</span><span class="o">(),</span> <span class="s">"control"</span><span class="o">);</span>
+</span><span class="line">		<span class="n">myWebView</span><span class="o">.</span><span class="na">setWebChromeClient</span><span class="o">(</span><span class="k">new</span> <span class="nc">WebChromeClient</span><span class="o">()</span> <span class="o">{});</span>
+</span><span class="line">		<span class="n">myWebView</span><span class="o">.</span><span class="na">setWebViewClient</span><span class="o">(</span><span class="k">new</span> <span class="nc">WebViewClient</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">			<span class="nd">@Override</span>
+</span><span class="line">			<span class="kd">public</span> <span class="kt">void</span> <span class="nf">onPageFinished</span><span class="o">(</span><span class="nc">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="nc">String</span> <span class="n">url</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">				<span class="kd">super</span><span class="o">.</span><span class="na">onPageFinished</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="n">url</span><span class="o">);</span>
+</span><span class="line">				<span class="n">testMethod</span><span class="o">(</span><span class="n">myWebView</span><span class="o">);</span>
+</span><span class="line">			<span class="o">}</span>
+</span><span class="line">			
+</span><span class="line">		<span class="o">});</span>
+</span><span class="line">		<span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">"file:///android_asset/js_java_interaction.html"</span><span class="o">);</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	
+</span><span class="line">	<span class="kd">private</span> <span class="kt">void</span> <span class="nf">testMethod</span><span class="o">(</span><span class="nc">WebView</span> <span class="n">webView</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="nc">String</span> <span class="n">call</span> <span class="o">=</span> <span class="s">"javascript:sayHello()"</span><span class="o">;</span>
+</span><span class="line">		
+</span><span class="line">		<span class="n">call</span> <span class="o">=</span> <span class="s">"javascript:alertMessage(\""</span> <span class="o">+</span> <span class="s">"content"</span> <span class="o">+</span> <span class="s">"\")"</span><span class="o">;</span>
+</span><span class="line">		
+</span><span class="line">		<span class="n">call</span> <span class="o">=</span> <span class="s">"javascript:toastMessage(\""</span> <span class="o">+</span> <span class="s">"content"</span> <span class="o">+</span> <span class="s">"\")"</span><span class="o">;</span>
+</span><span class="line">		
+</span><span class="line">		<span class="n">call</span> <span class="o">=</span> <span class="s">"javascript:sumToJava(1,2)"</span><span class="o">;</span>
+</span><span class="line">		<span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">call</span><span class="o">);</span>
+</span><span class="line">		
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	
+</span><span class="line">	<span class="kd">public</span> <span class="kd">class</span> <span class="nc">JsInteration</span> <span class="o">{</span>
+</span><span class="line">		
+</span><span class="line">		<span class="nd">@JavascriptInterface</span>
+</span><span class="line">		<span class="kd">public</span> <span class="kt">void</span> <span class="nf">toastMessage</span><span class="o">(</span><span class="nc">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">			<span class="nc">Toast</span><span class="o">.</span><span class="na">makeText</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">(),</span> <span class="n">message</span><span class="o">,</span> <span class="nc">Toast</span><span class="o">.</span><span class="na">LENGTH_LONG</span><span class="o">).</span><span class="na">show</span><span class="o">();</span>
+</span><span class="line">		<span class="o">}</span>
+</span><span class="line">		
+</span><span class="line">		<span class="nd">@JavascriptInterface</span>
+</span><span class="line">		<span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSumResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">			<span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"onSumResult result="</span> <span class="o">+</span> <span class="n">result</span><span class="o">);</span>
+</span><span class="line">		<span class="o">}</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>###前端网页代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false js_java_interaction.html</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+</pre></td><td class="code"><pre><code class="html"><span class="line"><span class="nt">&lt;html&gt;</span>
+</span><span class="line"><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/javascript"</span><span class="nt">&gt;</span>
+</span><span class="line">    <span class="kd">function</span> <span class="nx">sayHello</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">        <span class="nx">alert</span><span class="p">(</span><span class="dl">"</span><span class="s2">Hello</span><span class="dl">"</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">function</span> <span class="nx">alertMessage</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nx">alert</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">function</span> <span class="nx">toastMessage</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="nb">window</span><span class="p">.</span><span class="nx">control</span><span class="p">.</span><span class="nx">toastMessage</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="kd">function</span> <span class="nx">sumToJava</span><span class="p">(</span><span class="nx">number1</span><span class="p">,</span> <span class="nx">number2</span><span class="p">){</span>
+</span><span class="line">       <span class="nb">window</span><span class="p">.</span><span class="nx">control</span><span class="p">.</span><span class="nx">onSumResult</span><span class="p">(</span><span class="nx">number1</span> <span class="o">+</span> <span class="nx">number2</span><span class="p">)</span> 
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line"><span class="nt">&lt;/script&gt;</span>
+</span><span class="line">Java-Javascript Interaction In Android
+</span><span class="line"><span class="nt">&lt;/html&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>本例代码</h2>
-
-<p>为了便于讲解，先贴出全部代码</p>
-
-<h3>Java代码</h3>
-
-<figure class='code'><figcaption><span>lineos:false </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">javajsinteractiondemo</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.annotation.SuppressLint</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.app.Activity</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.os.Bundle</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.util.Log</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.view.Menu</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.webkit.JavascriptInterface</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.webkit.WebChromeClient</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.webkit.WebSettings</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.webkit.WebView</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.webkit.WebViewClient</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.widget.Toast</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="n">Activity</span> <span class="o">{</span>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">LOGTAG</span> <span class="o">=</span> <span class="s">&quot;MainActivity&quot;</span><span class="o">;</span>
-</span><span class='line'>  <span class="nd">@SuppressLint</span><span class="o">(</span><span class="s">&quot;JavascriptInterface&quot;</span><span class="o">)</span>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
-</span><span class='line'>      <span class="kd">final</span> <span class="n">WebView</span> <span class="n">myWebView</span> <span class="o">=</span> <span class="o">(</span><span class="n">WebView</span><span class="o">)</span> <span class="n">findViewById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">myWebView</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">WebSettings</span> <span class="n">settings</span> <span class="o">=</span> <span class="n">myWebView</span><span class="o">.</span><span class="na">getSettings</span><span class="o">();</span>
-</span><span class='line'>      <span class="n">settings</span><span class="o">.</span><span class="na">setJavaScriptEnabled</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">myWebView</span><span class="o">.</span><span class="na">addJavascriptInterface</span><span class="o">(</span><span class="k">new</span> <span class="n">JsInteration</span><span class="o">(),</span> <span class="s">&quot;control&quot;</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">myWebView</span><span class="o">.</span><span class="na">setWebChromeClient</span><span class="o">(</span><span class="k">new</span> <span class="n">WebChromeClient</span><span class="o">()</span> <span class="o">{});</span>
-</span><span class='line'>      <span class="n">myWebView</span><span class="o">.</span><span class="na">setWebViewClient</span><span class="o">(</span><span class="k">new</span> <span class="n">WebViewClient</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="nd">@Override</span>
-</span><span class='line'>          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onPageFinished</span><span class="o">(</span><span class="n">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="n">String</span> <span class="n">url</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>              <span class="kd">super</span><span class="o">.</span><span class="na">onPageFinished</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="n">url</span><span class="o">);</span>
-</span><span class='line'>              <span class="n">testMethod</span><span class="o">(</span><span class="n">myWebView</span><span class="o">);</span>
-</span><span class='line'>          <span class="o">}</span>
-</span><span class='line'>          
-</span><span class='line'>      <span class="o">});</span>
-</span><span class='line'>      <span class="n">myWebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="s">&quot;file:///android_asset/js_java_interaction.html&quot;</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="kd">private</span> <span class="kt">void</span> <span class="nf">testMethod</span><span class="o">(</span><span class="n">WebView</span> <span class="n">webView</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">String</span> <span class="n">call</span> <span class="o">=</span> <span class="s">&quot;javascript:sayHello()&quot;</span><span class="o">;</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="n">call</span> <span class="o">=</span> <span class="s">&quot;javascript:alertMessage(\&quot;&quot;</span> <span class="o">+</span> <span class="s">&quot;content&quot;</span> <span class="o">+</span> <span class="s">&quot;\&quot;)&quot;</span><span class="o">;</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="n">call</span> <span class="o">=</span> <span class="s">&quot;javascript:toastMessage(\&quot;&quot;</span> <span class="o">+</span> <span class="s">&quot;content&quot;</span> <span class="o">+</span> <span class="s">&quot;\&quot;)&quot;</span><span class="o">;</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="n">call</span> <span class="o">=</span> <span class="s">&quot;javascript:sumToJava(1,2)&quot;</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">call</span><span class="o">);</span>
-</span><span class='line'>      
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="kd">public</span> <span class="kd">class</span> <span class="nc">JsInteration</span> <span class="o">{</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="nd">@JavascriptInterface</span>
-</span><span class='line'>      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">toastMessage</span><span class="o">(</span><span class="n">String</span> <span class="n">message</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">Toast</span><span class="o">.</span><span class="na">makeText</span><span class="o">(</span><span class="n">getApplicationContext</span><span class="o">(),</span> <span class="n">message</span><span class="o">,</span> <span class="n">Toast</span><span class="o">.</span><span class="na">LENGTH_LONG</span><span class="o">).</span><span class="na">show</span><span class="o">();</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="nd">@JavascriptInterface</span>
-</span><span class='line'>      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSumResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onSumResult result=&quot;</span> <span class="o">+</span> <span class="n">result</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>前端网页代码</h3>
-
-<figure class='code'><figcaption><span>lineos:false js_java_interaction.html</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;html&gt;</span>
-</span><span class='line'><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>    <span class="kd">function</span> <span class="nx">sayHello</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="nx">alert</span><span class="p">(</span><span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">function</span> <span class="nx">alertMessage</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="nx">alert</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">function</span> <span class="nx">toastMessage</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="nb">window</span><span class="p">.</span><span class="nx">control</span><span class="p">.</span><span class="nx">toastMessage</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">function</span> <span class="nx">sumToJava</span><span class="p">(</span><span class="nx">number1</span><span class="p">,</span> <span class="nx">number2</span><span class="p">){</span>
-</span><span class='line'>       <span class="nb">window</span><span class="p">.</span><span class="nx">control</span><span class="p">.</span><span class="nx">onSumResult</span><span class="p">(</span><span class="nx">number1</span> <span class="o">+</span> <span class="nx">number2</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="nt">&lt;/script&gt;</span>
-</span><span class='line'>Java-Javascript Interaction In Android
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
-
-<h2>调用示例</h2>
-
-<h3>js调用Java</h3>
-
-<p>调用格式为window.jsInterfaceName.methodName(parameterValues)
+<p>##调用示例
+###js调用Java
+调用格式为window.jsInterfaceName.methodName(parameterValues)
 此例中我们使用的是control作为注入接口名称。</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'>function toastMessage(message) {
-</span><span class='line'>  window.control.toastMessage(message)
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>function sumToJava(number1, number2){
-</span><span class='line'>   window.control.onSumResult(number1 + number2)
-</span><span class='line'>}
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Java调用JS</h3>
-
-<p>webView调用js的基本格式为webView.loadUrl(&ldquo;javascript:methodName(parameterValues)&rdquo;)</p>
-
-<h4>调用js无参无返回值函数</h4>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">call</span> <span class="o">=</span> <span class="s">&quot;javascript:sayHello()&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">call</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>调用js有参无返回值函数</h4>
-
-<p>注意对于字符串作为参数值需要进行转义双引号。</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">call</span> <span class="o">=</span> <span class="s">&quot;javascript:alertMessage(\&quot;&quot;</span> <span class="o">+</span> <span class="s">&quot;content&quot;</span> <span class="o">+</span> <span class="s">&quot;\&quot;)&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">call</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>调用js有参数有返回值的函数</h4>
-
-<p>Android在4.4之前并没有提供直接调用js函数并获取值的方法，所以在此之前，常用的思路是 java调用js方法，js方法执行完毕，再次调用java代码将值返回。</p>
-
-<h5>1.Java调用js代码</h5>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">call</span> <span class="o">=</span> <span class="s">&quot;javascript:sumToJava(1,2)&quot;</span><span class="o">;</span>
-</span><span class='line'><span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">call</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>2.js函数处理，并将结果通过调用java方法返回</h5>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">sumToJava</span><span class="p">(</span><span class="nx">number1</span><span class="p">,</span> <span class="nx">number2</span><span class="p">){</span>
-</span><span class='line'>       <span class="nb">window</span><span class="p">.</span><span class="nx">control</span><span class="p">.</span><span class="nx">onSumResult</span><span class="p">(</span><span class="nx">number1</span> <span class="o">+</span> <span class="nx">number2</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>3.Java在回调方法中获取js函数返回值</h5>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@JavascriptInterface</span>
-</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSumResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onSumResult result=&quot;</span> <span class="o">+</span> <span class="n">result</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4><font color="blue">4.4处理</font></h4>
-
-<p>Android 4.4之后使用evaluateJavascript即可。这里展示一个简单的交互示例
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="html"><span class="line">function toastMessage(message) {
+</span><span class="line">	window.control.toastMessage(message)
+</span><span class="line">}
+</span><span class="line">
+</span><span class="line">function sumToJava(number1, number2){
+</span><span class="line">   window.control.onSumResult(number1 + number2) 
+</span><span class="line">}</span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>###Java调用JS
+webView调用js的基本格式为webView.loadUrl(“javascript:methodName(parameterValues)”)
+####调用js无参无返回值函数</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">call</span> <span class="o">=</span> <span class="s">"javascript:sayHello()"</span><span class="o">;</span>
+</span><span class="line"><span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">call</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####调用js有参无返回值函数
+注意对于字符串作为参数值需要进行转义双引号。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">call</span> <span class="o">=</span> <span class="s">"javascript:alertMessage(\""</span> <span class="o">+</span> <span class="s">"content"</span> <span class="o">+</span> <span class="s">"\")"</span><span class="o">;</span>
+</span><span class="line"><span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">call</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####调用js有参数有返回值的函数
+Android在4.4之前并没有提供直接调用js函数并获取值的方法，所以在此之前，常用的思路是 java调用js方法，js方法执行完毕，再次调用java代码将值返回。
+#####1.Java调用js代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">String</span> <span class="n">call</span> <span class="o">=</span> <span class="s">"javascript:sumToJava(1,2)"</span><span class="o">;</span>
+</span><span class="line"><span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">call</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>#####2.js函数处理，并将结果通过调用java方法返回</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="kd">function</span> <span class="nx">sumToJava</span><span class="p">(</span><span class="nx">number1</span><span class="p">,</span> <span class="nx">number2</span><span class="p">){</span>
+</span><span class="line">       <span class="nb">window</span><span class="p">.</span><span class="nx">control</span><span class="p">.</span><span class="nx">onSumResult</span><span class="p">(</span><span class="nx">number1</span> <span class="o">+</span> <span class="nx">number2</span><span class="p">)</span> 
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>#####3.Java在回调方法中获取js函数返回值</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nd">@JavascriptInterface</span>
+</span><span class="line"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onSumResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"onSumResult result="</span> <span class="o">+</span> <span class="n">result</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+<p>####<font color="blue">4.4处理</font>
+Android 4.4之后使用evaluateJavascript即可。这里展示一个简单的交互示例
 具有返回值的js方法</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'>function getGreetings() {
-</span><span class='line'>      return 1;
-</span><span class='line'>}
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="html"><span class="line">function getGreetings() {
+</span><span class="line">		return 1;
+</span><span class="line">}</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>java代码时用evaluateJavascript方法调用</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testEvaluateJavascript</span><span class="o">(</span><span class="n">WebView</span> <span class="n">webView</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">webView</span><span class="o">.</span><span class="na">evaluateJavascript</span><span class="o">(</span><span class="s">&quot;getGreetings()&quot;</span><span class="o">,</span> <span class="k">new</span> <span class="n">ValueCallback</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;()</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceiveValue</span><span class="o">(</span><span class="n">String</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="n">LOGTAG</span><span class="o">,</span> <span class="s">&quot;onReceiveValue value=&quot;</span> <span class="o">+</span> <span class="n">value</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}});</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">testEvaluateJavascript</span><span class="o">(</span><span class="nc">WebView</span> <span class="n">webView</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">	<span class="n">webView</span><span class="o">.</span><span class="na">evaluateJavascript</span><span class="o">(</span><span class="s">"getGreetings()"</span><span class="o">,</span> <span class="k">new</span> <span class="nc">ValueCallback</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">	<span class="nd">@Override</span>
+</span><span class="line">	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceiveValue</span><span class="o">(</span><span class="nc">String</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="nc">Log</span><span class="o">.</span><span class="na">i</span><span class="o">(</span><span class="no">LOGTAG</span><span class="o">,</span> <span class="s">"onReceiveValue value="</span> <span class="o">+</span> <span class="n">value</span><span class="o">);</span>
+</span><span class="line">	<span class="o">}});</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>输出结果</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>I/MainActivity<span class="o">(</span> 1432<span class="o">)</span>: onReceiveValue <span class="nv">value</span><span class="o">=</span>1
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">I/MainActivity<span class="o">(</span> 1432<span class="o">)</span>: onReceiveValue <span class="nv">value</span><span class="o">=</span>1</span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>注意</p>
 
 <ul>
-<li>上面限定了结果返回结果为String，对于简单的类型会尝试转换成字符串返回，对于复杂的数据类型，建议以字符串形式的json返回。</li>
-<li>evaluateJavascript方法必须在UI线程（主线程）调用，因此onReceiveValue也执行在主线程。</li>
+  <li>上面限定了结果返回结果为String，对于简单的类型会尝试转换成字符串返回，对于复杂的数据类型，建议以字符串形式的json返回。</li>
+  <li>evaluateJavascript方法必须在UI线程（主线程）调用，因此onReceiveValue也执行在主线程。</li>
 </ul>
 
+<p>##疑问解答
+###<font color="red">Alert无法弹出</font>
+你应该是没有设置WebChromeClient,按照以下代码设置</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">myWebView</span><span class="o">.</span><span class="na">setWebChromeClient</span><span class="o">(</span><span class="k">new</span> <span class="nc">WebChromeClient</span><span class="o">()</span> <span class="o">{});</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h2>疑问解答</h2>
+<p>###<font color="red">Uncaught ReferenceError: functionName is not defined</font>
+问题出现原因，<strong>网页的js代码没有加载完成</strong>，就调用了js方法。解决方法是在网页加载完成之后调用js方法</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">myWebView</span><span class="o">.</span><span class="na">setWebViewClient</span><span class="o">(</span><span class="k">new</span> <span class="nc">WebViewClient</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line">	<span class="nd">@Override</span>
+</span><span class="line">	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">onPageFinished</span><span class="o">(</span><span class="nc">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="nc">String</span> <span class="n">url</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">		<span class="kd">super</span><span class="o">.</span><span class="na">onPageFinished</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="n">url</span><span class="o">);</span>
+</span><span class="line">		<span class="c1">//在这里执行你想调用的js函数</span>
+</span><span class="line">	<span class="o">}</span>
+</span><span class="line">	
+</span><span class="line"><span class="o">});</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<h3><font color="red">Alert无法弹出</font></h3>
-
-<p>你应该是没有设置WebChromeClient,按照以下代码设置</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">myWebView</span><span class="o">.</span><span class="na">setWebChromeClient</span><span class="o">(</span><span class="k">new</span> <span class="n">WebChromeClient</span><span class="o">()</span> <span class="o">{});</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3><font color="red">Uncaught ReferenceError: functionName is not defined</font></h3>
-
-<p>问题出现原因，<strong>网页的js代码没有加载完成</strong>，就调用了js方法。解决方法是在网页加载完成之后调用js方法</p>
-
-<figure class='code'><figcaption><span>fileos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">myWebView</span><span class="o">.</span><span class="na">setWebViewClient</span><span class="o">(</span><span class="k">new</span> <span class="n">WebViewClient</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onPageFinished</span><span class="o">(</span><span class="n">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="n">String</span> <span class="n">url</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onPageFinished</span><span class="o">(</span><span class="n">view</span><span class="o">,</span> <span class="n">url</span><span class="o">);</span>
-</span><span class='line'>      <span class="c1">//在这里执行你想调用的js函数</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  
-</span><span class='line'><span class="o">});</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3><font color="red">Uncaught TypeError: Object [object Object] has no method</font></h3>
-
-<h4>安全限制问题</h4>
-
-<p>如果只在4.2版本以上的机器出问题，那么就是系统处于安全限制的问题了。Android文档这样说的</p>
-
-<blockquote><p>Caution: If you&rsquo;ve set your targetSdkVersion to 17 or higher, you must add the @JavascriptInterface annotation to any method that you want available your web page code (the method must also be public). If you do not provide the annotation, then the method will not accessible by your web page when running on Android 4.2 or higher.</p></blockquote>
+<p>###<font color="red">Uncaught TypeError: Object [object Object] has no method</font>
+####安全限制问题
+如果只在4.2版本以上的机器出问题，那么就是系统处于安全限制的问题了。Android文档这样说的</p>
+<blockquote>
+  <p>Caution: If you’ve set your targetSdkVersion to 17 or higher, you must add the @JavascriptInterface annotation to any method that you want available your web page code (the method must also be public). If you do not provide the annotation, then the method will not accessible by your web page when running on Android 4.2 or higher.</p>
+</blockquote>
 
 <p>中文大意为</p>
+<blockquote>
+  <p>警告：如果你的程序目标平台是17或者是更高，你必须要在暴露给网页可调用的方法（这个方法必须是公开的）加上@JavascriptInterface注释。如果你不这样做的话，在4.2以以后的平台上，网页无法访问到你的方法。</p>
+</blockquote>
 
-<blockquote><p>警告：如果你的程序目标平台是17或者是更高，你必须要在暴露给网页可调用的方法（这个方法必须是公开的）加上@JavascriptInterface注释。如果你不这样做的话，在4.2以以后的平台上，网页无法访问到你的方法。</p></blockquote>
-
-<h5>解决方法</h5>
-
+<p>#####解决方法</p>
 <ul>
-<li>将targetSdkVersion设置成17或更高，引入@JavascriptInterface注释</li>
-<li>自己创建一个注释接口名字为@JavascriptInterface，然后将其引入。注意这个接口不能混淆。这种方式不推荐，大概在4.4之后有问题。</li>
+  <li>将targetSdkVersion设置成17或更高，引入@JavascriptInterface注释</li>
+  <li>自己创建一个注释接口名字为@JavascriptInterface，然后将其引入。注意这个接口不能混淆。这种方式不推荐，大概在4.4之后有问题。</li>
 </ul>
-
 
 <p>注，创建@JavascriptInterface代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="nd">@interface</span> <span class="nc">JavascriptInterface</span> <span class="o">{</span>
+</span><span class="line">
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="nd">@interface</span> <span class="n">JavascriptInterface</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>代码混淆问题</h4>
-
-<p>如果在没有混淆的版本运行正常，在混淆后的版本的代码运行错误，并提示Uncaught TypeError: Object [object Object] has no method，那就是你没有做混淆例外处理。
+<p>####代码混淆问题
+如果在没有混淆的版本运行正常，在混淆后的版本的代码运行错误，并提示Uncaught TypeError: Object [object Object] has no method，那就是你没有做混淆例外处理。
 在混淆文件加入类似这样的代码</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="ruby"><span class="line"><span class="n">keepattributes</span> <span class="o">*</span><span class="no">Annotation</span><span class="o">*</span>
+</span><span class="line"><span class="n">keepattributes</span> <span class="no">JavascriptInterface</span>
+</span><span class="line"><span class="o">-</span><span class="n">keep</span> <span class="k">class</span> <span class="n">com</span><span class="p">.</span><span class="nf">example</span><span class="p">.</span><span class="nf">javajsinteractiondemo</span><span class="vg">$JsInteration</span> <span class="p">{</span>
+</span><span class="line">    <span class="o">*</span><span class="p">;</span>
+</span><span class="line"><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">keepattributes</span> <span class="o">*</span><span class="no">Annotation</span><span class="o">*</span>
-</span><span class='line'><span class="n">keepattributes</span> <span class="no">JavascriptInterface</span>
-</span><span class='line'><span class="o">-</span><span class="n">keep</span> <span class="k">class</span> <span class="n">com</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">javajsinteractiondemo</span><span class="vg">$JsInteration</span> <span class="p">{</span>
-</span><span class='line'>    <span class="o">*</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3><font color="red">All WebView methods must be called on the same thread</font></h3>
-
-<p>过滤日志曾发现过这个问题。</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Throwable</span><span class="o">:</span> <span class="n">A</span> <span class="n">WebView</span> <span class="n">method</span> <span class="n">was</span> <span class="n">called</span> <span class="n">on</span> <span class="n">thread</span> <span class="err">&#39;</span><span class="n">JavaBridge</span><span class="err">&#39;</span><span class="o">.</span> <span class="n">All</span> <span class="n">WebView</span> <span class="n">methods</span> <span class="n">must</span> <span class="n">be</span> <span class="n">called</span> <span class="n">on</span> <span class="n">the</span> <span class="n">same</span> <span class="n">thread</span><span class="o">.</span> <span class="o">(</span><span class="n">Expected</span> <span class="n">Looper</span> <span class="n">Looper</span> <span class="o">(</span><span class="n">main</span><span class="o">,</span> <span class="n">tid</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span><span class="mi">528712</span><span class="n">d4</span><span class="o">}</span> <span class="n">called</span> <span class="n">on</span> <span class="n">Looper</span> <span class="o">(</span><span class="n">JavaBridge</span><span class="o">,</span> <span class="n">tid</span> <span class="mi">121</span><span class="o">)</span> <span class="o">{</span><span class="mi">52</span><span class="n">b6678c</span><span class="o">},</span> <span class="n">FYI</span> <span class="n">main</span> <span class="n">Looper</span> <span class="n">is</span> <span class="n">Looper</span> <span class="o">(</span><span class="n">main</span><span class="o">,</span> <span class="n">tid</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span><span class="mi">528712</span><span class="n">d4</span><span class="o">})</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">webkit</span><span class="o">.</span><span class="na">WebView</span><span class="o">.</span><span class="na">checkThread</span><span class="o">(</span><span class="n">WebView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2063</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">webkit</span><span class="o">.</span><span class="na">WebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">WebView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">794</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">xxxx</span><span class="o">.</span><span class="na">xxxx</span><span class="o">.</span><span class="na">xxxx</span><span class="o">.</span><span class="na">xxxxxxx</span><span class="n">$JavaScriptInterface</span><span class="o">.</span><span class="na">onCanGoBackResult</span><span class="o">(</span><span class="n">xxxx</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">96</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">org</span><span class="o">.</span><span class="na">chromium</span><span class="o">.</span><span class="na">base</span><span class="o">.</span><span class="na">SystemMessageHandler</span><span class="o">.</span><span class="na">nativeDoRunLoopOnce</span><span class="o">(</span><span class="n">Native</span> <span class="n">Method</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span>   <span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">org</span><span class="o">.</span><span class="na">chromium</span><span class="o">.</span><span class="na">base</span><span class="o">.</span><span class="na">SystemMessageHandler</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">SystemMessageHandler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">27</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="n">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">136</span><span class="o">)</span>
-</span><span class='line'><span class="n">E</span><span class="o">/</span><span class="n">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span>   <span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">HandlerThread</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">HandlerThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">61</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<p>###<font color="red">All WebView methods must be called on the same thread</font>
+过滤日志曾发现过这个问题。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Throwable</span><span class="o">:</span> <span class="no">A</span> <span class="nc">WebView</span> <span class="n">method</span> <span class="n">was</span> <span class="n">called</span> <span class="n">on</span> <span class="n">thread</span> <span class="err">'</span><span class="nc">JavaBridge</span><span class="err">'</span><span class="o">.</span> <span class="nc">All</span> <span class="nc">WebView</span> <span class="n">methods</span> <span class="n">must</span> <span class="n">be</span> <span class="n">called</span> <span class="n">on</span> <span class="n">the</span> <span class="n">same</span> <span class="n">thread</span><span class="o">.</span> <span class="o">(</span><span class="nc">Expected</span> <span class="nc">Looper</span> <span class="nf">Looper</span> <span class="o">(</span><span class="n">main</span><span class="o">,</span> <span class="n">tid</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span><span class="mi">528712</span><span class="n">d4</span><span class="o">}</span> <span class="n">called</span> <span class="n">on</span> <span class="nf">Looper</span> <span class="o">(</span><span class="nc">JavaBridge</span><span class="o">,</span> <span class="n">tid</span> <span class="mi">121</span><span class="o">)</span> <span class="o">{</span><span class="mi">52</span><span class="n">b6678c</span><span class="o">},</span> <span class="no">FYI</span> <span class="n">main</span> <span class="nc">Looper</span> <span class="n">is</span> <span class="nf">Looper</span> <span class="o">(</span><span class="n">main</span><span class="o">,</span> <span class="n">tid</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span><span class="mi">528712</span><span class="n">d4</span><span class="o">})</span>
+</span><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">webkit</span><span class="o">.</span><span class="na">WebView</span><span class="o">.</span><span class="na">checkThread</span><span class="o">(</span><span class="nc">WebView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">2063</span><span class="o">)</span>
+</span><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">webkit</span><span class="o">.</span><span class="na">WebView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="nc">WebView</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">794</span><span class="o">)</span>
+</span><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">xxx</span><span class="o">.</span><span class="na">xxxx</span><span class="o">.</span><span class="na">xxxx</span><span class="o">.</span><span class="na">xxxx</span><span class="o">.</span><span class="na">xxxxxxx</span><span class="n">$JavaScriptInterface</span><span class="o">.</span><span class="na">onCanGoBackResult</span><span class="o">(</span><span class="n">xxxx</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">96</span><span class="o">)</span>
+</span><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">org</span><span class="o">.</span><span class="na">chromium</span><span class="o">.</span><span class="na">base</span><span class="o">.</span><span class="na">SystemMessageHandler</span><span class="o">.</span><span class="na">nativeDoRunLoopOnce</span><span class="o">(</span><span class="nc">Native</span> <span class="nc">Method</span><span class="o">)</span>
+</span><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> 	<span class="n">at</span> <span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">org</span><span class="o">.</span><span class="na">chromium</span><span class="o">.</span><span class="na">base</span><span class="o">.</span><span class="na">SystemMessageHandler</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="nc">SystemMessageHandler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">27</span><span class="o">)</span>
+</span><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Handler</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="nc">Handler</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">102</span><span class="o">)</span>
+</span><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">(</span><span class="nc">Looper</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">136</span><span class="o">)</span>
+</span><span class="line"><span class="no">E</span><span class="o">/</span><span class="nc">StrictMode</span><span class="o">(</span> <span class="mi">1546</span><span class="o">):</span> 	<span class="n">at</span> <span class="n">android</span><span class="o">.</span><span class="na">os</span><span class="o">.</span><span class="na">HandlerThread</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">HandlerThread</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">61</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>在js调用后的Java回调线程并不是主线程。如打印日志可验证</p>
-
-<figure class='code'><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">ThreadInfo</span><span class="o">=</span>Thread<span class="o">[</span>WebViewCoreThread,5,main<span class="o">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span>lineos:false</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nv">ThreadInfo</span><span class="o">=</span>Thread[WebViewCoreThread,5,main]</span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>解决上述的异常，将webview操作放在主线程中即可。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">webView</span><span class="o">.</span><span class="na">post</span><span class="o">(</span><span class="k">new</span> <span class="nc">Runnable</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="no">YOUR_URL</span><span class="o">).</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">});</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">webView</span><span class="o">.</span><span class="na">post</span><span class="o">(</span><span class="k">new</span> <span class="n">Runnable</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">webView</span><span class="o">.</span><span class="na">loadUrl</span><span class="o">(</span><span class="n">YOUR_URL</span><span class="o">).</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">});</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>其他</h3>
-
+<p>###其他</p>
 <ul>
-<li><a href="http://www.amazon.cn/gp/product/B00LVHTI9U/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00LVHTI9U&linkCode=as2&tag=droidyue-23">第一行代码:Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00LVHTI9U" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B0097CON2S/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B0097CON2S&linkCode=as2&tag=droidyue-23">JavaScript语言精粹</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B0097CON2S" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
-<li><a href="http://www.amazon.cn/gp/product/B00B14IGUK/ref=as_li_tf_tl?ie=UTF8&camp=536&creative=3200&creativeASIN=B00B14IGUK&linkCode=as2&tag=droidyue-23">安全技术大系:Web前端黑客技术揭秘</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&l=as2&o=28&a=B00B14IGUK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B00LVHTI9U/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00LVHTI9U&amp;linkCode=as2&amp;tag=droidyue-23">第一行代码:Android</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00LVHTI9U" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B0097CON2S/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B0097CON2S&amp;linkCode=as2&amp;tag=droidyue-23">JavaScript语言精粹</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B0097CON2S" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+  <li><a href="http://www.amazon.cn/gp/product/B00B14IGUK/ref=as_li_tf_tl?ie=UTF8&amp;camp=536&amp;creative=3200&amp;creativeASIN=B00B14IGUK&amp;linkCode=as2&amp;tag=droidyue-23">安全技术大系:Web前端黑客技术揭秘</a><img src="http://ir-cn.amazon-adsystem.com/e/ir?t=droidyue-23&amp;l=as2&amp;o=28&amp;a=B00B14IGUK" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
 </ul>
-
 
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-Width:100%" /><br/>
 </div>
@@ -696,8 +605,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -709,15 +616,22 @@
 
 
 
-  
-
 
 <time datetime="2014-09-20T21:37:00+08:00" pubdate data-updated="true">Sep 20<span>th</span>, 2014</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/java/'>Java</a>, <a class='category' href='/blog/categories/javascript/'>JavaScript</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/java/">Java</a>, 
+  
+    
+    <a class="category" href="/blog/categories/javascript/">JavaScript</a>
   
 </span>
 
@@ -810,10 +724,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -887,6 +797,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

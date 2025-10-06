@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2016-11-14T20:58:00+08:00" pubdate data-updated="true">Nov 14<span>th</span>, 2016</time>
         
@@ -189,32 +187,26 @@
 <p>一次在公司开发项目开发中，突然LeakCanary弹出了一个内存泄漏的通知栏，不好，内存泄漏发生了。原因竟是和getSystemService有关。</p>
 
 <p>为了排除干扰因素，我们使用一个简单的示例代码</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="n">AppCompatActivity</span> <span class="o">{</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="n">PowerManager</span> <span class="n">powerManager</span><span class="o">;</span>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
-</span><span class='line'>        <span class="n">powerManager</span> <span class="o">=</span> <span class="o">(</span><span class="n">PowerManager</span><span class="o">)</span><span class="n">getSystemService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="nc">AppCompatActivity</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="kd">static</span> <span class="nc">PowerManager</span> <span class="n">powerManager</span><span class="o">;</span>
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="nc">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class="line">        <span class="n">setContentView</span><span class="o">(</span><span class="no">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
+</span><span class="line">        <span class="n">powerManager</span> <span class="o">=</span> <span class="o">(</span><span class="nc">PowerManager</span><span class="o">)</span><span class="n">getSystemService</span><span class="o">(</span><span class="nc">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <!--more-->
-
 
 <p>当退出MainActivity时，得到了LeakCanary的内存泄漏报告。如下图。
 <img src="https://asset.droidyue.com/broken_images/leakcanary_leaks.png" alt="Leakcanary leaks" /></p>
@@ -224,191 +216,160 @@
 <p>因此，我们有必要对PowerManager的源码分析一下</p>
 
 <p>1.PowerManager会持有一个Context实例，具体使用Activity还是Application的Context取决于调用者。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">final</span> <span class="n">Context</span> <span class="n">mContext</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">final</span> <span class="n">IPowerManager</span> <span class="n">mService</span><span class="o">;</span>
-</span><span class='line'>    <span class="kd">final</span> <span class="n">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="cm">/**</span>
-</span><span class='line'><span class="cm">     * {@hide}</span>
-</span><span class='line'><span class="cm">     */</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="nf">PowerManager</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">,</span> <span class="n">IPowerManager</span> <span class="n">service</span><span class="o">,</span> <span class="n">Handler</span> <span class="n">handler</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">mContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
-</span><span class='line'>        <span class="n">mService</span> <span class="o">=</span> <span class="n">service</span><span class="o">;</span>
-</span><span class='line'>        <span class="n">mHandler</span> <span class="o">=</span> <span class="n">handler</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">final</span> <span class="nc">Context</span> <span class="n">mContext</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">final</span> <span class="nc">IPowerManager</span> <span class="n">mService</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">final</span> <span class="nc">Handler</span> <span class="n">mHandler</span><span class="o">;</span>
+</span><span class="line">
+</span><span class="line">    <span class="cm">/**
+</span><span class="line">     * {@hide}
+</span><span class="line">     */</span>
+</span><span class="line">    <span class="kd">public</span> <span class="nf">PowerManager</span><span class="o">(</span><span class="nc">Context</span> <span class="n">context</span><span class="o">,</span> <span class="nc">IPowerManager</span> <span class="n">service</span><span class="o">,</span> <span class="nc">Handler</span> <span class="n">handler</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">mContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
+</span><span class="line">        <span class="n">mService</span> <span class="o">=</span> <span class="n">service</span><span class="o">;</span>
+</span><span class="line">        <span class="n">mHandler</span> <span class="o">=</span> <span class="n">handler</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>2.负责缓存服务的实现在ContextImpl.java文件中</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// The system service cache for the system services that are cached per-ContextImpl.</span>
-</span><span class='line'>    <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">mServiceCache</span> <span class="o">=</span> <span class="n">SystemServiceRegistry</span><span class="o">.</span><span class="na">createServiceCache</span><span class="o">();</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="c1">// The system service cache for the system services that are cached per-ContextImpl.</span>
+</span><span class="line">    <span class="kd">final</span> <span class="nc">Object</span><span class="o">[]</span> <span class="n">mServiceCache</span> <span class="o">=</span> <span class="nc">SystemServiceRegistry</span><span class="o">.</span><span class="na">createServiceCache</span><span class="o">();</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>而Activity通过ContextImpl提供的setOuterContext方法设置mOuterContext</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">final</span> <span class="kt">void</span> <span class="nf">setOuterContext</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">mOuterContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">final</span> <span class="kt">void</span> <span class="nf">setOuterContext</span><span class="o">(</span><span class="nc">Context</span> <span class="n">context</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">mOuterContext</span> <span class="o">=</span> <span class="n">context</span><span class="o">;</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>因此Activity与ContextImpl的关系如下图
 <img src="https://asset.droidyue.com/broken_images/acitivyt_context_impl.png" alt="http://7jpolu.com1.z0.glb.clouddn.com/QQ20161108-0.png" /></p>
 
 <p>SystemServiceRegistry.java中获取PowerManager的实现。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">registerService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">,</span> <span class="n">PowerManager</span><span class="o">.</span><span class="na">class</span><span class="o">,</span>
-</span><span class='line'>                <span class="k">new</span> <span class="n">CachedServiceFetcher</span><span class="o">&lt;</span><span class="n">PowerManager</span><span class="o">&gt;()</span> <span class="o">{</span>
-</span><span class='line'>            <span class="nd">@Override</span>
-</span><span class='line'>            <span class="kd">public</span> <span class="n">PowerManager</span> <span class="nf">createService</span><span class="o">(</span><span class="n">ContextImpl</span> <span class="n">ctx</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                <span class="n">IBinder</span> <span class="n">b</span> <span class="o">=</span> <span class="n">ServiceManager</span><span class="o">.</span><span class="na">getService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span>
-</span><span class='line'>                <span class="n">IPowerManager</span> <span class="n">service</span> <span class="o">=</span> <span class="n">IPowerManager</span><span class="o">.</span><span class="na">Stub</span><span class="o">.</span><span class="na">asInterface</span><span class="o">(</span><span class="n">b</span><span class="o">);</span>
-</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="n">service</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>                    <span class="n">Log</span><span class="o">.</span><span class="na">wtf</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;Failed to get power manager service.&quot;</span><span class="o">);</span>
-</span><span class='line'>                <span class="o">}</span>
-</span><span class='line'>                <span class="k">return</span> <span class="k">new</span> <span class="nf">PowerManager</span><span class="o">(</span><span class="n">ctx</span><span class="o">.</span><span class="na">getOuterContext</span><span class="o">(),</span>
-</span><span class='line'>                        <span class="n">service</span><span class="o">,</span> <span class="n">ctx</span><span class="o">.</span><span class="na">mMainThread</span><span class="o">.</span><span class="na">getHandler</span><span class="o">());</span>
-</span><span class='line'>            <span class="o">}});</span>
-</span></code></pre></td></tr></table></div></figure>
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">registerService</span><span class="o">(</span><span class="nc">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">,</span> <span class="nc">PowerManager</span><span class="o">.</span><span class="na">class</span><span class="o">,</span>
+</span><span class="line">                <span class="k">new</span> <span class="nc">CachedServiceFetcher</span><span class="o">&lt;</span><span class="nc">PowerManager</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class="line">            <span class="nd">@Override</span>
+</span><span class="line">            <span class="kd">public</span> <span class="nc">PowerManager</span> <span class="nf">createService</span><span class="o">(</span><span class="nc">ContextImpl</span> <span class="n">ctx</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">                <span class="nc">IBinder</span> <span class="n">b</span> <span class="o">=</span> <span class="nc">ServiceManager</span><span class="o">.</span><span class="na">getService</span><span class="o">(</span><span class="nc">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span>
+</span><span class="line">                <span class="nc">IPowerManager</span> <span class="n">service</span> <span class="o">=</span> <span class="nc">IPowerManager</span><span class="o">.</span><span class="na">Stub</span><span class="o">.</span><span class="na">asInterface</span><span class="o">(</span><span class="n">b</span><span class="o">);</span>
+</span><span class="line">                <span class="k">if</span> <span class="o">(</span><span class="n">service</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">                    <span class="nc">Log</span><span class="o">.</span><span class="na">wtf</span><span class="o">(</span><span class="no">TAG</span><span class="o">,</span> <span class="s">"Failed to get power manager service."</span><span class="o">);</span>
+</span><span class="line">                <span class="o">}</span>
+</span><span class="line">                <span class="k">return</span> <span class="k">new</span> <span class="nf">PowerManager</span><span class="o">(</span><span class="n">ctx</span><span class="o">.</span><span class="na">getOuterContext</span><span class="o">(),</span>
+</span><span class="line">                        <span class="n">service</span><span class="o">,</span> <span class="n">ctx</span><span class="o">.</span><span class="na">mMainThread</span><span class="o">.</span><span class="na">getHandler</span><span class="o">());</span>
+</span><span class="line">            <span class="o">}});</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
 <p>创建具体的服务的实现为core/java/android/app/SystemServiceRegistry.java</p>
 
-<h2>如何解决</h2>
-
-<h3>不使用静态持有PowerManager</h3>
+<p>##如何解决
+###不使用静态持有PowerManager</p>
 
 <p>因为static是一个很容易和内存泄漏产生关联的因素</p>
 
 <ul>
-<li>static变量与类的生命周期相同</li>
-<li>类的生命周期等同于类加载器</li>
-<li>类加载器通常和进程的生命周期一致</li>
+  <li>static变量与类的生命周期相同</li>
+  <li>类的生命周期等同于类加载器</li>
+  <li>类加载器通常和进程的生命周期一致</li>
 </ul>
-
 
 <p>所以通过去除static可以保证变量周期和Activity实例相同。这样就不会产生内存泄漏问题。</p>
 
-<h3>使用ApplicationContext</h3>
+<p>###使用ApplicationContext
+除了上面的方法之外，传入Application的Context而不是Activity Context也可以解决问题。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">PowerManager</span> <span class="n">powerManager</span> <span class="o">=</span> <span class="o">(</span><span class="nc">PowerManager</span><span class="o">)</span><span class="n">getApplicationContext</span><span class="o">().</span><span class="na">getSystemService</span><span class="o">(</span><span class="nc">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<p>除了上面的方法之外，传入Application的Context而不是Activity Context也可以解决问题。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">PowerManager</span> <span class="n">powerManager</span> <span class="o">=</span> <span class="o">(</span><span class="n">PowerManager</span><span class="o">)</span><span class="n">getApplicationContext</span><span class="o">().</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">Context</span><span class="o">.</span><span class="na">POWER_SERVICE</span><span class="o">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>是不是都要使用Application Context？</h2>
-
-<p>然而并非如此</p>
+<p>##是不是都要使用Application Context？
+然而并非如此</p>
 
 <p>以Activity为例，一些和UI相关的服务已经优先进行了处理</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="n">Object</span> <span class="nf">getSystemService</span><span class="o">(</span><span class="nd">@ServiceName</span> <span class="nd">@NonNull</span> <span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">getBaseContext</span><span class="o">()</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span>
-</span><span class='line'>                <span class="s">&quot;System services not available to Activities before onCreate()&quot;</span><span class="o">);</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">WINDOW_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mWindowManager</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">SEARCH_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">ensureSearchManager</span><span class="o">();</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mSearchManager</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nd">@Override</span>
+</span><span class="line"><span class="kd">public</span> <span class="nc">Object</span> <span class="nf">getSystemService</span><span class="o">(</span><span class="nd">@ServiceName</span> <span class="nd">@NonNull</span> <span class="nc">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="n">getBaseContext</span><span class="o">()</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span>
+</span><span class="line">                <span class="s">"System services not available to Activities before onCreate()"</span><span class="o">);</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="no">WINDOW_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">mWindowManager</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="no">SEARCH_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">ensureSearchManager</span><span class="o">();</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">mSearchManager</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <p>ContextThemeWrapper也优先处理了LayoutManager服务</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nd">@Override</span>
+</span><span class="line"><span class="kd">public</span> <span class="nc">Object</span> <span class="nf">getSystemService</span><span class="o">(</span><span class="nc">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">    <span class="k">if</span> <span class="o">(</span><span class="no">LAYOUT_INFLATER_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">mInflater</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">mInflater</span> <span class="o">=</span> <span class="nc">LayoutInflater</span><span class="o">.</span><span class="na">from</span><span class="o">(</span><span class="n">getBaseContext</span><span class="o">()).</span><span class="na">cloneInContext</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">mInflater</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    <span class="k">return</span> <span class="nf">getBaseContext</span><span class="o">().</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
-</span><span class='line'><span class="kd">public</span> <span class="n">Object</span> <span class="nf">getSystemService</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">LAYOUT_INFLATER_SERVICE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">mInflater</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>            <span class="n">mInflater</span> <span class="o">=</span> <span class="n">LayoutInflater</span><span class="o">.</span><span class="na">from</span><span class="o">(</span><span class="n">getBaseContext</span><span class="o">()).</span><span class="na">cloneInContext</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
-</span><span class='line'>        <span class="o">}</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mInflater</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>    <span class="k">return</span> <span class="nf">getBaseContext</span><span class="o">().</span><span class="na">getSystemService</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>那到底该用哪个Context</h2>
-
+<p>##那到底该用哪个Context</p>
 <ul>
-<li>如果服务和UI相关，则用Activity</li>
-<li>如果是类似ALARM_SERVICE,CONNECTIVITY_SERVICE建议有限选用Application Context</li>
-<li>如果出现出现了内存泄漏，排除问题，可以考虑使用Application Context</li>
+  <li>如果服务和UI相关，则用Activity</li>
+  <li>如果是类似ALARM_SERVICE,CONNECTIVITY_SERVICE建议有限选用Application Context</li>
+  <li>如果出现出现了内存泄漏，排除问题，可以考虑使用Application Context</li>
 </ul>
-
 
 <p>如需了解更多关于Context的内存泄漏，请阅读</p>
 
 <ul>
-<li><a href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a></li>
+  <li><a href="http://droidyue.com/blog/2015/04/12/avoid-memory-leaks-on-context-in-android/">避免Android中Context引起的内存泄露</a></li>
 </ul>
-
 
 <p>所以，当我们再次使用getSystemService时要慎重考虑这样的问题。</p>
 
@@ -446,8 +407,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -459,15 +418,19 @@
 
 
 
-  
-
 
 <time datetime="2016-11-14T20:58:00+08:00" pubdate data-updated="true">Nov 14<span>th</span>, 2016</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/nei-cun-xie-lou/'>内存泄漏</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/nei-cun-xie-lou/">内存泄漏</a>
   
 </span>
 
@@ -560,10 +523,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -637,6 +596,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>

@@ -174,8 +174,6 @@
 
 
 
-  
-
 
 <time datetime="2021-06-22T11:50:00+08:00" pubdate data-updated="true">Jun 22<span>nd</span>, 2021</time>
         
@@ -186,247 +184,226 @@
 
 <div class="entry-content"><p>出于某些场景需要，有时候，我们需要从 WebView 获取源码，本文将简单介绍如何从 WebView 中获取源码，以及遇到的问题的分析和总结。</p>
 
-<h2>获取源码的方法</h2>
-
+<h2 id="获取源码的方法">获取源码的方法</h2>
 <ul>
-<li>WebView 没有提供直接获取网页源码的方法</li>
-<li>我们需要使用Javascript 的方法来获取源码，具体的核心代码如下</li>
+  <li>WebView 没有提供直接获取网页源码的方法</li>
+  <li>我们需要使用Javascript 的方法来获取源码，具体的核心代码如下</li>
 </ul>
 
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">var</span> <span class="nx">content</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="s1">&#39;html&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="nx">innerHTML</span><span class="p">;</span>
-</span><span class='line'>    <span class="k">return</span> <span class="s1">&#39;&lt;html&gt;&#39;</span> <span class="o">+</span> <span class="nx">content</span> <span class="o">+</span> <span class="s1">&#39;&lt;/html&gt;&#39;</span><span class="p">;</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">var</span> <span class="nx">content</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="dl">'</span><span class="s1">html</span><span class="dl">'</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="nx">innerHTML</span><span class="p">;</span>
+</span><span class="line">    <span class="k">return</span> <span class="dl">'</span><span class="s1">&lt;html&gt;</span><span class="dl">'</span> <span class="o">+</span> <span class="nx">content</span> <span class="o">+</span> <span class="dl">'</span><span class="s1">&lt;/html&gt;</span><span class="dl">'</span><span class="p">;</span>
+</span><span class="line"><span class="p">})</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 <!--more-->
 
-
-<h2>获取时机</h2>
-
+<h2 id="获取时机">获取时机</h2>
 <ul>
-<li>为了确保源码完整，建议放在<code>onPageFinished</code>（即网页加载完毕时）时机。</li>
+  <li>为了确保源码完整，建议放在<code class="language-plaintext highlighter-rouge">onPageFinished</code>（即网页加载完毕时）时机。</li>
 </ul>
 
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">:</span> <span class="nc">Bundle</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">super</span><span class="p">.</span><span class="nf">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">)</span>
+</span><span class="line">        <span class="nf">setContentView</span><span class="p">(</span><span class="nc">R</span><span class="p">.</span><span class="n">layout</span><span class="p">.</span><span class="n">activity_main</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">        <span class="n">webView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">javaScriptEnabled</span> <span class="p">=</span> <span class="k">true</span>
+</span><span class="line">
+</span><span class="line">        <span class="n">webView</span><span class="p">.</span><span class="n">webViewClient</span> <span class="p">=</span> <span class="k">object</span><span class="p">:</span> <span class="nc">WebViewClient</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">            <span class="k">override</span> <span class="k">fun</span> <span class="nf">onPageFinished</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="nc">WebView</span><span class="p">?,</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">                <span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"GetPageSourceCode"</span><span class="p">,</span> <span class="s">"onPageFinished url=$url"</span><span class="p">)</span>
+</span><span class="line">                <span class="k">super</span><span class="p">.</span><span class="nf">onPageFinished</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+</span><span class="line">                <span class="nf">parseSourceCode</span><span class="p">(</span><span class="n">webView</span><span class="p">)</span>
+</span><span class="line">            <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="n">webView</span><span class="p">.</span><span class="n">webChromeClient</span> <span class="p">=</span> <span class="k">object</span><span class="p">:</span> <span class="nc">WebChromeClient</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">            <span class="k">override</span> <span class="k">fun</span> <span class="nf">onProgressChanged</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="nc">WebView</span><span class="p">?,</span> <span class="n">newProgress</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">                <span class="k">super</span><span class="p">.</span><span class="nf">onProgressChanged</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">newProgress</span><span class="p">)</span>
+</span><span class="line">                <span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"GetPageSourceCode"</span><span class="p">,</span> <span class="s">"onProgressChanged newProgress=$newProgress"</span><span class="p">)</span>
+</span><span class="line">            <span class="p">}</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">        <span class="n">webView</span><span class="p">.</span><span class="nf">loadUrl</span><span class="p">(</span><span class="s">"http://10.185.240.240:8000/"</span><span class="p">)</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">override</span> <span class="k">fun</span> <span class="nf">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">:</span> <span class="n">Bundle</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">onCreate</span><span class="p">(</span><span class="n">savedInstanceState</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">setContentView</span><span class="p">(</span><span class="n">R</span><span class="p">.</span><span class="n">layout</span><span class="p">.</span><span class="n">activity_main</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">webView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">javaScriptEnabled</span> <span class="p">=</span> <span class="k">true</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">webView</span><span class="p">.</span><span class="n">webViewClient</span> <span class="p">=</span> <span class="n">object</span><span class="p">:</span> <span class="n">WebViewClient</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">override</span> <span class="k">fun</span> <span class="nf">onPageFinished</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">WebView</span><span class="p">?,</span> <span class="n">url</span><span class="p">:</span> <span class="n">String</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>                <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;GetPageSourceCode&quot;</span><span class="p">,</span> <span class="s">&quot;onPageFinished url=$url&quot;</span><span class="p">)</span>
-</span><span class='line'>                <span class="n">super</span><span class="p">.</span><span class="n">onPageFinished</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
-</span><span class='line'>                <span class="n">parseSourceCode</span><span class="p">(</span><span class="n">webView</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">webView</span><span class="p">.</span><span class="n">webChromeClient</span> <span class="p">=</span> <span class="n">object</span><span class="p">:</span> <span class="n">WebChromeClient</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">override</span> <span class="k">fun</span> <span class="nf">onProgressChanged</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">WebView</span><span class="p">?,</span> <span class="n">newProgress</span><span class="p">:</span> <span class="n">Int</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>                <span class="n">super</span><span class="p">.</span><span class="n">onProgressChanged</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">newProgress</span><span class="p">)</span>
-</span><span class='line'>                <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;GetPageSourceCode&quot;</span><span class="p">,</span> <span class="s">&quot;onProgressChanged newProgress=$newProgress&quot;</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">}</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">webView</span><span class="p">.</span><span class="n">loadUrl</span><span class="p">(</span><span class="s">&quot;http://10.185.240.240:8000/&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>解析处理源码</h2>
+<h2 id="解析处理源码">解析处理源码</h2>
 
 <ul>
-<li>这里我们获取并打印所有的<code>&lt;a&gt;</code>元素</li>
+  <li>这里我们获取并打印所有的<code class="language-plaintext highlighter-rouge">&lt;a&gt;</code>元素</li>
 </ul>
 
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+</pre></td><td class="code"><pre><code class="kotlin"><span class="line"><span class="k">private</span> <span class="k">fun</span> <span class="nf">parseSourceCode</span><span class="p">(</span><span class="n">webView</span><span class="p">:</span> <span class="nc">WebView</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">webView</span><span class="p">.</span><span class="nf">evaluateJavascript</span><span class="p">(</span><span class="s">"""
+</span><span class="line">                    (function() {
+</span><span class="line">                        var content = document.getElementsByTagName('html')[0].innerHTML;
+</span><span class="line">                        return '&lt;html&gt;' + content + '&lt;/html&gt;';
+</span><span class="line">                    })();"""</span><span class="p">.</span><span class="nf">trimIndent</span><span class="p">())</span> <span class="p">{</span>
+</span><span class="line">						<span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"GetPageSourceCode"</span><span class="p">,</span> <span class="n">it</span><span class="p">)</span>
+</span><span class="line">						<span class="nf">printATagElements</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="k">private</span> <span class="k">fun</span> <span class="nf">printATagElements</span><span class="p">(</span><span class="n">htmlString</span><span class="p">:</span> <span class="nc">String</span><span class="p">?)</span> <span class="p">{</span>
+</span><span class="line">        <span class="n">htmlString</span> <span class="o">?:</span> <span class="k">return</span>
+</span><span class="line">        <span class="kd">val</span> <span class="py">document</span> <span class="p">=</span> <span class="nc">Jsoup</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="n">htmlString</span><span class="p">)</span>
+</span><span class="line">        <span class="n">document</span><span class="p">.</span><span class="nf">select</span><span class="p">(</span><span class="s">"a"</span><span class="p">).</span><span class="nf">joinToString</span><span class="p">().</span><span class="nf">let</span> <span class="p">{</span>
+</span><span class="line">            <span class="nc">Log</span><span class="p">.</span><span class="nf">i</span><span class="p">(</span><span class="s">"GetPageSourceCode"</span><span class="p">,</span> <span class="s">"ATag.content=$it"</span><span class="p">)</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">    <span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='kotlin'><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">parseSourceCode</span><span class="p">(</span><span class="n">webView</span><span class="p">:</span> <span class="n">WebView</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">webView</span><span class="p">.</span><span class="n">evaluateJavascript</span><span class="p">(</span><span class="s">&quot;&quot;&quot;</span>
-</span><span class='line'>                    <span class="p">(</span><span class="n">function</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>                        <span class="k">var</span> <span class="n">content</span> <span class="p">=</span> <span class="n">document</span><span class="p">.</span><span class="n">getElementsByTagName</span><span class="p">(</span><span class="err">&#39;</span><span class="n">html</span><span class="err">&#39;</span><span class="p">)[</span><span class="m">0</span><span class="p">].</span><span class="n">innerHTML</span><span class="p">;</span>
-</span><span class='line'>                        <span class="k">return</span> <span class="err">&#39;</span><span class="p">&lt;</span><span class="n">html</span><span class="p">&gt;</span><span class="err">&#39;</span> <span class="p">+</span> <span class="n">content</span> <span class="p">+</span> <span class="err">&#39;</span><span class="p">&lt;/</span><span class="n">html</span><span class="p">&gt;</span><span class="err">&#39;</span><span class="p">;</span>
-</span><span class='line'>                    <span class="p">})();</span><span class="s">&quot;&quot;&quot;.trimIndent()) {</span>
-</span><span class='line'>                      <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;GetPageSourceCode&quot;</span><span class="p">,</span> <span class="n">it</span><span class="p">)</span>
-</span><span class='line'>                      <span class="n">printATagElements</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="k">private</span> <span class="k">fun</span> <span class="nf">printATagElements</span><span class="p">(</span><span class="n">htmlString</span><span class="p">:</span> <span class="n">String</span><span class="p">?)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">htmlString</span> <span class="p">?:</span> <span class="k">return</span>
-</span><span class='line'>        <span class="k">val</span> <span class="n">document</span> <span class="p">=</span> <span class="n">Jsoup</span><span class="p">.</span><span class="n">parse</span><span class="p">(</span><span class="n">htmlString</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">document</span><span class="p">.</span><span class="n">select</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">).</span><span class="n">joinToString</span><span class="p">().</span><span class="n">let</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">Log</span><span class="p">.</span><span class="n">i</span><span class="p">(</span><span class="s">&quot;GetPageSourceCode&quot;</span><span class="p">,</span> <span class="s">&quot;ATag.content=$it&quot;</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>问题来了</h2>
+<h2 id="问题来了">问题来了</h2>
 
 <p>打印出来一堆这样的网页源码, 无法进行Jsoup解析</p>
 
-<blockquote><p>&ldquo;\u003Chtml>\u003Chead>\n    \u003Ctitle>Index of /\u003C/title>\n    \u003Cstyle type=&#34;text/css\&rdquo;>\n    \u003C!&mdash;\n    .name, .mtime { text-align: left; }\n    .size { text-align: right; }\n    td { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }\n    table { border-collapse: collapse; }\n    tr th { border-bottom: 2px groove; }\n    //&mdash;>\n    \u003C/style>\n  \u003C/head>\n  \u003Cbody>\n    \u003Ch1>Index of /\u003C/h1>\n\u003Ctable width=\&ldquo;100%\&rdquo;>\u003Cthead>\u003Ctr>\n\u003Cth class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;?N=D\&rdquo;>Name\u003C/a>\u003C/th>\u003Cth class=\&ldquo;mtime\&rdquo;>\u003Ca href=\&ldquo;?M=D\&rdquo;>Last modified\u003C/a>\u003C/th>\u003Cth class=\&ldquo;size\&rdquo;>\u003Ca href=\&ldquo;?S=D\&rdquo;>Size\u003C/a>\u003C/th>\n\u003C/tr>\u003C/thead>\n\u003Ctbody>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;..\&rdquo;>Parent Directory\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/01/05 11:08\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;8.0.27_first/\&rdquo;>8.0.27_first/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/04/15 19:37\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;8.0.27_second/\&rdquo;>8.0.27_second/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/04/16 15:43\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;8.0.28_first/\&rdquo;>8.0.28_first/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/04/20 08:35\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;8.0.28_second.tar.bz2\&rdquo;>8.0.28_second.tar.bz2\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/04/20 18:54\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>8287826524\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;8.0.28_second/\&rdquo;>8.0.28_second/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/04/20 14:25\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;archive/\&rdquo;>archive/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/04/15 14:06\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;channel\&rdquo;>channel\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2020/06/05 18:10\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>10\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;huawei_channel/\&rdquo;>huawei_channel/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/04/15 14:18\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;huawei_channel_second/\&rdquo;>huawei_channel_second/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2021/04/16 11:14\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;nohup.out\&rdquo;>nohup.out\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2019/12/20 13:48\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>14003\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;seperate_apks/\&rdquo;>seperate_apks/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2020/06/05 18:14\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;temp_master_batch_build/\&rdquo;>temp_master_batch_build/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2020/12/04 17:46\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003Ctr>\u003Ctd class=\&ldquo;name\&rdquo;>\u003Ca href=\&ldquo;trash/\&rdquo;>trash/\u003C/a>\u003C/td>\u003Ctd class=\&ldquo;mtime\&rdquo;>2020/04/29 12:19\u003C/td>\u003Ctd class=\&ldquo;size\&rdquo;>&ndash;\u003C/td>\u003C/tr>\n\u003C/tbody>\u003C/table>\u003Chr>    \u003Caddress>\n     WEBrick/1.4.2 (Ruby/2.5.5/2019-03-15)\u003Cbr>\n     at 10.185.240.240:8000\n    \u003C/address>\n  \n\n\u003C/body>\u003C/html>&#8221;</p></blockquote>
+<blockquote>
+  <p>“\u003Chtml&gt;\u003Chead&gt;\n    \u003Ctitle&gt;Index of /\u003C/title&gt;\n    \u003Cstyle type="text/css"&gt;\n    \u003C!–\n    .name, .mtime { text-align: left; }\n    .size { text-align: right; }\n    td { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }\n    table { border-collapse: collapse; }\n    tr th { border-bottom: 2px groove; }\n    //–&gt;\n    \u003C/style&gt;\n  \u003C/head&gt;\n  \u003Cbody&gt;\n    \u003Ch1&gt;Index of /\u003C/h1&gt;\n\u003Ctable width="100%"&gt;\u003Cthead&gt;\u003Ctr&gt;\n\u003Cth class="name"&gt;\u003Ca href="?N=D"&gt;Name\u003C/a&gt;\u003C/th&gt;\u003Cth class="mtime"&gt;\u003Ca href="?M=D"&gt;Last modified\u003C/a&gt;\u003C/th&gt;\u003Cth class="size"&gt;\u003Ca href="?S=D"&gt;Size\u003C/a&gt;\u003C/th&gt;\n\u003C/tr&gt;\u003C/thead&gt;\n\u003Ctbody&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href=".."&gt;Parent Directory\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/01/05 11:08\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="8.0.27_first/"&gt;8.0.27_first/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/04/15 19:37\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="8.0.27_second/"&gt;8.0.27_second/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/04/16 15:43\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="8.0.28_first/"&gt;8.0.28_first/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/04/20 08:35\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="8.0.28_second.tar.bz2"&gt;8.0.28_second.tar.bz2\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/04/20 18:54\u003C/td&gt;\u003Ctd class="size"&gt;8287826524\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="8.0.28_second/"&gt;8.0.28_second/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/04/20 14:25\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="archive/"&gt;archive/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/04/15 14:06\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="channel"&gt;channel\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2020/06/05 18:10\u003C/td&gt;\u003Ctd class="size"&gt;10\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="huawei_channel/"&gt;huawei_channel/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/04/15 14:18\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="huawei_channel_second/"&gt;huawei_channel_second/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2021/04/16 11:14\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="nohup.out"&gt;nohup.out\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2019/12/20 13:48\u003C/td&gt;\u003Ctd class="size"&gt;14003\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="seperate_apks/"&gt;seperate_apks/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2020/06/05 18:14\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="temp_master_batch_build/"&gt;temp_master_batch_build/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2020/12/04 17:46\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003Ctr&gt;\u003Ctd class="name"&gt;\u003Ca href="trash/"&gt;trash/\u003C/a&gt;\u003C/td&gt;\u003Ctd class="mtime"&gt;2020/04/29 12:19\u003C/td&gt;\u003Ctd class="size"&gt;-\u003C/td&gt;\u003C/tr&gt;\n\u003C/tbody&gt;\u003C/table&gt;\u003Chr&gt;    \u003Caddress&gt;\n     WEBrick/1.4.2 (Ruby/2.5.5/2019-03-15)\u003Cbr&gt;\n     at 10.185.240.240:8000\n    \u003C/address&gt;\n  \n\n\u003C/body&gt;\u003C/html&gt;”</p>
+</blockquote>
 
-<h3>怎么处理</h3>
+<h3 id="怎么处理">怎么处理</h3>
+<p>将获取的源码进行<code class="language-plaintext highlighter-rouge">unescape</code> 即可。</p>
 
-<p>将获取的源码进行<code>unescape</code> 即可。</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="nc">StringEscapeUtils</span><span class="o">.</span><span class="na">unescapeEcmaScript</span><span class="o">(</span><span class="n">rawString</span><span class="o">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">StringEscapeUtils</span><span class="o">.</span><span class="na">unescapeEcmaScript</span><span class="o">(</span><span class="n">rawString</span><span class="o">)</span>
-</span></code></pre></td></tr></table></div></figure>
+<p>注意，<code class="language-plaintext highlighter-rouge">StringEscapeUtils</code>来自依赖库<code class="language-plaintext highlighter-rouge">commons-text</code></p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="n">implementation</span> <span class="nl">group:</span> <span class="err">'</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">commons</span><span class="err">'</span><span class="o">,</span> <span class="nl">name:</span> <span class="err">'</span><span class="n">commons</span><span class="o">-</span><span class="n">text</span><span class="err">'</span><span class="o">,</span> <span class="nl">version:</span> <span class="err">'</span><span class="mf">1.9</span><span class="err">'</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
+<h3 id="处理后的结果">处理后的结果</h3>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="o">&lt;</span><span class="n">html</span><span class="o">&gt;&lt;</span><span class="n">head</span><span class="o">&gt;</span>
+</span><span class="line">    <span class="o">&lt;</span><span class="n">title</span><span class="o">&gt;</span><span class="nc">Index</span> <span class="n">of</span> <span class="o">/&lt;/</span><span class="n">title</span><span class="o">&gt;</span>
+</span><span class="line">    <span class="o">&lt;</span><span class="n">style</span> <span class="n">type</span><span class="o">=</span><span class="s">"text/css"</span><span class="o">&gt;</span>
+</span><span class="line">    <span class="o">&lt;!--</span>
+</span><span class="line">    <span class="o">.</span><span class="na">name</span><span class="o">,</span> <span class="o">.</span><span class="na">mtime</span> <span class="o">{</span> <span class="n">text</span><span class="o">-</span><span class="nl">align:</span> <span class="n">left</span><span class="o">;</span> <span class="o">}</span>
+</span><span class="line">    <span class="o">.</span><span class="na">size</span> <span class="o">{</span> <span class="n">text</span><span class="o">-</span><span class="nl">align:</span> <span class="n">right</span><span class="o">;</span> <span class="o">}</span>
+</span><span class="line">    <span class="n">td</span> <span class="o">{</span> <span class="n">text</span><span class="o">-</span><span class="nl">overflow:</span> <span class="n">ellipsis</span><span class="o">;</span> <span class="n">white</span><span class="o">-</span><span class="nl">space:</span> <span class="n">nowrap</span><span class="o">;</span> <span class="nl">overflow:</span> <span class="n">hidden</span><span class="o">;</span> <span class="o">}</span>
+</span><span class="line">    <span class="n">table</span> <span class="o">{</span> <span class="n">border</span><span class="o">-</span><span class="nl">collapse:</span> <span class="n">collapse</span><span class="o">;</span> <span class="o">}</span>
+</span><span class="line">    <span class="n">tr</span> <span class="n">th</span> <span class="o">{</span> <span class="n">border</span><span class="o">-</span><span class="nl">bottom:</span> <span class="mi">2</span><span class="n">px</span> <span class="n">groove</span><span class="o">;</span> <span class="o">}</span>
+</span><span class="line">    <span class="c1">//--&gt;</span>
+</span><span class="line">    <span class="o">&lt;/</span><span class="n">style</span><span class="o">&gt;</span>
+</span><span class="line">  <span class="o">&lt;/</span><span class="n">head</span><span class="o">&gt;</span>
+</span><span class="line">  <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+</span><span class="line">    <span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="nc">Index</span> <span class="n">of</span> <span class="o">/&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+</span><span class="line"><span class="o">&lt;</span><span class="n">table</span> <span class="n">width</span><span class="o">=</span><span class="s">"100%"</span><span class="o">&gt;&lt;</span><span class="n">thead</span><span class="o">&gt;&lt;</span><span class="n">tr</span><span class="o">&gt;</span>
+</span><span class="line"><span class="o">&lt;</span><span class="n">th</span> <span class="kd">class</span><span class="err">="</span><span class="nc">name</span><span class="s">"&gt;&lt;a href="</span><span class="o">?</span><span class="no">N</span><span class="o">=</span><span class="no">D</span><span class="s">"&gt;Name&lt;/a&gt;&lt;/th&gt;&lt;th class="</span><span class="n">mtime</span><span class="s">"&gt;&lt;a href="</span><span class="o">?</span><span class="no">M</span><span class="o">=</span><span class="no">D</span><span class="s">"&gt;Last modified&lt;/a&gt;&lt;/th&gt;&lt;th class="</span><span class="n">size</span><span class="s">"&gt;&lt;a href="</span><span class="o">?</span><span class="no">S</span><span class="o">=</span><span class="no">D</span><span class="s">"&gt;Size&lt;/a&gt;&lt;/th&gt;
+</span><span class="line">&lt;/tr&gt;&lt;/thead&gt;
+</span><span class="line">&lt;tbody&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="o">..</span><span class="s">"&gt;Parent Directory&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/01/05 11:08&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">27</span><span class="n">_first</span><span class="o">/</span><span class="s">"&gt;8.0.27_first/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/04/15 19:37&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">27</span><span class="n">_second</span><span class="o">/</span><span class="s">"&gt;8.0.27_second/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/04/16 15:43&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">28</span><span class="n">_first</span><span class="o">/</span><span class="s">"&gt;8.0.28_first/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/04/20 08:35&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">28</span><span class="n">_second</span><span class="o">.</span><span class="na">tar</span><span class="o">.</span><span class="na">bz2</span><span class="s">"&gt;8.0.28_second.tar.bz2&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/04/20 18:54&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;8287826524&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">28</span><span class="n">_second</span><span class="o">/</span><span class="s">"&gt;8.0.28_second/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/04/20 14:25&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="n">archive</span><span class="o">/</span><span class="s">"&gt;archive/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/04/15 14:06&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="n">channel</span><span class="s">"&gt;channel&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2020/06/05 18:10&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;10&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="n">huawei_channel</span><span class="o">/</span><span class="s">"&gt;huawei_channel/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/04/15 14:18&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="n">huawei_channel_second</span><span class="o">/</span><span class="s">"&gt;huawei_channel_second/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2021/04/16 11:14&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="n">nohup</span><span class="o">.</span><span class="na">out</span><span class="s">"&gt;nohup.out&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2019/12/20 13:48&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;14003&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="n">seperate_apks</span><span class="o">/</span><span class="s">"&gt;seperate_apks/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2020/06/05 18:14&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="n">temp_master_batch_build</span><span class="o">/</span><span class="s">"&gt;temp_master_batch_build/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2020/12/04 17:46&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="s">"&gt;-&lt;/td&gt;&lt;/tr&gt;
+</span><span class="line">&lt;tr&gt;&lt;td class="</span><span class="n">name</span><span class="s">"&gt;&lt;a href="</span><span class="n">trash</span><span class="o">/</span><span class="s">"&gt;trash/&lt;/a&gt;&lt;/td&gt;&lt;td class="</span><span class="n">mtime</span><span class="s">"&gt;2020/04/29 12:19&lt;/td&gt;&lt;td class="</span><span class="n">size</span><span class="err">"</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
+</span><span class="line"><span class="o">&lt;/</span><span class="n">tbody</span><span class="o">&gt;&lt;/</span><span class="n">table</span><span class="o">&gt;&lt;</span><span class="n">hr</span><span class="o">&gt;</span>    <span class="o">&lt;</span><span class="n">address</span><span class="o">&gt;</span>
+</span><span class="line">     <span class="nc">WEBrick</span><span class="o">/</span><span class="mf">1.4</span><span class="o">.</span><span class="mi">2</span> <span class="o">(</span><span class="nc">Ruby</span><span class="o">/</span><span class="mf">2.5</span><span class="o">.</span><span class="mi">5</span><span class="o">/</span><span class="mi">2019</span><span class="o">-</span><span class="mo">03</span><span class="o">-</span><span class="mi">15</span><span class="o">)&lt;</span><span class="n">br</span><span class="o">&gt;</span>
+</span><span class="line">     <span class="n">at</span> <span class="mf">10.185</span><span class="o">.</span><span class="mf">240.240</span><span class="o">:</span><span class="mi">8000</span>
+</span><span class="line">    <span class="o">&lt;/</span><span class="n">address</span><span class="o">&gt;</span>
+</span><span class="line">
+</span><span class="line">
+</span><span class="line"><span class="o">&lt;/</span><span class="n">body</span><span class="o">&gt;&lt;/</span><span class="n">html</span><span class="o">&gt;</span></span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<p>注意，<code>StringEscapeUtils</code>来自依赖库<code>commons-text</code></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">implementation</span> <span class="nl">group:</span> <span class="err">&#39;</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">commons</span><span class="err">&#39;</span><span class="o">,</span> <span class="nl">name:</span> <span class="err">&#39;</span><span class="n">commons</span><span class="o">-</span><span class="n">text</span><span class="err">&#39;</span><span class="o">,</span> <span class="nl">version:</span> <span class="err">&#39;</span><span class="mf">1.9</span><span class="err">&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>处理后的结果</h3>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">&lt;</span><span class="n">html</span><span class="o">&gt;&lt;</span><span class="n">head</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="n">title</span><span class="o">&gt;</span><span class="n">Index</span> <span class="n">of</span> <span class="o">/&lt;/</span><span class="n">title</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="n">style</span> <span class="n">type</span><span class="o">=</span><span class="s">&quot;text/css&quot;</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="o">&lt;!--</span>
-</span><span class='line'>    <span class="o">.</span><span class="na">name</span><span class="o">,</span> <span class="o">.</span><span class="na">mtime</span> <span class="o">{</span> <span class="n">text</span><span class="o">-</span><span class="nl">align:</span> <span class="n">left</span><span class="o">;</span> <span class="o">}</span>
-</span><span class='line'>    <span class="o">.</span><span class="na">size</span> <span class="o">{</span> <span class="n">text</span><span class="o">-</span><span class="nl">align:</span> <span class="n">right</span><span class="o">;</span> <span class="o">}</span>
-</span><span class='line'>    <span class="n">td</span> <span class="o">{</span> <span class="n">text</span><span class="o">-</span><span class="nl">overflow:</span> <span class="n">ellipsis</span><span class="o">;</span> <span class="n">white</span><span class="o">-</span><span class="nl">space:</span> <span class="n">nowrap</span><span class="o">;</span> <span class="nl">overflow:</span> <span class="n">hidden</span><span class="o">;</span> <span class="o">}</span>
-</span><span class='line'>    <span class="n">table</span> <span class="o">{</span> <span class="n">border</span><span class="o">-</span><span class="nl">collapse:</span> <span class="n">collapse</span><span class="o">;</span> <span class="o">}</span>
-</span><span class='line'>    <span class="n">tr</span> <span class="n">th</span> <span class="o">{</span> <span class="n">border</span><span class="o">-</span><span class="nl">bottom:</span> <span class="mi">2</span><span class="n">px</span> <span class="n">groove</span><span class="o">;</span> <span class="o">}</span>
-</span><span class='line'>    <span class="c1">//--&gt;</span>
-</span><span class='line'>    <span class="o">&lt;/</span><span class="n">style</span><span class="o">&gt;</span>
-</span><span class='line'>  <span class="o">&lt;/</span><span class="n">head</span><span class="o">&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">Index</span> <span class="n">of</span> <span class="o">/&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">table</span> <span class="n">width</span><span class="o">=</span><span class="s">&quot;100%&quot;</span><span class="o">&gt;&lt;</span><span class="n">thead</span><span class="o">&gt;&lt;</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">th</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;?N=D&quot;</span><span class="o">&gt;</span><span class="n">Name</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">th</span><span class="o">&gt;&lt;</span><span class="n">th</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;?M=D&quot;</span><span class="o">&gt;</span><span class="n">Last</span> <span class="n">modified</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">th</span><span class="o">&gt;&lt;</span><span class="n">th</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;?S=D&quot;</span><span class="o">&gt;</span><span class="n">Size</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">th</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;/</span><span class="n">tr</span><span class="o">&gt;&lt;/</span><span class="n">thead</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tbody</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;..&quot;</span><span class="o">&gt;</span><span class="n">Parent</span> <span class="n">Directory</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">01</span><span class="o">/</span><span class="mi">05</span> <span class="mi">11</span><span class="o">:</span><span class="mi">08</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;8.0.27_first/&quot;</span><span class="o">&gt;</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">27</span><span class="n">_first</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">15</span> <span class="mi">19</span><span class="o">:</span><span class="mi">37</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;8.0.27_second/&quot;</span><span class="o">&gt;</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">27</span><span class="n">_second</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">16</span> <span class="mi">15</span><span class="o">:</span><span class="mi">43</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;8.0.28_first/&quot;</span><span class="o">&gt;</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">28</span><span class="n">_first</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">20</span> <span class="mi">08</span><span class="o">:</span><span class="mi">35</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;8.0.28_second.tar.bz2&quot;</span><span class="o">&gt;</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">28</span><span class="n">_second</span><span class="o">.</span><span class="na">tar</span><span class="o">.</span><span class="na">bz2</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">20</span> <span class="mi">18</span><span class="o">:</span><span class="mi">54</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;</span><span class="mi">8287826524</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;8.0.28_second/&quot;</span><span class="o">&gt;</span><span class="mf">8.0</span><span class="o">.</span><span class="mi">28</span><span class="n">_second</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">20</span> <span class="mi">14</span><span class="o">:</span><span class="mi">25</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;archive/&quot;</span><span class="o">&gt;</span><span class="n">archive</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">15</span> <span class="mi">14</span><span class="o">:</span><span class="mi">06</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;channel&quot;</span><span class="o">&gt;</span><span class="n">channel</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2020</span><span class="o">/</span><span class="mi">06</span><span class="o">/</span><span class="mi">05</span> <span class="mi">18</span><span class="o">:</span><span class="mi">10</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;</span><span class="mi">10</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;huawei_channel/&quot;</span><span class="o">&gt;</span><span class="n">huawei_channel</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">15</span> <span class="mi">14</span><span class="o">:</span><span class="mi">18</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;huawei_channel_second/&quot;</span><span class="o">&gt;</span><span class="n">huawei_channel_second</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2021</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">16</span> <span class="mi">11</span><span class="o">:</span><span class="mi">14</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;nohup.out&quot;</span><span class="o">&gt;</span><span class="n">nohup</span><span class="o">.</span><span class="na">out</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2019</span><span class="o">/</span><span class="mi">12</span><span class="o">/</span><span class="mi">20</span> <span class="mi">13</span><span class="o">:</span><span class="mi">48</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;</span><span class="mi">14003</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;seperate_apks/&quot;</span><span class="o">&gt;</span><span class="n">seperate_apks</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2020</span><span class="o">/</span><span class="mi">06</span><span class="o">/</span><span class="mi">05</span> <span class="mi">18</span><span class="o">:</span><span class="mi">14</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;temp_master_batch_build/&quot;</span><span class="o">&gt;</span><span class="n">temp_master_batch_build</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2020</span><span class="o">/</span><span class="mi">12</span><span class="o">/</span><span class="mi">04</span> <span class="mi">17</span><span class="o">:</span><span class="mi">46</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">tr</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;name&quot;</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;trash/&quot;</span><span class="o">&gt;</span><span class="n">trash</span><span class="o">/&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;mtime&quot;</span><span class="o">&gt;</span><span class="mi">2020</span><span class="o">/</span><span class="mi">04</span><span class="o">/</span><span class="mi">29</span> <span class="mi">12</span><span class="o">:</span><span class="mi">19</span><span class="o">&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">td</span> <span class="n">class</span><span class="o">=</span><span class="s">&quot;size&quot;</span><span class="o">&gt;-&lt;/</span><span class="n">td</span><span class="o">&gt;&lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;/</span><span class="n">tbody</span><span class="o">&gt;&lt;/</span><span class="n">table</span><span class="o">&gt;&lt;</span><span class="n">hr</span><span class="o">&gt;</span>    <span class="o">&lt;</span><span class="n">address</span><span class="o">&gt;</span>
-</span><span class='line'>     <span class="n">WEBrick</span><span class="o">/</span><span class="mf">1.4</span><span class="o">.</span><span class="mi">2</span> <span class="o">(</span><span class="n">Ruby</span><span class="o">/</span><span class="mf">2.5</span><span class="o">.</span><span class="mi">5</span><span class="o">/</span><span class="mi">2019</span><span class="o">-</span><span class="mi">03</span><span class="o">-</span><span class="mi">15</span><span class="o">)&lt;</span><span class="n">br</span><span class="o">&gt;</span>
-</span><span class='line'>     <span class="n">at</span> <span class="mf">10.185</span><span class="o">.</span><span class="mf">240.240</span><span class="o">:</span><span class="mi">8000</span>
-</span><span class='line'>    <span class="o">&lt;/</span><span class="n">address</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;/</span><span class="n">body</span><span class="o">&gt;&lt;/</span><span class="n">html</span><span class="o">&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>为什么 使用 WebView 获取源码</h2>
-
+<h2 id="为什么-使用-webview-获取源码">为什么 使用 WebView 获取源码</h2>
 <ul>
-<li>WebView 相对 其他的 Http Client 库，支持运行 Javascript 得到的源码相对来说更完整。</li>
+  <li>WebView 相对 其他的 Http Client 库，支持运行 Javascript 得到的源码相对来说更完整。</li>
 </ul>
 
 
@@ -464,8 +441,6 @@
   <footer>
     <p class="meta">
       
-  
-
 <span class="byline author vcard">Posted by <span class="fn">androidyue</span></span>
 
       
@@ -477,15 +452,28 @@
 
 
 
-  
-
 
 <time datetime="2021-06-22T11:50:00+08:00" pubdate data-updated="true">Jun 22<span>nd</span>, 2021</time>
       
 
+
+
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>Android</a>, <a class='category' href='/blog/categories/css/'>Css</a>, <a class='category' href='/blog/categories/html/'>HTML</a>, <a class='category' href='/blog/categories/javascript/'>Javascript</a>, <a class='category' href='/blog/categories/webview/'>WebView</a>
+    
+    <a class="category" href="/blog/categories/android/">Android</a>, 
+  
+    
+    <a class="category" href="/blog/categories/webview/">WebView</a>, 
+  
+    
+    <a class="category" href="/blog/categories/html/">HTML</a>, 
+  
+    
+    <a class="category" href="/blog/categories/javascript/">Javascript</a>, 
+  
+    
+    <a class="category" href="/blog/categories/css/">Css</a>
   
 </span>
 
@@ -578,10 +566,6 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a class="recent_post" href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">使用 Grep 查找关键字并显示上下文行</a>
-      </li>
-    
-      <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2025/06/23/fix-three-build-error-in-android/">Android 开发中的三个常见构建错误及解决方案</a>
       </li>
     
@@ -655,6 +639,10 @@
     
       <li class="post">
         <a class="recent_post" href="https://droidyue.com/blog/2022/09/04/jetbrains-big-sale/">JetBrains 系列即将涨价，抓紧最后的好价入手！</a>
+      </li>
+    
+      <li class="post">
+        <a class="recent_post" href="https://droidyue.com/blog/2022/08/16/multiple-step-into-one-for-unpub-publish/">Unpub 发布原子化处理</a>
       </li>
     
   </ul>
