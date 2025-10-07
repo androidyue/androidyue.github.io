@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2025-10-06T23:26:36+08:00</updated>
+  <updated>2025-10-07T08:05:03+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,299 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android 升级 targetSDK 35 解决 namespace 问题]]></title>
+    <link href="https://droidyue.com/blog/2025/10/04/android-sheng-ji-targetsdk-35-jie-jue-namespace-wen-ti/"/>
+    <updated>2025-10-04T10:00:00+08:00</updated>
+    <id>https://droidyue.com/blog/2025/10/04/android-sheng-ji-targetsdk-35-jie-jue-namespace-wen-ti</id>
+    <content type="html"><![CDATA[<p>升级 Android targetSDK 至 35 并使用 Gradle 8.0+ 后，遇到了第三方库 namespace 配置问题。</p>
+
+<!--more-->
+
+<h2 id="错误信息">错误信息</h2>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">Execution failed <span class="k">for </span>task <span class="s1">':react-native-inappbrowser:processDebugManifest'</span><span class="nb">.</span>
+</span><span class="line"><span class="o">&gt;</span> A failure occurred <span class="k">while </span>executing com.android.build.gradle.tasks.ProcessLibraryManifest<span class="nv">$ProcessLibWorkAction</span>
+</span><span class="line"><span class="o">&gt;</span> Setting the namespace via the package attribute <span class="k">in </span>the <span class="nb">source </span>AndroidManifest.xml is no longer supported.
+</span><span class="line">  Recommendation: remove <span class="nv">package</span><span class="o">=</span><span class="s2">"com.proyecto26.inappbrowser"</span> from the <span class="nb">source </span>AndroidManifest.xml.</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>或者类似错误：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">Namespace not specified. Please specify a namespace <span class="k">in </span>the module<span class="s1">'s build.gradle file like so:
+</span><span class="line">
+</span><span class="line">android {
+</span><span class="line">    namespace '</span>com.example.namespace<span class="s1">'
+</span><span class="line">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="原因分析">原因分析</h2>
+
+<p>Android Gradle Plugin 8.0+ 不再支持在 <code class="language-plaintext highlighter-rouge">AndroidManifest.xml</code> 中通过 <code class="language-plaintext highlighter-rouge">package</code> 属性设置 namespace，要求在 <code class="language-plaintext highlighter-rouge">build.gradle</code> 中显式声明。升级 targetSDK 至 35 需要使用 Gradle 8.0+，但很多第三方库（如 <code class="language-plaintext highlighter-rouge">react-native-inappbrowser</code>、<code class="language-plaintext highlighter-rouge">appcenter-analytics</code> 等）尚未更新配置，导致构建失败。</p>
+
+<hr />
+
+<h2 id="解决方案">解决方案</h2>
+
+<p>在项目根目录的 <code class="language-plaintext highlighter-rouge">android/build.gradle</code> 文件中添加以下代码：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+<span class="line-number">55</span>
+<span class="line-number">56</span>
+<span class="line-number">57</span>
+<span class="line-number">58</span>
+<span class="line-number">59</span>
+<span class="line-number">60</span>
+<span class="line-number">61</span>
+<span class="line-number">62</span>
+<span class="line-number">63</span>
+<span class="line-number">64</span>
+<span class="line-number">65</span>
+<span class="line-number">66</span>
+<span class="line-number">67</span>
+<span class="line-number">68</span>
+<span class="line-number">69</span>
+</pre></td><td class="code"><pre><code class="groovy"><span class="line"><span class="n">allprojects</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">repositories</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">google</span><span class="o">()</span>
+</span><span class="line">        <span class="n">mavenCentral</span><span class="o">()</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1">// 如果使用 Detox 测试框架，添加此配置</span>
+</span><span class="line">        <span class="n">maven</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">url</span><span class="o">(</span><span class="s2">"$rootDir/../node_modules/detox/Detox-android"</span><span class="o">)</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    
+</span><span class="line">    <span class="n">subprojects</span> <span class="o">{</span>
+</span><span class="line">        <span class="n">afterEvaluate</span> <span class="o">{</span> <span class="n">project</span> <span class="o">-&gt;</span>
+</span><span class="line">            <span class="k">if</span> <span class="o">(</span><span class="n">project</span><span class="o">.</span><span class="na">hasProperty</span><span class="o">(</span><span class="s1">'android'</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">                <span class="n">project</span><span class="o">.</span><span class="na">android</span> <span class="o">{</span>
+</span><span class="line">                    <span class="c1">// 自动设置 namespace</span>
+</span><span class="line">                    <span class="k">if</span> <span class="o">(</span><span class="n">namespace</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">namespace</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">                        <span class="kt">def</span> <span class="n">defaultNamespace</span> <span class="o">=</span> <span class="n">project</span><span class="o">.</span><span class="na">group</span><span class="o">.</span><span class="na">toString</span><span class="o">().</span><span class="na">replace</span><span class="o">(</span><span class="s1">'.'</span><span class="o">,</span> <span class="s1">'_'</span><span class="o">)</span>
+</span><span class="line">                        <span class="n">namespace</span> <span class="o">=</span> <span class="n">defaultNamespace</span>
+</span><span class="line">                    <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">                    <span class="c1">// 启用 buildConfig</span>
+</span><span class="line">                    <span class="n">buildFeatures</span> <span class="o">{</span>
+</span><span class="line">                        <span class="n">buildConfig</span> <span class="o">=</span> <span class="kc">true</span>
+</span><span class="line">                    <span class="o">}</span>
+</span><span class="line">                <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">                <span class="c1">// 自动修复 namespace 和清理 AndroidManifest.xml</span>
+</span><span class="line">                <span class="n">project</span><span class="o">.</span><span class="na">tasks</span><span class="o">.</span><span class="na">register</span><span class="o">(</span><span class="s2">"fixManifestsAndNamespace"</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">                    <span class="n">doLast</span> <span class="o">{</span>
+</span><span class="line">                        <span class="c1">// 1. 从 AndroidManifest.xml 提取 package 并添加到 build.gradle</span>
+</span><span class="line">                        <span class="kt">def</span> <span class="n">buildGradleFile</span> <span class="o">=</span> <span class="n">file</span><span class="o">(</span><span class="s2">"${project.projectDir}/build.gradle"</span><span class="o">)</span>
+</span><span class="line">                        <span class="k">if</span> <span class="o">(</span><span class="n">buildGradleFile</span><span class="o">.</span><span class="na">exists</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">                            <span class="kt">def</span> <span class="n">buildGradleContent</span> <span class="o">=</span> <span class="n">buildGradleFile</span><span class="o">.</span><span class="na">getText</span><span class="o">(</span><span class="s1">'UTF-8'</span><span class="o">)</span>
+</span><span class="line">                            <span class="kt">def</span> <span class="n">manifestFile</span> <span class="o">=</span> <span class="n">file</span><span class="o">(</span><span class="s2">"${project.projectDir}/src/main/AndroidManifest.xml"</span><span class="o">)</span>
+</span><span class="line">                            <span class="k">if</span> <span class="o">(</span><span class="n">manifestFile</span><span class="o">.</span><span class="na">exists</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">                                <span class="kt">def</span> <span class="n">manifestContent</span> <span class="o">=</span> <span class="n">manifestFile</span><span class="o">.</span><span class="na">getText</span><span class="o">(</span><span class="s1">'UTF-8'</span><span class="o">)</span>
+</span><span class="line">                                <span class="kt">def</span> <span class="n">packageName</span> <span class="o">=</span> <span class="n">manifestContent</span><span class="o">.</span><span class="na">find</span><span class="o">(</span><span class="s">/package="([^"]+)"/</span><span class="o">)</span> <span class="o">{</span> <span class="n">match</span><span class="o">,</span> <span class="n">p</span> <span class="o">-&gt;</span> <span class="n">p</span> <span class="o">}</span>
+</span><span class="line">                                <span class="k">if</span> <span class="o">(</span><span class="n">packageName</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">buildGradleContent</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="s2">"namespace"</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">                                    <span class="n">println</span> <span class="s2">"Setting namespace in ${buildGradleFile}"</span>
+</span><span class="line">                                    <span class="n">buildGradleContent</span> <span class="o">=</span> <span class="n">buildGradleContent</span><span class="o">.</span><span class="na">replaceFirst</span><span class="o">(</span>
+</span><span class="line">                                        <span class="s">/android\s*\{/</span><span class="o">,</span> <span class="s2">"android {\n    namespace '${packageName}'"</span>
+</span><span class="line">                                    <span class="o">)</span>
+</span><span class="line">                                    <span class="n">buildGradleFile</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">buildGradleContent</span><span class="o">,</span> <span class="s1">'UTF-8'</span><span class="o">)</span>
+</span><span class="line">                                <span class="o">}</span>
+</span><span class="line">                            <span class="o">}</span>
+</span><span class="line">                        <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">                        <span class="c1">// 2. 移除 AndroidManifest.xml 中的 package 属性</span>
+</span><span class="line">                        <span class="kt">def</span> <span class="n">manifests</span> <span class="o">=</span> <span class="n">fileTree</span><span class="o">(</span><span class="nl">dir:</span> <span class="n">project</span><span class="o">.</span><span class="na">projectDir</span><span class="o">,</span> <span class="nl">includes:</span> <span class="o">[</span><span class="s1">'**/AndroidManifest.xml'</span><span class="o">])</span>
+</span><span class="line">                        <span class="n">manifests</span><span class="o">.</span><span class="na">each</span> <span class="o">{</span> <span class="n">File</span> <span class="n">manifestFile</span> <span class="o">-&gt;</span>
+</span><span class="line">                            <span class="kt">def</span> <span class="n">manifestContent</span> <span class="o">=</span> <span class="n">manifestFile</span><span class="o">.</span><span class="na">getText</span><span class="o">(</span><span class="s1">'UTF-8'</span><span class="o">)</span>
+</span><span class="line">                            <span class="k">if</span> <span class="o">(</span><span class="n">manifestContent</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="s1">'package='</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">                                <span class="n">println</span> <span class="s2">"Removing package attribute from ${manifestFile}"</span>
+</span><span class="line">                                <span class="n">manifestContent</span> <span class="o">=</span> <span class="n">manifestContent</span><span class="o">.</span><span class="na">replaceAll</span><span class="o">(</span><span class="s">/package="[^"]*"/</span><span class="o">,</span> <span class="s1">''</span><span class="o">)</span>
+</span><span class="line">                                <span class="n">manifestFile</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">manifestContent</span><span class="o">,</span> <span class="s1">'UTF-8'</span><span class="o">)</span>
+</span><span class="line">                            <span class="o">}</span>
+</span><span class="line">                        <span class="o">}</span>
+</span><span class="line">                    <span class="o">}</span>
+</span><span class="line">                <span class="o">}</span>
+</span><span class="line">
+</span><span class="line">                <span class="c1">// 在构建前自动执行修复</span>
+</span><span class="line">                <span class="n">project</span><span class="o">.</span><span class="na">tasks</span><span class="o">.</span><span class="na">matching</span> <span class="o">{</span> <span class="n">it</span><span class="o">.</span><span class="na">name</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s2">"preBuild"</span><span class="o">)</span> <span class="o">}.</span><span class="na">all</span> <span class="o">{</span>
+</span><span class="line">                    <span class="n">dependsOn</span> <span class="n">project</span><span class="o">.</span><span class="na">tasks</span><span class="o">.</span><span class="na">named</span><span class="o">(</span><span class="s2">"fixManifestsAndNamespace"</span><span class="o">)</span>
+</span><span class="line">                <span class="o">}</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="说明">说明</h2>
+
+<h3 id="工作原理">工作原理</h3>
+
+<p>此方案包含三个层次的处理：</p>
+
+<ol>
+  <li><strong>自动设置 namespace</strong>：如果子项目未配置 namespace，自动使用 <code class="language-plaintext highlighter-rouge">project.group</code> 并将点号替换为下划线作为 namespace</li>
+  <li><strong>启用 buildConfig</strong>：自动为所有子项目启用 <code class="language-plaintext highlighter-rouge">buildConfig</code> 特性</li>
+  <li><strong>自动迁移配置</strong>：
+    <ul>
+      <li>从 <code class="language-plaintext highlighter-rouge">AndroidManifest.xml</code> 中提取 <code class="language-plaintext highlighter-rouge">package</code> 属性</li>
+      <li>将其写入对应的 <code class="language-plaintext highlighter-rouge">build.gradle</code> 作为 <code class="language-plaintext highlighter-rouge">namespace</code></li>
+      <li>移除 <code class="language-plaintext highlighter-rouge">AndroidManifest.xml</code> 中的 <code class="language-plaintext highlighter-rouge">package</code> 属性</li>
+    </ul>
+  </li>
+</ol>
+
+<p>这个 task 在每次构建前（<code class="language-plaintext highlighter-rouge">preBuild</code>）自动执行，确保所有第三方库都符合 Gradle 8.0+ 的要求。</p>
+
+<h3 id="适用场景">适用场景</h3>
+
+<ul>
+  <li>React Native 项目升级 targetSDK 35</li>
+  <li>Flutter 项目升级 targetSDK 35</li>
+  <li>使用 Detox 测试框架的项目</li>
+  <li>原生 Android 项目使用旧版第三方库</li>
+  <li>任何遇到 “namespace not specified” 或 “package attribute not supported” 错误的场景</li>
+</ul>
+
+<h3 id="注意事项">注意事项</h3>
+
+<ul>
+  <li>此方案会<strong>自动修改</strong>第三方库的 <code class="language-plaintext highlighter-rouge">build.gradle</code> 和 <code class="language-plaintext highlighter-rouge">AndroidManifest.xml</code> 文件</li>
+  <li>修改仅在 <code class="language-plaintext highlighter-rouge">node_modules</code> 中生效，不影响源码仓库</li>
+  <li>建议在 CI/CD 中首次构建后检查修改是否正确</li>
+  <li>如果某些库已经声明了 namespace，不会被覆盖</li>
+</ul>
+
+<hr />
+
+<h2 id="验证">验证</h2>
+
+<p>执行以下命令重新构建项目：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">cd </span>android
+</span><span class="line">./gradlew clean
+</span><span class="line">./gradlew assembleDebug</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>或在 React Native 项目中：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">npx react-native run-android</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>构建过程中会看到类似输出：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">Setting namespace <span class="k">in</span> /path/to/project/android/react-native-inappbrowser/build.gradle
+</span><span class="line">Removing package attribute from /path/to/project/android/react-native-inappbrowser/src/main/AndroidManifest.xml</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="与简化方案对比">与简化方案对比</h2>
+
+<p>如果只需要为缺少 namespace 的库自动设置默认值，可以使用简化版：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="groovy"><span class="line"><span class="n">subprojects</span> <span class="o">{</span>
+</span><span class="line">    <span class="n">afterEvaluate</span> <span class="o">{</span> <span class="n">project</span> <span class="o">-&gt;</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">project</span><span class="o">.</span><span class="na">hasProperty</span><span class="o">(</span><span class="s1">'android'</span><span class="o">))</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">project</span><span class="o">.</span><span class="na">android</span> <span class="o">{</span>
+</span><span class="line">                <span class="k">if</span> <span class="o">(</span><span class="n">namespace</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">namespace</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">())</span> <span class="o">{</span>
+</span><span class="line">                    <span class="n">namespace</span> <span class="n">project</span><span class="o">.</span><span class="na">group</span><span class="o">.</span><span class="na">toString</span><span class="o">().</span><span class="na">replace</span><span class="o">(</span><span class="s1">'.'</span><span class="o">,</span> <span class="s1">'_'</span><span class="o">)</span>
+</span><span class="line">                <span class="o">}</span>
+</span><span class="line">            <span class="o">}</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>简化方案不会修改任何文件，仅在内存中设置 namespace，但可能无法解决所有第三方库的问题。</p>
+
+<hr />
+
+<h2 id="参考">参考</h2>
+
+<ul>
+  <li><a href="https://github.com/proyecto26/react-native-inappbrowser/issues/451">GitHub Issue #451</a></li>
+  <li><a href="https://stackoverflow.com/questions/76108428">Stack Overflow - namespace not specified</a></li>
+  <li><a href="https://wix.github.io/Detox/docs/introduction/project-setup">Detox Project Setup</a></li>
+</ul>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[解决 Android Studio 关闭后终端 flutter run 进程自动结束的问题]]></title>
@@ -1414,163 +1707,6 @@ distributionUrl=https://services.gradle.org/distributions/gradle-7.4-all.zip</p>
 <p>右糖会员版提供三个可购版本，一月版、季度版及一年版可选。其中一年版可制作 300 个视频，每个视频<strong>不到 1.5 元</strong>，<a href="https://store.lizhi.io/site/products/id/580?cid=wncr9wz5">点击链接</a>获取，大家可按需选购。</p>
 
 <p>数码荔枝代理了众多优秀工具，它们也会不定期上架新的软件产品，大家可以持续关注。<a href="https://store.lizhi.io?cid=wncr9wz5">点击了解更多正版软件</a></p>
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[关于仓库的批量处理脚本，效率提升 500%]]></title>
-    <link href="https://droidyue.com/blog/2022/09/04/speed-up-about-cloning-git-repos-and-updating-them/"/>
-    <updated>2022-09-04T21:57:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/09/04/speed-up-about-cloning-git-repos-and-updating-them</id>
-    <content type="html"><![CDATA[<p>很多时候，我们会遇到这样的场景</p>
-
-<ul>
-  <li>换了新电脑，需要挨个 clone gitlab repos？</li>
-  <li>无法确定哪个 repo 包含了 maven.aliyun.com 这个设置？</li>
-  <li>能否批量更新 本地的 repos？</li>
-</ul>
-
-<p>如果你有上述的疑问或者情况，你可以尝试本文中的一些批量处理 repos 的方法</p>
-
-<!--more-->
-
-<h2 id="批量-clone">批量 clone</h2>
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-</pre></td><td class="code"><pre><code class="shell"><span class="line">ruby cloneRepos.rb code-git-xxxxxx ../projects/</span></code></pre></td></tr></table></div></figure></notextile></div>
-
-<p>其中 cloneRepos.rb 脚本内容如下</p>
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-<span class="line-number">2</span>
-<span class="line-number">3</span>
-<span class="line-number">4</span>
-<span class="line-number">5</span>
-<span class="line-number">6</span>
-<span class="line-number">7</span>
-<span class="line-number">8</span>
-<span class="line-number">9</span>
-<span class="line-number">10</span>
-<span class="line-number">11</span>
-<span class="line-number">12</span>
-<span class="line-number">13</span>
-<span class="line-number">14</span>
-<span class="line-number">15</span>
-<span class="line-number">16</span>
-<span class="line-number">17</span>
-<span class="line-number">18</span>
-<span class="line-number">19</span>
-<span class="line-number">20</span>
-<span class="line-number">21</span>
-<span class="line-number">22</span>
-<span class="line-number">23</span>
-<span class="line-number">24</span>
-<span class="line-number">25</span>
-</pre></td><td class="code"><pre><code class="ruby"><span class="line"><span class="c1">#!/usr/bin/env ruby</span>
-</span><span class="line"><span class="c1"># encoding: utf-8</span>
-</span><span class="line"><span class="nb">require</span> <span class="s1">'httparty'</span>
-</span><span class="line"><span class="nb">require</span> <span class="s1">'json'</span>
-</span><span class="line">
-</span><span class="line">
-</span><span class="line"><span class="k">def</span> <span class="nf">cloneRepos</span><span class="p">(</span><span class="n">repoUrlApi</span><span class="p">)</span>
-</span><span class="line">    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
-</span><span class="line">        <span class="s1">'PRIVATE-TOKEN'</span><span class="p">:</span> <span class="no">ARGV</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-</span><span class="line">    <span class="p">}</span>
-</span><span class="line">
-</span><span class="line">    <span class="n">response</span> <span class="o">=</span> <span class="no">HTTParty</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">repoUrlApi</span><span class="p">,</span> <span class="ss">headers: </span><span class="n">headers</span><span class="p">)</span>
-</span><span class="line">    <span class="n">data</span> <span class="o">=</span> <span class="no">JSON</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="nf">body</span><span class="p">);</span>
-</span><span class="line">    <span class="nb">puts</span> <span class="n">data</span><span class="p">.</span><span class="nf">length</span><span class="p">()</span>
-</span><span class="line">    <span class="n">data</span><span class="p">.</span><span class="nf">each</span> <span class="p">{</span> <span class="o">|</span><span class="n">e</span><span class="o">|</span>
-</span><span class="line">        <span class="nb">name</span> <span class="o">=</span> <span class="n">e</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span>
-</span><span class="line">        <span class="n">gitUrl</span> <span class="o">=</span> <span class="n">e</span><span class="p">[</span><span class="s1">'ssh_url_to_repo'</span><span class="p">]</span>
-</span><span class="line">        <span class="nb">system</span> <span class="s2">"cd </span><span class="si">#{</span><span class="no">ARGV</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> &amp;&amp; git clone  </span><span class="si">#{</span><span class="n">gitUrl</span><span class="si">}</span><span class="s2">"</span>
-</span><span class="line">        <span class="nb">puts</span> <span class="nb">name</span>
-</span><span class="line">    <span class="p">}</span>
-</span><span class="line"><span class="k">end</span>
-</span><span class="line">
-</span><span class="line">
-</span><span class="line"><span class="n">cloneRepos</span><span class="p">(</span><span class="s1">'https://code.hahaha.io/api/v4/projects?per_page=100'</span><span class="p">)</span>
-</span><span class="line"><span class="n">cloneRepos</span><span class="p">(</span><span class="s1">'https://code.hahaha.io/api/v4/projects?per_page=100&amp;page=2'</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure></notextile></div>
-
-<h3 id="参数解释">参数解释</h3>
-<ul>
-  <li>code-git-xxxxxx 从 gitlab 获取的token，根据下图指示获取</li>
-</ul>
-
-<p><img src="https://asset.droidyue.com/image/2022/h2/QQ20220904-220957%402x.png" alt="https://asset.droidyue.com/image/2022/h2/QQ20220904-220957%402x.png" /></p>
-
-<ul>
-  <li>../projects 存放的目录</li>
-</ul>
-
-<h3 id="注意">注意</h3>
-
-<p>这个脚本目前只能处理 前200个 repos，如果有需要，可以自行修改代码处理。
-批量工程检索</p>
-
-<h2 id="快速查找">快速查找</h2>
-
-<p>比如我们想要搜索 maven.aliyun.com</p>
-
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-<span class="line-number">2</span>
-<span class="line-number">3</span>
-<span class="line-number">4</span>
-<span class="line-number">5</span>
-<span class="line-number">6</span>
-<span class="line-number">7</span>
-<span class="line-number">8</span>
-<span class="line-number">9</span>
-</pre></td><td class="code"><pre><code class="shell"><span class="line">projects gradleSearch.sh maven.aliyun.com
-</span><span class="line">
-</span><span class="line">./xxxx/example/android/build.gradle:7:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
-</span><span class="line">
-</span><span class="line">./xxxxx/example/android/build.gradle:23:            url <span class="s1">'http://maven.aliyun.com/nexus/content/repositories/releases/'</span>
-</span><span class="line">
-</span><span class="line">./xxxx/android/build.gradle:22:            url <span class="s1">'https://maven.aliyun.com/repository/public/'</span>
-</span><span class="line">
-</span><span class="line">./xxxx/example/android/build.gradle:6:        maven <span class="o">{</span>url <span class="s1">'https://maven.aliyun.com/repository/google'</span></span></code></pre></td></tr></table></div></figure></notextile></div>
-
-<p>其中 gradleSearch.sh 的内容如下</p>
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-<span class="line-number">2</span>
-</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="c">#!/bin/bash</span>
-</span><span class="line">find <span class="nb">.</span> <span class="nt">-name</span> <span class="s2">"*.gradle"</span> | xargs <span class="nb">grep</span> <span class="nt">-E</span> <span class="nt">-n</span> <span class="nt">--color</span><span class="o">=</span>always <span class="nt">-r</span> <span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-</span></code></pre></td></tr></table></div></figure></notextile></div>
-
-<h2 id="批量更新">批量更新</h2>
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-</pre></td><td class="code"><pre><code class="shell"><span class="line">updateRepo.sh</span></code></pre></td></tr></table></div></figure></notextile></div>
-
-<p>它的内容是这样的</p>
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-<span class="line-number">2</span>
-<span class="line-number">3</span>
-<span class="line-number">4</span>
-<span class="line-number">5</span>
-<span class="line-number">6</span>
-<span class="line-number">7</span>
-<span class="line-number">8</span>
-<span class="line-number">9</span>
-<span class="line-number">10</span>
-</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="c">#!/bin/bash</span>
-</span><span class="line"><span class="k">for </span><span class="nb">dir </span><span class="k">in</span> <span class="k">*</span>/<span class="p">;</span> <span class="k">do
-</span><span class="line">    </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$dir</span><span class="s2">"</span>
-</span><span class="line">    <span class="nb">realpath</span><span class="o">=</span><span class="sb">`</span><span class="nb">realpath</span> <span class="nv">$dir</span><span class="sb">`</span>
-</span><span class="line">    <span class="nb">echo</span> <span class="nv">$realpath</span>
-</span><span class="line">    <span class="nb">cd</span> <span class="nv">$realpath</span>
-</span><span class="line">    git checkout master
-</span><span class="line">    git pull origin master
-</span><span class="line">    <span class="nb">cd</span> -
-</span><span class="line"><span class="k">done</span>
-</span></code></pre></td></tr></table></div></figure></notextile></div>
-
-<h3 id="注意-1">注意</h3>
-<ul>
-  <li>如果当前repo 有未提交修改，则无法更新。</li>
-</ul>
-
-<p>通过上面的几个脚本，我们可以轻松实现效率提升。</p>
-
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
