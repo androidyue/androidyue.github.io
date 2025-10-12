@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2025-10-07T08:05:03+08:00</updated>
+  <updated>2025-10-12T08:36:20+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,111 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[定位 Android 权限声明来源]]></title>
+    <link href="https://droidyue.com/blog/2025/10/12/ding-wei-android-quan-xian-sheng-ming-lai-yuan/"/>
+    <updated>2025-10-12T08:00:00+08:00</updated>
+    <id>https://droidyue.com/blog/2025/10/12/ding-wei-android-quan-xian-sheng-ming-lai-yuan</id>
+    <content type="html"><![CDATA[<p>开发中经常需要排查某个权限是由哪个依赖库引入的，本文记录通过 Gradle daemon 日志快速定位权限来源的方法。</p>
+
+<!--more-->
+
+<h2 id="查询方法">查询方法</h2>
+
+<p>使用以下命令在 Gradle daemon 日志中搜索权限声明：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">grep</span> <span class="nt">-n</span> <span class="nt">-C</span> 2 <span class="s2">"android.permission.INTERNET"</span> <span class="nt">--include</span><span class="o">=</span><span class="s2">"*.out.log"</span> <span class="nt">-R</span> ~/.gradle/daemon/ .</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="参数说明">参数说明</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">-n</code>：显示行号</li>
+  <li><code class="language-plaintext highlighter-rouge">-C 2</code>：显示匹配行前后各 2 行上下文（关于 grep 上下文参数的详细用法见<a href="https://droidyue.com/blog/2025/06/24/use-grep-with-context/">这篇文章</a>）</li>
+  <li><code class="language-plaintext highlighter-rouge">--include="*.out.log"</code>：只搜索 <code class="language-plaintext highlighter-rouge">.out.log</code> 文件</li>
+  <li><code class="language-plaintext highlighter-rouge">-R</code>：递归搜索目录</li>
+  <li><code class="language-plaintext highlighter-rouge">~/.gradle/daemon/</code>：Gradle daemon 日志目录</li>
+</ul>
+
+<hr />
+
+<h2 id="daemon-日志文件说明">daemon 日志文件说明</h2>
+
+<h3 id="什么是-daemonoutlog">什么是 daemon*.out.log</h3>
+
+<p>Gradle daemon 是 Gradle 构建系统的后台进程，用于加速构建过程。<code class="language-plaintext highlighter-rouge">daemon-*.out.log</code> 文件记录了 daemon 进程的详细输出信息，包括：</p>
+
+<ul>
+  <li><strong>依赖解析过程</strong>：库的下载、合并信息</li>
+  <li><strong>Manifest 合并日志</strong>：权限、组件的合并来源</li>
+  <li><strong>构建任务执行</strong>：编译、打包等任务的详细输出</li>
+  <li><strong>错误堆栈信息</strong>：构建失败时的完整日志</li>
+</ul>
+
+<h3 id="文件位置">文件位置</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">~/.gradle/daemon/
+</span><span class="line">├── 5.4.1/
+</span><span class="line">│   ├── daemon-77407.out.log
+</span><span class="line">│   └── daemon-77408.out.log
+</span><span class="line">├── 7.0.2/
+</span><span class="line">│   └── daemon-88901.out.log
+</span><span class="line">└── ...</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>每个 Gradle 版本对应一个目录，每次 daemon 启动会生成新的日志文件，文件名中的数字为进程 ID。</p>
+
+<hr />
+
+<h2 id="结果分析">结果分析</h2>
+
+<h3 id="查询结果示例">查询结果示例</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="plaintext"><span class="line">/daemon/5.4.1/daemon-77407.out.log:132336:Merging uses-permission#android.permission.INTERNET 
+</span><span class="line">with lower [net.butterflytv.utils:rtmp-client:3.0.1] AndroidManifest.xml:11:5-67</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="信息解读">信息解读</h3>
+
+<p>从日志可以看出：</p>
+
+<ul>
+  <li><strong>权限名称</strong>：<code class="language-plaintext highlighter-rouge">android.permission.INTERNET</code></li>
+  <li><strong>来源依赖</strong>：<code class="language-plaintext highlighter-rouge">net.butterflytv.utils:rtmp-client:3.0.1</code></li>
+  <li><strong>声明位置</strong>：该依赖的 <code class="language-plaintext highlighter-rouge">AndroidManifest.xml</code> 第 11 行</li>
+  <li><strong>日志文件</strong>：<code class="language-plaintext highlighter-rouge">daemon-77407.out.log</code> 第 132336 行</li>
+</ul>
+
+<h3 id="处理方式">处理方式</h3>
+
+<p>使用 <code class="language-plaintext highlighter-rouge">&lt;uses-permission tools:node="remove"&gt;</code> 在主 Manifest 中显式移除。</p>
+
+<hr />
+
+<h2 id="注意事项">注意事项</h2>
+
+<ul>
+  <li>daemon 日志会随着构建次数增多而变大，定期清理 <code class="language-plaintext highlighter-rouge">~/.gradle/daemon/</code> 目录</li>
+  <li>不同 Gradle 版本的日志格式可能略有差异</li>
+  <li>查询结果可能包含多个匹配项，需根据依赖关系判断实际来源</li>
+</ul>
+
+<h2 id="延伸阅读">延伸阅读</h2>
+
+<ul>
+  <li><a href="https://docs.gradle.org/current/userguide/gradle_daemon.html">Gradle Daemon 官方文档</a></li>
+  <li><a href="https://developer.android.com/studio/build/manifest-merge">Android Manifest 合并机制</a></li>
+</ul>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android 升级 targetSDK 35 解决 namespace 问题]]></title>
@@ -1628,85 +1733,6 @@ distributionUrl=https://services.gradle.org/distributions/gradle-7.4-all.zip</p>
   <li>如果是 三方pub 包含警告问题，可以选择对应适配 flutter 3 的版本升级即可。</li>
 </ul>
 
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[正版软件优惠，近期新品软件推荐]]></title>
-    <link href="https://droidyue.com/blog/2022/09/12/lizhi-new-product-2022-09/"/>
-    <updated>2022-09-12T22:01:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/09/12/lizhi-new-product-2022-09</id>
-    <content type="html"><![CDATA[<p>不管是手机还是电脑，出色的硬件是好用的基础。而其中的软件工具，也是提高效率、减轻负担的好东西。</p>
-
-<p>免费的软件工具众多，当然付费工具也不少。大家可能会觉得正版软件很贵，但国内软件代理商的价格其实很实惠。</p>
-
-<p>本次为大家介绍，优秀代理商「数码荔枝」近期上架的多款软件工具。分别是多平台抠图工具：<strong>傲软抠图</strong>，以及无需剪辑的在线视频制作工具：<strong>右糖</strong>。</p>
-
-<p>点击我们的<a href="https://store.lizhi.io/site/search_list?order_by=2&amp;word=&amp;coupon_uuid=0&amp;category_id=-1&amp;cid=wncr9wz5">专属链接</a>，直接购买即为优惠价格。</p>
-
-<hr />
-
-<!--more-->
-
-<h2 id="傲软抠图-winmaciosandroid"><strong>傲软抠图</strong> <strong>[Win/Mac/iOS/Android]</strong></h2>
-
-<p><strong>傲软抠图</strong>是一款适用于多平台的抠图工具，支持 AI 智能<strong>一键抠图</strong>，内置算法针对人物、物品等实现自动抠图，效果精细、清晰干净。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE1.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE1.png" /></p>
-
-<p>傲软抠图使用非常简单，只需打开软件，选择照片，就能自动完成抠图，速度快效果好。提供手动优化，可任意保留或擦除抠图区域，支持裁剪、移动等操作。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE2.gif" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE2.gif" /></p>
-
-<p>支持人像物品背景去除 / 更换，内含海量素材，可快速<strong>更换背景</strong>画面，打造精美照片，无论是用于人像后期还是产品图制作都合适。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE3.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE3.png" /></p>
-
-<p>可制作各类<strong>证件照</strong>，支持一键修改背景颜色、照片尺寸、文件大小，证件照换底色再也不用去照相馆啦~</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE4.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE4.png" /></p>
-
-<p>支持批量抠图 / 图片清晰处理，并提供制作图章、图片去水印功能，帮助用户高效处理照片。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE5.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE5.png" /></p>
-
-<p>一个账号即可通用 Win / Mac / 安卓 / iOS 平台，方便随时抠图。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE6.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE6.png" /></p>
-
-<p>傲软抠图提供免费试用，试用效果满意，可<a href="https://store.lizhi.io/site/products/id/579?cid=wncr9wz5">点击专属链接</a>购买抠图使用张数，仅需 <strong>20.3</strong> 元起。兑换后不会过期，无时间限制。</p>
-
-<h2 id="右糖-web">右糖 [Web]</h2>
-
-<p><strong>右糖</strong>是一个基于云端的在线视频制作工具，手机电脑皆可使用。<strong>无需视频剪辑技巧</strong>，直接选用模板上传素材，一键就可以制作充满设计感的动画视频、电子回忆相册。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE7.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE7.png" /></p>
-
-<p>网站含婚礼、教育、商业宣传等 <strong>800+ 优质模板</strong>，各类风格场景持续更新。选择模板 &gt; 上传素材 &gt; 一键制作，只需三步，五分钟就能生成电子相册。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE8.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE8.png" /></p>
-
-<p>内置丰富的画面库可供选择编辑，类型多样，制作动画视频一键应用成片超方便。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE9.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE9.png" /></p>
-
-<p>制作视频不知如何搭配 BGM？这里有海量流行音乐曲库，让你的视频更「声」动。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE10.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE10.png" /></p>
-
-<p>也无需为文案发愁，文案库为你准备了各类精彩好句，无惧灵感枯竭。可为画面添加字幕、Logo，进行裁剪旋转、排序、切换比例等操作。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE11.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE11.png" /></p>
-
-<p>素材作品在云端渲染并存储，不怕硬件性能不给力，手机电脑皆可操作，随时随地观看与分享。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE12.png" alt="https://asset.droidyue.com/image/lizhi_io/collect_sep/%E5%9B%BE12.png" /></p>
-
-<p>支持免费预览动画或相册效果，满意后会员可解锁 720P / 1080P 画质下载。</p>
-
-<p>右糖会员版提供三个可购版本，一月版、季度版及一年版可选。其中一年版可制作 300 个视频，每个视频<strong>不到 1.5 元</strong>，<a href="https://store.lizhi.io/site/products/id/580?cid=wncr9wz5">点击链接</a>获取，大家可按需选购。</p>
-
-<p>数码荔枝代理了众多优秀工具，它们也会不定期上架新的软件产品，大家可以持续关注。<a href="https://store.lizhi.io?cid=wncr9wz5">点击了解更多正版软件</a></p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
