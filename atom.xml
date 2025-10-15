@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2025-10-14T07:34:45+08:00</updated>
+  <updated>2025-10-16T07:06:30+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -12,6 +12,836 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[一看就会，为 AI 编程 Agent 撸一个 MCP 服务]]></title>
+    <link href="https://droidyue.com/blog/2025/10/15/kan-jiu-hui-wei-ai-bian-cheng-agent-lu-ge-mcp-fu-wu/"/>
+    <updated>2025-10-15T14:30:00+08:00</updated>
+    <id>https://droidyue.com/blog/2025/10/15/kan-jiu-hui-wei-ai-bian-cheng-agent-lu-ge-mcp-fu-wu</id>
+    <content type="html"><![CDATA[<p>通过 MCP (Model Context Protocol) 让 AI 助手直接调用 ADB 命令操作 Android 设备，实现日志查看、应用安装、性能分析等自动化操作。</p>
+
+<!--more-->
+
+<h2 id="mcp-协议说明">MCP 协议说明</h2>
+
+<p>MCP 是 Anthropic 推出的开放协议，用于连接 AI 助手与外部工具。MCP Server 将特定工具包装成标准化接口，让 AI 能够理解和调用。</p>
+
+<p>架构如下：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class=""><span class="line">Claude Desktop/API → MCP Server → ADB Commands → Android Device</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="实现步骤">实现步骤</h2>
+
+<h3 id="初始化项目">初始化项目</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">mkdir </span>adb_mcp
+</span><span class="line"><span class="nb">cd </span>adb_mcp
+</span><span class="line">npm init <span class="nt">-y</span>
+</span><span class="line">npm <span class="nb">install</span> @modelcontextprotocol/sdk</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="配置-packagejson">配置 package.json</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+</pre></td><td class="code"><pre><code class="json"><span class="line"><span class="p">{</span><span class="w">
+</span><span class="line">  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"adb-mcp-server"</span><span class="p">,</span><span class="w">
+</span><span class="line">  </span><span class="nl">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1.0.0"</span><span class="p">,</span><span class="w">
+</span><span class="line">  </span><span class="nl">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MCP Server for Android Debug Bridge (ADB) operations"</span><span class="p">,</span><span class="w">
+</span><span class="line">  </span><span class="nl">"main"</span><span class="p">:</span><span class="w"> </span><span class="s2">"adb-mcp-server.js"</span><span class="p">,</span><span class="w">
+</span><span class="line">  </span><span class="nl">"bin"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span><span class="line">    </span><span class="nl">"adb-mcp-server"</span><span class="p">:</span><span class="w"> </span><span class="s2">"./adb-mcp-server.js"</span><span class="w">
+</span><span class="line">  </span><span class="p">},</span><span class="w">
+</span><span class="line">  </span><span class="nl">"scripts"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span><span class="line">    </span><span class="nl">"start"</span><span class="p">:</span><span class="w"> </span><span class="s2">"node adb-mcp-server.js"</span><span class="w">
+</span><span class="line">  </span><span class="p">},</span><span class="w">
+</span><span class="line">  </span><span class="nl">"keywords"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mcp"</span><span class="p">,</span><span class="w"> </span><span class="s2">"adb"</span><span class="p">,</span><span class="w"> </span><span class="s2">"android"</span><span class="p">,</span><span class="w"> </span><span class="s2">"debug"</span><span class="p">],</span><span class="w">
+</span><span class="line">  </span><span class="nl">"author"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w">
+</span><span class="line">  </span><span class="nl">"license"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MIT"</span><span class="p">,</span><span class="w">
+</span><span class="line">  </span><span class="nl">"dependencies"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span><span class="line">    </span><span class="nl">"@modelcontextprotocol/sdk"</span><span class="p">:</span><span class="w"> </span><span class="s2">"^1.0.0"</span><span class="w">
+</span><span class="line">  </span><span class="p">}</span><span class="w">
+</span><span class="line"></span><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="核心代码实现">核心代码实现</h3>
+
+<p>创建 <code class="language-plaintext highlighter-rouge">adb-mcp-server.js</code>：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+<span class="line-number">38</span>
+<span class="line-number">39</span>
+<span class="line-number">40</span>
+<span class="line-number">41</span>
+<span class="line-number">42</span>
+<span class="line-number">43</span>
+<span class="line-number">44</span>
+<span class="line-number">45</span>
+<span class="line-number">46</span>
+<span class="line-number">47</span>
+<span class="line-number">48</span>
+<span class="line-number">49</span>
+<span class="line-number">50</span>
+<span class="line-number">51</span>
+<span class="line-number">52</span>
+<span class="line-number">53</span>
+<span class="line-number">54</span>
+<span class="line-number">55</span>
+<span class="line-number">56</span>
+<span class="line-number">57</span>
+<span class="line-number">58</span>
+<span class="line-number">59</span>
+<span class="line-number">60</span>
+<span class="line-number">61</span>
+<span class="line-number">62</span>
+<span class="line-number">63</span>
+<span class="line-number">64</span>
+<span class="line-number">65</span>
+<span class="line-number">66</span>
+<span class="line-number">67</span>
+<span class="line-number">68</span>
+<span class="line-number">69</span>
+<span class="line-number">70</span>
+<span class="line-number">71</span>
+<span class="line-number">72</span>
+<span class="line-number">73</span>
+<span class="line-number">74</span>
+<span class="line-number">75</span>
+<span class="line-number">76</span>
+<span class="line-number">77</span>
+<span class="line-number">78</span>
+<span class="line-number">79</span>
+<span class="line-number">80</span>
+<span class="line-number">81</span>
+<span class="line-number">82</span>
+<span class="line-number">83</span>
+<span class="line-number">84</span>
+<span class="line-number">85</span>
+<span class="line-number">86</span>
+<span class="line-number">87</span>
+<span class="line-number">88</span>
+<span class="line-number">89</span>
+<span class="line-number">90</span>
+<span class="line-number">91</span>
+<span class="line-number">92</span>
+<span class="line-number">93</span>
+<span class="line-number">94</span>
+<span class="line-number">95</span>
+<span class="line-number">96</span>
+<span class="line-number">97</span>
+<span class="line-number">98</span>
+<span class="line-number">99</span>
+<span class="line-number">100</span>
+<span class="line-number">101</span>
+<span class="line-number">102</span>
+<span class="line-number">103</span>
+<span class="line-number">104</span>
+<span class="line-number">105</span>
+<span class="line-number">106</span>
+<span class="line-number">107</span>
+<span class="line-number">108</span>
+<span class="line-number">109</span>
+<span class="line-number">110</span>
+<span class="line-number">111</span>
+<span class="line-number">112</span>
+<span class="line-number">113</span>
+<span class="line-number">114</span>
+<span class="line-number">115</span>
+<span class="line-number">116</span>
+<span class="line-number">117</span>
+<span class="line-number">118</span>
+<span class="line-number">119</span>
+<span class="line-number">120</span>
+<span class="line-number">121</span>
+<span class="line-number">122</span>
+<span class="line-number">123</span>
+<span class="line-number">124</span>
+<span class="line-number">125</span>
+<span class="line-number">126</span>
+<span class="line-number">127</span>
+<span class="line-number">128</span>
+<span class="line-number">129</span>
+<span class="line-number">130</span>
+<span class="line-number">131</span>
+<span class="line-number">132</span>
+<span class="line-number">133</span>
+<span class="line-number">134</span>
+<span class="line-number">135</span>
+<span class="line-number">136</span>
+<span class="line-number">137</span>
+<span class="line-number">138</span>
+<span class="line-number">139</span>
+<span class="line-number">140</span>
+<span class="line-number">141</span>
+<span class="line-number">142</span>
+<span class="line-number">143</span>
+<span class="line-number">144</span>
+<span class="line-number">145</span>
+<span class="line-number">146</span>
+<span class="line-number">147</span>
+<span class="line-number">148</span>
+<span class="line-number">149</span>
+<span class="line-number">150</span>
+<span class="line-number">151</span>
+<span class="line-number">152</span>
+<span class="line-number">153</span>
+<span class="line-number">154</span>
+<span class="line-number">155</span>
+<span class="line-number">156</span>
+<span class="line-number">157</span>
+<span class="line-number">158</span>
+<span class="line-number">159</span>
+<span class="line-number">160</span>
+<span class="line-number">161</span>
+<span class="line-number">162</span>
+<span class="line-number">163</span>
+<span class="line-number">164</span>
+<span class="line-number">165</span>
+<span class="line-number">166</span>
+<span class="line-number">167</span>
+<span class="line-number">168</span>
+<span class="line-number">169</span>
+<span class="line-number">170</span>
+<span class="line-number">171</span>
+<span class="line-number">172</span>
+<span class="line-number">173</span>
+<span class="line-number">174</span>
+<span class="line-number">175</span>
+<span class="line-number">176</span>
+<span class="line-number">177</span>
+<span class="line-number">178</span>
+<span class="line-number">179</span>
+<span class="line-number">180</span>
+<span class="line-number">181</span>
+<span class="line-number">182</span>
+<span class="line-number">183</span>
+<span class="line-number">184</span>
+<span class="line-number">185</span>
+<span class="line-number">186</span>
+<span class="line-number">187</span>
+<span class="line-number">188</span>
+<span class="line-number">189</span>
+<span class="line-number">190</span>
+<span class="line-number">191</span>
+<span class="line-number">192</span>
+<span class="line-number">193</span>
+<span class="line-number">194</span>
+<span class="line-number">195</span>
+<span class="line-number">196</span>
+<span class="line-number">197</span>
+<span class="line-number">198</span>
+<span class="line-number">199</span>
+<span class="line-number">200</span>
+<span class="line-number">201</span>
+<span class="line-number">202</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="cp">#!/usr/bin/env node
+</span><span class="line"></span><span class="kd">const</span> <span class="p">{</span> <span class="nx">Server</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">@modelcontextprotocol/sdk/server/index.js</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line"><span class="kd">const</span> <span class="p">{</span> <span class="nx">StdioServerTransport</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">@modelcontextprotocol/sdk/server/stdio.js</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line"><span class="kd">const</span> <span class="p">{</span> <span class="nx">CallToolRequestSchema</span><span class="p">,</span> <span class="nx">ListToolsRequestSchema</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">@modelcontextprotocol/sdk/types.js</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line"><span class="kd">const</span> <span class="p">{</span> <span class="nx">exec</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">child_process</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line"><span class="kd">const</span> <span class="p">{</span> <span class="nx">promisify</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">util</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">const</span> <span class="nx">execPromise</span> <span class="o">=</span> <span class="nx">promisify</span><span class="p">(</span><span class="nx">exec</span><span class="p">);</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">// 创建 MCP Server 实例</span>
+</span><span class="line"><span class="kd">const</span> <span class="nx">server</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Server</span><span class="p">(</span>
+</span><span class="line">  <span class="p">{</span>
+</span><span class="line">    <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-server</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">version</span><span class="p">:</span> <span class="dl">'</span><span class="s1">1.0.0</span><span class="dl">'</span>
+</span><span class="line">  <span class="p">},</span>
+</span><span class="line">  <span class="p">{</span>
+</span><span class="line">    <span class="na">capabilities</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">tools</span><span class="p">:</span> <span class="p">{}</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">  <span class="p">}</span>
+</span><span class="line"><span class="p">);</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">// 定义工具列表</span>
+</span><span class="line"><span class="kd">const</span> <span class="nx">tools</span> <span class="o">=</span> <span class="p">[</span>
+</span><span class="line">  <span class="p">{</span>
+</span><span class="line">    <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-logcat</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Get Android device logs</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">      <span class="na">properties</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="na">lines</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">          <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">number</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">          <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Number of log lines to retrieve</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">          <span class="na">default</span><span class="p">:</span> <span class="mi">100</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">      <span class="p">}</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">  <span class="p">},</span>
+</span><span class="line">  <span class="p">{</span>
+</span><span class="line">    <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-devices</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">List connected Android devices</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">      <span class="na">properties</span><span class="p">:</span> <span class="p">{}</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">  <span class="p">},</span>
+</span><span class="line">  <span class="p">{</span>
+</span><span class="line">    <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-install</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Install APK on connected device</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">      <span class="na">properties</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="na">apkPath</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">          <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">          <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Path to the APK file to install</span><span class="dl">'</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">      <span class="p">},</span>
+</span><span class="line">      <span class="na">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">'</span><span class="s1">apkPath</span><span class="dl">'</span><span class="p">]</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">  <span class="p">},</span>
+</span><span class="line">  <span class="p">{</span>
+</span><span class="line">    <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-app-info</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Get app package information</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">      <span class="na">properties</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="na">packageName</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">          <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">          <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Android package name (e.g., com.example.app)</span><span class="dl">'</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">      <span class="p">},</span>
+</span><span class="line">      <span class="na">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">'</span><span class="s1">packageName</span><span class="dl">'</span><span class="p">]</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">  <span class="p">},</span>
+</span><span class="line">  <span class="p">{</span>
+</span><span class="line">    <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-meminfo</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Get app memory usage information</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">      <span class="na">properties</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="na">packageName</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">          <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">          <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Android package name (e.g., com.example.app)</span><span class="dl">'</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">      <span class="p">},</span>
+</span><span class="line">      <span class="na">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">'</span><span class="s1">packageName</span><span class="dl">'</span><span class="p">]</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">  <span class="p">},</span>
+</span><span class="line">  <span class="p">{</span>
+</span><span class="line">    <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-clear-data</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Clear app data and cache</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="na">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">      <span class="na">properties</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="na">packageName</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">          <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">          <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Android package name (e.g., com.example.app)</span><span class="dl">'</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">      <span class="p">},</span>
+</span><span class="line">      <span class="na">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">'</span><span class="s1">packageName</span><span class="dl">'</span><span class="p">]</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">  <span class="p">}</span>
+</span><span class="line"><span class="p">];</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">// 处理工具列表请求</span>
+</span><span class="line"><span class="nx">server</span><span class="p">.</span><span class="nx">setRequestHandler</span><span class="p">(</span><span class="nx">ListToolsRequestSchema</span><span class="p">,</span> <span class="k">async</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class="line">  <span class="k">return</span> <span class="p">{</span> <span class="nx">tools</span> <span class="p">};</span>
+</span><span class="line"><span class="p">});</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">// 处理工具执行请求</span>
+</span><span class="line"><span class="nx">server</span><span class="p">.</span><span class="nx">setRequestHandler</span><span class="p">(</span><span class="nx">CallToolRequestSchema</span><span class="p">,</span> <span class="k">async</span> <span class="p">(</span><span class="nx">request</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class="line">  <span class="kd">const</span> <span class="p">{</span> <span class="nx">name</span><span class="p">,</span> <span class="na">arguments</span><span class="p">:</span> <span class="nx">args</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nx">params</span><span class="p">;</span>
+</span><span class="line">
+</span><span class="line">  <span class="k">try</span> <span class="p">{</span>
+</span><span class="line">    <span class="kd">let</span> <span class="nx">result</span><span class="p">;</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">switch</span> <span class="p">(</span><span class="nx">name</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">      <span class="k">case</span> <span class="dl">'</span><span class="s1">adb-logcat</span><span class="dl">'</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="kd">const</span> <span class="nx">lines</span> <span class="o">=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">lines</span> <span class="o">||</span> <span class="mi">100</span><span class="p">;</span>
+</span><span class="line">        <span class="kd">const</span> <span class="p">{</span> <span class="nx">stdout</span> <span class="p">}</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">execPromise</span><span class="p">(</span><span class="s2">`adb logcat -d -t </span><span class="p">${</span><span class="nx">lines</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+</span><span class="line">        <span class="nx">result</span> <span class="o">=</span> <span class="nx">stdout</span><span class="p">;</span>
+</span><span class="line">        <span class="k">break</span><span class="p">;</span>
+</span><span class="line">      <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">      <span class="k">case</span> <span class="dl">'</span><span class="s1">adb-devices</span><span class="dl">'</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="kd">const</span> <span class="p">{</span> <span class="nx">stdout</span> <span class="p">}</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">execPromise</span><span class="p">(</span><span class="dl">'</span><span class="s1">adb devices -l</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line">        <span class="nx">result</span> <span class="o">=</span> <span class="nx">stdout</span><span class="p">;</span>
+</span><span class="line">        <span class="k">break</span><span class="p">;</span>
+</span><span class="line">      <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">      <span class="k">case</span> <span class="dl">'</span><span class="s1">adb-install</span><span class="dl">'</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">args</span><span class="p">.</span><span class="nx">apkPath</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">          <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="dl">'</span><span class="s1">apkPath is required</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">        <span class="kd">const</span> <span class="p">{</span> <span class="nx">stdout</span> <span class="p">}</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">execPromise</span><span class="p">(</span><span class="s2">`adb install -r "</span><span class="p">${</span><span class="nx">args</span><span class="p">.</span><span class="nx">apkPath</span><span class="p">}</span><span class="s2">"`</span><span class="p">);</span>
+</span><span class="line">        <span class="nx">result</span> <span class="o">=</span> <span class="nx">stdout</span><span class="p">;</span>
+</span><span class="line">        <span class="k">break</span><span class="p">;</span>
+</span><span class="line">      <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">      <span class="k">case</span> <span class="dl">'</span><span class="s1">adb-app-info</span><span class="dl">'</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">args</span><span class="p">.</span><span class="nx">packageName</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">          <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="dl">'</span><span class="s1">packageName is required</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">        <span class="kd">const</span> <span class="p">{</span> <span class="nx">stdout</span> <span class="p">}</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">execPromise</span><span class="p">(</span><span class="s2">`adb shell dumpsys package </span><span class="p">${</span><span class="nx">args</span><span class="p">.</span><span class="nx">packageName</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+</span><span class="line">        <span class="nx">result</span> <span class="o">=</span> <span class="nx">stdout</span><span class="p">;</span>
+</span><span class="line">        <span class="k">break</span><span class="p">;</span>
+</span><span class="line">      <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">      <span class="k">case</span> <span class="dl">'</span><span class="s1">adb-meminfo</span><span class="dl">'</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">args</span><span class="p">.</span><span class="nx">packageName</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">          <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="dl">'</span><span class="s1">packageName is required</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">        <span class="kd">const</span> <span class="p">{</span> <span class="nx">stdout</span> <span class="p">}</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">execPromise</span><span class="p">(</span><span class="s2">`adb shell dumpsys meminfo </span><span class="p">${</span><span class="nx">args</span><span class="p">.</span><span class="nx">packageName</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+</span><span class="line">        <span class="nx">result</span> <span class="o">=</span> <span class="nx">stdout</span><span class="p">;</span>
+</span><span class="line">        <span class="k">break</span><span class="p">;</span>
+</span><span class="line">      <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">      <span class="k">case</span> <span class="dl">'</span><span class="s1">adb-clear-data</span><span class="dl">'</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">args</span><span class="p">.</span><span class="nx">packageName</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">          <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="dl">'</span><span class="s1">packageName is required</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">        <span class="kd">const</span> <span class="p">{</span> <span class="nx">stdout</span> <span class="p">}</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">execPromise</span><span class="p">(</span><span class="s2">`adb shell pm clear </span><span class="p">${</span><span class="nx">args</span><span class="p">.</span><span class="nx">packageName</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+</span><span class="line">        <span class="nx">result</span> <span class="o">=</span> <span class="nx">stdout</span><span class="p">;</span>
+</span><span class="line">        <span class="k">break</span><span class="p">;</span>
+</span><span class="line">      <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">      <span class="nl">default</span><span class="p">:</span>
+</span><span class="line">        <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="s2">`Unknown tool: </span><span class="p">${</span><span class="nx">name</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+</span><span class="line">    <span class="p">}</span>
+</span><span class="line">
+</span><span class="line">    <span class="k">return</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">content</span><span class="p">:</span> <span class="p">[</span>
+</span><span class="line">        <span class="p">{</span>
+</span><span class="line">          <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">text</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">          <span class="na">text</span><span class="p">:</span> <span class="nx">result</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">      <span class="p">]</span>
+</span><span class="line">    <span class="p">};</span>
+</span><span class="line">  <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class="line">    <span class="k">return</span> <span class="p">{</span>
+</span><span class="line">      <span class="na">content</span><span class="p">:</span> <span class="p">[</span>
+</span><span class="line">        <span class="p">{</span>
+</span><span class="line">          <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">text</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">          <span class="na">text</span><span class="p">:</span> <span class="s2">`Error executing </span><span class="p">${</span><span class="nx">name</span><span class="p">}</span><span class="s2">: </span><span class="p">${</span><span class="nx">error</span><span class="p">.</span><span class="nx">message</span><span class="p">}</span><span class="s2">`</span>
+</span><span class="line">        <span class="p">}</span>
+</span><span class="line">      <span class="p">],</span>
+</span><span class="line">      <span class="na">isError</span><span class="p">:</span> <span class="kc">true</span>
+</span><span class="line">    <span class="p">};</span>
+</span><span class="line">  <span class="p">}</span>
+</span><span class="line"><span class="p">});</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">// 启动服务器</span>
+</span><span class="line"><span class="k">async</span> <span class="kd">function</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class="line">  <span class="kd">const</span> <span class="nx">transport</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">StdioServerTransport</span><span class="p">();</span>
+</span><span class="line">  <span class="k">await</span> <span class="nx">server</span><span class="p">.</span><span class="nx">connect</span><span class="p">(</span><span class="nx">transport</span><span class="p">);</span>
+</span><span class="line">  <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="dl">'</span><span class="s1">ADB MCP Server running on stdio</span><span class="dl">'</span><span class="p">);</span>
+</span><span class="line"><span class="p">}</span>
+</span><span class="line">
+</span><span class="line"><span class="nx">main</span><span class="p">().</span><span class="k">catch</span><span class="p">((</span><span class="nx">error</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class="line">  <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="dl">'</span><span class="s1">Server error:</span><span class="dl">'</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+</span><span class="line">  <span class="nx">process</span><span class="p">.</span><span class="nx">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class="line"><span class="p">});</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>赋予执行权限：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line"><span class="nb">chmod</span> +x adb-mcp-server.js</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="关键实现说明">关键实现说明</h2>
+
+<h3 id="server-初始化">Server 初始化</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="kd">const</span> <span class="nx">server</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Server</span><span class="p">(</span>
+</span><span class="line">  <span class="p">{</span> <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-server</span><span class="dl">'</span><span class="p">,</span> <span class="na">version</span><span class="p">:</span> <span class="dl">'</span><span class="s1">1.0.0</span><span class="dl">'</span> <span class="p">},</span>
+</span><span class="line">  <span class="p">{</span> <span class="na">capabilities</span><span class="p">:</span> <span class="p">{</span> <span class="na">tools</span><span class="p">:</span> <span class="p">{}</span> <span class="p">}</span> <span class="p">}</span>
+</span><span class="line"><span class="p">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>声明服务器名称、版本和支持的能力类型。</p>
+
+<h3 id="工具定义">工具定义</h3>
+
+<p>每个工具包含三个部分：</p>
+<ul>
+  <li><strong>name</strong>: 唯一标识符</li>
+  <li><strong>description</strong>: 功能描述，AI 根据此判断调用时机</li>
+  <li><strong>inputSchema</strong>: JSON Schema 格式的参数定义</li>
+</ul>
+
+<p>示例：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="p">{</span>
+</span><span class="line">  <span class="nl">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-install</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">  <span class="nx">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Install APK on connected device</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">  <span class="nx">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">    <span class="nl">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="nx">properties</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="nl">apkPath</span><span class="p">:</span> <span class="p">{</span> <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span><span class="p">,</span> <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Path to the APK file</span><span class="dl">'</span> <span class="p">}</span>
+</span><span class="line">    <span class="p">},</span>
+</span><span class="line">    <span class="nx">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">'</span><span class="s1">apkPath</span><span class="dl">'</span><span class="p">]</span>
+</span><span class="line">  <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="请求处理">请求处理</h3>
+
+<p>MCP 定义两种请求类型：</p>
+
+<p><strong>ListToolsRequest</strong> - 列出所有可用工具：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="nx">server</span><span class="p">.</span><span class="nx">setRequestHandler</span><span class="p">(</span><span class="nx">ListToolsRequestSchema</span><span class="p">,</span> <span class="k">async</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class="line">  <span class="k">return</span> <span class="p">{</span> <span class="nx">tools</span> <span class="p">};</span>
+</span><span class="line"><span class="p">});</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p><strong>CallToolRequest</strong> - 执行具体工具：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="nx">server</span><span class="p">.</span><span class="nx">setRequestHandler</span><span class="p">(</span><span class="nx">CallToolRequestSchema</span><span class="p">,</span> <span class="k">async</span> <span class="p">(</span><span class="nx">request</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class="line">  <span class="kd">const</span> <span class="p">{</span> <span class="nx">name</span><span class="p">,</span> <span class="na">arguments</span><span class="p">:</span> <span class="nx">args</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nx">params</span><span class="p">;</span>
+</span><span class="line">  <span class="c1">// 根据 name 执行相应 ADB 命令</span>
+</span><span class="line"><span class="p">});</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="命令执行">命令执行</h3>
+
+<p>使用 <code class="language-plaintext highlighter-rouge">child_process</code> 执行 ADB 命令：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="kd">const</span> <span class="p">{</span> <span class="nx">stdout</span> <span class="p">}</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">execPromise</span><span class="p">(</span><span class="s2">`adb devices -l`</span><span class="p">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="配置方式">配置方式</h2>
+
+<h3 id="claude-desktop-配置">Claude Desktop 配置</h3>
+
+<p>编辑 <code class="language-plaintext highlighter-rouge">~/Library/Application Support/Claude/claude_desktop_config.json</code>：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="json"><span class="line"><span class="p">{</span><span class="w">
+</span><span class="line">  </span><span class="nl">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span><span class="line">    </span><span class="nl">"adb"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span><span class="line">      </span><span class="nl">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"node"</span><span class="p">,</span><span class="w">
+</span><span class="line">      </span><span class="nl">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"/Users/你的用户名/Documents/self_host/adb_mcp/adb-mcp-server.js"</span><span class="p">]</span><span class="w">
+</span><span class="line">    </span><span class="p">}</span><span class="w">
+</span><span class="line">  </span><span class="p">}</span><span class="w">
+</span><span class="line"></span><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>配置完成后重启 Claude Desktop。</p>
+
+<h3 id="claude-code-cli-配置">Claude Code CLI 配置</h3>
+
+<p>使用 Claude Code 命令行工具添加 MCP Server：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">claude <span class="nt">-p</span> mcp add adb node /Users/xxxx/Documents/sxxx/adb_mcp/adb-mcp-server.js</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>参数说明：</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">adb</code>: MCP Server 名称</li>
+  <li><code class="language-plaintext highlighter-rouge">node</code>: 运行命令</li>
+  <li>最后是 <code class="language-plaintext highlighter-rouge">adb-mcp-server.js</code> 的完整路径</li>
+</ul>
+
+<h3 id="gemini-cli-配置">Gemini CLI 配置</h3>
+
+<p>编辑 Gemini CLI 配置文件 <code class="language-plaintext highlighter-rouge">~/.gemini/mcp_config.json</code>：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="json"><span class="line"><span class="p">{</span><span class="w">
+</span><span class="line">  </span><span class="nl">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span><span class="line">    </span><span class="nl">"adb"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span><span class="line">      </span><span class="nl">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"node"</span><span class="p">,</span><span class="w">
+</span><span class="line">      </span><span class="nl">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"/Users/xxxx/Documents/sxxx/adb_mcp/adb-mcp-server.js"</span><span class="p">]</span><span class="w">
+</span><span class="line">    </span><span class="p">}</span><span class="w">
+</span><span class="line">  </span><span class="p">}</span><span class="w">
+</span><span class="line"></span><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p><strong>注</strong>：Gemini CLI 的 MCP 配置可能因版本而异，建议以官方文档为准。</p>
+
+<h3 id="copilot-cli-配置">Copilot CLI 配置</h3>
+
+<p>编辑 Copilot CLI 配置文件 <code class="language-plaintext highlighter-rouge">~/.github-copilot/mcp_servers.json</code>：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="json"><span class="line"><span class="p">{</span><span class="w">
+</span><span class="line">  </span><span class="nl">"adb"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span><span class="line">    </span><span class="nl">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"node"</span><span class="p">,</span><span class="w">
+</span><span class="line">    </span><span class="nl">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"/Users/xxxx/Documents/sxxx/adb_mcp/adb-mcp-server.js"</span><span class="p">]</span><span class="w">
+</span><span class="line">  </span><span class="p">}</span><span class="w">
+</span><span class="line"></span><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p><strong>注</strong>：Copilot CLI 的 MCP 配置可能因版本而异，建议以官方文档为准。</p>
+
+<hr />
+
+<h2 id="使用示例">使用示例</h2>
+
+<p>在 Claude 中直接使用自然语言：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="json"><span class="line"><span class="err">查看连接的</span><span class="w"> </span><span class="err">Android</span><span class="w"> </span><span class="err">设备</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="json"><span class="line"><span class="err">获取最近</span><span class="w"> </span><span class="mi">50</span><span class="w"> </span><span class="err">行</span><span class="w"> </span><span class="err">logcat</span><span class="w"> </span><span class="err">日志</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="json"><span class="line"><span class="err">查看</span><span class="w"> </span><span class="err">com.android.chrome</span><span class="w"> </span><span class="err">的内存使用情况</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="json"><span class="line"><span class="err">清除</span><span class="w"> </span><span class="err">com.example.app</span><span class="w"> </span><span class="err">的数据</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>Claude 会自动调用对应的 MCP 工具执行操作。</p>
+
+<hr />
+
+<h2 id="应用场景">应用场景</h2>
+
+<h3 id="日志分析">日志分析</h3>
+
+<p>传统方式：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">adb logcat <span class="nt">-d</span> <span class="o">&gt;</span> log.txt
+</span><span class="line"><span class="c"># 手动搜索错误信息</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>使用 MCP：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">获取最近的 logcat 日志，找出所有 ERROR 级别信息</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>Claude 自动执行并分析结果。</p>
+
+<h3 id="性能监控">性能监控</h3>
+
+<p>传统方式：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">adb shell dumpsys meminfo com.example.app
+</span><span class="line"><span class="c"># 手动分析输出数据</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>使用 MCP：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">查看 com.example.app 的内存使用，分析是否有内存泄漏</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="批量操作">批量操作</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">列出所有连接的设备，在每个设备上安装 /path/to/app.apk</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>Claude 自动处理设备列表和批量安装。</p>
+
+<hr />
+
+<h2 id="扩展功能">扩展功能</h2>
+
+<h3 id="添加截图">添加截图</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="p">{</span>
+</span><span class="line">  <span class="nl">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-screenshot</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">  <span class="nx">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Take a screenshot</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">  <span class="nx">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">    <span class="nl">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="nx">properties</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="nl">savePath</span><span class="p">:</span> <span class="p">{</span> <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span><span class="p">,</span> <span class="na">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Path to save screenshot</span><span class="dl">'</span> <span class="p">}</span>
+</span><span class="line">    <span class="p">},</span>
+</span><span class="line">    <span class="nx">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">'</span><span class="s1">savePath</span><span class="dl">'</span><span class="p">]</span>
+</span><span class="line">  <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>执行命令：</p>
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="k">await</span> <span class="nx">execPromise</span><span class="p">(</span><span class="s2">`adb exec-out screencap -p &gt; </span><span class="p">${</span><span class="nx">args</span><span class="p">.</span><span class="nx">savePath</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="添加性能监控">添加性能监控</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="p">{</span>
+</span><span class="line">  <span class="nl">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-top</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">  <span class="nx">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Get CPU usage</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">  <span class="nx">inputSchema</span><span class="p">:</span> <span class="p">{</span> <span class="nl">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span> <span class="nx">properties</span><span class="p">:</span> <span class="p">{}</span> <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="添加文件传输">添加文件传输</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="javascript"><span class="line"><span class="p">{</span>
+</span><span class="line">  <span class="nl">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">adb-push</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">  <span class="nx">description</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Push file to device</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">  <span class="nx">inputSchema</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">    <span class="nl">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">object</span><span class="dl">'</span><span class="p">,</span>
+</span><span class="line">    <span class="nx">properties</span><span class="p">:</span> <span class="p">{</span>
+</span><span class="line">      <span class="nl">localPath</span><span class="p">:</span> <span class="p">{</span> <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span> <span class="p">},</span>
+</span><span class="line">      <span class="nx">remotePath</span><span class="p">:</span> <span class="p">{</span> <span class="nl">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span> <span class="p">}</span>
+</span><span class="line">    <span class="p">},</span>
+</span><span class="line">    <span class="nx">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">'</span><span class="s1">localPath</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">remotePath</span><span class="dl">'</span><span class="p">]</span>
+</span><span class="line">  <span class="p">}</span>
+</span><span class="line"><span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="注意事项">注意事项</h2>
+
+<h3 id="权限检查">权限检查</h3>
+
+<p>确保 ADB 已添加到系统 PATH：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">which adb
+</span><span class="line">adb version</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="设备授权">设备授权</h3>
+
+<p>使用前确认设备已连接并授权：</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+</pre></td><td class="code"><pre><code class="shell"><span class="line">adb devices</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>如果显示 <code class="language-plaintext highlighter-rouge">unauthorized</code>，需在设备上确认 USB 调试授权。</p>
+
+<h3 id="错误处理">错误处理</h3>
+
+<p>生产环境应添加：</p>
+<ul>
+  <li>详细日志记录</li>
+  <li>设备断开连接处理</li>
+  <li>命令超时机制</li>
+</ul>
+
+<h3 id="安全性">安全性</h3>
+
+<ul>
+  <li>避免在不信任的环境使用</li>
+  <li>注意 APK 路径注入风险</li>
+  <li>考虑添加命令白名单</li>
+</ul>
+
+<hr />
+
+<h2 id="参考资源">参考资源</h2>
+
+<ul>
+  <li><a href="https://modelcontextprotocol.io/">MCP 官方文档</a></li>
+  <li><a href="https://github.com/modelcontextprotocol/sdk">MCP SDK GitHub</a></li>
+  <li><a href="https://developer.android.com/tools/adb">ADB 官方文档</a></li>
+</ul>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[同样是 Sonnet 4.5，为何 CLI 工具差距这么大]]></title>
@@ -1904,75 +2734,6 @@ distributionUrl=https://services.gradle.org/distributions/gradle-7.4-all.zip</p>
 <p><img src="https://asset.droidyue.com/image/lizhi_io/downie/%E5%9B%BE9.jpg" alt="https://asset.droidyue.com/image/lizhi_io/downie/%E5%9B%BE9.jpg" /></p>
 
 <p>点击[合作伙伴]<a href="https://store.lizhi.io/site/products/id/62?cid=wncr9wz5">专属优惠链接</a>仅需 <strong>69</strong> 元即可带 Permute 回家。</p>
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android Some runtime JAR files in the classpath have an incompatible version Kotlin 问题解决]]></title>
-    <link href="https://droidyue.com/blog/2022/09/18/android-some-runtime-jar-files-in-the-classpath-have-an-incompatible-version-kotlin/"/>
-    <updated>2022-09-18T21:17:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/09/18/android-some-runtime-jar-files-in-the-classpath-have-an-incompatible-version-kotlin</id>
-    <content type="html"><![CDATA[<p>在 Android 工程中，随着依赖包的引入，也会出现 多个 Kotlin 版本的问题，比如会有下面这样的警告信息</p>
-
-<div class="bogus-wrapper"><notextile><figure class="code"><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-<span class="line-number">2</span>
-<span class="line-number">3</span>
-<span class="line-number">4</span>
-<span class="line-number">5</span>
-<span class="line-number">6</span>
-<span class="line-number">7</span>
-<span class="line-number">8</span>
-<span class="line-number">9</span>
-<span class="line-number">10</span>
-<span class="line-number">11</span>
-<span class="line-number">12</span>
-<span class="line-number">13</span>
-<span class="line-number">14</span>
-<span class="line-number">15</span>
-<span class="line-number">16</span>
-<span class="line-number">17</span>
-<span class="line-number">18</span>
-</pre></td><td class="code"><pre><code class=""><span class="line"> ] &gt; Task :app:lintVitalAnalyzeRelease
-</span><span class="line">[        ] w: Runtime JAR files in the classpath should have the same version. These files were found in the classpath:
-</span><span class="line">[        ]     /Users/xxxxxxxxx/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk8/1.6.10/e80fe6ac3c3573a80305f5ec43f86b829e8ab53d/kotlin-stdlib-jdk8-1.6.10.jar (version 1.6)
-</span><span class="line">[        ]     /Users/xxxxxxxxx/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk7/1.7.10/1ef73fee66f45d52c67e2aca12fd945dbe0659bf/kotlin-stdlib-jdk7-1.7.10.jar (version 1.7)
-</span><span class="line">[        ]     /Users/xxxxxxxxx/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/1.7.10/d2abf9e77736acc4450dc4a3f707fa2c10f5099d/kotlin-stdlib-1.7.10.jar (version 1.7)
-</span><span class="line">[        ]     /Users/xxxxxxxxx/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-common/1.7.10/bac80c520d0a9e3f3673bc2658c6ed02ef45a76a/kotlin-stdlib-common-1.7.10.jar (version 1.7)
-</span><span class="line">[        ] w: Some runtime JAR files in the classpath have an incompatible version. Consider removing them from the classpath
-</span><span class="line">[  +98 ms] timber.lint.TimberIssueRegistry in /Users/xxxxxxxxx/.gradle/caches/transforms-3/d91983d38205de71b5c5d645c8d4eb47/transformed/jetified-timber-4.7.1/jars/lint.jar does not specify a vendor; see
-</span><span class="line">IssueRegistry#vendor
-</span><span class="line">[  +96 ms] e:
-</span><span class="line">/Users/xxxxxxxxx/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk7/1.7.10/1ef73fee66f45d52c67e2aca12fd945dbe0659bf/kotlin-stdlib-jdk7-1.7.10.jar!/META-INF/kotlin-stdlib-jdk7.kotlin_modul
-</span><span class="line">e: Module was compiled with an incompatible version of Kotlin. The binary version of its metadata is 1.7.1, expected version is 1.5.1.
-</span><span class="line">[        ] e:
-</span><span class="line">/Users/xxxxxxxxx/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/1.7.10/d2abf9e77736acc4450dc4a3f707fa2c10f5099d/kotlin-stdlib-1.7.10.jar!/META-INF/kotlin-stdlib.kotlin_module: Module was
-</span><span class="line">compiled with an incompatible version of Kotlin. The binary version of its metadata is 1.7.1, expected version is 1.5.1.
-</span><span class="line">[        ] e:
-</span><span class="line">/Users/xxxxxxxxx/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-common/1.7.10/bac80c520d0a9e3f3673bc2658c6ed02ef45a76a/kotlin-stdlib-common-1.7.10.jar!/META-INF/kotlin-stdlib-common.kotlin
-</span><span class="line">_module: Module was compiled with an incompatible version of Kotlin. The binary version of its metadata is 1.7.1, expected version is 1.5.1.</span></code></pre></td></tr></table></div></figure></notextile></div>
-
-<!--more-->
-
-<p>解决起来很简单，强制指定依赖为统一的版本即可。</p>
-
-<p>在 build.gradle(app下) 增加这些配置即可。</p>
-
-<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
-<span class="line-number">2</span>
-<span class="line-number">3</span>
-<span class="line-number">4</span>
-<span class="line-number">5</span>
-<span class="line-number">6</span>
-<span class="line-number">7</span>
-</pre></td><td class="code"><pre><code class="groovy"><span class="line">
-</span><span class="line"><span class="n">configurations</span><span class="o">.</span><span class="na">all</span> <span class="o">{</span>
-</span><span class="line">   <span class="n">resolutionStrategy</span><span class="o">.</span><span class="na">force</span> <span class="s2">"org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"</span>
-</span><span class="line">   <span class="n">resolutionStrategy</span><span class="o">.</span><span class="na">force</span> <span class="s2">"org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"</span>
-</span><span class="line">   <span class="n">resolutionStrategy</span><span class="o">.</span><span class="na">force</span> <span class="s2">"org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"</span>
-</span><span class="line">   <span class="n">resolutionStrategy</span><span class="o">.</span><span class="na">force</span> <span class="s2">"org.jetbrains.kotlin:kotlin-stdlib-common:$kotlin_version"</span>
-</span><span class="line"><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure></notextile></div>
-
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
