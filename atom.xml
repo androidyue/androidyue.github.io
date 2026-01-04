@@ -4,7 +4,7 @@
   <title><![CDATA[技术小黑屋]]></title>
   <link href="https://droidyue.com/atom.xml" rel="self"/>
   <link href="https://droidyue.com/"/>
-  <updated>2025-11-03T07:58:41+08:00</updated>
+  <updated>2026-01-04T19:51:14+08:00</updated>
   <id>https://droidyue.com/</id>
   <author>
     <name><![CDATA[androidyue]]></name>
@@ -2446,6 +2446,1384 @@
   </entry>
   
   <entry>
+    <title type="html"><![CDATA[幂等性的劣化：从数学确定性到 AI 不确定性]]></title>
+    <link href="https://droidyue.com/blog/2024/12/21/mi-deng-xing-de-lie-hua-cong-shu-xue-que-ding-xing-dao-ai-bu-que-ding-xing/"/>
+    <updated>2024-12-21T09:30:00+08:00</updated>
+    <id>https://droidyue.com/blog/2024/12/21/mi-deng-xing-de-lie-hua-cong-shu-xue-que-ding-xing-dao-ai-bu-que-ding-xing</id>
+    <content type="html"><![CDATA[<p>计算机科学正在经历一场微妙但深刻的转变：<strong>幂等性的逐步劣化</strong>。从数学的纯粹确定性,到编程中的纯函数,再到面向对象的状态管理,直至今天的 AI 提示工程,我们在用可控性换取表达力,用确定性换取灵活性。</p>
+
+<!--more-->
+
+<h2 id="数学的完美世界">数学的完美世界</h2>
+
+<h3 id="纯粹的幂等性">纯粹的幂等性</h3>
+
+<p>在数学世界里,幂等性达到了最完美形式:</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">=</span> <span class="n">x</span><span class="err">²</span>
+</span><span class="line"><span class="n">f</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>  <span class="c1"># 永远是 9,在任何时空、任何计算环境</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>数学函数的特性:</p>
+
+<ul>
+  <li><strong>绝对确定性</strong>: 相同输入永远产生相同输出</li>
+  <li><strong>无副作用</strong>: 不依赖外部状态,不改变外部状态</li>
+  <li><strong>可组合性</strong>: 函数可以无限组合而不影响确定性</li>
+  <li><strong>时空无关</strong>: 结果不受时间、地点、环境影响</li>
+</ul>
+
+<p>这种纯粹性源于数学的本质——一个封闭的逻辑系统,完全由公理和推理规则构成。</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 数学式的完美幂等
+</span><span class="line"></span><span class="err">∀</span><span class="n">x</span> <span class="err">∈</span> <span class="n">ℝ</span><span class="p">:</span> <span class="n">sin</span><span class="p">(</span><span class="n">π</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class="line"><span class="c1"># 无论计算多少次,在什么时候计算,结果都是 1</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="编程中的纯函数妥协">编程中的纯函数妥协</h2>
+
+<h3 id="理想与现实的第一次碰撞">理想与现实的第一次碰撞</h3>
+
+<p>当数学思想进入编程世界,我们遇到了第一个挑战:<strong>物理计算机的限制</strong>。</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># Python 中的纯函数尝试
+</span><span class="line"></span><span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 看起来很纯粹,但实际上...
+</span><span class="line"></span><span class="k">print</span><span class="p">(</span><span class="n">add</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">))</span>  <span class="c1"># 0.30000000000000004,不是精确的 0.3</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="妥协-1-浮点数精度">妥协 1: 浮点数精度</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 数学: 0.1 + 0.2 = 0.3
+</span><span class="line"># 编程:
+</span><span class="line"></span><span class="n">result</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">+</span> <span class="mf">0.2</span>
+</span><span class="line"><span class="k">print</span><span class="p">(</span><span class="n">result</span> <span class="o">==</span> <span class="mf">0.3</span><span class="p">)</span>  <span class="c1"># False!
+</span><span class="line"></span><span class="k">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>         <span class="c1"># 0.30000000000000004</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="妥协-2-计算资源限制">妥协 2: 计算资源限制</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 数学中的递归是无限的
+</span><span class="line"># 编程中必须考虑栈溢出
+</span><span class="line"></span><span class="k">def</span> <span class="nf">fibonacci</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+</span><span class="line">    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">n</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># fibonacci(100000) → RecursionError: maximum recursion depth exceeded</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="妥协-3-io-的不可避免">妥协 3: I/O 的不可避免</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 纯函数无法真正与外界交互
+</span><span class="line"></span><span class="k">def</span> <span class="nf">read_file</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+</span><span class="line">    <span class="c1"># 文件内容可能变化 → 非幂等
+</span><span class="line"></span>    <span class="c1"># 文件可能不存在 → 异常处理
+</span><span class="line"></span>    <span class="c1"># 磁盘可能损坏 → 外部状态依赖
+</span><span class="line"></span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">'r'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">f</span><span class="p">.</span><span class="n">read</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 同样的调用,可能返回不同内容
+</span><span class="line"></span><span class="n">content1</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s">'data.txt'</span><span class="p">)</span>  <span class="c1"># 返回 "Hello"
+</span><span class="line"># 此时文件被修改
+</span><span class="line"></span><span class="n">content2</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="s">'data.txt'</span><span class="p">)</span>  <span class="c1"># 返回 "World"</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="妥协-4-时间依赖">妥协 4: 时间依赖</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">get_current_hour</span><span class="p">():</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">hour</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 同样的函数,不同时刻调用,不同结果
+</span><span class="line"></span><span class="k">print</span><span class="p">(</span><span class="n">get_current_hour</span><span class="p">())</span>  <span class="c1"># 14
+</span><span class="line"># 一小时后
+</span><span class="line"></span><span class="k">print</span><span class="p">(</span><span class="n">get_current_hour</span><span class="p">())</span>  <span class="c1"># 15</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="函数式编程的防御战">函数式编程的防御战</h3>
+
+<p>函数式编程社区试图守住最后的阵地:</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+</pre></td><td class="code"><pre><code class="haskell"><span class="line"><span class="c1">-- Haskell 通过类型系统隔离副作用</span>
+</span><span class="line"><span class="n">pureFunction</span> <span class="o">::</span> <span class="kt">Int</span> <span class="o">-&gt;</span> <span class="kt">Int</span>
+</span><span class="line"><span class="n">pureFunction</span> <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>
+</span><span class="line">
+</span><span class="line"><span class="n">impureFunction</span> <span class="o">::</span> <span class="kt">Int</span> <span class="o">-&gt;</span> <span class="kt">IO</span> <span class="kt">Int</span>
+</span><span class="line"><span class="n">impureFunction</span> <span class="n">x</span> <span class="o">=</span> <span class="kr">do</span>
+</span><span class="line">  <span class="n">currentTime</span> <span class="o">&lt;-</span> <span class="n">getCurrentTime</span>
+</span><span class="line">  <span class="n">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">timeToInt</span> <span class="n">currentTime</span><span class="p">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>但现实是,纯函数的比例在实际应用中不断减少。</p>
+
+<hr />
+
+<h2 id="oop-的状态爆炸">OOP 的状态爆炸</h2>
+
+<h3 id="幂等性的加速崩溃">幂等性的加速崩溃</h3>
+
+<p>面向对象编程的引入,彻底改变了游戏规则。它带来了<strong>封装、继承、多态</strong>,但也带来了<strong>状态的无处不在</strong>。</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="k">class</span> <span class="nc">Counter</span><span class="p">:</span>
+</span><span class="line">    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">_value</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">def</span> <span class="nf">increment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">_value</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span class="line">        <span class="k">return</span> <span class="bp">self</span><span class="p">.</span><span class="n">_value</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 使用示例
+</span><span class="line"></span><span class="n">counter</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
+</span><span class="line"><span class="k">print</span><span class="p">(</span><span class="n">counter</span><span class="p">.</span><span class="n">increment</span><span class="p">())</span>  <span class="c1"># 1
+</span><span class="line"></span><span class="k">print</span><span class="p">(</span><span class="n">counter</span><span class="p">.</span><span class="n">increment</span><span class="p">())</span>  <span class="c1"># 2
+</span><span class="line"></span><span class="k">print</span><span class="p">(</span><span class="n">counter</span><span class="p">.</span><span class="n">increment</span><span class="p">())</span>  <span class="c1"># 3
+</span><span class="line"># 完全非幂等!同样的方法调用,不同的结果</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="对象内部状态">对象内部状态</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UserSession</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="nc">String</span> <span class="n">token</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">private</span> <span class="nc">LocalDateTime</span> <span class="n">lastActivity</span><span class="o">;</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">isValid</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="c1">// 结果依赖于内部状态</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">token</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">lastActivity</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">        
+</span><span class="line">        <span class="nc">LocalDateTime</span> <span class="n">now</span> <span class="o">=</span> <span class="nc">LocalDateTime</span><span class="o">.</span><span class="na">now</span><span class="o">();</span>
+</span><span class="line">        <span class="nc">Duration</span> <span class="n">diff</span> <span class="o">=</span> <span class="nc">Duration</span><span class="o">.</span><span class="na">between</span><span class="o">(</span><span class="n">lastActivity</span><span class="o">,</span> <span class="n">now</span><span class="o">);</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">diff</span><span class="o">.</span><span class="na">toMinutes</span><span class="o">()</span> <span class="o">&lt;</span> <span class="mi">30</span><span class="o">;</span>  
+</span><span class="line">        <span class="c1">// 同样的对象,不同时刻,不同结果</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="全局状态污染">全局状态污染</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="c1">// 全局配置对象(单例模式)</span>
+</span><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">AppConfig</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="kd">static</span> <span class="nc">AppConfig</span> <span class="n">instance</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">private</span> <span class="kt">boolean</span> <span class="n">debugMode</span><span class="o">;</span>
+</span><span class="line">    <span class="kd">private</span> <span class="nc">User</span> <span class="n">currentUser</span><span class="o">;</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">private</span> <span class="nf">AppConfig</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">this</span><span class="o">.</span><span class="na">debugMode</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">        <span class="k">this</span><span class="o">.</span><span class="na">currentUser</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">AppConfig</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">if</span> <span class="o">(</span><span class="n">instance</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">            <span class="n">instance</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">AppConfig</span><span class="o">();</span>
+</span><span class="line">        <span class="o">}</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">instance</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">public</span> <span class="nc">User</span> <span class="nf">getCurrentUser</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">currentUser</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setCurrentUser</span><span class="o">(</span><span class="nc">User</span> <span class="n">user</span><span class="o">)</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">this</span><span class="o">.</span><span class="na">currentUser</span> <span class="o">=</span> <span class="n">user</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">// 任何方法访问这些状态都变成非幂等</span>
+</span><span class="line"><span class="kd">public</span> <span class="nc">String</span> <span class="nf">getGreeting</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">    <span class="nc">AppConfig</span> <span class="n">config</span> <span class="o">=</span> <span class="nc">AppConfig</span><span class="o">.</span><span class="na">getInstance</span><span class="o">();</span>
+</span><span class="line">    <span class="nc">User</span> <span class="n">user</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="na">getCurrentUser</span><span class="o">();</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">user</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">?</span> <span class="s">"Hello, "</span> <span class="o">+</span> <span class="n">user</span><span class="o">.</span><span class="na">getName</span><span class="o">()</span> <span class="o">:</span> <span class="s">"Hello, Guest"</span><span class="o">;</span>
+</span><span class="line">    <span class="c1">// 结果依赖全局状态 → 非幂等</span>
+</span><span class="line"><span class="o">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="继承链的状态传递">继承链的状态传递</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+</pre></td><td class="code"><pre><code class="java"><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BaseComponent</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="n">initialized</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="k">this</span><span class="o">.</span><span class="na">initialized</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">ChildComponent</span> <span class="kd">extends</span> <span class="nc">BaseComponent</span> <span class="o">{</span>
+</span><span class="line">    <span class="kd">private</span> <span class="kt">int</span> <span class="n">childState</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class="line">    
+</span><span class="line">    <span class="nd">@Override</span>
+</span><span class="line">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="kd">super</span><span class="o">.</span><span class="na">init</span><span class="o">();</span>
+</span><span class="line">        <span class="k">this</span><span class="o">.</span><span class="na">childState</span> <span class="o">=</span> <span class="mi">42</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line">    
+</span><span class="line">    <span class="kd">public</span> <span class="kt">int</span> <span class="nf">getValue</span><span class="o">()</span> <span class="o">{</span>
+</span><span class="line">        <span class="c1">// 结果依赖于 init() 是否被调用</span>
+</span><span class="line">        <span class="k">return</span> <span class="k">this</span><span class="o">.</span><span class="na">initialized</span> <span class="o">?</span> <span class="k">this</span><span class="o">.</span><span class="na">childState</span> <span class="o">:</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class="line">    <span class="o">}</span>
+</span><span class="line"><span class="o">}</span>
+</span><span class="line">
+</span><span class="line"><span class="c1">// 使用示例</span>
+</span><span class="line"><span class="nc">ChildComponent</span> <span class="n">comp</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ChildComponent</span><span class="o">();</span>
+</span><span class="line"><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">comp</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>  <span class="c1">// 0</span>
+</span><span class="line"><span class="n">comp</span><span class="o">.</span><span class="na">init</span><span class="o">();</span>
+</span><span class="line"><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">comp</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>  <span class="c1">// 42</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="设计模式-对抗还是妥协">设计模式: 对抗还是妥协?</h3>
+
+<p>面对状态泛滥,我们发明了各种设计模式:</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># Singleton: 全局状态的官方认可
+</span><span class="line"></span><span class="k">class</span> <span class="nc">Database</span><span class="p">:</span>
+</span><span class="line">    <span class="n">_instance</span> <span class="o">=</span> <span class="bp">None</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+</span><span class="line">        <span class="k">if</span> <span class="n">cls</span><span class="p">.</span><span class="n">_instance</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+</span><span class="line">            <span class="n">cls</span><span class="p">.</span><span class="n">_instance</span> <span class="o">=</span> <span class="nb">super</span><span class="p">().</span><span class="n">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+</span><span class="line">            <span class="n">cls</span><span class="p">.</span><span class="n">_instance</span><span class="p">.</span><span class="n">connection</span> <span class="o">=</span> <span class="bp">None</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">cls</span><span class="p">.</span><span class="n">_instance</span>
+</span><span class="line">    
+</span><span class="line">    <span class="c1"># 现在整个应用都依赖这个单一状态
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># Observer: 状态变化的级联效应
+</span><span class="line"></span><span class="k">class</span> <span class="nc">Subject</span><span class="p">:</span>
+</span><span class="line">    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">_observers</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">_state</span> <span class="o">=</span> <span class="bp">None</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">def</span> <span class="nf">attach</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observer</span><span class="p">):</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">_observers</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">observer</span><span class="p">)</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="k">for</span> <span class="n">observer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">.</span><span class="n">_observers</span><span class="p">:</span>
+</span><span class="line">            <span class="n">observer</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">_state</span><span class="p">)</span>  <span class="c1"># 触发连锁反应</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>这些模式本质上是在承认:<strong>我们已经放弃了幂等性,现在只是在管理混乱</strong>。</p>
+
+<h3 id="并发的复杂性">并发的复杂性</h3>
+
+<p>随着多线程、异步编程的引入,状态问题进一步恶化:</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># Python 多线程的竞态条件
+</span><span class="line"></span><span class="kn">import</span> <span class="nn">threading</span>
+</span><span class="line">
+</span><span class="line"><span class="k">class</span> <span class="nc">SharedCounter</span><span class="p">:</span>
+</span><span class="line">    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">value</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">def</span> <span class="nf">increment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 非原子操作!
+</span><span class="line"></span>        <span class="n">temp</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">value</span>
+</span><span class="line">        <span class="n">temp</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">temp</span>
+</span><span class="line">
+</span><span class="line"><span class="n">counter</span> <span class="o">=</span> <span class="n">SharedCounter</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">worker</span><span class="p">():</span>
+</span><span class="line">    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1000</span><span class="p">):</span>
+</span><span class="line">        <span class="n">counter</span><span class="p">.</span><span class="n">increment</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 两个线程同时操作
+</span><span class="line"></span><span class="n">t1</span> <span class="o">=</span> <span class="n">threading</span><span class="p">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">worker</span><span class="p">)</span>
+</span><span class="line"><span class="n">t2</span> <span class="o">=</span> <span class="n">threading</span><span class="p">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">worker</span><span class="p">)</span>
+</span><span class="line"><span class="n">t1</span><span class="p">.</span><span class="n">start</span><span class="p">()</span>
+</span><span class="line"><span class="n">t2</span><span class="p">.</span><span class="n">start</span><span class="p">()</span>
+</span><span class="line"><span class="n">t1</span><span class="p">.</span><span class="n">join</span><span class="p">()</span>
+</span><span class="line"><span class="n">t2</span><span class="p">.</span><span class="n">join</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line"><span class="k">print</span><span class="p">(</span><span class="n">counter</span><span class="p">.</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># 预期 2000,实际可能是 1856、1923...
+</span><span class="line"># 完全不可预测!</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="ai-时代的彻底不确定性">AI 时代的彻底不确定性</h2>
+
+<h3 id="从确定性到概率性">从确定性到概率性</h3>
+
+<p>如果说 OOP 让我们失去了幂等性,那么 AI 则让我们进入了一个<strong>根本上不确定</strong>的新世界。</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 同样的 prompt,不同的结果
+</span><span class="line"></span><span class="n">prompt</span> <span class="o">=</span> <span class="s">"请写一个二分查找算法"</span>
+</span><span class="line">
+</span><span class="line"><span class="n">response1</span> <span class="o">=</span> <span class="n">openai</span><span class="p">.</span><span class="n">chat</span><span class="p">.</span><span class="n">completions</span><span class="p">.</span><span class="n">create</span><span class="p">(</span>
+</span><span class="line">    <span class="n">model</span><span class="o">=</span><span class="s">"gpt-4"</span><span class="p">,</span>
+</span><span class="line">    <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s">"role"</span><span class="p">:</span> <span class="s">"user"</span><span class="p">,</span> <span class="s">"content"</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}]</span>
+</span><span class="line"><span class="p">)</span>
+</span><span class="line"><span class="c1"># 可能返回递归实现
+</span><span class="line"></span>
+</span><span class="line"><span class="n">response2</span> <span class="o">=</span> <span class="n">openai</span><span class="p">.</span><span class="n">chat</span><span class="p">.</span><span class="n">completions</span><span class="p">.</span><span class="n">create</span><span class="p">(</span>
+</span><span class="line">    <span class="n">model</span><span class="o">=</span><span class="s">"gpt-4"</span><span class="p">,</span>
+</span><span class="line">    <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s">"role"</span><span class="p">:</span> <span class="s">"user"</span><span class="p">,</span> <span class="s">"content"</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}]</span>
+</span><span class="line"><span class="p">)</span>
+</span><span class="line"><span class="c1"># 可能返回迭代实现
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 即使设置 temperature=0,也无法保证完全相同</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="模型层面的不确定性">模型层面的不确定性</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 即使是相同的模型、相同的温度
+</span><span class="line"></span><span class="kn">import</span> <span class="nn">anthropic</span>
+</span><span class="line">
+</span><span class="line"><span class="n">client</span> <span class="o">=</span> <span class="n">anthropic</span><span class="p">.</span><span class="n">Anthropic</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line"><span class="k">def</span> <span class="nf">generate_code</span><span class="p">(</span><span class="n">prompt</span><span class="p">):</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">client</span><span class="p">.</span><span class="n">messages</span><span class="p">.</span><span class="n">create</span><span class="p">(</span>
+</span><span class="line">        <span class="n">model</span><span class="o">=</span><span class="s">"claude-sonnet-4.5"</span><span class="p">,</span>
+</span><span class="line">        <span class="n">max_tokens</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+</span><span class="line">        <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># 最低随机性
+</span><span class="line"></span>        <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s">"role"</span><span class="p">:</span> <span class="s">"user"</span><span class="p">,</span> <span class="s">"content"</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}]</span>
+</span><span class="line">    <span class="p">)</span>
+</span><span class="line">
+</span><span class="line"><span class="n">result1</span> <span class="o">=</span> <span class="n">generate_code</span><span class="p">(</span><span class="s">"实现快速排序"</span><span class="p">)</span>
+</span><span class="line"><span class="n">result2</span> <span class="o">=</span> <span class="n">generate_code</span><span class="p">(</span><span class="s">"实现快速排序"</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># result1 和 result2 可能在变量命名、注释风格、
+</span><span class="line"># 优化策略上有差异</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="上下文依赖的复杂性">上下文依赖的复杂性</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 简单问题: 相对确定
+</span><span class="line"></span><span class="n">prompt1</span> <span class="o">=</span> <span class="s">"1+1等于几?"</span>
+</span><span class="line"><span class="c1"># → 几乎总是返回 "2"
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 复杂问题: 高度不确定
+</span><span class="line"></span><span class="n">prompt2</span> <span class="o">=</span> <span class="s">"""
+</span><span class="line">我有一个 Web 应用,用户反馈加载慢。
+</span><span class="line">技术栈是 React + Node.js + MongoDB。
+</span><span class="line">日活 5000,数据库有 100 万条记录。
+</span><span class="line">请给出优化方案。
+</span><span class="line">"""</span>
+</span><span class="line"><span class="c1"># AI 需要假设/推断:
+</span><span class="line"># - 慢在哪里?前端还是后端?
+</span><span class="line"># - 什么查询?是否有索引?
+</span><span class="line"># - 服务器配置如何?
+</span><span class="line"># - 网络状况如何?
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 每次可能给出完全不同的优化建议:
+</span><span class="line"># - 增加索引
+</span><span class="line"># - 实现缓存层
+</span><span class="line"># - 代码分割
+</span><span class="line"># - CDN 加速
+</span><span class="line"># - 数据库分片</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="时间维度的漂移">时间维度的漂移</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 2023 年 1 月
+</span><span class="line"></span><span class="n">response</span> <span class="o">=</span> <span class="n">ask_llm</span><span class="p">(</span><span class="s">"Python 最流行的 Web 框架是什么?"</span><span class="p">)</span>
+</span><span class="line"><span class="c1"># → "Django 和 Flask 是最流行的..."
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 2024 年 12 月
+</span><span class="line"></span><span class="n">response</span> <span class="o">=</span> <span class="n">ask_llm</span><span class="p">(</span><span class="s">"Python 最流行的 Web 框架是什么?"</span><span class="p">)</span>
+</span><span class="line"><span class="c1"># → "FastAPI 近年来非常流行..."
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 同样的问题,因为:
+</span><span class="line"># 1. 模型训练数据更新
+</span><span class="line"># 2. 实际技术趋势变化
+</span><span class="line"># 3. 社区共识演变
+</span><span class="line"># "正确答案"本身就在变化</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="prompt-微小变化的蝴蝶效应">Prompt 微小变化的蝴蝶效应</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 版本 1
+</span><span class="line"></span><span class="n">prompt_v1</span> <span class="o">=</span> <span class="s">"写一个排序函数"</span>
+</span><span class="line"><span class="c1"># → 可能返回冒泡排序(简单教学版)
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 版本 2(仅添加"高效")
+</span><span class="line"></span><span class="n">prompt_v2</span> <span class="o">=</span> <span class="s">"写一个高效的排序函数"</span>
+</span><span class="line"><span class="c1"># → 可能返回快速排序或归并排序
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 版本 3(仅添加"生产环境")
+</span><span class="line"></span><span class="n">prompt_v3</span> <span class="o">=</span> <span class="s">"写一个生产环境用的排序函数"</span>
+</span><span class="line"><span class="c1"># → 可能返回 Tim Sort 并附带详细错误处理
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 微小的措辞差异导致完全不同的输出</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="prompt-工程-与不确定性共舞">Prompt 工程: 与不确定性共舞</h3>
+
+<p>我们试图通过 Prompt 工程来”驯服” AI 的不确定性:</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="n">prompt</span> <span class="o">=</span> <span class="s">"""
+</span><span class="line">请实现一个 HTTP 服务器的接口限流中间件。
+</span><span class="line">
+</span><span class="line">技术要求:
+</span><span class="line">- 语言: Python 3.10+
+</span><span class="line">- 框架: Flask
+</span><span class="line">- 算法: 令牌桶(Token Bucket)
+</span><span class="line">- 限流规则: 每 IP 每分钟 100 请求
+</span><span class="line">
+</span><span class="line">代码规范:
+</span><span class="line">- 遵循 PEP 8
+</span><span class="line">- 类型注解完整
+</span><span class="line">- 包含 docstring
+</span><span class="line">- 添加单元测试
+</span><span class="line">
+</span><span class="line">请给出完整实现,包括:
+</span><span class="line">1. 中间件类定义
+</span><span class="line">2. 配置接口
+</span><span class="line">3. 使用示例
+</span><span class="line">4. 单元测试用例
+</span><span class="line">"""</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 通过详细约束提高输出质量
+</span><span class="line"># 但不同执行可能强调不同方面</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="不可逾越的鸿沟">不可逾越的鸿沟</h3>
+
+<p>AI 的不确定性是<strong>本质性</strong>的:</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 概率本质: 每个 token 都是从概率分布中采样
+</span><span class="line"></span><span class="k">def</span> <span class="nf">llm_generate</span><span class="p">(</span><span class="n">prompt</span><span class="p">):</span>
+</span><span class="line">    <span class="c1"># 简化的概念模型
+</span><span class="line"></span>    <span class="n">context</span> <span class="o">=</span> <span class="n">encode</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+</span><span class="line">    <span class="n">output</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_tokens</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 预测下一个 token 的概率分布
+</span><span class="line"></span>        <span class="n">probs</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="n">predict_next_token</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+</span><span class="line">        <span class="c1"># {
+</span><span class="line"></span>        <span class="c1">#   "def": 0.45,
+</span><span class="line"></span>        <span class="c1">#   "class": 0.30,
+</span><span class="line"></span>        <span class="c1">#   "import": 0.15,
+</span><span class="line"></span>        <span class="c1">#   "from": 0.08,
+</span><span class="line"></span>        <span class="c1">#   ...
+</span><span class="line"></span>        <span class="c1"># }
+</span><span class="line"></span>        
+</span><span class="line">        <span class="c1"># 采样!即使 temperature=0,也是取最高概率
+</span><span class="line"></span>        <span class="c1"># 但多个 token 概率接近时,微小的数值差异
+</span><span class="line"></span>        <span class="c1"># 就可能导致不同选择
+</span><span class="line"></span>        <span class="n">next_token</span> <span class="o">=</span> <span class="n">sample</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)</span>
+</span><span class="line">        <span class="n">output</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">next_token</span><span class="p">)</span>
+</span><span class="line">        <span class="n">context</span> <span class="o">=</span> <span class="n">update</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">next_token</span><span class="p">)</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">return</span> <span class="n">decode</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 每次采样都可能走上不同的路径</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>即使是”最确定”的情况:</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="n">prompt</span> <span class="o">=</span> <span class="s">"请计算: 2 + 2 = ?"</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 99.9999% 的情况返回 "4"
+</span><span class="line"># 但理论上可能返回:
+</span><span class="line"># - "4(十进制)"
+</span><span class="line"># - "10(二进制)"
+</span><span class="line"># - "在模 2 算术中等于 0"
+</span><span class="line"># - "这取决于你使用的数制..."
+</span><span class="line"># - 开始解释加法的历史
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 因为 LLM 是模式匹配,不是符号运算
+</span><span class="line"># 完全的幂等性是不可能的</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="为什么我们接受了这种劣化">为什么我们接受了这种劣化?</h2>
+
+<h3 id="表达力的代价">表达力的代价</h3>
+
+<p>每一次幂等性的丧失,都换来了更强的表达力:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>阶段</th>
+      <th>获得</th>
+      <th>失去</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>数学→编程</td>
+      <td>可执行性、实用性</td>
+      <td>无限精度、完美抽象</td>
+    </tr>
+    <tr>
+      <td>纯函数→OOP</td>
+      <td>模块化、可复用、领域建模</td>
+      <td>函数纯度、可预测性</td>
+    </tr>
+    <tr>
+      <td>OOP→AI</td>
+      <td>自然语言交互、知识泛化、创造力</td>
+      <td>确定性、可控性、可解释性</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="web-开发的实例对比">Web 开发的实例对比</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 纯函数时代: 简单但局限
+</span><span class="line"></span><span class="k">def</span> <span class="nf">calculate_tax</span><span class="p">(</span><span class="n">amount</span><span class="p">):</span>
+</span><span class="line">    <span class="k">return</span> <span class="n">amount</span> <span class="o">*</span> <span class="mf">0.1</span>  <span class="c1"># 完全确定,但功能单一
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># OOP 时代: 强大但复杂
+</span><span class="line"></span><span class="k">class</span> <span class="nc">ShoppingCart</span><span class="p">:</span>
+</span><span class="line">    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">user</span> <span class="o">=</span> <span class="bp">None</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">discounts</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">def</span> <span class="nf">add_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">recalculate_total</span><span class="p">()</span>  <span class="c1"># 级联更新
+</span><span class="line"></span>    
+</span><span class="line">    <span class="k">def</span> <span class="nf">apply_discount</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 依赖外部 API 验证
+</span><span class="line"></span>        <span class="c1"># 依赖用户状态
+</span><span class="line"></span>        <span class="c1"># 依赖时间(限时优惠)
+</span><span class="line"></span>        <span class="c1"># 完全非幂等
+</span><span class="line"></span>        <span class="k">pass</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># AI 时代: 智能但不确定
+</span><span class="line"></span><span class="k">async</span> <span class="k">def</span> <span class="nf">optimize_checkout</span><span class="p">(</span><span class="n">cart</span><span class="p">,</span> <span class="n">user_history</span><span class="p">):</span>
+</span><span class="line">    <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s">"""
+</span><span class="line">    用户购物车: </span><span class="si">{</span><span class="n">cart</span><span class="si">}</span><span class="s">
+</span><span class="line">    历史记录: </span><span class="si">{</span><span class="n">user_history</span><span class="si">}</span><span class="s">
+</span><span class="line">    请推荐最佳的支付方式和优惠组合
+</span><span class="line">    """</span>
+</span><span class="line">    
+</span><span class="line">    <span class="c1"># 每次可能给出不同建议
+</span><span class="line"></span>    <span class="k">return</span> <span class="k">await</span> <span class="n">ai</span><span class="p">.</span><span class="n">complete</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="复杂性的本质">复杂性的本质</h3>
+
+<p>这种劣化反映了我们处理问题的方式转变:</p>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 数学: 封闭世界假设
+</span><span class="line"># "给定完整的信息,推导确定的结论"
+</span><span class="line"></span><span class="n">theorem</span> <span class="o">=</span> <span class="s">"∀x ∈ ℕ: x + 0 = x"</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 编程: 开放世界假设
+</span><span class="line"># "在不完整的信息下,做出最佳决策"
+</span><span class="line"></span><span class="k">def</span> <span class="nf">handle_user_input</span><span class="p">(</span><span class="n">input_string</span><span class="p">):</span>
+</span><span class="line">    <span class="c1"># 输入可能是任何东西
+</span><span class="line"></span>    <span class="c1"># 必须处理边界情况
+</span><span class="line"></span>    <span class="c1"># 必须应对意外情况
+</span><span class="line"></span>    <span class="k">if</span> <span class="ow">not</span> <span class="n">input_string</span><span class="p">:</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">default_value</span><span class="p">()</span>
+</span><span class="line">    <span class="k">try</span><span class="p">:</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">process</span><span class="p">(</span><span class="n">input_string</span><span class="p">)</span>
+</span><span class="line">    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span class="line">        <span class="n">log_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">fallback_value</span><span class="p">()</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># AI: 概率世界假设
+</span><span class="line"># "基于模式和统计,生成最可能的答案"
+</span><span class="line"></span><span class="k">def</span> <span class="nf">ai_solve</span><span class="p">(</span><span class="n">problem_description</span><span class="p">):</span>
+</span><span class="line">    <span class="c1"># 没有"正确答案"
+</span><span class="line"></span>    <span class="c1"># 只有"合理答案"
+</span><span class="line"></span>    <span class="c1"># 输出是概率分布的采样
+</span><span class="line"></span>    <span class="k">return</span> <span class="n">sample_from_distribution</span><span class="p">(</span>
+</span><span class="line">        <span class="n">learned_patterns</span><span class="p">(</span><span class="n">problem_description</span><span class="p">)</span>
+</span><span class="line">    <span class="p">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="拥抱不确定性">拥抱不确定性</h2>
+
+<h3 id="概率性编程">概率性编程</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 不是追求"肯定返回 X"
+</span><span class="line"># 而是"90% 概率返回 X 类,10% 概率返回 Y 类"
+</span><span class="line"></span>
+</span><span class="line"><span class="k">class</span> <span class="nc">AICodeGenerator</span><span class="p">:</span>
+</span><span class="line">    <span class="k">async</span> <span class="k">def</span> <span class="nf">generate_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 生成多个候选
+</span><span class="line"></span>        <span class="n">candidates</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="p">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="p">[</span>
+</span><span class="line">            <span class="bp">self</span><span class="p">.</span><span class="n">_generate_once</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</span><span class="line">        <span class="p">])</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 评估质量分布
+</span><span class="line"></span>        <span class="n">scores</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="p">.</span><span class="n">_evaluate</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">]</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 选择最优,但承认不确定性
+</span><span class="line"></span>        <span class="n">best_idx</span> <span class="o">=</span> <span class="n">scores</span><span class="p">.</span><span class="n">index</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">scores</span><span class="p">))</span>
+</span><span class="line">        <span class="k">return</span> <span class="p">{</span>
+</span><span class="line">            <span class="s">'code'</span><span class="p">:</span> <span class="n">candidates</span><span class="p">[</span><span class="n">best_idx</span><span class="p">],</span>
+</span><span class="line">            <span class="s">'confidence'</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">scores</span><span class="p">),</span>
+</span><span class="line">            <span class="s">'alternatives'</span><span class="p">:</span> <span class="n">candidates</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
+</span><span class="line">        <span class="p">}</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="幂等性的局部保证">幂等性的局部保证</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 不是全局幂等,而是关键路径幂等
+</span><span class="line"></span><span class="k">class</span> <span class="nc">PaymentService</span><span class="p">:</span>
+</span><span class="line">    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">_processed</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 幂等性缓存
+</span><span class="line"></span>    
+</span><span class="line">    <span class="k">async</span> <span class="k">def</span> <span class="nf">process_payment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transaction_id</span><span class="p">,</span> <span class="n">amount</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 这个操作必须幂等!
+</span><span class="line"></span>        <span class="k">if</span> <span class="n">transaction_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">.</span><span class="n">_processed</span><span class="p">:</span>
+</span><span class="line">            <span class="k">return</span> <span class="bp">self</span><span class="p">.</span><span class="n">_processed</span><span class="p">[</span><span class="n">transaction_id</span><span class="p">]</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 实际处理(可能非幂等)
+</span><span class="line"></span>        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="p">.</span><span class="n">_execute_payment</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 缓存结果保证幂等性
+</span><span class="line"></span>        <span class="bp">self</span><span class="p">.</span><span class="n">_processed</span><span class="p">[</span><span class="n">transaction_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+</span><span class="line">        <span class="k">return</span> <span class="n">result</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute_payment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">amount</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 这里可以调用 AI 做风控分析(非幂等)
+</span><span class="line"></span>        <span class="n">risk_score</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ai_risk_assessment</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span>
+</span><span class="line">        <span class="k">if</span> <span class="n">risk_score</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">:</span>
+</span><span class="line">            <span class="c1"># AI 给出的理由可能每次不同,但决策是幂等的
+</span><span class="line"></span>            <span class="k">raise</span> <span class="n">PaymentRejected</span><span class="p">(</span><span class="s">"High risk detected"</span><span class="p">)</span>
+</span><span class="line">        
+</span><span class="line">        <span class="k">return</span> <span class="k">await</span> <span class="n">bank_api</span><span class="p">.</span><span class="n">charge</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="验证驱动开发">验证驱动开发</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 对于 AI 生成的代码,不追求幂等性
+</span><span class="line"># 而是通过测试保证正确性
+</span><span class="line"></span>
+</span><span class="line"><span class="k">class</span> <span class="nc">AIAssistedDevelopment</span><span class="p">:</span>
+</span><span class="line">    <span class="k">async</span> <span class="k">def</span> <span class="nf">implement_feature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requirements</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 生成多个实现
+</span><span class="line"></span>        <span class="n">implementations</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+</span><span class="line">            <span class="n">code</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ai</span><span class="p">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">requirements</span><span class="p">)</span>
+</span><span class="line">            <span class="n">implementations</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 交叉验证
+</span><span class="line"></span>        <span class="n">test_results</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class="line">        <span class="k">for</span> <span class="n">impl</span> <span class="ow">in</span> <span class="n">implementations</span><span class="p">:</span>
+</span><span class="line">            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="p">.</span><span class="n">_run_tests</span><span class="p">(</span><span class="n">impl</span><span class="p">)</span>
+</span><span class="line">            <span class="n">test_results</span><span class="p">.</span><span class="n">append</span><span class="p">({</span>
+</span><span class="line">                <span class="s">'code'</span><span class="p">:</span> <span class="n">impl</span><span class="p">,</span>
+</span><span class="line">                <span class="s">'passed'</span><span class="p">:</span> <span class="n">result</span><span class="p">.</span><span class="n">passed</span><span class="p">,</span>
+</span><span class="line">                <span class="s">'coverage'</span><span class="p">:</span> <span class="n">result</span><span class="p">.</span><span class="n">coverage</span><span class="p">,</span>
+</span><span class="line">                <span class="s">'performance'</span><span class="p">:</span> <span class="n">result</span><span class="p">.</span><span class="n">performance</span>
+</span><span class="line">            <span class="p">})</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 选择最可靠的实现
+</span><span class="line"></span>        <span class="n">best</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">test_results</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span>
+</span><span class="line">            <span class="n">x</span><span class="p">[</span><span class="s">'passed'</span><span class="p">],</span>
+</span><span class="line">            <span class="n">x</span><span class="p">[</span><span class="s">'coverage'</span><span class="p">],</span>
+</span><span class="line">            <span class="o">-</span><span class="n">x</span><span class="p">[</span><span class="s">'performance'</span><span class="p">]</span>  <span class="c1"># 越小越好
+</span><span class="line"></span>        <span class="p">))</span>
+</span><span class="line">        
+</span><span class="line">        <span class="k">return</span> <span class="n">best</span><span class="p">[</span><span class="s">'code'</span><span class="p">]</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="ai-时代的测试">AI 时代的测试</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 传统测试: 期望确定的结果
+</span><span class="line"></span><span class="k">def</span> <span class="nf">test_add</span><span class="p">():</span>
+</span><span class="line">    <span class="k">assert</span> <span class="n">add</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span>  <span class="c1"># 必须精确等于 5
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># AI 时代的测试: 期望合理的结果
+</span><span class="line"></span><span class="k">def</span> <span class="nf">test_ai_code_generation</span><span class="p">():</span>
+</span><span class="line">    <span class="n">code</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">generate</span><span class="p">(</span><span class="s">"实现 add 函数"</span><span class="p">)</span>
+</span><span class="line">    
+</span><span class="line">    <span class="c1"># 不测试具体代码,测试行为
+</span><span class="line"></span>    <span class="k">assert</span> <span class="s">'def'</span> <span class="ow">in</span> <span class="n">code</span> <span class="ow">or</span> <span class="s">'function'</span> <span class="ow">in</span> <span class="n">code</span>
+</span><span class="line">    <span class="k">assert</span> <span class="n">is_valid_syntax</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+</span><span class="line">    
+</span><span class="line">    <span class="c1"># 动态执行测试
+</span><span class="line"></span>    <span class="n">func</span> <span class="o">=</span> <span class="n">compile_and_import</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+</span><span class="line">    <span class="k">assert</span> <span class="n">func</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span>
+</span><span class="line">    <span class="k">assert</span> <span class="n">func</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span class="line">    <span class="k">assert</span> <span class="n">func</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span class="line">    
+</span><span class="line">    <span class="c1"># 关注结果的正确性,不关注实现的一致性</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="属性测试">属性测试</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># Python 中的属性测试(使用 hypothesis)
+</span><span class="line"></span><span class="kn">from</span> <span class="nn">hypothesis</span> <span class="kn">import</span> <span class="n">given</span><span class="p">,</span> <span class="n">strategies</span> <span class="k">as</span> <span class="n">st</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 传统测试
+</span><span class="line"></span><span class="k">def</span> <span class="nf">test_reverse_twice</span><span class="p">():</span>
+</span><span class="line">    <span class="k">assert</span> <span class="n">reverse</span><span class="p">(</span><span class="n">reverse</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]))</span> <span class="o">==</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+</span><span class="line">
+</span><span class="line"><span class="c1"># 属性测试: 测试性质而非具体值
+</span><span class="line"></span><span class="o">@</span><span class="n">given</span><span class="p">(</span><span class="n">st</span><span class="p">.</span><span class="n">lists</span><span class="p">(</span><span class="n">st</span><span class="p">.</span><span class="n">integers</span><span class="p">()))</span>
+</span><span class="line"><span class="k">def</span> <span class="nf">test_ai_generated_sort</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+</span><span class="line">    <span class="n">sort_fn</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">generate_sort_function</span><span class="p">()</span>
+</span><span class="line">    <span class="n">sorted_arr</span> <span class="o">=</span> <span class="n">sort_fn</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+</span><span class="line">    
+</span><span class="line">    <span class="c1"># 测试排序的性质
+</span><span class="line"></span>    <span class="c1"># 1. 长度不变
+</span><span class="line"></span>    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_arr</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+</span><span class="line">    
+</span><span class="line">    <span class="c1"># 2. 顺序正确
+</span><span class="line"></span>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sorted_arr</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+</span><span class="line">        <span class="k">assert</span> <span class="n">sorted_arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">sorted_arr</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span><span class="line">    
+</span><span class="line">    <span class="c1"># 3. 元素相同
+</span><span class="line"></span>    <span class="k">assert</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">sorted_arr</span><span class="p">)</span> <span class="o">==</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="架构层面的应对">架构层面的应对</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+<span class="line-number">17</span>
+<span class="line-number">18</span>
+<span class="line-number">19</span>
+<span class="line-number">20</span>
+<span class="line-number">21</span>
+<span class="line-number">22</span>
+<span class="line-number">23</span>
+<span class="line-number">24</span>
+<span class="line-number">25</span>
+<span class="line-number">26</span>
+<span class="line-number">27</span>
+<span class="line-number">28</span>
+<span class="line-number">29</span>
+<span class="line-number">30</span>
+<span class="line-number">31</span>
+<span class="line-number">32</span>
+<span class="line-number">33</span>
+<span class="line-number">34</span>
+<span class="line-number">35</span>
+<span class="line-number">36</span>
+<span class="line-number">37</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 确定性层 + 不确定性层的分离架构
+</span><span class="line"></span><span class="k">class</span> <span class="nc">HybridSystem</span><span class="p">:</span>
+</span><span class="line">    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 确定性组件
+</span><span class="line"></span>        <span class="bp">self</span><span class="p">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">DeterministicCache</span><span class="p">()</span>
+</span><span class="line">        <span class="bp">self</span><span class="p">.</span><span class="n">validator</span> <span class="o">=</span> <span class="n">DeterministicValidator</span><span class="p">()</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 不确定性组件
+</span><span class="line"></span>        <span class="bp">self</span><span class="p">.</span><span class="n">ai_engine</span> <span class="o">=</span> <span class="n">AIEngine</span><span class="p">()</span>
+</span><span class="line">    
+</span><span class="line">    <span class="k">async</span> <span class="k">def</span> <span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+</span><span class="line">        <span class="c1"># 1. 尝试确定性路径
+</span><span class="line"></span>        <span class="n">cached</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">cache</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">request</span><span class="p">.</span><span class="n">key</span><span class="p">)</span>
+</span><span class="line">        <span class="k">if</span> <span class="n">cached</span> <span class="ow">and</span> <span class="bp">self</span><span class="p">.</span><span class="n">validator</span><span class="p">.</span><span class="n">is_valid</span><span class="p">(</span><span class="n">cached</span><span class="p">):</span>
+</span><span class="line">            <span class="k">return</span> <span class="n">cached</span>  <span class="c1"># 幂等返回
+</span><span class="line"></span>        
+</span><span class="line">        <span class="c1"># 2. 进入不确定性路径
+</span><span class="line"></span>        <span class="n">candidates</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="p">.</span><span class="n">ai_engine</span><span class="p">.</span><span class="n">generate_responses</span><span class="p">(</span>
+</span><span class="line">            <span class="n">request</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">3</span>
+</span><span class="line">        <span class="p">)</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 3. 通过确定性验证
+</span><span class="line"></span>        <span class="n">valid_candidates</span> <span class="o">=</span> <span class="p">[</span>
+</span><span class="line">            <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span> 
+</span><span class="line">            <span class="k">if</span> <span class="bp">self</span><span class="p">.</span><span class="n">validator</span><span class="p">.</span><span class="n">validate</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+</span><span class="line">        <span class="p">]</span>
+</span><span class="line">        
+</span><span class="line">        <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_candidates</span><span class="p">:</span>
+</span><span class="line">            <span class="k">raise</span> <span class="n">NoValidResponseError</span><span class="p">()</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 4. 选择最优(可能非幂等)
+</span><span class="line"></span>        <span class="n">best</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">_select_best</span><span class="p">(</span><span class="n">valid_candidates</span><span class="p">)</span>
+</span><span class="line">        
+</span><span class="line">        <span class="c1"># 5. 缓存以提供局部幂等性
+</span><span class="line"></span>        <span class="bp">self</span><span class="p">.</span><span class="n">cache</span><span class="p">.</span><span class="nb">set</span><span class="p">(</span><span class="n">request</span><span class="p">.</span><span class="n">key</span><span class="p">,</span> <span class="n">best</span><span class="p">)</span>
+</span><span class="line">        
+</span><span class="line">        <span class="k">return</span> <span class="n">best</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<hr />
+
+<h2 id="总结">总结</h2>
+
+<p>幂等性的劣化,表面上看是能力的退化,实质上是<strong>抽象层次的跃升</strong>。</p>
+
+<h3 id="四个时代的对比">四个时代的对比</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 数学时代: 完美但封闭
+</span><span class="line"></span><span class="n">f</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">=</span> <span class="mi">9</span>  <span class="c1"># 永远如此,但只能计算
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 编程时代: 实用但妥协
+</span><span class="line"></span><span class="n">square</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># 通常是 9,但有浮点误差
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># OOP 时代: 灵活但混乱
+</span><span class="line"></span><span class="n">counter</span><span class="p">.</span><span class="n">increment</span><span class="p">()</span>  <span class="c1"># 每次不同,但能建模复杂系统
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># AI 时代: 智能但不确定
+</span><span class="line"></span><span class="n">ai</span><span class="p">.</span><span class="n">solve</span><span class="p">(</span><span class="s">"优化这段代码"</span><span class="p">)</span>  <span class="c1"># 每次可能不同,但可能发现我们想不到的方案</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<h3 id="核心转变">核心转变</h3>
+
+<ol>
+  <li><strong>确定性 → 概率性</strong>: 不再问”结果是什么”,而问”结果的分布是什么”</li>
+  <li><strong>一次正确 → 多次验证</strong>: 不再依赖单次执行,而是通过多次采样和验证</li>
+  <li><strong>完美解 → 满意解</strong>: 不再追求理论最优,而是追求实践可行</li>
+  <li><strong>封闭系统 → 开放系统</strong>: 不再假设完整信息,而是适应不完整和变化</li>
+</ol>
+
+<h3 id="实践启示">实践启示</h3>
+
+<div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
+<span class="line-number">2</span>
+<span class="line-number">3</span>
+<span class="line-number">4</span>
+<span class="line-number">5</span>
+<span class="line-number">6</span>
+<span class="line-number">7</span>
+<span class="line-number">8</span>
+<span class="line-number">9</span>
+<span class="line-number">10</span>
+<span class="line-number">11</span>
+<span class="line-number">12</span>
+<span class="line-number">13</span>
+<span class="line-number">14</span>
+<span class="line-number">15</span>
+<span class="line-number">16</span>
+</pre></td><td class="code"><pre><code class="python"><span class="line"><span class="c1"># 1. 分层保证确定性
+</span><span class="line"># 关键路径: 强幂等性(支付、数据一致性)
+</span><span class="line"># 辅助功能: 弱幂等性(推荐、搜索)
+</span><span class="line"># AI 增强: 非幂等性(内容生成、智能建议)
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 2. 用测试替代幂等性
+</span><span class="line"># 不是保证"代码相同"
+</span><span class="line"># 而是保证"行为正确"
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 3. 拥抱多样性
+</span><span class="line"># 接受 AI 的创造力
+</span><span class="line"># 用验证机制保证质量
+</span><span class="line"></span>
+</span><span class="line"><span class="c1"># 4. 建立反馈循环
+</span><span class="line"># 收集真实世界的数据
+</span><span class="line"># 持续优化决策边界</span></span></code></pre></td></tr></table></div></figure></notextile></div>
+
+<p>幂等性没有消失,它只是变成了一个<strong>局部的、概率的、上下文相关的</strong>特性。我们不是在失去控制,而是在学习与不确定性共舞。</p>
+<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
+  </entry>
+  
+  <entry>
     <title type="html"><![CDATA[Could not create task ':generateDebugRFile' 问题小记]]></title>
     <link href="https://droidyue.com/blog/2024/11/03/could-not-create-task-generatedebugrfile-wen-ti-xiao-ji/"/>
     <updated>2024-11-03T00:49:00+08:00</updated>
@@ -2942,73 +4320,6 @@ distributionUrl=https://services.gradle.org/distributions/gradle-7.4-all.zip</p>
 <div class="bogus-wrapper"><notextile><figure class="code"><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class="line-number">1</span>
 </pre></td><td class="code"><pre><code class="shell"><span class="line">flutter pub upgrade</span></code></pre></td></tr></table></div></figure></notextile></div>
 
-<br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iSlide 插件买两年送 180 天，每月不到 6 元钱]]></title>
-    <link href="https://droidyue.com/blog/2022/10/11/to-write-better-ppt-use-islide/"/>
-    <updated>2022-10-11T07:13:00+08:00</updated>
-    <id>https://droidyue.com/blog/2022/10/11/to-write-better-ppt-use-islide</id>
-    <content type="html"><![CDATA[<p>是不是每次在制作 PPT 时，都丝毫没有头绪？各种模板东拼西凑没有章法？你和 PPT 高手之间，其实就只差一个 iSlide。</p>
-
-<p><strong>iSlide</strong> 是一款口碑优秀的 PPT 插件，海量在线资源库，超 30 万专业模板、素材一键插入 PPT，更有一键排版等 38 种辅助功能，真正实现「让 PPT 设计简单起来」。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/islide/1.png?v=111" alt="https://asset.droidyue.com/image/lizhi_io/islide/1.png" /></p>
-
-<p>​iSlide 目前正在限时优惠中，前往数码荔枝<strong>买两年送 180 天，买一年送 90 天</strong>，每月不到 <strong>6 元</strong>钱，新用户首单还能<strong>立减 5 元</strong>，非常值的价格别错过！</p>
-
-<p>赶快点击[合作伙伴]<a href="https://store.lizhi.io/site/products/id/41?cid=wncr9wz5">专属优惠链接</a>收下这款人见人爱的 PPT 神器吧！订阅时长可叠加，趁现在便宜快买买买~</p>
-
-<!--more-->
-
-<h2 id="8-大资源库轻松找素材">8 大资源库，轻松找素材</h2>
-
-<p>iSlide 内置 300,000+ PPT 模板，来自专业 PPT 模板设计团队，有原创正版保障，快速检索一键插入 PPT 文档。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/islide/2.png" alt="https://asset.droidyue.com/image/lizhi_io/islide/2.png" /></p>
-
-<p>8 大资源库为你所用，丰富的各类图标 / 图片 / 插图，可在原位置直接编辑替换，做 PPT 告别四处找素材，一个插件整合你要用的所有资源，轻松高效制作精美 PPT！</p>
-
-<h2 id="智能图表实现数据可视化">智能图表实现数据可视化</h2>
-
-<p>iSlide 智能图表改变传统图表的单一样式，拥有当下流行视觉化元素和风格，样式新颖更具设计感。</p>
-
-<p>无需耗费大量时间精力，各种参数化调节，iSlide 让图表制作更简单直观，通俗易懂。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/islide/3.png" alt="https://asset.droidyue.com/image/lizhi_io/islide/3.png" /></p>
-
-<p><strong>买两年送 180 天，买一年送 90 天，时长可无限叠加</strong>，长期需要的用户可多续费几年，每月不到 6 块钱，赶快<a href="https://store.lizhi.io/site/products/id/41?cid=wncr9wz5">点击购买</a>吧！</p>
-
-<h2 id="智能对齐排版专治强迫症">智能对齐排版，专治强迫症</h2>
-
-<p>iSlide 为大家提供了丰富的设计工具，涵盖对齐、大小调整、参考线布局、内容选择、矢量、剪贴板、吸附、旋转多种常用操作。告别徒手拖动排版，一键完成各个区域对齐超方便，让幻灯片排版更规范简单。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/islide/4.png" alt="https://asset.droidyue.com/image/lizhi_io/islide/4.png" /></p>
-
-<p>无论是创建新文档，还是修改旧文档，都能帮你从繁琐的传统编辑中解脱，提升设计效率，呈现专业。</p>
-
-<h2 id="更细致的色彩优化">更细致的色彩优化</h2>
-
-<p>iSlide 将全球知名公司的色彩搭配方案共享上传，可以在「色彩库」中浏览并一键应用于当前的 PPT 文档，即便不懂设计，也能呈现专业。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/islide/5.png" alt="https://asset.droidyue.com/image/lizhi_io/islide/5.png" /></p>
-
-<h2 id="更多辅助功能">更多辅助功能</h2>
-
-<p>自己做的 PPT，其实是东一页西一页复制来的？iSlide「一键优化」功能非常适合你，只需轻点一下就能统一 PPT 字体 / 段落。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/islide/6.png" alt="https://asset.droidyue.com/image/lizhi_io/islide/6.png" /></p>
-
-<p>还有图形矩阵 / 环形布局、图片统一裁剪、补间动画、PPT 瘦身压缩等多项功能，让你的 PPT 设计更简单。</p>
-
-<p><img src="https://asset.droidyue.com/image/lizhi_io/islide/7.gif" alt="https://asset.droidyue.com/image/lizhi_io/islide/7.gif" /></p>
-
-<p>现在点击[合作伙伴]<a href="https://store.lizhi.io/site/products/id/41?cid=wncr9wz5">专属优惠链接</a>购买 iSlide，<strong>买两年送 180 天，买一年送 90 天</strong>，每月不到 <strong>6 元</strong>钱，助你变身幻灯片高手！前往数码荔枝购买的新用户，首单<strong>立减 5 元</strong>！</p>
-
-<hr />
-
-<p>只有一个 iSlide 插件，还缺少 Office 中的 PowerPoint 软件？前往数码荔枝找拼车，官方牵头安全享受 Office 365 订阅，Excel、PowerPoint、Word 三件套安排上，还有 1TB OneDrive 放心用，<a href="https://store.lizhi.io/site/products/id/335?cid=wncr9wz5">点击立即上车</a>！</p>
 <br/><img src="https://asset.droidyue.com/image/2020_05/droidyue_gzh_green_png.png"  class="no_boarder_class" style="max-width:100%" /><br/>]]></content>
   </entry>
   
